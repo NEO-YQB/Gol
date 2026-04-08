@@ -1,0 +1,141 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+
+
+
+// ۱. مدل کاربران (ادمین، فروشنده، مشتری)
+model User {
+  id            Int      @id @default(autoincrement())
+  phoneNumber   String   @unique
+  email         String?  @unique
+  fullName      String?
+  role          Role     @default(CUSTOMER)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // روابط
+  store         Store?   // اگر فروشنده باشد
+  orders        Order[]  // سفارشات کاربر
+  reviews       Review[] // نظرات کاربر
+}
+
+enum Role {
+  ADMIN
+  VENDOR
+  CUSTOMER
+}
+
+// ۲. مدل فروشگاه (برای چندفروشندگی)
+model Store {
+  id            Int      @id @default(autoincrement())
+  name          String
+  slug          String   @unique
+  description   String?  @db.Text
+  logo          String?
+  ownerId       Int      @unique
+  owner         User     @relation(fields: [ownerId], references: [id])
+  products      Product[]
+  isVerified    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ۳. مدل محصولات
+model Product {
+  id            Int      @id @default(autoincrement())
+  name          String
+  slug          String   @unique
+  description   String?  @db.Text
+  price         Decimal  @db.Decimal(12, 2)
+  stock         Int      @default(0)
+  images        Json?    // ذخیره آرایه‌ای از آدرس تصاویر
+  attributes    Json?    // ویژگی‌های داینامیک (رنگ، اندازه و غیره)
+  
+  // سئو
+  metaTitle     String?
+  metaDescription String? @db.Text
+
+  storeId       Int
+  store         Store    @relation(fields: [storeId], references: [id])
+  categoryId    Int
+  category      Category @relation(fields: [categoryId], references: [id])
+  
+  orderItems    OrderItem[]
+  reviews       Review[]
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ۴. مدل دسته‌بندی
+model Category {
+  id            Int      @id @default(autoincrement())
+  name          String
+  slug          String   @unique
+  parentId      Int?
+  parent        Category?  @relation("SubCategories", fields: [parentId], references: [id])
+  children      Category[] @relation("SubCategories")
+  products      Product[]
+}
+
+// ۵. مدل سفارشات
+model Order {
+  id            Int      @id @default(autoincrement())
+  userId        Int
+  user          User     @relation(fields: [userId], references: [id])
+  totalAmount   Decimal  @db.Decimal(12, 2)
+  status        OrderStatus @default(PENDING)
+  items         OrderItem[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+// ۶. جزئیات سفارش
+model OrderItem {
+  id            Int      @id @default(autoincrement())
+  orderId       Int
+  order         Order    @relation(fields: [orderId], references: [id])
+  productId     Int
+  product       Product  @relation(fields: [productId], references: [id])
+  quantity      Int
+  price         Decimal  @db.Decimal(12, 2) // قیمت در زمان خرید
+}
+
+// ۷. نظرات
+model Review {
+  id            Int      @id @default(autoincrement())
+  rating        Int      @default(5)
+  comment       String?  @db.Text
+  userId        Int
+  user          User     @relation(fields: [userId], references: [id])
+  productId     Int
+  product       Product  @relation(fields: [productId], references: [id])
+  createdAt     DateTime @default(now())
+}
+
+model OtpCode {
+  id        Int      @id @default(autoincrement())
+  phoneNumber String
+  code      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([phoneNumber])
+}

@@ -1,0 +1,26 @@
+{
+  "name": "flower-marketplace",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:backend": "npm run start:dev -w apps/backend",
+    "dev:storefront": "npm run dev -w apps/storefront",
+    "build": "npm run build --workspaces"
+  },
+  "dependencies": {
+    "@nestjs/config": "^4.0.3",
+    "@nestjs/jwt": "^11.0.2",
+    "@nestjs/passport": "^11.0.5",
+    "@prisma/client": "^6.19.3",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1"
+  },
+  "devDependencies": {
+    "@types/passport-jwt": "^4.0.1",
+    "prisma": "^6.19.3"
+  }
+}
