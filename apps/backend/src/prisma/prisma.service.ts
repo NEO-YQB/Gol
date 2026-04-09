@@ -7,7 +7,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   async onModuleInit() {
     try {
       await this.$connect();
-      console.log('✅ [Prisma]: Connected to MySQL successfully (v6).');
+      console.log('✅ [Prisma]: Connected to PostgreSQL successfully (v6).');
       const count = await this.user.count();
       console.log(`📊 [Database]: ${count} users found.`);
     } catch (e) {
