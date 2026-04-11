@@ -1,6 +1,6 @@
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url      = env("MY_NEW_DB_URL")
 }
 
 generator client {
@@ -77,13 +77,16 @@ model Product {
 
 // ۴. مدل دسته‌بندی
 model Category {
-  id            Int      @id @default(autoincrement())
-  name          String
-  slug          String   @unique
-  parentId      Int?
-  parent        Category?  @relation("SubCategories", fields: [parentId], references: [id])
-  children      Category[] @relation("SubCategories")
-  products      Product[]
+  id          Int        @id @default(autoincrement())
+  name        String
+  slug        String     @unique
+  description String?    // <--- مطمئن شوید این خط وجود دارد
+  parentId    Int?
+  parent      Category?  @relation("CategoryToCategory", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryToCategory")
+  products    Product[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 }
 
 // ۵. مدل سفارشات
