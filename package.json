@@ -17,7 +17,8 @@
     "@nestjs/passport": "^11.0.5",
     "@prisma/client": "^6.19.3",
     "passport": "^0.7.0",
-    "passport-jwt": "^4.0.1"
+    "passport-jwt": "^4.0.1",
+    "slugify": "^1.6.9"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
