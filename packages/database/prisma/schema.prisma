@@ -7,9 +7,6 @@ generator client {
   provider = "prisma-client-js"
 }
 
-
-
-
 // ۱. مدل کاربران (ادمین، فروشنده، مشتری)
 model User {
   id            Int      @id @default(autoincrement())

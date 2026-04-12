@@ -17,12 +17,16 @@ export class CategoryService {
     });
   }
 
-  async findAll() {
-    return this.prisma.category.findMany({
-      include: {
-        children: true, // نمایش زیرمجموعه‌ها
-        parent: true,   // نمایش والد
-      },
-    });
-  }
+  async findAllWithChildren() {
+  return this.prisma.category.findMany({
+    where: { parentId: null }, // فقط دسته‌های اصلی
+    include: {
+      children: {
+        include: {
+          children: true // تا ۳ مرحله عمق (قابل تغییر است)
+        }
+      }
+    }
+  });
+}
 }
