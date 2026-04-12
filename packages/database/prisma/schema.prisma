@@ -15,14 +15,15 @@ model User {
   fullName      String?
   role          Role     @default(CUSTOMER)
   isActive      Boolean  @default(true)
-  addresses     UserAddress[]
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
+  
   // روابط
+  addresses     UserAddress[]
   store         Store?
   orders        Order[]
   reviews       Review[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 enum Role {
@@ -38,15 +39,19 @@ model Store {
   slug          String   @unique
   description   String?  @db.Text
   logo          String?
+  
+  // مختصات فروشگاه برای جستجوی مکانی
+  lat           Float?
+  lng           Float?
+  address       String?
+
+  isVerified    Boolean  @default(false)
+  
+  // روابط
   ownerId       Int      @unique
   owner         User     @relation(fields: [ownerId], references: [id])
   products      Product[]
-  // مختصات فروشگاه برای جستجوی مکانی
-  lat         Float?
-  lng         Float?
-  address     String?
 
-  isVerified    Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
@@ -60,6 +65,7 @@ model UserAddress {
   lng       Float
   isDefault Boolean  @default(false)
   
+  // روابط
   userId    Int
   user      User     @relation(fields: [userId], references: [id])
   
@@ -67,61 +73,132 @@ model UserAddress {
   updatedAt DateTime @updatedAt
 }
 
+enum ElementType {
+  BASE
+  FLOWER
+  FILLER
+  ACCESSORY
+}
+
 // ۳. مدل محصولات
 model Product {
-  id            Int      @id @default(autoincrement())
-  name          String
-  slug          String   @unique
-  description   String?  @db.Text
-  price         Decimal  @db.Decimal(12, 2)
-  stock         Int      @default(0)
- 
-  mainImage       String?
-  images          Json?
+  id              Int      @id @default(autoincrement())
+  name            String
+  slug            String   @unique
+  description     String?  @db.Text
+  shortDescription String? @db.Text
+  
+  price           Float
+  discountPrice   Float?   // قیمت با تخفیف
+  
+  // رسانه
+  mainImage       String
+  images          Json?    // آرایه‌ای از URLها
   videoUrl        String?
- 
-  attributes    Json?
-  
-  // سئو
-  metaTitle     String?
-  metaDescription String? @db.Text
 
-  storeId       Int
-  store         Store    @relation(fields: [storeId], references: [id])
-  categoryId    Int
-  category      Category @relation(fields: [categoryId], references: [id])
+  // روابط اصلی
+  storeId         Int
+  store           Store    @relation(fields: [storeId], references: [id])
   
-  orderItems    OrderItem[]
-  reviews       Review[]
+  productTypeId   Int
+  productType     ProductType @relation(fields: [productTypeId], references: [id])
   
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  categoryId      Int
+  category        Category    @relation(fields: [categoryId], references: [id])
+
+  // اجزای تشکیل دهنده
+  composition     ProductComposition[]
+
+  // سوابق و نظرات
+  orderItems      OrderItem[]
+  reviews         Review[]
+
+  // SEO
+  metaTitle       String?
+  metaDescription String?
+  isIndexed       Boolean     @default(true)
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+model ProductType {
+  id              Int      @id @default(autoincrement())
+  name            String   // مثلا: باکس گل، تاج گل، دسته گل
+  slug            String   @unique
+  description     String?  @db.Text
+  image           String?
+  
+  // SEO
+  metaTitle       String?
+  metaDescription String?
+  isIndexed       Boolean  @default(true)
+  
+  // فیلتر برای محدودسازی اجزا در پنل مدیریت
+  allowedElements Json?    
+
+  products        Product[]
+  createdAt       DateTime @default(now())
 }
 
 // ۴. مدل دسته‌بندی
 model Category {
-  id          Int        @id @default(autoincrement())
-  name        String
-  slug        String     @unique
-  description String?    // <--- مطمئن شوید این خط وجود دارد
-  parentId    Int?
-  parent      Category?  @relation("CategoryToCategory", fields: [parentId], references: [id])
-  children    Category[] @relation("CategoryToCategory")
-  products    Product[]
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id              Int      @id @default(autoincrement())
+  name            String   // مثلا: ولنتاین، ترحیم، تولد
+  slug            String   @unique
+  description     String?  @db.Text
+  image           String?
+  
+  // SEO & Campaign logic
+  metaTitle       String?
+  metaDescription String?
+  isIndexed       Boolean  @default(true)
+  isCampaign      Boolean  @default(false)
+
+  products        Product[]
+  createdAt       DateTime @default(now())
+}
+
+model ProductElement {
+  id          Int          @id @default(autoincrement())
+  name        String       @unique // مثلا: رز هلندی قرمز، باکس چوبی مربع
+  type        ElementType  
+  unit        String       @default("شاخه") 
+  image       String?      
+  
+  compositions ProductComposition[]
+}
+
+model ProductComposition {
+  id               Int            @id @default(autoincrement())
+  
+  productId        Int
+  product          Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  elementId        Int
+  element          ProductElement @relation(fields: [elementId], references: [id])
+  
+  quantity         Int            @default(1)
+  
+  // ذخیره نوع در اینجا برای کوئری‌های سریع فرانت
+  elementType      ElementType    
+
+  @@index([productId])
 }
 
 // ۵. مدل سفارشات
 model Order {
-  id            Int      @id @default(autoincrement())
-  userId        Int
-  user          User     @relation(fields: [userId], references: [id])
-  totalAmount   Decimal  @db.Decimal(12, 2)
+  id            Int         @id @default(autoincrement())
+  totalAmount   Decimal     @db.Decimal(12, 2)
   status        OrderStatus @default(PENDING)
-  items         OrderItem[]
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  
+  // روابط
+  userId        Int
+  user          User        @relation(fields: [userId], references: [id])
+  orderItems    OrderItem[]
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 }
 
 enum OrderStatus {
@@ -136,12 +213,14 @@ enum OrderStatus {
 // ۶. جزئیات سفارش
 model OrderItem {
   id            Int      @id @default(autoincrement())
+  quantity      Int
+  price         Decimal  @db.Decimal(12, 2)
+
+  // روابط
   orderId       Int
   order         Order    @relation(fields: [orderId], references: [id])
   productId     Int
   product       Product  @relation(fields: [productId], references: [id])
-  quantity      Int
-  price         Decimal  @db.Decimal(12, 2) // قیمت در زمان خرید
 }
 
 // ۷. نظرات
@@ -149,13 +228,17 @@ model Review {
   id            Int      @id @default(autoincrement())
   rating        Int      @default(5)
   comment       String?  @db.Text
+  
+  // روابط
   userId        Int
   user          User     @relation(fields: [userId], references: [id])
   productId     Int
   product       Product  @relation(fields: [productId], references: [id])
+
   createdAt     DateTime @default(now())
 }
 
+// ۸. کد تایید
 model OtpCode {
   id        Int      @id @default(autoincrement())
   phoneNumber String

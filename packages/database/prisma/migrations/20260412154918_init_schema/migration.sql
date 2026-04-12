@@ -2,6 +2,9 @@
 CREATE TYPE "Role" AS ENUM ('ADMIN', 'VENDOR', 'CUSTOMER');
 
 -- CreateEnum
+CREATE TYPE "ElementType" AS ENUM ('BASE', 'FLOWER', 'FILLER', 'ACCESSORY');
+
+-- CreateEnum
 CREATE TYPE "OrderStatus" AS ENUM ('PENDING', 'PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED');
 
 -- CreateTable
@@ -25,12 +28,31 @@ CREATE TABLE "Store" (
     "slug" TEXT NOT NULL,
     "description" TEXT,
     "logo" TEXT,
-    "ownerId" INTEGER NOT NULL,
+    "lat" DOUBLE PRECISION,
+    "lng" DOUBLE PRECISION,
+    "address" TEXT,
     "isVerified" BOOLEAN NOT NULL DEFAULT false,
+    "ownerId" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Store_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "UserAddress" (
+    "id" SERIAL NOT NULL,
+    "title" TEXT NOT NULL,
+    "address" TEXT NOT NULL,
+    "city" TEXT NOT NULL,
+    "lat" DOUBLE PRECISION NOT NULL,
+    "lng" DOUBLE PRECISION NOT NULL,
+    "isDefault" BOOLEAN NOT NULL DEFAULT false,
+    "userId" INTEGER NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "UserAddress_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -39,20 +61,38 @@ CREATE TABLE "Product" (
     "name" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
     "description" TEXT,
-    "price" DECIMAL(12,2) NOT NULL,
-    "stock" INTEGER NOT NULL DEFAULT 0,
-    "mainImage" TEXT,
+    "shortDescription" TEXT,
+    "price" DOUBLE PRECISION NOT NULL,
+    "discountPrice" DOUBLE PRECISION,
+    "mainImage" TEXT NOT NULL,
     "images" JSONB,
     "videoUrl" TEXT,
-    "attributes" JSONB,
+    "storeId" INTEGER NOT NULL,
+    "productTypeId" INTEGER NOT NULL,
+    "categoryId" INTEGER NOT NULL,
     "metaTitle" TEXT,
     "metaDescription" TEXT,
-    "storeId" INTEGER NOT NULL,
-    "categoryId" INTEGER NOT NULL,
+    "isIndexed" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Product_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ProductType" (
+    "id" SERIAL NOT NULL,
+    "name" TEXT NOT NULL,
+    "slug" TEXT NOT NULL,
+    "description" TEXT,
+    "image" TEXT,
+    "metaTitle" TEXT,
+    "metaDescription" TEXT,
+    "isIndexed" BOOLEAN NOT NULL DEFAULT true,
+    "allowedElements" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "ProductType_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -61,19 +101,44 @@ CREATE TABLE "Category" (
     "name" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
     "description" TEXT,
-    "parentId" INTEGER,
+    "image" TEXT,
+    "metaTitle" TEXT,
+    "metaDescription" TEXT,
+    "isIndexed" BOOLEAN NOT NULL DEFAULT true,
+    "isCampaign" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Category_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
+CREATE TABLE "ProductElement" (
+    "id" SERIAL NOT NULL,
+    "name" TEXT NOT NULL,
+    "type" "ElementType" NOT NULL,
+    "unit" TEXT NOT NULL DEFAULT 'شاخه',
+    "image" TEXT,
+
+    CONSTRAINT "ProductElement_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ProductComposition" (
+    "id" SERIAL NOT NULL,
+    "productId" INTEGER NOT NULL,
+    "elementId" INTEGER NOT NULL,
+    "quantity" INTEGER NOT NULL DEFAULT 1,
+    "elementType" "ElementType" NOT NULL,
+
+    CONSTRAINT "ProductComposition_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "Order" (
     "id" SERIAL NOT NULL,
-    "userId" INTEGER NOT NULL,
     "totalAmount" DECIMAL(12,2) NOT NULL,
     "status" "OrderStatus" NOT NULL DEFAULT 'PENDING',
+    "userId" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -83,10 +148,10 @@ CREATE TABLE "Order" (
 -- CreateTable
 CREATE TABLE "OrderItem" (
     "id" SERIAL NOT NULL,
-    "orderId" INTEGER NOT NULL,
-    "productId" INTEGER NOT NULL,
     "quantity" INTEGER NOT NULL,
     "price" DECIMAL(12,2) NOT NULL,
+    "orderId" INTEGER NOT NULL,
+    "productId" INTEGER NOT NULL,
 
     CONSTRAINT "OrderItem_pkey" PRIMARY KEY ("id")
 );
@@ -130,7 +195,16 @@ CREATE UNIQUE INDEX "Store_ownerId_key" ON "Store"("ownerId");
 CREATE UNIQUE INDEX "Product_slug_key" ON "Product"("slug");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "ProductType_slug_key" ON "ProductType"("slug");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "Category_slug_key" ON "Category"("slug");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ProductElement_name_key" ON "ProductElement"("name");
+
+-- CreateIndex
+CREATE INDEX "ProductComposition_productId_idx" ON "ProductComposition"("productId");
 
 -- CreateIndex
 CREATE INDEX "OtpCode_phoneNumber_idx" ON "OtpCode"("phoneNumber");
@@ -139,13 +213,22 @@ CREATE INDEX "OtpCode_phoneNumber_idx" ON "OtpCode"("phoneNumber");
 ALTER TABLE "Store" ADD CONSTRAINT "Store_ownerId_fkey" FOREIGN KEY ("ownerId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "UserAddress" ADD CONSTRAINT "UserAddress_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Product" ADD CONSTRAINT "Product_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Product" ADD CONSTRAINT "Product_productTypeId_fkey" FOREIGN KEY ("productTypeId") REFERENCES "ProductType"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Product" ADD CONSTRAINT "Product_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Category" ADD CONSTRAINT "Category_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "Category"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "ProductComposition" ADD CONSTRAINT "ProductComposition_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ProductComposition" ADD CONSTRAINT "ProductComposition_elementId_fkey" FOREIGN KEY ("elementId") REFERENCES "ProductElement"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Order" ADD CONSTRAINT "Order_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
