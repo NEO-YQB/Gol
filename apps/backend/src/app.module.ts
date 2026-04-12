@@ -6,11 +6,12 @@ import { AuthModule } from './modules/auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
 import { CategoryModule } from './modules/category/category.module';
 import { ProductModule } from './modules/product/product.module';
+import { StoreModule } from './modules/store/store.module'; 
 import { join } from 'path';
 
 @Global() // این باعث می‌شود سرویس در کل اپلیکیشن در دسترس باشد
 @Module({
-  imports: [ProductModule,ConfigModule.forRoot({
+  imports: [StoreModule,ProductModule,ConfigModule.forRoot({
       isGlobal: true, // باعث می‌شود در تمام ماژول‌ها بدون نیاز به ایمپورت مجدد در دسترس باشد
       envFilePath: join(process.cwd(), '.env'), 
       cache: false,

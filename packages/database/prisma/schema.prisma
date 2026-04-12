@@ -53,8 +53,12 @@ model Product {
   description   String?  @db.Text
   price         Decimal  @db.Decimal(12, 2)
   stock         Int      @default(0)
-  images        Json?    // ذخیره آرایه‌ای از آدرس تصاویر
-  attributes    Json?    // ویژگی‌های داینامیک (رنگ، اندازه و غیره)
+ 
+  mainImage       String?
+  images          Json?
+  videoUrl        String?
+ 
+  attributes    Json?
   
   // سئو
   metaTitle     String?

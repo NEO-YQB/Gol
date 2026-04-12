@@ -1,9 +1,18 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { ValidationPipe } from '@nestjs/common'; // این را اضافه کنید
 
 async function bootstrap() {
-  process.env.MY_NEW_DB_URL = "postgresql://postgres:5DZ1XlLTSbapKIIdxKEnLHqCsfjzvVQ8GDRqcGoXtAXB7iPNIelkmoLefFzH5DZF@185.80.196.10:5433/postgres?sslmode=disable";
   const app = await NestFactory.create(AppModule);
-  await app.listen(process.env.PORT ?? 3000);
+  
+  // این خط را اضافه کنید تا اعتبارسنجی فعال شود
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true, // فیلدهای اضافی که در DTO نیستند را حذف می‌کند
+    forbidNonWhitelisted: true, // اگر فیلد اضافی فرستاده شود خطا می‌دهد
+    transform: true, // به صورت خودکار تایپ‌ها را تبدیل می‌کند
+  }));
+
+  app.setGlobalPrefix('v1');
+  await app.listen(3000);
 }
 bootstrap();

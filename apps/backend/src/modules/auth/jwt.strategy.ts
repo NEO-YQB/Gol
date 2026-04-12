@@ -15,6 +15,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(payload: any) {
     // این داده‌ها به شیء request.user اضافه می‌شوند
-    return { userId: payload.sub, phoneNumber: payload.phoneNumber, role: payload.role };
+  return { id: payload.sub, phoneNumber: payload.phoneNumber, role: payload.role };
   }
 }

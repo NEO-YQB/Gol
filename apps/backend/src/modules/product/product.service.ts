@@ -1,48 +1,30 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { Prisma } from '@prisma/client';
+import { CreateProductDto, UpdateProductDto } from './dto/create-product.dto';
 
 @Injectable()
 export class ProductService {
   constructor(private prisma: PrismaService) {}
 
-  async create(data: {
-    name: string;
-    slug: string;
-    description?: string;
-    price: number;
-    stock: number;
-    images?: any;
-    attributes?: any;
-    categoryId: number;
-    storeId: number;
-  }) {
-    // ابتدا بررسی می‌کنیم که آیا فروشگاه و دسته‌بندی وجود دارند
-    const store = await this.prisma.store.findUnique({ where: { id: data.storeId } });
-    if (!store) throw new NotFoundException('Store not found');
+  async create(createProductDto: CreateProductDto) {
+    // ۱. بررسی تکراری نبودن اسلاگ
+    const existingSlug = await this.prisma.product.findUnique({
+      where: { slug: createProductDto.slug },
+    });
 
-    const category = await this.prisma.category.findUnique({ where: { id: data.categoryId } });
-    if (!category) throw new NotFoundException('Category not found');
+    if (existingSlug) {
+      throw new ConflictException('این اسلاگ قبلاً ثبت شده است. لطفا مقدار دیگری وارد کنید.');
+    }
 
     return this.prisma.product.create({
-      data: {
-        name: data.name,
-        slug: data.slug,
-        description: data.description,
-        price: new Prisma.Decimal(data.price),
-        stock: data.stock,
-        images: data.images,
-        attributes: data.attributes,
-        categoryId: data.categoryId,
-        storeId: data.storeId,
-      },
+      data: createProductDto,
     });
   }
 
   async findAll() {
     return this.prisma.product.findMany({
       include: {
-        category: { select: { name: true, slug: true } },
+        category: { select: { name: true } },
         store: { select: { name: true } },
       },
     });
@@ -51,9 +33,41 @@ export class ProductService {
   async findOne(id: number) {
     const product = await this.prisma.product.findUnique({
       where: { id },
-      include: { category: true, store: true, reviews: true }
+      include: {
+        category: true,
+        store: true,
+      },
     });
-    if (!product) throw new NotFoundException('Product not found');
+    if (!product) {
+      throw new NotFoundException(`محصولی با شناسه ${id} یافت نشد`);
+    }
     return product;
+  }
+
+  async update(id: number, updateProductDto: UpdateProductDto) {
+    // ۱. بررسی وجود محصول
+    const product = await this.findOne(id);
+
+    // ۲. اگر اسلاگ در حال تغییر است، بررسی تکراری نبودن در سایر محصولات
+    if (updateProductDto.slug && updateProductDto.slug !== product.slug) {
+      const existingSlug = await this.prisma.product.findUnique({
+        where: { slug: updateProductDto.slug },
+      });
+      if (existingSlug) {
+        throw new ConflictException('این اسلاگ توسط محصول دیگری رزرو شده است.');
+      }
+    }
+
+    return this.prisma.product.update({
+      where: { id },
+      data: updateProductDto,
+    });
+  }
+
+  async remove(id: number) {
+    await this.findOne(id);
+    return this.prisma.product.delete({
+      where: { id },
+    });
   }
 }
