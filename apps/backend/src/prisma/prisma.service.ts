@@ -8,8 +8,6 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     try {
       await this.$connect();
       console.log('✅ [Prisma]: Connected to PostgreSQL successfully (v6).');
-      const count = await this.user.count();
-      console.log(`📊 [Database]: ${count} users found.`);
     } catch (e) {
       console.error('❌ [Prisma]: Connection error!', e);
       await new Promise(res => setTimeout(res, 3000));

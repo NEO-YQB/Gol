@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service'; 
 import { CreateCategoryDto } from './dto/create-category.dto';
 
@@ -6,27 +6,38 @@ import { CreateCategoryDto } from './dto/create-category.dto';
 export class CategoryService {
   constructor(private prisma: PrismaService) {}
 
-  async create(createCategoryDto: CreateCategoryDto) {
+  async create(dto: CreateCategoryDto) {
+    const { parentId, ...rest } = dto;
+
+    // بررسی تکراری نبودن اسلاگ
+    const existing = await this.prisma.category.findUnique({ where: { slug: dto.slug } });
+    if (existing) throw new ConflictException('اسلاگ تکراری است');
+
     return this.prisma.category.create({
       data: {
-        name: createCategoryDto.name,
-        slug: createCategoryDto.slug,
-        description: createCategoryDto.description ?? null,
-        parentId: createCategoryDto.parentId,
+        ...rest,
+        parent: parentId ? { connect: { id: parentId } } : undefined,
       },
     });
   }
 
   async findAllWithChildren() {
-  return this.prisma.category.findMany({
-    where: { parentId: null }, // فقط دسته‌های اصلی
-    include: {
-      children: {
-        include: {
-          children: true // تا ۳ مرحله عمق (قابل تغییر است)
+    return this.prisma.category.findMany({
+      where: { parentId: null }, // دریافت ریشه‌ها
+      include: {
+        children: {
+          include: {
+            children: true // تا ۲ مرحله عمق
+          }
         }
       }
-    }
-  });
-}
+    });
+  }
+
+  async findOne(id: number) {
+    return this.prisma.category.findUnique({
+      where: { id },
+      include: { children: true, parent: true }
+    });
+  }
 }

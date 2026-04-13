@@ -1,64 +1,78 @@
-import { IsString, IsArray, IsUrl, IsNumber, IsOptional, IsNotEmpty, Matches, IsObject  } from 'class-validator';
+import { IsString, IsArray, IsNumber, IsOptional, IsNotEmpty, Matches, IsInt, Min } from 'class-validator';
+import { PartialType } from '@nestjs/mapped-types';
 
 export class CreateProductDto {
   @IsString()
   @IsNotEmpty({ message: 'نام محصول اجباری است' })
-  name: string;
+  name!: string; // اضافه شدن علامت !
 
   @IsString()
-  @IsNotEmpty({ message: 'اسلاگ برای سئو اجباری است' })
-  // ریجکس زیر اجازه حروف، اعداد و خط تیره را می‌دهد (پشتیبانی از فارسی و انگلیسی)
+  @IsNotEmpty({ message: 'اسلاگ اجباری است' })
   @Matches(/^[a-z0-9آ-ی\s-]+$/i, { message: 'اسلاگ فقط می‌تواند شامل حروف، اعداد و خط تیره باشد' })
-  slug: string;
+  slug!: string;
 
   @IsString()
   @IsOptional()
   description?: string;
 
-  @IsNumber()
-  @IsNotEmpty()
-  price: number;
-
-  @IsNumber()
-  @IsNotEmpty()
-  stock: number;
-
-    @IsString()
+  @IsString()
   @IsOptional()
-  @IsUrl({}, { message: 'لینک تصویر اصلی معتبر نیست' })
-  mainImage?: string;
+  shortDescription?: string;
 
-  @IsArray({ message: 'گالری تصاویر باید به صورت آرایه باشد' })
-  @IsString({ each: true, message: 'هر مورد در گالری باید یک متن (URL) باشد' })
+  @IsNumber()
+  @Min(0)
+  price!: number;
+
+  @IsNumber()
+  @IsOptional()
+  discountPrice?: number;
+
+  @IsInt()
+  @Min(0)
+  quantity!: number;
+
+  @IsString()
+  @IsNotEmpty({ message: 'تصویر اصلی اجباری است' })
+  mainImage!: string;
+
+  @IsArray()
+  @IsString({ each: true })
   @IsOptional()
   images?: string[];
 
   @IsString()
   @IsOptional()
-  @IsUrl({}, { message: 'لینک ویدیو معتبر نیست' })
   videoUrl?: string;
 
+  @IsInt()
+  @IsNotEmpty()
+  categoryId!: number;
+
+  @IsInt()
+  @IsNotEmpty()
+  storeId!: number;
+
+  @IsInt()
+  @IsNotEmpty()
+  productTypeId!: number;
+
+  @IsString()
   @IsOptional()
-  @IsObject({ message: 'فیلد ویژگی‌ها باید به صورت یک شیء (Object) باشد' })
-  attributes?: any;
+  metaTitle?: string;
 
-  @IsNumber()
-  @IsNotEmpty()
-  categoryId: number;
-
-  @IsNumber()
-  @IsNotEmpty()
-  storeId: number;
+  @IsString()
+  @IsOptional()
+  metaDescription?: string;
 }
 
-export class UpdateProductDto {
+
+export class UpdateProductDto extends PartialType(CreateProductDto)  {
   @IsString()
   @IsOptional()
   name?: string;
 
   @IsString()
   @IsOptional()
-  @Matches(/^[a-z0-9آ-ی\s-]+$/i, { message: 'اسلاگ معتبر نیست' })
   slug?: string;
 
   @IsString()
@@ -69,11 +83,19 @@ export class UpdateProductDto {
   @IsOptional()
   price?: number;
 
-  @IsNumber()
+  @IsInt()
   @IsOptional()
-  stock?: number;
+  quantity?: number;
 
-  @IsNumber()
+  @IsInt()
   @IsOptional()
   categoryId?: number;
+
+  @IsInt()
+  @IsOptional()
+  productTypeId?: number;
+
+  @IsString()
+  @IsOptional()
+  mainImage?: string;
 }

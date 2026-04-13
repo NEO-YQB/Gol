@@ -5,14 +5,14 @@ import { AppService } from './app.service';
 import { AuthModule } from './modules/auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
 import { CategoryModule } from './modules/category/category.module';
-import { ProductModule } from './modules/product/product.module';
+import { CatalogModule } from './modules/catalog/product.module';
 import { StoreModule } from './modules/store/store.module'; 
 import { join } from 'path';
 import { AddressModule } from './modules/address/address.module';
 
 @Global() // این باعث می‌شود سرویس در کل اپلیکیشن در دسترس باشد
 @Module({
-  imports: [StoreModule,ProductModule,ConfigModule.forRoot({
+  imports: [StoreModule,CatalogModule,ConfigModule.forRoot({
       isGlobal: true, // باعث می‌شود در تمام ماژول‌ها بدون نیاز به ایمپورت مجدد در دسترس باشد
       envFilePath: join(process.cwd(), '.env'), 
       cache: false,

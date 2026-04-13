@@ -149,6 +149,10 @@ model Category {
   slug            String   @unique
   description     String?  @db.Text
   image           String?
+
+  parentId    Int?
+  parent      Category?  @relation("CategoryToCategory", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryToCategory")
   
   // SEO & Campaign logic
   metaTitle       String?
