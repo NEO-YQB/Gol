@@ -7,11 +7,12 @@ import {
   IsInt, 
   Min, 
   IsEnum, 
-  ValidateNested 
+  ValidateNested,
+  IsUrl 
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ElementType } from '@prisma/client';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional  } from '@nestjs/swagger';
 
 
 // DTO کمکی برای ترکیب‌بندی محصول
@@ -96,11 +97,13 @@ export class CreateProductDto {
   @IsOptional() // اگر محصول ساده باشد ممکن است ترکیب نداشته باشد
   compositions!: ProductCompositionDto[];
 
-  // SEO Fields
+  // فیلدهای سئو (طبق مدل تو)
+  @ApiProperty({ description: 'عنوان متا', example: 'عنوان متا' })
   @IsString()
   @IsOptional()
   metaTitle?: string;
 
+  @ApiProperty({ description: 'توضیحات متا', example: 'توضیحات متا' })
   @IsString()
   @IsOptional()
   metaDescription?: string;

@@ -9,6 +9,7 @@ import { CatalogModule } from './modules/catalog/product.module';
 import { StoreModule } from './modules/store/store.module'; 
 import { join } from 'path';
 import { AddressModule } from './modules/address/address.module';
+import { FilesModule } from './modules/files/files.module';
 
 @Global() // این باعث می‌شود سرویس در کل اپلیکیشن در دسترس باشد
 @Module({
@@ -17,7 +18,7 @@ import { AddressModule } from './modules/address/address.module';
       envFilePath: join(process.cwd(), '.env'), 
       cache: false,
   }),
-    AuthModule,CategoryModule, AddressModule,],
+    AuthModule,CategoryModule, AddressModule, FilesModule,],
   controllers: [AppController],
   providers: [AppService, PrismaService],
   exports: [PrismaService],

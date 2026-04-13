@@ -17,6 +17,7 @@ import { GetProductsQueryDto } from './dto/get-products-query.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CreateElementDto } from './dto/create-element.dto';
 import { Role } from '@prisma/client';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 
@@ -72,5 +73,32 @@ export class ProductController {
   async remove(@Param('id', ParseIntPipe) id: number) {
     return this.productService.remove(id);
   }
-  
+
+  // ۶. مدیریت المان‌ها (Product Elements)
+
+  @Post('elements')
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN) // محدود کردن به ادمین
+  @ApiOperation({ summary: 'ایجاد یک المان جدید (مثلا متریال)' })
+  async createElement(@Body() dto: CreateElementDto) {
+    // اصلاح شد: استفاده از productService به جای catalogService
+    return this.productService.createElement(dto);
+  }
+
+  @Get('elements')
+  @ApiOperation({ summary: 'دریافت تمام المان‌ها' })
+  async findAllElements() {
+    return this.productService.findAllElements();
+  }
+
+  @Delete('elements/:id')
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'حذف یک المان' })
+  async removeElement(@Param('id', ParseIntPipe) id: number) {
+    return this.productService.removeElement(id);
+  }
 }
+

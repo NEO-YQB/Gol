@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { GetProductsQueryDto } from './dto/get-products-query.dto';
+import { CreateElementDto } from './dto/create-element.dto';
 import slugify from 'slugify';
 
 @Injectable()
@@ -11,7 +12,7 @@ export class ProductService {
 
   // ۱. ایجاد محصول
   async create(dto: CreateProductDto) {
-    const { compositions, storeId, categoryId, productTypeId, ...rest } = dto;
+    const {  compositions, storeId, categoryId, productTypeId, ...rest } = dto;
 
     // تولید اسلاگ خودکار از نام (اگر در DTO نبود)
     const slug = slugify(rest.name, { lower: true, strict: true, locale: 'fa' })+ '-' + Math.floor(Math.random() * 1000);
@@ -143,5 +144,35 @@ export class ProductService {
   async remove(id: number) {
     await this.findOneById(id);
     return this.prisma.product.delete({ where: { id } });
+  }
+
+  async createElement(dto: CreateElementDto) {
+    try {
+      return await this.prisma.productElement.create({
+        data: {
+          name: dto.name,
+          type: dto.type,
+        },
+      });
+    } catch (error) {
+      console.error(error);
+      throw new InternalServerErrorException('خطا در ایجاد المان محصول');
+    }
+  }
+
+  async findAllElements() {
+    return this.prisma.productElement.findMany({
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  async removeElement(id: number) {
+    try {
+      return await this.prisma.productElement.delete({
+        where: { id },
+      });
+    } catch (error) {
+      throw new NotFoundException(`المان با آیدی ${id} یافت نشد یا قابل حذف نیست`);
+    }
   }
 }
