@@ -14,7 +14,7 @@ export class ProductService {
     const { compositions, storeId, categoryId, productTypeId, ...rest } = dto;
 
     // تولید اسلاگ خودکار از نام (اگر در DTO نبود)
-    const slug = slugify(rest.name, { lower: true, strict: true, locale: 'fa' });
+    const slug = slugify(rest.name, { lower: true, strict: true, locale: 'fa' })+ '-' + Math.floor(Math.random() * 1000);
 
     try {
       return await this.prisma.$transaction(async (tx) => {
@@ -109,20 +109,35 @@ export class ProductService {
 
   // ۵. به‌روزرسانی (update) - حل خطای دوم
   async update(id: number, dto: UpdateProductDto) {
-    await this.findOneById(id); // اطمینان از وجود محصول
-    const { categoryId, storeId, productTypeId, compositions, ...rest } = dto;
+  const { categoryId, storeId, productTypeId, compositions, ...rest } = dto;
 
-    return this.prisma.product.update({
+  return this.prisma.$transaction(async (tx) => {
+    // ۱. بررسی وجود محصول
+    await tx.product.findUniqueOrThrow({ where: { id } });
+
+    // ۲. اگر لیست اجزا ارسال شده، قبلی‌ها را پاک و جدیدها را می‌سازیم
+    if (compositions) {
+      await tx.productComposition.deleteMany({ where: { productId: id } });
+    }
+
+    return tx.product.update({
       where: { id },
       data: {
         ...rest,
         category: categoryId ? { connect: { id: categoryId } } : undefined,
         store: storeId ? { connect: { id: storeId } } : undefined,
         productType: productTypeId ? { connect: { id: productTypeId } } : undefined,
-        // نکته: آپدیت compositions در Prisma معمولا با deleteMany و create مجدد انجام می‌شود
+        composition: compositions ? {
+          create: compositions.map((c) => ({
+            quantity: c.quantity,
+            elementType: c.elementType,
+            element: { connect: { id: c.elementId } }
+          })),
+        } : undefined,
       },
     });
-  }
+  });
+}
 
   // ۶. حذف (remove) - حل خطای سوم
   async remove(id: number) {
