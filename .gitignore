@@ -6,3 +6,6 @@ dist
 build
 .DS_Store
 npm-debug.log*
+packages/database/schema2222.prisma
+docs/
+PROJECT_NOTES_FA.md

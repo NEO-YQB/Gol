@@ -1,21 +1,67 @@
-import { Injectable, ConflictException, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { 
+  Injectable, 
+  ConflictException, 
+  InternalServerErrorException, 
+  NotFoundException, 
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { GetProductsQueryDto } from './dto/get-products-query.dto';
 import { CreateElementDto } from './dto/create-element.dto';
 import slugify from 'slugify';
+import { Prisma, Product, Store } from '@prisma/client';
+import { AbilityFactory } from '../auth/ability.factory';
+import { subject } from '@casl/ability';
 
 @Injectable()
 export class ProductService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private abilityFactory: AbilityFactory,
+  ) {}
 
-  // ۱. ایجاد محصول
-  async create(dto: CreateProductDto) {
-    const {  compositions, storeId, categoryId, productTypeId, ...rest } = dto;
+  async create(dto: CreateProductDto, user: { id: number; roles: string[] }) {
+    const { compositions, storeId, categoryId, productTypeId, ...rest } = dto;
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: { id: true, ownerId: true },
+    });
 
-    // تولید اسلاگ خودکار از نام (اگر در DTO نبود)
-    const slug = slugify(rest.name, { lower: true, strict: true, locale: 'fa' })+ '-' + Math.floor(Math.random() * 1000);
+    if (!store) {
+      throw new NotFoundException('فروشگاه مورد نظر یافت نشد');
+    }
+
+    await this.assertCanManageProduct(user, 'create', store);
+
+    const productType = await this.prisma.productType.findUnique({
+      where: { id: productTypeId },
+    });
+
+    if (!productType) {
+      throw new NotFoundException('نوع محصول مورد نظر یافت نشد');
+    }
+
+    const allowedElements = productType.allowedElements as Prisma.JsonArray | null;
+    const allowedElementIds = allowedElements?.map((el: any) => el.id) || [];
+
+    if (compositions && compositions.length > 0) {
+      for (const comp of compositions) {
+        if (!allowedElementIds.includes(comp.elementId)) {
+          const forbiddenElement = await this.prisma.productElement.findUnique({
+            where: { id: comp.elementId }
+          });
+          throw new BadRequestException(
+            `المان "${forbiddenElement?.name || comp.elementId}" برای نوع "${productType.name}" مجاز نیست.`
+          );
+        }
+      }
+    }
+
+    const slug = slugify(rest.name, { lower: true, strict: true, locale: 'fa' }) 
+                 + '-' + Math.floor(Math.random() * 1000);
 
     try {
       return await this.prisma.$transaction(async (tx) => {
@@ -40,21 +86,85 @@ export class ProductService {
       if (error.code === 'P2002') {
         throw new ConflictException('نام یا اسلاگ محصول تکراری است');
       }
-      throw new InternalServerErrorException('خطا در ثبت محصول');
+      throw new InternalServerErrorException('خطا در ثبت محصول: ' + error.message);
     }
   }
 
-  // ۲. لیست محصولات (findAll)
+  async update(
+    id: number,
+    dto: UpdateProductDto,
+    user: { id: number; roles: string[] },
+  ) {
+    const { categoryId, storeId, productTypeId, compositions, ...rest } = dto;
+    const existingProduct = await this.prisma.product.findUnique({
+      where: { id },
+      include: {
+        productType: true,
+        store: { select: { ownerId: true } },
+      },
+    });
+    if (!existingProduct) throw new NotFoundException('محصول یافت نشد');
+    await this.assertCanManageProduct(user, 'update', existingProduct);
+
+    if (productTypeId || compositions) {
+      const typeId = productTypeId || existingProduct.productTypeId;
+      const targetType = await this.prisma.productType.findUnique({
+        where: { id: typeId },
+      });
+
+      const allowedElementsForUpdate = targetType?.allowedElements as Prisma.JsonArray | null;
+      const allowedIds = allowedElementsForUpdate?.map((el: any) => el.id) || [];
+      
+      if (compositions) {
+        for (const comp of compositions) {
+          if (!allowedIds.includes(comp.elementId)) {
+            throw new BadRequestException(`المان انتخاب شده در این نوع محصول مجاز نیست`);
+          }
+        }
+      }
+    }
+
+    if (storeId) {
+      const targetStore = await this.prisma.store.findUnique({
+        where: { id: storeId },
+        select: { id: true, ownerId: true },
+      });
+      if (!targetStore) {
+        throw new NotFoundException('فروشگاه مورد نظر یافت نشد');
+      }
+      await this.assertCanManageProduct(user, 'update', targetStore);
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      if (compositions) {
+        await tx.productComposition.deleteMany({ where: { productId: id } });
+      }
+
+      return tx.product.update({
+        where: { id },
+        data: {
+          ...rest,
+          category: categoryId ? { connect: { id: categoryId } } : undefined,
+          store: storeId ? { connect: { id: storeId } } : undefined,
+          productType: productTypeId ? { connect: { id: productTypeId } } : undefined,
+          composition: compositions ? {
+            create: compositions.map((c) => ({
+              quantity: c.quantity,
+              elementType: c.elementType,
+              element: { connect: { id: c.elementId } }
+            })),
+          } : undefined,
+        },
+      });
+    });
+  }
+
   async findAll(query: GetProductsQueryDto) {
     const { page = 1, limit = 10, search, categoryId, storeId, minPrice, maxPrice } = query;
     const skip = (page - 1) * limit;
 
     const where: any = {
-      ...(search && {
-        OR: [
-          { name: { contains: search, mode: 'insensitive' } },
-        ],
-      }),
+      ...(search && { name: { contains: search, mode: 'insensitive' } }),
       ...(categoryId && { categoryId }),
       ...(storeId && { storeId }),
       ...((minPrice || maxPrice) && {
@@ -85,7 +195,6 @@ export class ProductService {
     };
   }
 
-  // ۳. یافتن بر اساس اسلاگ (findOne) - حل خطای اول
   async findOne(slug: string) {
     const product = await this.prisma.product.findUnique({
       where: { slug },
@@ -96,83 +205,53 @@ export class ProductService {
         composition: { include: { element: true } }
       },
     });
-
-    if (!product) throw new NotFoundException(`محصولی با اسلاگ ${slug} یافت نشد`);
+    if (!product) throw new NotFoundException(`محصول یافت نشد`);
     return product;
   }
 
-  // ۴. یافتن با آیدی (متد داخلی برای Update و Delete)
-  async findOneById(id: number) {
-    const product = await this.prisma.product.findUnique({ where: { id } });
-    if (!product) throw new NotFoundException(`محصولی با شناسه ${id} یافت نشد`);
-    return product;
-  }
-
-  // ۵. به‌روزرسانی (update) - حل خطای دوم
-  async update(id: number, dto: UpdateProductDto) {
-  const { categoryId, storeId, productTypeId, compositions, ...rest } = dto;
-
-  return this.prisma.$transaction(async (tx) => {
-    // ۱. بررسی وجود محصول
-    await tx.product.findUniqueOrThrow({ where: { id } });
-
-    // ۲. اگر لیست اجزا ارسال شده، قبلی‌ها را پاک و جدیدها را می‌سازیم
-    if (compositions) {
-      await tx.productComposition.deleteMany({ where: { productId: id } });
-    }
-
-    return tx.product.update({
+  async remove(id: number, user: { id: number; roles: string[] }) {
+    const product = await this.prisma.product.findUnique({
       where: { id },
-      data: {
-        ...rest,
-        category: categoryId ? { connect: { id: categoryId } } : undefined,
-        store: storeId ? { connect: { id: storeId } } : undefined,
-        productType: productTypeId ? { connect: { id: productTypeId } } : undefined,
-        composition: compositions ? {
-          create: compositions.map((c) => ({
-            quantity: c.quantity,
-            elementType: c.elementType,
-            element: { connect: { id: c.elementId } }
-          })),
-        } : undefined,
-      },
+      include: { store: { select: { ownerId: true } } },
     });
-  });
-}
-
-  // ۶. حذف (remove) - حل خطای سوم
-  async remove(id: number) {
-    await this.findOneById(id);
+    if (!product) throw new NotFoundException(`محصول یافت نشد`);
+    await this.assertCanManageProduct(user, 'delete', product);
     return this.prisma.product.delete({ where: { id } });
   }
 
   async createElement(dto: CreateElementDto) {
-    try {
-      return await this.prisma.productElement.create({
-        data: {
-          name: dto.name,
-          type: dto.type,
-        },
-      });
-    } catch (error) {
-      console.error(error);
-      throw new InternalServerErrorException('خطا در ایجاد المان محصول');
-    }
-  }
-
-  async findAllElements() {
-    return this.prisma.productElement.findMany({
-      orderBy: { name: 'asc' },
+    return this.prisma.productElement.create({
+      data: { name: dto.name, type: dto.type }
     });
   }
 
+  async findAllElements() {
+    return this.prisma.productElement.findMany({ orderBy: { name: 'asc' } });
+  }
+
   async removeElement(id: number) {
-    try {
-      return await this.prisma.productElement.delete({
-        where: { id },
-      });
-    } catch (error) {
-      throw new NotFoundException(`المان با آیدی ${id} یافت نشد یا قابل حذف نیست`);
+    return this.prisma.productElement.delete({ where: { id } });
+  }
+
+  private async assertCanManageProduct(
+    user: { id: number; roles: string[] },
+    action: 'create' | 'update' | 'delete',
+    productOrStore:
+      | Pick<Store, 'ownerId'>
+      | (Product & { store: Pick<Store, 'ownerId'> }),
+  ) {
+    const ownerId = 'store' in productOrStore
+      ? productOrStore.store.ownerId
+      : productOrStore.ownerId;
+
+    const ability = await this.abilityFactory.createForUser(user);
+    const canManage = ability.can(
+      action,
+      subject('Product', { ownerId }),
+    );
+
+    if (!canManage) {
+      throw new ForbiddenException('شما اجازه مدیریت این محصول را ندارید');
     }
   }
 }

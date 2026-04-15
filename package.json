@@ -12,6 +12,8 @@
     "build": "npm run build --workspaces"
   },
   "dependencies": {
+    "@casl/ability": "^6.8.0",
+    "@casl/prisma": "^1.6.2",
     "@nestjs/config": "^4.0.3",
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/passport": "^11.0.5",

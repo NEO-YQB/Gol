@@ -4,6 +4,9 @@ import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'; // اصلاح مسیر مطابق ساختار پروژه شما
 import { GetUser } from '../../common/decorators/get-user.decorator';
+import { AbilitiesGuard } from '../../common/guards/abilities.guard';
+import { CheckAbilities } from '../../common/decorators/check-abilities.decorator';
+import { subject } from '@casl/ability';
 
 @Controller('stores')
 export class StoreController {
@@ -26,12 +29,16 @@ export class StoreController {
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AbilitiesGuard)
+  @CheckAbilities((ability, context) => {
+    const { user } = context.switchToHttp().getRequest();
+    return ability.can('update', subject('Store', { ownerId: user.id }));
+  })
   update(
     @Param('id') id: string,
     @Body() updateStoreDto: UpdateStoreDto,
-    @GetUser() user: any,
+    @GetUser() user: { id: number; roles: string[] },
   ) {
-    return this.storeService.update(+id, updateStoreDto, user.id, user.role);
+    return this.storeService.update(+id, updateStoreDto, user);
   }
 }

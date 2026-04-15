@@ -2,28 +2,32 @@ import { Injectable, ConflictException, NotFoundException, ForbiddenException } 
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
+import { AbilityFactory } from '../auth/ability.factory';
+import { subject } from '@casl/ability';
 
 @Injectable()
 export class StoreService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private abilityFactory: AbilityFactory,
+  ) {}
 
   async create(createStoreDto: CreateStoreDto, userId: number) {
-
     const userHasStore = await this.prisma.store.findFirst({
-    where: { ownerId: userId },
-  });
+      where: { ownerId: userId },
+    });
 
-  if (userHasStore) {
-    throw new ConflictException('شما قبلاً یک فروشگاه ثبت کرده‌اید و مجاز به ثبت فروشگاه دیگری نیستید');
-  }
+    if (userHasStore) {
+      throw new ConflictException('شما قبلاً یک فروشگاه ثبت کرده‌اید');
+    }
 
     const slugExists = await this.prisma.store.findUnique({
-    where: { slug: createStoreDto.slug },
-  });
+      where: { slug: createStoreDto.slug },
+    });
 
-  if (slugExists) {
-    throw new ConflictException('این نام مستعار (slug) قبلاً توسط فروشگاه دیگری رزرو شده است.');
-  }
+    if (slugExists) {
+      throw new ConflictException('این اسلاگ قبلاً رزرو شده است');
+    }
 
     return this.prisma.store.create({
       data: {
@@ -49,19 +53,21 @@ export class StoreService {
       },
     });
 
-    if (!store) {
-      throw new NotFoundException('فروشگاه یافت نشد');
-    }
+    if (!store) throw new NotFoundException('فروشگاه یافت نشد');
     return store;
   }
 
-  async update(id: number, updateStoreDto: UpdateStoreDto, userId: number, userRole: string) {
+  async update(
+    id: number,
+    updateStoreDto: UpdateStoreDto,
+    user: { id: number; roles: string[] },
+  ) {
     const store = await this.prisma.store.findUnique({ where: { id } });
 
     if (!store) throw new NotFoundException('فروشگاه یافت نشد');
 
-    // بررسی سطح دسترسی: فقط صاحب فروشگاه یا ادمین
-    if (store.ownerId !== userId && userRole !== 'ADMIN') {
+    const ability = await this.abilityFactory.createForUser(user);
+    if (!ability.can('update', subject('Store', { ownerId: store.ownerId }))) {
       throw new ForbiddenException('شما اجازه ویرایش این فروشگاه را ندارید');
     }
 

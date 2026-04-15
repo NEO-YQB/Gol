@@ -7,16 +7,18 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// ۱. مدل کاربران (ادمین، فروشنده، مشتری)
+// ۱. مدل کاربران (User) - تغییر یافته برای پشتیبانی از نقش‌های داینامیک
 model User {
   id            Int      @id @default(autoincrement())
   phoneNumber   String   @unique
   email         String?  @unique
   fullName      String?
-  role          Role     @default(CUSTOMER)
   isActive      Boolean  @default(true)
   
-  // روابط
+  // رابطه با نقش‌ها (یک کاربر می‌تواند چندین نقش داشته باشد)
+  roles         UsersOnRoles[]
+
+  // روابط قبلی
   addresses     UserAddress[]
   store         Store?
   orders        Order[]
@@ -26,28 +28,68 @@ model User {
   updatedAt     DateTime @updatedAt
 }
 
-enum Role {
-  ADMIN
-  VENDOR
-  CUSTOMER
+// ۲. مدل نقش‌ها (مثلا: Admin, Vendor, Editor)
+model Role {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique // نام انگلیسی: ADMIN
+  label       String?  // نام فارسی: مدیر کل
+  description String?
+
+  users       UsersOnRoles[]
+  permissions RolesOnPermissions[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
-// ۲. مدل فروشگاه (برای چندفروشندگی)
+// ۳. مدل دسترسی‌ها (مثلا: create:product, delete:order)
+model Permission {
+  id          Int      @id @default(autoincrement())
+  action      String   // مثلا: create, read, update, delete
+  subject     String   // مثلا: Product, Order, User
+  inverted    Boolean  @default(false) // برای استثنا قائل شدن
+  conditions  Json?    // برای دسترسی‌های شرطی (مثلا فقط محصول خودش)
+
+  roles       RolesOnPermissions[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([action, subject])
+}
+
+// ۴. جدول واسط کاربر و نقش (Many-to-Many)
+model UsersOnRoles {
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleId Int
+  role   Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+}
+
+// ۵. جدول واسط نقش و دسترسی (Many-to-Many)
+model RolesOnPermissions {
+  roleId       Int
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permissionId Int
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+// ۶. مدل فروشگاه (بدون تغییر نسبت به نسخه قبل)
 model Store {
   id            Int      @id @default(autoincrement())
   name          String
   slug          String   @unique
   description   String?  @db.Text
   logo          String?
-  
-  // مختصات فروشگاه برای جستجوی مکانی
   lat           Float?
   lng           Float?
   address       String?
-
   isVerified    Boolean  @default(false)
   
-  // روابط
   ownerId       Int      @unique
   owner         User     @relation(fields: [ownerId], references: [id])
   products      Product[]
@@ -65,7 +107,6 @@ model UserAddress {
   lng       Float
   isDefault Boolean  @default(false)
   
-  // روابط
   userId    Int
   user      User     @relation(fields: [userId], references: [id])
   
@@ -80,41 +121,31 @@ enum ElementType {
   ACCESSORY
 }
 
-// ۳. مدل محصولات
+// ۷. مدل محصولات
 model Product {
   id              Int      @id @default(autoincrement())
   name            String
   slug            String   @unique
   description     String?  @db.Text
   shortDescription String? @db.Text
-  
-  quantity      Int      @default(0)
+  quantity        Int      @default(0)
   price           Float
-  discountPrice   Float?   // قیمت با تخفیف
-  
-  // رسانه
+  discountPrice   Float?
   mainImage       String
-  images          Json?    // آرایه‌ای از URLها
+  images          Json?
   videoUrl        String?
 
-  // روابط اصلی
   storeId         Int
   store           Store    @relation(fields: [storeId], references: [id])
-  
   productTypeId   Int
   productType     ProductType @relation(fields: [productTypeId], references: [id])
-  
   categoryId      Int
   category        Category    @relation(fields: [categoryId], references: [id])
 
-  // اجزای تشکیل دهنده
   composition     ProductComposition[]
-
-  // سوابق و نظرات
   orderItems      OrderItem[]
   reviews         Review[]
 
-  // SEO
   metaTitle       String?
   metaDescription String?
   isIndexed       Boolean     @default(true)
@@ -125,83 +156,63 @@ model Product {
 
 model ProductType {
   id              Int      @id @default(autoincrement())
-  name            String   // مثلا: باکس گل، تاج گل، دسته گل
+  name            String
   slug            String   @unique
   description     String?  @db.Text
   image           String?
-  
-  // SEO
   metaTitle       String?
   metaDescription String?
   isIndexed       Boolean  @default(true)
-  
-  // فیلتر برای محدودسازی اجزا در پنل مدیریت
   allowedElements Json?    
-
   products        Product[]
   createdAt       DateTime @default(now())
 }
 
-// ۴. مدل دسته‌بندی
 model Category {
   id              Int      @id @default(autoincrement())
-  name            String   // مثلا: ولنتاین، ترحیم، تولد
+  name            String
   slug            String   @unique
   description     String?  @db.Text
   image           String?
-
-  parentId    Int?
-  parent      Category?  @relation("CategoryToCategory", fields: [parentId], references: [id])
-  children    Category[] @relation("CategoryToCategory")
-  
-  // SEO & Campaign logic
+  parentId        Int?
+  parent          Category?  @relation("CategoryToCategory", fields: [parentId], references: [id])
+  children        Category[] @relation("CategoryToCategory")
   metaTitle       String?
   metaDescription String?
   isIndexed       Boolean  @default(true)
   isCampaign      Boolean  @default(false)
-
   products        Product[]
   createdAt       DateTime @default(now())
 }
 
 model ProductElement {
   id          Int          @id @default(autoincrement())
-  name        String       @unique // مثلا: رز هلندی قرمز، باکس چوبی مربع
+  name        String       @unique
   type        ElementType  
   unit        String       @default("شاخه") 
   image       String?      
-  
   compositions ProductComposition[]
 }
 
 model ProductComposition {
   id               Int            @id @default(autoincrement())
-  
   productId        Int
   product          Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
-  
   elementId        Int
   element          ProductElement @relation(fields: [elementId], references: [id])
-  
   quantity         Int            @default(1)
-  
-  // ذخیره نوع در اینجا برای کوئری‌های سریع فرانت
   elementType      ElementType    
 
   @@index([productId])
 }
 
-// ۵. مدل سفارشات
 model Order {
   id            Int         @id @default(autoincrement())
   totalAmount   Decimal     @db.Decimal(12, 2)
   status        OrderStatus @default(PENDING)
-  
-  // روابط
   userId        Int
   user          User        @relation(fields: [userId], references: [id])
   orderItems    OrderItem[]
-
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 }
@@ -215,35 +226,27 @@ enum OrderStatus {
   CANCELLED
 }
 
-// ۶. جزئیات سفارش
 model OrderItem {
   id            Int      @id @default(autoincrement())
   quantity      Int
   price         Decimal  @db.Decimal(12, 2)
-
-  // روابط
   orderId       Int
   order         Order    @relation(fields: [orderId], references: [id])
   productId     Int
   product       Product  @relation(fields: [productId], references: [id])
 }
 
-// ۷. نظرات
 model Review {
   id            Int      @id @default(autoincrement())
   rating        Int      @default(5)
   comment       String?  @db.Text
-  
-  // روابط
   userId        Int
   user          User     @relation(fields: [userId], references: [id])
   productId     Int
   product       Product  @relation(fields: [productId], references: [id])
-
   createdAt     DateTime @default(now())
 }
 
-// ۸. کد تایید
 model OtpCode {
   id        Int      @id @default(autoincrement())
   phoneNumber String

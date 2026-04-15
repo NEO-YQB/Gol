@@ -1,99 +1,106 @@
-import { PrismaClient, Role, ElementType } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Start seeding...');
+  console.log('🌱 Starting seeding...');
 
-  // ۱. ایجاد کاربر ادمین یا فروشنده (به عنوان صاحب فروشگاه)
-  const owner = await prisma.user.upsert({
-    where: { phoneNumber: '09123456789' },
-    update: {},
-    create: {
-      phoneNumber: '09123456789',
-      fullName: 'مدیر تستی',
-      role: Role.VENDOR,
-    },
-  });
+  // ۱. پاکسازی داده‌های قبلی (اختیاری - با احتیاط استفاده شود)
+  // ترتیب پاکسازی مهم است به دلیل روابط Foreign Key
+  await prisma.usersOnRoles.deleteMany();
+  await prisma.rolesOnPermissions.deleteMany();
+  await prisma.permission.deleteMany();
+  await prisma.role.deleteMany();
+  // await prisma.user.deleteMany(); // اگر می‌خواهید کاربران هم پاک شوند این را از کامنت خارج کنید
 
-  // ۲. ایجاد یک فروشگاه (اجباری برای محصول)
-  const store = await prisma.store.upsert({
-    where: { slug: 'test-store' },
-    update: {},
-    create: {
-      name: 'گل‌فروشی نمونه',
-      slug: 'test-store',
-      ownerId: owner.id,
-      isVerified: true,
-      address: 'تهران، خیابان ولیعصر',
-      lat: 35.7219,
-      lng: 51.3347,
-    },
-  });
+  // ۲. تعریف دسترسی‌های پایه (Permissions)
+  const permissions = [
+    { action: 'manage', subject: 'all', label: 'دسترسی کامل به سیستم' },
+    { action: 'create', subject: 'Product', label: 'ایجاد محصول' },
+    { action: 'update', subject: 'Product', label: 'ویرایش محصول' },
+    { action: 'delete', subject: 'Product', label: 'حذف محصول' },
+    { action: 'read', subject: 'Order', label: 'مشاهده سفارشات' },
+  ];
 
-  // ۳. ایجاد دسته‌بندی
-  const category = await prisma.category.upsert({
-    where: { slug: 'birthday-flowers' },
-    update: {},
-    create: {
-      name: 'گل تولد',
-      slug: 'birthday-flowers',
-      description: 'بهترین گل‌ها برای هدیه تولد',
-    },
-  });
-
-  // ۴. ایجاد نوع محصول
-  const productType = await prisma.productType.upsert({
-    where: { slug: 'flower-box' },
-    update: {},
-    create: {
-      name: 'باکس گل',
-      slug: 'flower-box',
-      description: 'انواع باکس‌های گل مجلل',
-    },
-  });
-
-  // ۵. ایجاد اجزای پایه (گل و متعلقات)
-  const rose = await prisma.productElement.upsert({
-    where: { name: 'رز هلندی قرمز' },
-    update: {},
-    create: {
-      name: 'رز هلندی قرمز',
-      type: ElementType.FLOWER,
-      unit: 'شاخه',
-    },
-  });
-
-  // ۶. ایجاد یک محصول نمونه با رعایت تمام روابط
-  const product = await prisma.product.upsert({
-    where: { slug: 'luxury-rose-box' },
-    update: {},
-    create: {
-      name: 'باکس گل رز لاکچری',
-      slug: 'luxury-rose-box',
-      description: 'یک باکس گل رز هلندی فوق‌العاده زیبا',
-      price: 1500000,
-      mainImage: 'https://example.com/rose-box.jpg',
-      images: ['https://example.com/img1.jpg', 'https://example.com/img2.jpg'],
-      storeId: store.id,
-      categoryId: category.id,
-      productTypeId: productType.id,
-      metaTitle: 'خرید باکس گل رز لاکچری | ارسال فوری',
-      metaDescription: 'خرید آنلاین باکس گل رز قرمز با بهترین قیمت و کیفیت عالی',
-      composition: {
-        create: [
-          {
-            elementId: rose.id,
-            quantity: 20,
-            elementType: ElementType.FLOWER,
-          },
-        ],
+  console.log('Creating permissions...');
+  for (const p of permissions) {
+    await prisma.permission.upsert({
+      where: { action_subject: { action: p.action, subject: p.subject } },
+      update: {},
+      create: {
+        action: p.action,
+        subject: p.subject,
       },
+    });
+  }
+
+  // ۳. ایجاد نقش‌ها (Roles)
+  console.log('Creating roles...');
+  
+  // نقش مدیر کل
+  const adminRole = await prisma.role.upsert({
+    where: { name: 'ADMIN' },
+    update: {},
+    create: {
+      name: 'ADMIN',
+      label: 'مدیر کل سیستم',
     },
   });
 
-  console.log({ owner, store, category, product });
-  console.log('✅ Seeding finished.');
+  // نقش فروشنده
+  const vendorRole = await prisma.role.upsert({
+    where: { name: 'VENDOR' },
+    update: {},
+    create: {
+      name: 'VENDOR',
+      label: 'فروشنده گل و گیاه',
+    },
+  });
+
+  // نقش مشتری
+  const customerRole = await prisma.role.upsert({
+    where: { name: 'CUSTOMER' },
+    update: {},
+    create: {
+      name: 'CUSTOMER',
+      label: 'مشتری عادی',
+    },
+  });
+
+  // ۴. متصل کردن دسترسی‌ها به نقش‌ها
+  // ادمین دسترسی manage:all می‌گیرد
+  const allPermission = await prisma.permission.findFirst({
+    where: { action: 'manage', subject: 'all' },
+  });
+
+  if (allPermission) {
+    await prisma.rolesOnPermissions.upsert({
+      where: { roleId_permissionId: { roleId: adminRole.id, permissionId: allPermission.id } },
+      update: {},
+      create: { roleId: adminRole.id, permissionId: allPermission.id },
+    });
+  }
+
+  // ۵. ایجاد یک کاربر ادمین نمونه برای تست
+  console.log('Creating admin user...');
+  const adminUser = await prisma.user.upsert({
+    where: { phoneNumber: '09120000000' },
+    update: {},
+    create: {
+      phoneNumber: '09120000000',
+      fullName: 'مدیر اصلی',
+      isActive: true,
+    },
+  });
+
+  // اتصال کاربر به نقش ادمین
+  await prisma.usersOnRoles.upsert({
+    where: { userId_roleId: { userId: adminUser.id, roleId: adminRole.id } },
+    update: {},
+    create: { userId: adminUser.id, roleId: adminRole.id },
+  });
+
+  console.log('✅ Seeding finished successfully.');
 }
 
 main()
