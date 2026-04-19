@@ -22,7 +22,6 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagg
 import { GetUser } from '../../common/decorators/get-user.decorator';
 import { AbilitiesGuard } from '../../common/guards/abilities.guard';
 import { CheckAbilities } from '../../common/decorators/check-abilities.decorator';
-import { subject } from '@casl/ability';
 
 @ApiTags('Catalog - Products')
 @Controller('products')
@@ -32,13 +31,9 @@ export class ProductController {
   // ۱. ایجاد محصول - فقط ادمین و فروشنده
   @Post()
   @ApiBearerAuth('JWT-auth')
-  @UseGuards(JwtAuthGuard, AbilitiesGuard)
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'ایجاد محصول جدید' })
   @ApiResponse({ status: 201, description: 'محصول با موفقیت ایجاد شد.' })
-  @CheckAbilities((ability, context) => {
-    const { user } = context.switchToHttp().getRequest();
-    return ability.can('create', subject('Product', { ownerId: user.id }));
-  })
   async create(
     @Body() createProductDto: CreateProductDto,
     @GetUser() user: { id: number; roles: string[] },
@@ -82,12 +77,8 @@ export class ProductController {
   // ۴. به‌روزرسانی محصول - ادمین و فروشنده
   @Patch(':id')
   @ApiBearerAuth('JWT-auth')
-  @UseGuards(JwtAuthGuard, AbilitiesGuard)
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'ویرایش محصول' })
-  @CheckAbilities((ability, context) => {
-    const { user } = context.switchToHttp().getRequest();
-    return ability.can('update', subject('Product', { ownerId: user.id }));
-  })
   async update(
     @Param('id', ParseIntPipe) id: number, 
     @Body() updateProductDto: UpdateProductDto,
@@ -100,12 +91,8 @@ export class ProductController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT) 
   @ApiBearerAuth('JWT-auth')
-  @UseGuards(JwtAuthGuard, AbilitiesGuard)
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'حذف محصول' })
-  @CheckAbilities((ability, context) => {
-    const { user } = context.switchToHttp().getRequest();
-    return ability.can('delete', subject('Product', { ownerId: user.id }));
-  })
   async remove(
     @Param('id', ParseIntPipe) id: number,
     @GetUser() user: { id: number; roles: string[] },

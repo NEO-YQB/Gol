@@ -1,6 +1,6 @@
 import { AbilityBuilder, ExtractSubjectType } from '@casl/ability';
 import { Injectable } from '@nestjs/common';
-import { Prisma, User } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { AppAbility } from '../../common/guards/abilities.guard';
 import { createPrismaAbility } from '@casl/prisma';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -65,11 +65,15 @@ export class AbilityFactory {
       }
     }
 
-    if (user.roles.includes('ADMIN')) {
+    const effectiveRoles = dbUser
+      ? dbUser.roles.map((userRole) => userRole.role.name)
+      : user.roles;
+
+    if (effectiveRoles.includes('ADMIN')) {
       can('manage', 'all');
     }
 
-    if (user.roles.includes('VENDOR')) {
+    if (effectiveRoles.includes('VENDOR')) {
       can('read', 'Product');
       can('create', 'Product', { ownerId: user.id });
       can('update', 'Product', { ownerId: user.id });
@@ -78,7 +82,7 @@ export class AbilityFactory {
       can('manage', 'Store', { ownerId: user.id });
     }
 
-    if (user.roles.includes('CUSTOMER')) {
+    if (effectiveRoles.includes('CUSTOMER')) {
       can('read', 'Product');
       can('read', 'Category');
       can('read', 'Store');
