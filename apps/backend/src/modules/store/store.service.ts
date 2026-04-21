@@ -21,13 +21,7 @@ export class StoreService {
       throw new ConflictException('شما قبلاً یک فروشگاه ثبت کرده‌اید');
     }
 
-    const slugExists = await this.prisma.store.findUnique({
-      where: { slug: createStoreDto.slug },
-    });
-
-    if (slugExists) {
-      throw new ConflictException('این اسلاگ قبلاً رزرو شده است');
-    }
+    await this.ensureSlugIsAvailable(createStoreDto.slug);
 
     return this.prisma.store.create({
       data: {
@@ -66,14 +60,72 @@ export class StoreService {
 
     if (!store) throw new NotFoundException('فروشگاه یافت نشد');
 
-    const ability = await this.abilityFactory.createForUser(user);
-    if (!ability.can('update', subject('Store', { ownerId: store.ownerId }))) {
-      throw new ForbiddenException('شما اجازه ویرایش این فروشگاه را ندارید');
+    await this.assertCanManageStore(user, 'update', store.ownerId);
+
+    if (updateStoreDto.slug) {
+      await this.ensureSlugIsAvailable(updateStoreDto.slug, id);
     }
 
     return this.prisma.store.update({
       where: { id },
       data: updateStoreDto,
     });
+  }
+
+  async remove(id: number, user: { id: number; roles: string[] }) {
+    const store = await this.prisma.store.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            products: true,
+          },
+        },
+      },
+    });
+
+    if (!store) {
+      throw new NotFoundException('فروشگاه یافت نشد');
+    }
+
+    await this.assertCanManageStore(user, 'delete', store.ownerId);
+
+    if (store._count.products > 0) {
+      throw new ConflictException('این فروشگاه محصول دارد و فعلا قابل حذف نیست');
+    }
+
+    await this.prisma.store.delete({
+      where: { id },
+    });
+  }
+
+  private async ensureSlugIsAvailable(slug: string, currentId?: number) {
+    const existing = await this.prisma.store.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
+
+    if (existing && existing.id !== currentId) {
+      throw new ConflictException('این اسلاگ قبلاً رزرو شده است');
+    }
+  }
+
+  private async assertCanManageStore(
+    user: { id: number; roles: string[] },
+    action: 'update' | 'delete',
+    ownerId: number,
+  ) {
+    if (user.id === ownerId) {
+      return;
+    }
+
+    const ability = await this.abilityFactory.createForUser(user);
+    if (!ability.can(action, subject('Store', { ownerId }))) {
+      throw new ForbiddenException(
+        action === 'update'
+          ? 'شما اجازه ویرایش این فروشگاه را ندارید'
+          : 'شما اجازه حذف این فروشگاه را ندارید',
+      );
+    }
   }
 }

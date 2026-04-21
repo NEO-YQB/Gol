@@ -12,6 +12,7 @@ import { AddressModule } from './modules/address/address.module';
 import { FilesModule } from './modules/files/files.module';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AbilitiesGuard } from './common/guards/abilities.guard';
+import { OrderModule } from './modules/order/order.module';
 
 @Global() // این باعث می‌شود سرویس در کل اپلیکیشن در دسترس باشد
 @Module({
@@ -20,7 +21,7 @@ import { AbilitiesGuard } from './common/guards/abilities.guard';
       envFilePath: join(process.cwd(), '.env'), 
       cache: false,
   }),
-    CategoryModule, AddressModule, FilesModule,],
+    CategoryModule, AddressModule, FilesModule, OrderModule,],
   controllers: [AppController],
   providers: [AppService, PrismaService, RolesGuard, AbilitiesGuard],
   exports: [PrismaService],

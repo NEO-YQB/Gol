@@ -9,10 +9,19 @@ type AppSubjects =
   | 'all'
   | 'User'
   | 'Product'
+  | 'ProductElement'
+  | 'ProductType'
   | 'Category'
   | 'Store'
+  | 'File'
   | 'Order'
   | 'UserAddress';
+
+type RuleDefinition = {
+  action: string | string[];
+  subject: AppSubjects | AppSubjects[];
+  conditions?: Record<string, unknown>;
+};
 
 @Injectable()
 export class AbilityFactory {
@@ -46,13 +55,23 @@ export class AbilityFactory {
       },
     });
 
+    const rolesWithoutPermissions = new Set<string>();
+
     if (dbUser) {
       for (const userRole of dbUser.roles) {
+        if (userRole.role.permissions.length === 0) {
+          rolesWithoutPermissions.add(userRole.role.name);
+        }
+
         for (const rolePermission of userRole.role.permissions) {
           const permission = rolePermission.permission;
           const conditions = this.resolveConditions(permission.conditions, user);
           const applyRule = permission.inverted ? cannot : can;
-          if (conditions && typeof conditions === 'object' && !Array.isArray(conditions)) {
+          if (
+            conditions &&
+            typeof conditions === 'object' &&
+            !Array.isArray(conditions)
+          ) {
             applyRule(
               permission.action as any,
               permission.subject as any,
@@ -69,32 +88,11 @@ export class AbilityFactory {
       ? dbUser.roles.map((userRole) => userRole.role.name)
       : user.roles;
 
-    if (effectiveRoles.includes('ADMIN')) {
-      can('manage', 'all');
+    for (const role of effectiveRoles) {
+      if (!dbUser || rolesWithoutPermissions.has(role)) {
+        this.applyFallbackRules(role, user, can as (...args: any[]) => unknown);
+      }
     }
-
-    if (effectiveRoles.includes('VENDOR')) {
-      can('read', 'Product');
-      can('create', 'Product', { ownerId: user.id });
-      can('update', 'Product', { ownerId: user.id });
-      can('delete', 'Product', { ownerId: user.id });
-
-      can('manage', 'Store', { ownerId: user.id });
-    }
-
-    if (effectiveRoles.includes('CUSTOMER')) {
-      can('read', 'Product');
-      can('read', 'Category');
-      can('read', 'Store');
-
-      can('create', 'Order', { userId: user.id });
-      can('read', 'Order', { userId: user.id });
-      can('update', 'Order', { userId: user.id });
-
-      can('manage', 'UserAddress', { userId: user.id });
-    }
-
-    can('read', ['Product', 'Category', 'Store']);
 
     return build({
       detectSubjectType: (item) =>
@@ -134,5 +132,34 @@ export class AbilityFactory {
     }
 
     return conditions;
+  }
+
+  private applyFallbackRules(
+    role: string,
+    user: { id: number; roles: string[]; phoneNumber?: string },
+    can: (...args: any[]) => unknown,
+  ) {
+    const fallbackRules: Record<string, RuleDefinition[]> = {
+      ADMIN: [{ action: 'manage', subject: 'all' }],
+      VENDOR: [
+        { action: 'read', subject: ['Product', 'Category', 'Store'] },
+        { action: ['create', 'update', 'delete'], subject: 'Product', conditions: { ownerId: user.id } },
+        { action: 'manage', subject: 'Store', conditions: { ownerId: user.id } },
+        { action: 'create', subject: 'File' },
+      ],
+      CUSTOMER: [
+        { action: 'read', subject: ['Product', 'Category', 'Store'] },
+        { action: ['create', 'read', 'update'], subject: 'Order', conditions: { userId: user.id } },
+        { action: 'manage', subject: 'UserAddress', conditions: { userId: user.id } },
+      ],
+    };
+
+    for (const rule of fallbackRules[role] ?? []) {
+      if (rule.conditions) {
+        can(rule.action as any, rule.subject as any, rule.conditions);
+      } else {
+        can(rule.action as any, rule.subject as any);
+      }
+    }
   }
 }
