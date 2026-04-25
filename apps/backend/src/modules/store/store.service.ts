@@ -1,4 +1,5 @@
 import { Injectable, ConflictException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
@@ -30,10 +31,11 @@ export class StoreService {
     }
 
     await this.ensureSlugIsAvailable(createStoreDto.slug);
+    this.validateDeliveryConfig(createStoreDto);
 
     return this.prisma.store.create({
       data: {
-        ...createStoreDto,
+        ...this.toCreateStorePersistenceInput(createStoreDto),
         ownerId: user.id,
         isVerified: false,
       },
@@ -74,9 +76,21 @@ export class StoreService {
       await this.ensureSlugIsAvailable(updateStoreDto.slug, id);
     }
 
+    this.validateDeliveryConfig({
+      sameDayDelivery: updateStoreDto.sameDayDelivery ?? store.sameDayDelivery,
+      hasExpressDelivery:
+        updateStoreDto.hasExpressDelivery ?? store.hasExpressDelivery,
+      minDeliveryHours: updateStoreDto.minDeliveryHours ?? store.minDeliveryHours ?? undefined,
+      maxDeliveryHours: updateStoreDto.maxDeliveryHours ?? store.maxDeliveryHours ?? undefined,
+      expressDeliveryHours:
+        updateStoreDto.expressDeliveryHours ?? store.expressDeliveryHours ?? undefined,
+      deliveryWindows:
+        updateStoreDto.deliveryWindows ?? this.parseDeliveryWindows(store.deliveryWindows),
+    });
+
     return this.prisma.store.update({
       where: { id },
-      data: updateStoreDto,
+      data: this.toUpdateStorePersistenceInput(updateStoreDto),
     });
   }
 
@@ -135,5 +149,79 @@ export class StoreService {
           : 'شما اجازه حذف این فروشگاه را ندارید',
       );
     }
+  }
+
+  private validateDeliveryConfig(
+    dto: Pick<
+      CreateStoreDto,
+      | 'sameDayDelivery'
+      | 'hasExpressDelivery'
+      | 'minDeliveryHours'
+      | 'maxDeliveryHours'
+      | 'expressDeliveryHours'
+      | 'deliveryWindows'
+    >,
+  ) {
+    if (
+      dto.minDeliveryHours !== undefined &&
+      dto.maxDeliveryHours !== undefined &&
+      dto.minDeliveryHours > dto.maxDeliveryHours
+    ) {
+      throw new ConflictException('حداقل زمان ارسال نمی‌تواند بیشتر از حداکثر زمان ارسال باشد');
+    }
+
+    if (dto.hasExpressDelivery && !dto.expressDeliveryHours) {
+      throw new ConflictException('برای ارسال فوری باید زمان ارسال فوری مشخص شود');
+    }
+
+    if (
+      dto.expressDeliveryHours !== undefined &&
+      dto.minDeliveryHours !== undefined &&
+      dto.expressDeliveryHours > dto.minDeliveryHours
+    ) {
+      throw new ConflictException('زمان ارسال فوری باید کمتر یا مساوی حداقل زمان ارسال عادی باشد');
+    }
+
+    if (dto.deliveryWindows && dto.deliveryWindows.length === 0) {
+      throw new ConflictException('اگر بازه زمانی ارسال تعریف می‌شود، لیست آن نباید خالی باشد');
+    }
+  }
+
+  private toCreateStorePersistenceInput(dto: CreateStoreDto) {
+    const { deliveryWindows, ...rest } = dto;
+
+    return {
+      ...rest,
+      ...(deliveryWindows !== undefined
+        ? {
+            deliveryWindows:
+              deliveryWindows as unknown as Prisma.InputJsonValue,
+          }
+        : {}),
+    };
+  }
+
+  private toUpdateStorePersistenceInput(dto: UpdateStoreDto) {
+    const { deliveryWindows, ...rest } = dto;
+
+    return {
+      ...rest,
+      ...(deliveryWindows !== undefined
+        ? {
+            deliveryWindows:
+              deliveryWindows as unknown as Prisma.InputJsonValue,
+          }
+        : {}),
+    };
+  }
+
+  private parseDeliveryWindows(
+    value: Prisma.JsonValue | null,
+  ): CreateStoreDto['deliveryWindows'] | undefined {
+    if (!Array.isArray(value)) {
+      return undefined;
+    }
+
+    return value as unknown as CreateStoreDto['deliveryWindows'];
   }
 }

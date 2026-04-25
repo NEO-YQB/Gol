@@ -4,11 +4,65 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { OrderStatus, Prisma } from '@prisma/client';
+import {
+  DeliveryType,
+  OrderActorType,
+  OrderStatus,
+  PaymentMethod,
+  PaymentStatus,
+  Prisma,
+  UserAddress,
+} from '@prisma/client';
 import { subject } from '@casl/ability';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AbilityFactory } from '../auth/ability.factory';
+import { CheckoutPreviewDto } from './dto/checkout-preview.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { CreateOrderFromCartDto } from './dto/create-order-from-cart.dto';
+import { OptionalOrderReasonDto } from './dto/optional-order-reason.dto';
+import { OrderActionNoteDto } from './dto/order-action-note.dto';
+import { OrderReasonDto } from './dto/order-reason.dto';
+
+type AuthenticatedUser = {
+  id: number;
+  roles: string[];
+};
+
+type ProductSnapshot = {
+  id: number;
+  name: string;
+  slug: string;
+  mainImage: string;
+  quantity: number;
+  price: number;
+  discountPrice: number | null;
+  store: {
+    id: number;
+    name: string;
+    slug: string;
+    ownerId: number;
+    sameDayDelivery: boolean;
+    hasExpressDelivery: boolean;
+    minDeliveryHours: number | null;
+    maxDeliveryHours: number | null;
+    expressDeliveryHours: number | null;
+    deliveryWindows: Prisma.JsonValue | null;
+  };
+};
+
+type RequestedOrderItem = {
+  productId: number;
+  quantity: number;
+};
+
+type HistoryPayload = {
+  fromStatus?: OrderStatus | null;
+  toStatus: OrderStatus;
+  actorType: OrderActorType;
+  actorUserId?: number | null;
+  reason?: string;
+  note?: string;
+};
 
 @Injectable()
 export class OrderService {
@@ -17,167 +71,373 @@ export class OrderService {
     private readonly abilityFactory: AbilityFactory,
   ) {}
 
-  private getEffectiveProductPrice(product: {
-    price: number;
-    discountPrice?: number | null;
-  }) {
-    return product.discountPrice ?? product.price;
+  async previewFromCart(user: AuthenticatedUser, dto: CheckoutPreviewDto) {
+    await this.assertOrderAbility(user, 'create', user.id);
+    await this.assertCartReadable(user);
+
+    const address = await this.getOwnedAddress(user.id, dto.addressId);
+    const cart = await this.getCartWithProducts(user.id);
+
+    if (cart.items.length === 0) {
+      throw new BadRequestException('سبد خرید خالی است و امکان checkout وجود ندارد');
+    }
+
+    const pricing = this.buildPricing(cart.items);
+    const store = this.extractSingleStore(cart.items.map((item) => item.product));
+
+    return {
+      cartId: cart.id,
+      store,
+      delivery: this.buildDeliveryPreview(store),
+      address: this.mapAddress(address),
+      payment: {
+        paymentMethod: PaymentMethod.COD,
+        paymentStatus: PaymentStatus.PENDING,
+      },
+      ...pricing,
+    };
   }
 
-  async create(user: { id: number; roles: string[] }, dto: CreateOrderDto) {
-    const productIds = [...new Set(dto.items.map((item) => item.productId))];
+  async createFromCart(user: AuthenticatedUser, dto: CreateOrderFromCartDto) {
+    await this.assertOrderAbility(user, 'create', user.id);
+    await this.assertCartReadable(user);
 
-    const products = await this.prisma.product.findMany({
-      where: { id: { in: productIds } },
-      select: {
-        id: true,
-        discountPrice: true,
-        price: true,
-        quantity: true,
-      },
+    const address = await this.getOwnedAddress(user.id, dto.addressId);
+    const cart = await this.getCartWithProducts(user.id);
+
+    if (cart.items.length === 0) {
+      throw new BadRequestException('سبد خرید خالی است و امکان ایجاد سفارش وجود ندارد');
+    }
+
+    const requestedItems = cart.items.map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+    }));
+
+    return this.createOrderRecord(user, requestedItems, {
+      address,
+      paymentMethod: dto.paymentMethod,
+      deliveryType: dto.deliveryType,
+      deliveryWindowLabel: dto.deliveryWindowLabel,
+      clearCartId: cart.id,
     });
-
-    if (products.length !== productIds.length) {
-      throw new NotFoundException('یک یا چند محصول سفارش وجود ندارند');
-    }
-
-    const productMap = new Map(products.map((product) => [product.id, product]));
-    const requestedQuantities = new Map<number, number>();
-
-    for (const item of dto.items) {
-      requestedQuantities.set(
-        item.productId,
-        (requestedQuantities.get(item.productId) ?? 0) + item.quantity,
-      );
-    }
-
-    for (const [productId, requestedQuantity] of requestedQuantities) {
-      const product = productMap.get(productId)!;
-      if (product.quantity < requestedQuantity) {
-        throw new BadRequestException(
-          `موجودی محصول ${productId} کافی نیست`,
-        );
-      }
-    }
-
-    const totalAmount = dto.items.reduce((sum, item) => {
-      const product = productMap.get(item.productId)!;
-      return sum + this.getEffectiveProductPrice(product) * item.quantity;
-    }, 0);
-
-    const createOrder = this.prisma.order.create({
-      data: {
-        userId: user.id,
-        totalAmount: new Prisma.Decimal(totalAmount),
-        status: OrderStatus.PENDING,
-        orderItems: {
-          create: dto.items.map((item) => {
-            const product = productMap.get(item.productId)!;
-            return {
-              productId: item.productId,
-              quantity: item.quantity,
-              price: this.getEffectiveProductPrice(product),
-            };
-          }),
-        },
-      },
-      include: {
-        orderItems: {
-          include: {
-            product: true,
-          },
-        },
-      },
-    });
-
-    const updateProducts = [...requestedQuantities.entries()].map(
-      ([productId, requestedQuantity]) =>
-        this.prisma.product.update({
-          where: { id: productId },
-          data: {
-            quantity: {
-              decrement: requestedQuantity,
-            },
-          },
-        }),
-    );
-
-    const [order] = await this.prisma.$transaction([createOrder, ...updateProducts]);
-
-    return order;
   }
 
-  async findAll(user: { id: number; roles: string[] }) {
-    const ability = await this.abilityFactory.createForUser(user);
-    if (!ability.can('read', subject('Order', { userId: user.id }))) {
-      throw new ForbiddenException('شما اجازه مشاهده سفارش های خود را ندارید');
-    }
+  async create(user: AuthenticatedUser, dto: CreateOrderDto) {
+    await this.assertOrderAbility(user, 'create', user.id);
+
+    const address = dto.addressId
+      ? await this.getOwnedAddress(user.id, dto.addressId)
+      : null;
+
+    return this.createOrderRecord(user, dto.items, {
+      address,
+      paymentMethod: dto.paymentMethod ?? PaymentMethod.COD,
+      deliveryType: dto.deliveryType,
+      deliveryWindowLabel: dto.deliveryWindowLabel,
+    });
+  }
+
+  async findAll(user: AuthenticatedUser) {
+    await this.assertOrderAbility(user, 'read', user.id);
 
     return this.prisma.order.findMany({
       where: { userId: user.id },
-      include: {
-        orderItems: {
-          include: {
-            product: true,
-          },
-        },
-      },
+      include: this.getOrderInclude(),
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async findOne(user: { id: number; roles: string[] }, id: number) {
-    const order = await this.prisma.order.findUnique({
-      where: { id },
-      include: {
-        orderItems: {
-          include: {
-            product: true,
-          },
+  async findVendorOrders(user: AuthenticatedUser) {
+    await this.assertVendorRole(user);
+
+    return this.prisma.order.findMany({
+      where: {
+        store: {
+          ownerId: user.id,
         },
       },
+      include: this.getOrderInclude(),
+      orderBy: { createdAt: 'desc' },
     });
+  }
 
-    if (!order) {
-      throw new NotFoundException('سفارش یافت نشد');
-    }
+  async findAdminOrders(user: AuthenticatedUser) {
+    await this.assertAdminRole(user);
 
-    const ability = await this.abilityFactory.createForUser(user);
-    if (!ability.can('read', subject('Order', { userId: order.userId }))) {
-      throw new ForbiddenException('شما اجازه مشاهده این سفارش را ندارید');
-    }
+    return this.prisma.order.findMany({
+      include: this.getOrderInclude(),
+      orderBy: { createdAt: 'desc' },
+    });
+  }
 
+  async findOne(user: AuthenticatedUser, id: number) {
+    const order = await this.getOrderOrThrow(id);
+    await this.assertCanViewOrder(user, order);
     return order;
   }
 
-  async cancel(user: { id: number; roles: string[] }, id: number) {
-    const order = await this.prisma.order.findUnique({
-      where: { id },
-      include: {
-        orderItems: true,
-      },
+  async accept(user: AuthenticatedUser, id: number, dto: OrderActionNoteDto) {
+    const order = await this.getOrderOrThrow(id);
+    await this.assertCanManageVendorOrder(user, order);
+
+    if (order.status !== OrderStatus.PENDING) {
+      throw new BadRequestException('فقط سفارش در وضعیت انتظار قابل پذیرش است');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const updatedOrder = await tx.order.update({
+        where: { id: order.id },
+        data: {
+          status: OrderStatus.ACCEPTED,
+          acceptedAt: new Date(),
+        },
+        include: this.getOrderInclude(),
+      });
+
+      await this.createHistory(tx, order.id, {
+        fromStatus: order.status,
+        toStatus: OrderStatus.ACCEPTED,
+        actorType: this.isAdmin(user) ? OrderActorType.ADMIN : OrderActorType.VENDOR,
+        actorUserId: user.id,
+        note: dto.note,
+      });
+
+      return updatedOrder;
     });
+  }
 
-    if (!order) {
-      throw new NotFoundException('سفارش یافت نشد');
+  async ship(user: AuthenticatedUser, id: number, dto: OrderActionNoteDto) {
+    const order = await this.getOrderOrThrow(id);
+    await this.assertCanManageVendorOrder(user, order);
+
+    const shippableStatuses: OrderStatus[] = [
+      OrderStatus.ACCEPTED,
+      OrderStatus.PROCESSING,
+    ];
+    if (!shippableStatuses.includes(order.status)) {
+      throw new BadRequestException('فقط سفارش پذیرفته شده قابل ثبت به عنوان ارسال شده است');
     }
 
-    const ability = await this.abilityFactory.createForUser(user);
-    if (!ability.can('update', subject('Order', { userId: order.userId }))) {
-      throw new ForbiddenException('شما اجازه لغو این سفارش را ندارید');
-    }
+    return this.prisma.$transaction(async (tx) => {
+      const updatedOrder = await tx.order.update({
+        where: { id: order.id },
+        data: {
+          status: OrderStatus.SHIPPED,
+          shippedAt: new Date(),
+        },
+        include: this.getOrderInclude(),
+      });
+
+      await this.createHistory(tx, order.id, {
+        fromStatus: order.status,
+        toStatus: OrderStatus.SHIPPED,
+        actorType: this.isAdmin(user) ? OrderActorType.ADMIN : OrderActorType.VENDOR,
+        actorUserId: user.id,
+        note: dto.note,
+      });
+
+      return updatedOrder;
+    });
+  }
+
+  async vendorCancel(user: AuthenticatedUser, id: number, dto: OrderReasonDto) {
+    const order = await this.getOrderOrThrow(id);
+    await this.assertCanManageVendorOrder(user, order);
 
     const cancellableStatuses: OrderStatus[] = [
       OrderStatus.PENDING,
-      OrderStatus.PAID,
+      OrderStatus.ACCEPTED,
+      OrderStatus.PROCESSING,
     ];
-
     if (!cancellableStatuses.includes(order.status)) {
-      throw new BadRequestException('این سفارش در وضعیت قابل لغو نیست');
+      throw new BadRequestException('فقط سفارش های در انتظار یا پذیرفته شده قابل لغو توسط فروشنده هستند');
+    }
+
+    return this.cancelWithInventoryRestore(order, {
+      status: OrderStatus.REJECTED_BY_VENDOR,
+      actorType: this.isAdmin(user) ? OrderActorType.ADMIN : OrderActorType.VENDOR,
+      actorUserId: user.id,
+      reason: dto.reason,
+      note: dto.note,
+    });
+  }
+
+  async cancel(user: AuthenticatedUser, id: number, dto: OptionalOrderReasonDto) {
+    const order = await this.getOrderOrThrow(id);
+
+    if (this.isAdmin(user)) {
+      if (this.isTerminalStatus(order.status)) {
+        throw new BadRequestException('این سفارش دیگر قابل لغو نیست');
+      }
+
+      return this.cancelWithInventoryRestore(order, {
+        status: OrderStatus.CANCELLED_BY_ADMIN,
+        actorType: OrderActorType.ADMIN,
+        actorUserId: user.id,
+        reason: dto.reason,
+        note: dto.note,
+      });
+    }
+
+    await this.assertOrderAbility(user, 'update', order.userId);
+
+    if (order.userId !== user.id) {
+      throw new ForbiddenException('شما فقط می‌توانید سفارش خودتان را لغو کنید');
+    }
+
+    const customerCancellableStatuses: OrderStatus[] = [
+      OrderStatus.PENDING,
+      OrderStatus.ACCEPTED,
+    ];
+    if (!customerCancellableStatuses.includes(order.status)) {
+      throw new BadRequestException('این سفارش در وضعیت قابل لغو توسط مشتری نیست');
+    }
+
+    return this.cancelWithInventoryRestore(order, {
+      status: OrderStatus.CANCELLED_BY_CUSTOMER,
+      actorType: OrderActorType.CUSTOMER,
+      actorUserId: user.id,
+      reason: dto.reason,
+      note: dto.note,
+    });
+  }
+
+  private async createOrderRecord(
+    user: AuthenticatedUser,
+    items: RequestedOrderItem[],
+    options: {
+      address: UserAddress | null;
+      paymentMethod: PaymentMethod;
+      deliveryType?: DeliveryType;
+      deliveryWindowLabel?: string;
+      clearCartId?: number;
+    },
+  ) {
+    if (items.length === 0) {
+      throw new BadRequestException('حداقل یک آیتم برای ثبت سفارش لازم است');
+    }
+
+    const normalizedItems = this.normalizeItems(items);
+    const products = await this.getProductSnapshots(
+      normalizedItems.map((item) => item.productId),
+    );
+    const productMap = new Map(products.map((product) => [product.id, product]));
+    const store = this.extractSingleStore(products);
+    const deliverySelection = this.resolveDeliverySelection(store, {
+      deliveryType: options.deliveryType,
+      deliveryWindowLabel: options.deliveryWindowLabel,
+    });
+
+    for (const item of normalizedItems) {
+      const product = productMap.get(item.productId);
+      if (!product) {
+        throw new NotFoundException(`محصول ${item.productId} برای سفارش یافت نشد`);
+      }
+
+      if (product.quantity < item.quantity) {
+        throw new BadRequestException(
+          `موجودی محصول ${item.productId} برای این سفارش کافی نیست`,
+        );
+      }
+    }
+
+    const subtotalAmount = normalizedItems.reduce((sum, item) => {
+      const product = productMap.get(item.productId)!;
+      return sum + this.getEffectiveProductPrice(product) * item.quantity;
+    }, 0);
+
+    const deliveryFee = 0;
+    const discountAmount = 0;
+    const totalAmount = subtotalAmount + deliveryFee - discountAmount;
+
+    return this.prisma.$transaction(async (tx) => {
+      const order = await tx.order.create({
+        data: {
+          userId: user.id,
+          totalAmount: new Prisma.Decimal(totalAmount),
+          subtotalAmount: new Prisma.Decimal(subtotalAmount),
+          deliveryFee: new Prisma.Decimal(deliveryFee),
+          discountAmount: new Prisma.Decimal(discountAmount),
+          status: OrderStatus.PENDING,
+          paymentStatus: PaymentStatus.PENDING,
+          paymentMethod: options.paymentMethod,
+          shippingAddressId: options.address?.id ?? null,
+          shippingAddressTitle: options.address?.title ?? null,
+          shippingAddressText: options.address?.address ?? null,
+          shippingCity: options.address?.city ?? null,
+          shippingLat: options.address?.lat ?? null,
+          shippingLng: options.address?.lng ?? null,
+          storeId: store.id,
+          storeName: store.name,
+          storeSlug: store.slug,
+          deliveryType: deliverySelection.deliveryType,
+          deliveryWindowLabel: deliverySelection.deliveryWindowLabel,
+          estimatedDeliveryMinHours: deliverySelection.estimatedDeliveryMinHours,
+          estimatedDeliveryMaxHours: deliverySelection.estimatedDeliveryMaxHours,
+          orderItems: {
+            create: normalizedItems.map((item) => {
+              const product = productMap.get(item.productId)!;
+              return {
+                productId: item.productId,
+                quantity: item.quantity,
+                price: new Prisma.Decimal(this.getEffectiveProductPrice(product)),
+                productName: product.name,
+                productSlug: product.slug,
+                productImage: product.mainImage,
+                storeId: product.store.id,
+                storeName: product.store.name,
+                storeSlug: product.store.slug,
+              };
+            }),
+          },
+        },
+        include: this.getOrderInclude(),
+      });
+
+      await this.createHistory(tx, order.id, {
+        toStatus: OrderStatus.PENDING,
+        actorType: OrderActorType.CUSTOMER,
+        actorUserId: user.id,
+        note: 'سفارش ایجاد شد',
+      });
+
+      for (const item of normalizedItems) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: {
+            quantity: {
+              decrement: item.quantity,
+            },
+          },
+        });
+      }
+
+      if (options.clearCartId) {
+        await tx.cartItem.deleteMany({
+          where: { cartId: options.clearCartId },
+        });
+      }
+
+      return order;
+    });
+  }
+
+  private async cancelWithInventoryRestore(
+    order: Awaited<ReturnType<OrderService['getOrderOrThrow']>>,
+    payload: {
+      status: OrderStatus;
+      actorType: OrderActorType;
+      actorUserId: number;
+      reason?: string;
+      note?: string;
+    },
+  ) {
+    if (this.isTerminalStatus(order.status)) {
+      throw new BadRequestException('این سفارش دیگر قابل لغو نیست');
     }
 
     const restoredQuantities = new Map<number, number>();
-
     for (const item of order.orderItems) {
       restoredQuantities.set(
         item.productId,
@@ -185,30 +445,442 @@ export class OrderService {
       );
     }
 
-    const updateOrder = this.prisma.order.update({
-      where: { id: order.id },
-      data: {
-        status: OrderStatus.CANCELLED,
-      },
-    });
+    return this.prisma.$transaction(async (tx) => {
+      const updatedOrder = await tx.order.update({
+        where: { id: order.id },
+        data: {
+          status: payload.status,
+          paymentStatus:
+            order.paymentStatus === PaymentStatus.PAID
+              ? PaymentStatus.REFUNDED
+              : PaymentStatus.CANCELLED,
+          cancelledAt: new Date(),
+        },
+        include: this.getOrderInclude(),
+      });
 
-    const restoreProducts = [...restoredQuantities.entries()].map(
-      ([productId, quantity]) =>
-        this.prisma.product.update({
+      for (const [productId, quantity] of restoredQuantities.entries()) {
+        await tx.product.update({
           where: { id: productId },
           data: {
             quantity: {
               increment: quantity,
             },
           },
-        }),
-    );
+        });
+      }
 
-    const [updatedOrder] = await this.prisma.$transaction([
-      updateOrder,
-      ...restoreProducts,
-    ]);
+      await this.createHistory(tx, order.id, {
+        fromStatus: order.status,
+        toStatus: payload.status,
+        actorType: payload.actorType,
+        actorUserId: payload.actorUserId,
+        reason: payload.reason,
+        note: payload.note,
+      });
 
-    return updatedOrder;
+      return updatedOrder;
+    });
+  }
+
+  private buildPricing(
+    cartItems: Array<{
+      id: number;
+      quantity: number;
+      productId: number;
+      product: ProductSnapshot;
+    }>,
+  ) {
+    const items = cartItems.map((item) => {
+      const unitPrice = this.getEffectiveProductPrice(item.product);
+      const lineTotal = unitPrice * item.quantity;
+
+      return {
+        id: item.id,
+        productId: item.productId,
+        quantity: item.quantity,
+        unitPrice,
+        lineTotal,
+        product: {
+          id: item.product.id,
+          name: item.product.name,
+          slug: item.product.slug,
+          mainImage: item.product.mainImage,
+          store: {
+            id: item.product.store.id,
+            name: item.product.store.name,
+            slug: item.product.store.slug,
+          },
+        },
+      };
+    });
+
+    const subtotalAmount = items.reduce((sum, item) => sum + item.lineTotal, 0);
+    const deliveryFee = 0;
+    const discountAmount = 0;
+
+    return {
+      items,
+      subtotalAmount,
+      deliveryFee,
+      discountAmount,
+      totalAmount: subtotalAmount + deliveryFee - discountAmount,
+      totalItems: items.reduce((sum, item) => sum + item.quantity, 0),
+    };
+  }
+
+  private extractSingleStore(products: ProductSnapshot[]) {
+    const stores = new Map(products.map((product) => [product.store.id, product.store]));
+    if (stores.size !== 1) {
+      throw new BadRequestException('هر سفارش فقط می‌تواند شامل محصولات یک فروشگاه باشد');
+    }
+
+    const [store] = stores.values();
+    return {
+      id: store.id,
+      name: store.name,
+      slug: store.slug,
+      ownerId: store.ownerId,
+      sameDayDelivery: store.sameDayDelivery,
+      hasExpressDelivery: store.hasExpressDelivery,
+      minDeliveryHours: store.minDeliveryHours,
+      maxDeliveryHours: store.maxDeliveryHours,
+      expressDeliveryHours: store.expressDeliveryHours,
+      deliveryWindows: store.deliveryWindows,
+    };
+  }
+
+  private buildDeliveryPreview(store: ReturnType<OrderService['extractSingleStore']>) {
+    return {
+      sameDayDelivery: store.sameDayDelivery,
+      hasExpressDelivery: store.hasExpressDelivery,
+      minDeliveryHours: store.minDeliveryHours,
+      maxDeliveryHours: store.maxDeliveryHours,
+      expressDeliveryHours: store.expressDeliveryHours,
+      deliveryWindows: store.deliveryWindows ?? [],
+      availableDeliveryTypes: [
+        DeliveryType.STANDARD,
+        ...(store.hasExpressDelivery ? [DeliveryType.EXPRESS] : []),
+      ],
+    };
+  }
+
+  private resolveDeliverySelection(
+    store: ReturnType<OrderService['extractSingleStore']>,
+    selection: {
+      deliveryType?: DeliveryType;
+      deliveryWindowLabel?: string;
+    },
+  ) {
+    const deliveryType = selection.deliveryType ?? DeliveryType.STANDARD;
+
+    if (deliveryType === DeliveryType.EXPRESS && !store.hasExpressDelivery) {
+      throw new BadRequestException('این فروشگاه در حال حاضر ارسال فوری ندارد');
+    }
+
+    const availableWindows = Array.isArray(store.deliveryWindows)
+      ? store.deliveryWindows
+      : [];
+
+    if (selection.deliveryWindowLabel) {
+      const matchingWindow = availableWindows.find((window) => {
+        if (!window || typeof window !== 'object' || Array.isArray(window)) {
+          return false;
+        }
+
+        const record = window as Record<string, unknown>;
+        return (
+          record.label === selection.deliveryWindowLabel ||
+          record.key === selection.deliveryWindowLabel
+        );
+      });
+
+      if (!matchingWindow) {
+        throw new BadRequestException('بازه زمانی انتخاب‌شده برای این فروشگاه معتبر نیست');
+      }
+    }
+
+    if (deliveryType === DeliveryType.EXPRESS) {
+      const expressHours = store.expressDeliveryHours ?? store.minDeliveryHours ?? 1;
+      return {
+        deliveryType,
+        deliveryWindowLabel: selection.deliveryWindowLabel ?? null,
+        estimatedDeliveryMinHours: expressHours,
+        estimatedDeliveryMaxHours: expressHours,
+      };
+    }
+
+    return {
+      deliveryType,
+      deliveryWindowLabel: selection.deliveryWindowLabel ?? null,
+      estimatedDeliveryMinHours: store.minDeliveryHours ?? null,
+      estimatedDeliveryMaxHours: store.maxDeliveryHours ?? null,
+    };
+  }
+
+  private async getProductSnapshots(productIds: number[]) {
+    const uniqueProductIds = [...new Set(productIds)];
+
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: uniqueProductIds } },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        mainImage: true,
+        quantity: true,
+        price: true,
+        discountPrice: true,
+        store: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            ownerId: true,
+            sameDayDelivery: true,
+            hasExpressDelivery: true,
+            minDeliveryHours: true,
+            maxDeliveryHours: true,
+            expressDeliveryHours: true,
+            deliveryWindows: true,
+          },
+        },
+      },
+    });
+
+    if (products.length !== uniqueProductIds.length) {
+      throw new NotFoundException('یک یا چند محصول سفارش وجود ندارند');
+    }
+
+    return products;
+  }
+
+  private async getOwnedAddress(userId: number, addressId: number) {
+    const address = await this.prisma.userAddress.findUnique({
+      where: { id: addressId },
+    });
+
+    if (!address || address.userId !== userId) {
+      throw new NotFoundException('آدرس انتخابی برای این کاربر یافت نشد');
+    }
+
+    return address;
+  }
+
+  private async getCartWithProducts(userId: number) {
+    const cart = await this.prisma.cart.findUnique({
+      where: { userId },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                mainImage: true,
+                quantity: true,
+                price: true,
+                discountPrice: true,
+                store: {
+                  select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                    ownerId: true,
+                    sameDayDelivery: true,
+                    hasExpressDelivery: true,
+                    minDeliveryHours: true,
+                    maxDeliveryHours: true,
+                    expressDeliveryHours: true,
+                    deliveryWindows: true,
+                  },
+                },
+              },
+            },
+          },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    });
+
+    if (!cart) {
+      throw new BadRequestException('سبد خریدی برای این کاربر پیدا نشد');
+    }
+
+    return cart;
+  }
+
+  private normalizeItems(items: RequestedOrderItem[]) {
+    const quantities = new Map<number, number>();
+
+    for (const item of items) {
+      quantities.set(
+        item.productId,
+        (quantities.get(item.productId) ?? 0) + item.quantity,
+      );
+    }
+
+    return [...quantities.entries()].map(([productId, quantity]) => ({
+      productId,
+      quantity,
+    }));
+  }
+
+  private mapAddress(address: UserAddress) {
+    return {
+      id: address.id,
+      title: address.title,
+      address: address.address,
+      city: address.city,
+      lat: address.lat,
+      lng: address.lng,
+    };
+  }
+
+  private getEffectiveProductPrice(product: {
+    price: number;
+    discountPrice?: number | null;
+  }) {
+    return product.discountPrice ?? product.price;
+  }
+
+  private isAdmin(user: AuthenticatedUser) {
+    return user.roles.includes('ADMIN');
+  }
+
+  private isVendor(user: AuthenticatedUser) {
+    return user.roles.includes('VENDOR');
+  }
+
+  private isTerminalStatus(status: OrderStatus) {
+    const terminalStatuses: OrderStatus[] = [
+      OrderStatus.DELIVERED,
+      OrderStatus.REJECTED_BY_VENDOR,
+      OrderStatus.CANCELLED,
+      OrderStatus.CANCELLED_BY_ADMIN,
+      OrderStatus.CANCELLED_BY_CUSTOMER,
+    ];
+
+    return terminalStatuses.includes(status);
+  }
+
+  private getOrderInclude() {
+    return {
+      store: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          ownerId: true,
+        },
+      },
+      orderItems: {
+        include: {
+          product: true,
+        },
+      },
+      statusHistories: {
+        orderBy: {
+          createdAt: 'desc' as const,
+        },
+      },
+    };
+  }
+
+  private async getOrderOrThrow(id: number) {
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+      include: this.getOrderInclude(),
+    });
+
+    if (!order) {
+      throw new NotFoundException('سفارش یافت نشد');
+    }
+
+    return order;
+  }
+
+  private async createHistory(
+    tx: Prisma.TransactionClient,
+    orderId: number,
+    payload: HistoryPayload,
+  ) {
+    await tx.orderStatusHistory.create({
+      data: {
+        orderId,
+        fromStatus: payload.fromStatus ?? null,
+        toStatus: payload.toStatus,
+        actorType: payload.actorType,
+        actorUserId: payload.actorUserId ?? null,
+        reason: payload.reason,
+        note: payload.note,
+      },
+    });
+  }
+
+  private async assertCanViewOrder(
+    user: AuthenticatedUser,
+    order: Awaited<ReturnType<OrderService['getOrderOrThrow']>>,
+  ) {
+    if (this.isAdmin(user)) {
+      return;
+    }
+
+    if (order.userId === user.id) {
+      await this.assertOrderAbility(user, 'read', order.userId);
+      return;
+    }
+
+    if (this.isVendor(user) && order.store?.ownerId === user.id) {
+      return;
+    }
+
+    throw new ForbiddenException('شما اجازه مشاهده این سفارش را ندارید');
+  }
+
+  private async assertCanManageVendorOrder(
+    user: AuthenticatedUser,
+    order: Awaited<ReturnType<OrderService['getOrderOrThrow']>>,
+  ) {
+    if (this.isAdmin(user)) {
+      return;
+    }
+
+    if (this.isVendor(user) && order.store?.ownerId === user.id) {
+      return;
+    }
+
+    throw new ForbiddenException('شما اجازه مدیریت این سفارش را ندارید');
+  }
+
+  private async assertCartReadable(user: AuthenticatedUser) {
+    const ability = await this.abilityFactory.createForUser(user);
+    if (!ability.can('read', subject('Cart', { userId: user.id }))) {
+      throw new ForbiddenException('شما اجازه دسترسی به سبد خرید خود را ندارید');
+    }
+  }
+
+  private async assertOrderAbility(
+    user: AuthenticatedUser,
+    action: 'create' | 'read' | 'update',
+    ownerUserId: number,
+  ) {
+    const ability = await this.abilityFactory.createForUser(user);
+    if (!ability.can(action, subject('Order', { userId: ownerUserId }))) {
+      throw new ForbiddenException('شما اجازه دسترسی به سفارش را ندارید');
+    }
+  }
+
+  private async assertVendorRole(user: AuthenticatedUser) {
+    if (!this.isVendor(user)) {
+      throw new ForbiddenException('این endpoint فقط برای فروشنده مجاز است');
+    }
+  }
+
+  private async assertAdminRole(user: AuthenticatedUser) {
+    if (!this.isAdmin(user)) {
+      throw new ForbiddenException('این endpoint فقط برای ادمین مجاز است');
+    }
   }
 }

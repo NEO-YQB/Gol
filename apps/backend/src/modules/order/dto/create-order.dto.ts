@@ -3,10 +3,14 @@ import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
+  IsEnum,
   IsInt,
+  IsOptional,
+  IsString,
   Min,
   ValidateNested,
 } from 'class-validator';
+import { DeliveryType, PaymentMethod } from '@prisma/client';
 
 export class CreateOrderItemDto {
   @ApiProperty({ example: 1 })
@@ -33,4 +37,25 @@ export class CreateOrderDto {
   @ValidateNested({ each: true })
   @Type(() => CreateOrderItemDto)
   items!: CreateOrderItemDto[];
+
+  @ApiProperty({ example: 3, required: false })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  addressId?: number;
+
+  @ApiProperty({ enum: PaymentMethod, required: false, example: PaymentMethod.COD })
+  @IsOptional()
+  @IsEnum(PaymentMethod)
+  paymentMethod?: PaymentMethod;
+
+  @ApiProperty({ enum: DeliveryType, required: false, example: DeliveryType.STANDARD })
+  @IsOptional()
+  @IsEnum(DeliveryType)
+  deliveryType?: DeliveryType;
+
+  @ApiProperty({ required: false, example: 'امروز 18 تا 21' })
+  @IsOptional()
+  @IsString()
+  deliveryWindowLabel?: string;
 }
