@@ -15,6 +15,7 @@ type AppSubjects =
   | 'Store'
   | 'File'
   | 'Order'
+  | 'Cart'
   | 'UserAddress';
 
 type RuleDefinition = {
@@ -84,6 +85,11 @@ export class AbilityFactory {
       }
     }
 
+    // Cart is a base capability for any authenticated user.
+    can(['create', 'read', 'update', 'delete'] as any, 'Cart' as any, {
+      userId: user.id,
+    });
+
     const effectiveRoles = dbUser
       ? dbUser.roles.map((userRole) => userRole.role.name)
       : user.roles;
@@ -151,6 +157,7 @@ export class AbilityFactory {
       CUSTOMER: [
         { action: 'read', subject: ['Product', 'Category', 'Store'] },
         { action: ['create', 'read', 'update'], subject: 'Order', conditions: { userId: user.id } },
+        { action: ['create', 'read', 'update', 'delete'], subject: 'Cart', conditions: { userId: user.id } },
         { action: 'manage', subject: 'UserAddress', conditions: { userId: user.id } },
       ],
     };

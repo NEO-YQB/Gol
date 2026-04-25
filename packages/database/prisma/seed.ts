@@ -41,6 +41,11 @@ const permissionCatalog: PermissionSeed[] = [
   { action: 'read', subject: 'Order', conditions: { userId: '{{user.id}}' } },
   { action: 'update', subject: 'Order', conditions: { userId: '{{user.id}}' } },
 
+  { action: 'create', subject: 'Cart', conditions: { userId: '{{user.id}}' } },
+  { action: 'read', subject: 'Cart', conditions: { userId: '{{user.id}}' } },
+  { action: 'update', subject: 'Cart', conditions: { userId: '{{user.id}}' } },
+  { action: 'delete', subject: 'Cart', conditions: { userId: '{{user.id}}' } },
+
   { action: 'create', subject: 'UserAddress', conditions: { userId: '{{user.id}}' } },
   { action: 'read', subject: 'UserAddress', conditions: { userId: '{{user.id}}' } },
   { action: 'delete', subject: 'UserAddress', conditions: { userId: '{{user.id}}' } },
@@ -65,11 +70,21 @@ const roleCatalog = [
 ] as const;
 
 const defaultRolePermissions: Record<string, string[]> = {
-  ADMIN: ['manage:all'],
+  ADMIN: [
+    'manage:all',
+    'create:Cart',
+    'read:Cart',
+    'update:Cart',
+    'delete:Cart',
+  ],
   VENDOR: [
     'read:Product',
     'read:Category',
     'read:Store',
+    'create:Cart',
+    'read:Cart',
+    'update:Cart',
+    'delete:Cart',
     'create:Store',
     'update:Store',
     'delete:Store',
@@ -82,6 +97,10 @@ const defaultRolePermissions: Record<string, string[]> = {
     'read:Product',
     'read:Category',
     'read:Store',
+    'create:Cart',
+    'read:Cart',
+    'update:Cart',
+    'delete:Cart',
     'create:Order',
     'read:Order',
     'update:Order',
