@@ -12,9 +12,17 @@ export class StoreService {
     private abilityFactory: AbilityFactory,
   ) {}
 
-  async create(createStoreDto: CreateStoreDto, userId: number) {
+  async create(
+    createStoreDto: CreateStoreDto,
+    user: { id: number; roles: string[] },
+  ) {
+    const ability = await this.abilityFactory.createForUser(user);
+    if (!ability.can('create', 'Store')) {
+      throw new ForbiddenException('شما اجازه ایجاد فروشگاه را ندارید');
+    }
+
     const userHasStore = await this.prisma.store.findFirst({
-      where: { ownerId: userId },
+      where: { ownerId: user.id },
     });
 
     if (userHasStore) {
@@ -26,7 +34,7 @@ export class StoreService {
     return this.prisma.store.create({
       data: {
         ...createStoreDto,
-        ownerId: userId,
+        ownerId: user.id,
         isVerified: false,
       },
     });

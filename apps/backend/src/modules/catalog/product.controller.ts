@@ -45,7 +45,7 @@ export class ProductController {
   @Post('elements')
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard, AbilitiesGuard)
-  @CheckAbilities((ability) => ability.can('manage', 'ProductElement'))
+  @CheckAbilities((ability) => ability.can('create', 'ProductElement'))
   @ApiOperation({ summary: 'ایجاد یک المان جدید (مثلا متریال)' })
   async createElement(@Body() dto: CreateElementDto) {
     return this.productService.createElement(dto);
@@ -61,7 +61,7 @@ export class ProductController {
   @HttpCode(HttpStatus.NO_CONTENT) 
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard, AbilitiesGuard)
-  @CheckAbilities((ability) => ability.can('manage', 'ProductElement'))
+  @CheckAbilities((ability) => ability.can('delete', 'ProductElement'))
   @ApiOperation({ summary: 'حذف یک المان' })
   async removeElement(@Param('id', ParseIntPipe) id: number) {
     return this.productService.removeElement(id);

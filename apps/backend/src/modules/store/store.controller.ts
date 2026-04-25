@@ -17,6 +17,8 @@ import { UpdateStoreDto } from './dto/update-store.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'; // اصلاح مسیر مطابق ساختار پروژه شما
 import { GetUser } from '../../common/decorators/get-user.decorator';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { AbilitiesGuard } from '../../common/guards/abilities.guard';
+import { CheckAbilities } from '../../common/decorators/check-abilities.decorator';
 
 @ApiTags('Stores')
 @Controller('stores')
@@ -24,11 +26,15 @@ export class StoreController {
   constructor(private readonly storeService: StoreService) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AbilitiesGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'ایجاد فروشگاه' })
-  create(@Body() createStoreDto: CreateStoreDto, @GetUser('id') userId: number) {
-    return this.storeService.create(createStoreDto, userId);
+  @CheckAbilities((ability) => ability.can('create', 'Store'))
+  create(
+    @Body() createStoreDto: CreateStoreDto,
+    @GetUser() user: { id: number; roles: string[] },
+  ) {
+    return this.storeService.create(createStoreDto, user);
   }
 
   @Get()

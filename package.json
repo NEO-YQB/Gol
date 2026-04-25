@@ -30,9 +30,10 @@
     "@types/node": "^25.6.0",
     "@types/passport-jwt": "^4.0.1",
     "@types/uuid": "^8.3.4",
-    "prisma": "^6.19.3"
+    "prisma": "^6.19.3",
+    "tsx": "^4.21.0"
   },
   "prisma": {
-    "seed": "ts-node packages/database/prisma/seed.ts"
+    "seed": "npx tsx packages/database/prisma/seed.ts"
   }
 }

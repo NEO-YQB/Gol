@@ -29,7 +29,7 @@ export class CategoryController {
   @ApiOperation({ summary: 'ایجاد دسته‌بندی جدید' }) // اضافه شد
   @ApiBearerAuth('JWT-auth') // اضافه شد
   @ApiResponse({ status: 201, description: 'دسته‌بندی با موفقیت ایجاد شد.' }) // اضافه شد
-  @CheckAbilities((ability) => ability.can('manage', 'Category'))
+  @CheckAbilities((ability) => ability.can('create', 'Category'))
   create(@Body() createCategoryDto: CreateCategoryDto) {
     return this.categoryService.create(createCategoryDto);
   }
@@ -50,7 +50,7 @@ export class CategoryController {
   @UseGuards(JwtAuthGuard, AbilitiesGuard)
   @ApiOperation({ summary: 'ویرایش دسته بندی' })
   @ApiBearerAuth('JWT-auth')
-  @CheckAbilities((ability) => ability.can('manage', 'Category'))
+  @CheckAbilities((ability) => ability.can('update', 'Category'))
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateCategoryDto: UpdateCategoryDto,
@@ -63,7 +63,7 @@ export class CategoryController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'حذف دسته بندی' })
   @ApiBearerAuth('JWT-auth')
-  @CheckAbilities((ability) => ability.can('manage', 'Category'))
+  @CheckAbilities((ability) => ability.can('delete', 'Category'))
   async remove(@Param('id', ParseIntPipe) id: number) {
     await this.categoryService.remove(id);
   }

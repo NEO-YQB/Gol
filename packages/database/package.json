@@ -19,7 +19,7 @@
     "tsx": "^4.21.0"
   },
   "prisma": {
-    "seed": "node --loader ts-node/esm prisma/seed.ts"
-  },
+  "seed": "npx tsx prisma/seed.ts"
+},
   "type": "module"
 }

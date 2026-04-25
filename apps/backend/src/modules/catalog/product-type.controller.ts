@@ -32,7 +32,7 @@ export class ProductTypeController {
   @Post()
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard, AbilitiesGuard)
-  @CheckAbilities((ability) => ability.can('manage', 'ProductType'))
+  @CheckAbilities((ability) => ability.can('create', 'ProductType'))
   @ApiOperation({ summary: 'ایجاد نوع محصول' })
   @ApiResponse({ status: 201, description: 'نوع محصول با موفقیت ایجاد شد.' })
   create(@Body() createProductTypeDto: CreateProductTypeDto) {
@@ -54,7 +54,7 @@ export class ProductTypeController {
   @Patch(':id')
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard, AbilitiesGuard)
-  @CheckAbilities((ability) => ability.can('manage', 'ProductType'))
+  @CheckAbilities((ability) => ability.can('update', 'ProductType'))
   @ApiOperation({ summary: 'ویرایش نوع محصول' })
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -67,7 +67,7 @@ export class ProductTypeController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard, AbilitiesGuard)
-  @CheckAbilities((ability) => ability.can('manage', 'ProductType'))
+  @CheckAbilities((ability) => ability.can('delete', 'ProductType'))
   @ApiOperation({ summary: 'حذف نوع محصول' })
   async remove(@Param('id', ParseIntPipe) id: number) {
     await this.productTypeService.remove(id);

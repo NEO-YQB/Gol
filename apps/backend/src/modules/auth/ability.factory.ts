@@ -143,6 +143,7 @@ export class AbilityFactory {
       ADMIN: [{ action: 'manage', subject: 'all' }],
       VENDOR: [
         { action: 'read', subject: ['Product', 'Category', 'Store'] },
+        { action: 'create', subject: 'Store' },
         { action: ['create', 'update', 'delete'], subject: 'Product', conditions: { ownerId: user.id } },
         { action: 'manage', subject: 'Store', conditions: { ownerId: user.id } },
         { action: 'create', subject: 'File' },
