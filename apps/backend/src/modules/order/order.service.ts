@@ -141,7 +141,13 @@ export class OrderService {
   async findAll(user: AuthenticatedUser) {
     await this.assertOrderAbility(user, 'read', user.id);
 
-    return this.prisma.order.findMany({
+    const orders = await this.prisma.order.findMany({
+      where: { userId: user.id },
+      include: this.getOrderInclude(),
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return this.syncExpiredPaymentsAndRefetch(orders, {
       where: { userId: user.id },
       include: this.getOrderInclude(),
       orderBy: { createdAt: 'desc' },
@@ -151,7 +157,17 @@ export class OrderService {
   async findVendorOrders(user: AuthenticatedUser) {
     await this.assertVendorRole(user);
 
-    return this.prisma.order.findMany({
+    const orders = await this.prisma.order.findMany({
+      where: {
+        store: {
+          ownerId: user.id,
+        },
+      },
+      include: this.getOrderInclude(),
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return this.syncExpiredPaymentsAndRefetch(orders, {
       where: {
         store: {
           ownerId: user.id,
@@ -165,7 +181,12 @@ export class OrderService {
   async findAdminOrders(user: AuthenticatedUser) {
     await this.assertAdminRole(user);
 
-    return this.prisma.order.findMany({
+    const orders = await this.prisma.order.findMany({
+      include: this.getOrderInclude(),
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return this.syncExpiredPaymentsAndRefetch(orders, {
       include: this.getOrderInclude(),
       orderBy: { createdAt: 'desc' },
     });
@@ -181,8 +202,19 @@ export class OrderService {
     const order = await this.getOrderOrThrow(id);
     await this.assertCanManageVendorOrder(user, order);
 
-    if (order.status !== OrderStatus.PENDING) {
-      throw new BadRequestException('فقط سفارش در وضعیت انتظار قابل پذیرش است');
+    const acceptableStatuses: OrderStatus[] = [
+      OrderStatus.PENDING,
+      OrderStatus.PAID,
+    ];
+    if (!acceptableStatuses.includes(order.status)) {
+      throw new BadRequestException('فقط سفارش در وضعیت انتظار یا پرداخت‌شده قابل پذیرش است');
+    }
+
+    if (
+      order.paymentMethod === PaymentMethod.ONLINE &&
+      order.paymentStatus !== PaymentStatus.PAID
+    ) {
+      throw new BadRequestException('سفارش آنلاین فقط بعد از پرداخت موفق قابل پذیرش است');
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -457,6 +489,20 @@ export class OrderService {
           cancelledAt: new Date(),
         },
         include: this.getOrderInclude(),
+      });
+
+      await tx.payment.updateMany({
+        where: { orderId: order.id },
+        data: {
+          status:
+            order.paymentStatus === PaymentStatus.PAID
+              ? PaymentStatus.REFUNDED
+              : PaymentStatus.CANCELLED,
+          failureReason:
+            order.paymentStatus === PaymentStatus.PAID
+              ? 'سفارش پس از پرداخت لغو شد و نیاز به بازگشت وجه دارد'
+              : 'سفارش قبل از پرداخت نهایی لغو شد',
+        },
       });
 
       for (const [productId, quantity] of restoredQuantities.entries()) {
@@ -767,6 +813,7 @@ export class OrderService {
 
   private getOrderInclude() {
     return {
+      payment: true,
       store: {
         select: {
           id: true,
@@ -789,7 +836,7 @@ export class OrderService {
   }
 
   private async getOrderOrThrow(id: number) {
-    const order = await this.prisma.order.findUnique({
+    let order = await this.prisma.order.findUnique({
       where: { id },
       include: this.getOrderInclude(),
     });
@@ -798,7 +845,104 @@ export class OrderService {
       throw new NotFoundException('سفارش یافت نشد');
     }
 
+    const hasChanged = await this.expirePaymentIfNeeded(order);
+    if (hasChanged) {
+      order = await this.prisma.order.findUnique({
+        where: { id },
+        include: this.getOrderInclude(),
+      });
+    }
+
+    if (!order) {
+      throw new NotFoundException('سفارش یافت نشد');
+    }
+
     return order;
+  }
+
+  private async syncExpiredPaymentsAndRefetch(
+    orders: Array<Awaited<ReturnType<OrderService['getOrderOrThrow']>>>,
+    query: Prisma.OrderFindManyArgs,
+  ) {
+    let hasChanged = false;
+
+    for (const order of orders) {
+      const changed = await this.expirePaymentIfNeeded(order);
+      hasChanged = hasChanged || changed;
+    }
+
+    if (!hasChanged) {
+      return orders;
+    }
+
+    return this.prisma.order.findMany(query);
+  }
+
+  private async expirePaymentIfNeeded(
+    order: Awaited<ReturnType<OrderService['getOrderOrThrow']>>,
+  ) {
+    const payment = order.payment;
+
+    if (
+      !payment ||
+      payment.status !== PaymentStatus.PENDING ||
+      !payment.expiresAt ||
+      payment.expiresAt.getTime() > Date.now()
+    ) {
+      return false;
+    }
+
+    const restoredQuantities = new Map<number, number>();
+    for (const item of order.orderItems) {
+      restoredQuantities.set(
+        item.productId,
+        (restoredQuantities.get(item.productId) ?? 0) + item.quantity,
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.payment.update({
+        where: { id: payment.id },
+        data: {
+          status: PaymentStatus.EXPIRED,
+          failureReason: 'مهلت پرداخت به پایان رسید',
+          rawVerifyData: {
+            expiredAt: new Date().toISOString(),
+            reason: 'payment window expired',
+          } as Prisma.InputJsonValue,
+        },
+      });
+
+      await tx.order.update({
+        where: { id: order.id },
+        data: {
+          status: OrderStatus.CANCELLED,
+          paymentStatus: PaymentStatus.EXPIRED,
+          cancelledAt: new Date(),
+        },
+      });
+
+      for (const [productId, quantity] of restoredQuantities.entries()) {
+        await tx.product.update({
+          where: { id: productId },
+          data: {
+            quantity: {
+              increment: quantity,
+            },
+          },
+        });
+      }
+
+      await this.createHistory(tx, order.id, {
+        fromStatus: order.status,
+        toStatus: OrderStatus.CANCELLED,
+        actorType: OrderActorType.SYSTEM,
+        reason: 'مهلت پرداخت سفارش به پایان رسید',
+        note: 'به علت انقضای payment، موجودی رزروشده آزاد شد',
+      });
+    });
+
+    return true;
   }
 
   private async createHistory(

@@ -1,0 +1,647 @@
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { OrderActorType, OrderStatus, PaymentMethod, PaymentStatus, Prisma } from '@prisma/client';
+import { subject } from '@casl/ability';
+import { PrismaService } from '../../prisma/prisma.service';
+import { AbilityFactory } from '../auth/ability.factory';
+import { AdminListPaymentsQueryDto } from './dto/admin-list-payments-query.dto';
+import { InitiatePaymentDto } from './dto/initiate-payment.dto';
+import { MockVerifyPaymentDto } from './dto/mock-verify-payment.dto';
+import { PaymentGatewayRegistryService } from './payment-gateway-registry.service';
+import { PaymentGatewayService } from './payment-gateway.service';
+
+type AuthenticatedUser = {
+  id: number;
+  roles: string[];
+};
+
+@Injectable()
+export class PaymentService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly abilityFactory: AbilityFactory,
+    private readonly paymentGatewayService: PaymentGatewayService,
+    private readonly paymentGatewayRegistry: PaymentGatewayRegistryService,
+  ) {}
+
+  async initiate(user: AuthenticatedUser, dto: InitiatePaymentDto) {
+    const order = await this.getOrderForPayment(dto.orderId);
+    await this.assertCanAccessOrderPayment(user, order);
+
+    if (order.paymentMethod !== PaymentMethod.ONLINE) {
+      throw new BadRequestException('برای سفارش های COD نیازی به initiation پرداخت وجود ندارد');
+    }
+
+    if (this.isTerminalOrderStatus(order.status)) {
+      throw new BadRequestException('برای سفارش نهایی شده امکان شروع پرداخت وجود ندارد');
+    }
+
+    if (order.paymentStatus === PaymentStatus.PAID) {
+      throw new BadRequestException('این سفارش قبلا با موفقیت پرداخت شده است');
+    }
+
+    if (order.payment) {
+      await this.expirePaymentIfNeeded(order.payment.id);
+    }
+
+    const refreshedOrder = await this.getOrderForPayment(dto.orderId);
+
+    if (refreshedOrder.paymentStatus === PaymentStatus.EXPIRED) {
+      throw new BadRequestException(
+        'مهلت پرداخت این سفارش به پایان رسیده و برای ادامه باید سفارش جدید بسازید',
+      );
+    }
+
+    if (
+      refreshedOrder.payment &&
+      refreshedOrder.payment.status === PaymentStatus.PENDING &&
+      !this.isExpired(refreshedOrder.payment.expiresAt)
+    ) {
+      throw new BadRequestException(
+        `یک payment فعال برای این سفارش وجود دارد و تا ${refreshedOrder.payment.expiresAt?.toISOString()} معتبر است`,
+      );
+    }
+
+    const gatewayConfig = await this.paymentGatewayService.resolveGatewaySelection({
+      gatewayConfigId: dto.gatewayConfigId,
+      gatewayKey: dto.gatewayKey,
+    });
+    const adapter = this.paymentGatewayRegistry.getAdapter(gatewayConfig.driver);
+    const amount = Number(refreshedOrder.totalAmount);
+    const nextAttemptCount = (refreshedOrder.payment?.attemptCount ?? 0) + 1;
+    const maxRetryAttempts = this.readPositiveIntConfig(
+      gatewayConfig.technicalConfig,
+      'maxRetryAttempts',
+      3,
+    );
+
+    if (nextAttemptCount > maxRetryAttempts) {
+      throw new BadRequestException(
+        `تعداد تلاش های پرداخت از حد مجاز بیشتر شده است. حداکثر ${maxRetryAttempts} تلاش مجاز است`,
+      );
+    }
+
+    const gatewayResult = await adapter.initiate({
+      amount,
+      orderId: refreshedOrder.id,
+      callbackUrl: gatewayConfig.callbackUrl,
+      returnUrl: gatewayConfig.returnUrl,
+      config: gatewayConfig,
+    });
+
+    const initiatedAt = new Date();
+    const expiresAt = new Date(
+      initiatedAt.getTime() +
+        this.readPositiveIntConfig(gatewayConfig.technicalConfig, 'paymentWindowMinutes', 15) *
+          60 *
+          1000,
+    );
+    const payment = await this.prisma.payment.upsert({
+      where: { orderId: refreshedOrder.id },
+      update: {
+        gatewayConfigId: gatewayConfig.id,
+        gateway: gatewayConfig.driver,
+        gatewayKey: gatewayConfig.key,
+        authority: gatewayResult.authority,
+        status: PaymentStatus.PENDING,
+        refId: null,
+        failureReason: null,
+        paymentUrl: gatewayResult.paymentUrl,
+        initiatedAt,
+        expiresAt,
+        verifiedAt: null,
+        attemptCount: nextAttemptCount,
+        amount: new Prisma.Decimal(amount),
+        gatewaySnapshot: this.toInputJson(this.buildGatewaySnapshot(gatewayConfig)),
+        rawInitiateData: this.toInputJson({
+          orderId: refreshedOrder.id,
+          userId: user.id,
+          amount,
+          attemptCount: nextAttemptCount,
+          maxRetryAttempts,
+          driver: gatewayConfig.driver,
+          gatewayKey: gatewayConfig.key,
+          callbackUrl: gatewayConfig.callbackUrl,
+          returnUrl: gatewayConfig.returnUrl,
+          adapterResponse: gatewayResult.rawData ?? null,
+        }),
+      },
+      create: {
+        orderId: refreshedOrder.id,
+        userId: refreshedOrder.userId,
+        gatewayConfigId: gatewayConfig.id,
+        gateway: gatewayConfig.driver,
+        gatewayKey: gatewayConfig.key,
+        authority: gatewayResult.authority,
+        status: PaymentStatus.PENDING,
+        paymentUrl: gatewayResult.paymentUrl,
+        initiatedAt,
+        expiresAt,
+        attemptCount: nextAttemptCount,
+        amount: new Prisma.Decimal(amount),
+        gatewaySnapshot: this.toInputJson(this.buildGatewaySnapshot(gatewayConfig)),
+        rawInitiateData: this.toInputJson({
+          orderId: refreshedOrder.id,
+          userId: user.id,
+          amount,
+          attemptCount: nextAttemptCount,
+          maxRetryAttempts,
+          driver: gatewayConfig.driver,
+          gatewayKey: gatewayConfig.key,
+          callbackUrl: gatewayConfig.callbackUrl,
+          returnUrl: gatewayConfig.returnUrl,
+          adapterResponse: gatewayResult.rawData ?? null,
+        }),
+      },
+      include: this.getPaymentInclude(),
+    });
+
+    if (refreshedOrder.paymentStatus !== PaymentStatus.PENDING) {
+      await this.prisma.order.update({
+        where: { id: refreshedOrder.id },
+        data: { paymentStatus: PaymentStatus.PENDING },
+      });
+    }
+
+    return {
+      message: 'payment initiation با موفقیت ایجاد شد',
+      payment,
+      gateway: {
+        id: gatewayConfig.id,
+        key: gatewayConfig.key,
+        displayName: gatewayConfig.displayName,
+        driver: gatewayConfig.driver,
+        authority: gatewayResult.authority,
+        paymentUrl: gatewayResult.paymentUrl,
+      },
+    };
+  }
+
+  async mockVerify(user: AuthenticatedUser, dto: MockVerifyPaymentDto) {
+    await this.expirePaymentIfNeeded(dto.paymentId);
+    const payment = await this.getPaymentOrThrow(dto.paymentId);
+    await this.assertCanAccessPayment(user, payment);
+
+    if (payment.order.paymentMethod !== PaymentMethod.ONLINE) {
+      throw new BadRequestException('mock verify فقط برای سفارش آنلاین معتبر است');
+    }
+
+    if (payment.order.paymentStatus === PaymentStatus.PAID && dto.success) {
+      throw new BadRequestException('این payment قبلا با موفقیت verify شده است');
+    }
+
+    if (payment.status === PaymentStatus.EXPIRED || payment.order.paymentStatus === PaymentStatus.EXPIRED) {
+      throw new BadRequestException('مهلت این payment به پایان رسیده و دیگر قابل verify نیست');
+    }
+
+    const gatewayConfig = payment.gatewayConfig;
+    if (!gatewayConfig) {
+      throw new BadRequestException('برای این payment gateway config معتبر پیدا نشد');
+    }
+
+    const adapter = this.paymentGatewayRegistry.getAdapter(payment.gateway);
+    const verificationResult = await adapter.verify({
+      payment,
+      refId: dto.refId,
+      success: dto.success,
+      failureReason: dto.failureReason,
+    });
+
+    return this.prisma.$transaction(async (tx) => {
+      const nextOrderPaymentStatus = verificationResult.success
+        ? PaymentStatus.PAID
+        : PaymentStatus.FAILED;
+      const nextOrderStatus = verificationResult.success
+        ? payment.order.status === OrderStatus.PENDING
+          ? OrderStatus.PAID
+          : payment.order.status
+        : OrderStatus.PENDING;
+
+      const updatedPayment = await tx.payment.update({
+        where: { id: payment.id },
+        data: {
+          status: nextOrderPaymentStatus,
+          refId: verificationResult.refId ?? null,
+          failureReason: verificationResult.failureReason ?? null,
+          verifiedAt: verificationResult.success ? new Date() : null,
+          rawVerifyData: this.toInputJson({
+            actorUserId: user.id,
+            driver: gatewayConfig.driver,
+            gatewayKey: gatewayConfig.key,
+            success: verificationResult.success,
+            refId: verificationResult.refId ?? null,
+            failureReason: verificationResult.failureReason ?? null,
+            verifiedAt: new Date().toISOString(),
+            adapterResponse: verificationResult.rawData ?? null,
+          }),
+        },
+        include: this.getPaymentInclude(),
+      });
+
+      await tx.order.update({
+        where: { id: payment.orderId },
+        data: {
+          paymentStatus: nextOrderPaymentStatus,
+          status: nextOrderStatus,
+        },
+      });
+
+      if (verificationResult.success && payment.order.status === OrderStatus.PENDING) {
+        await tx.orderStatusHistory.create({
+          data: {
+            orderId: payment.orderId,
+            fromStatus: payment.order.status,
+            toStatus: OrderStatus.PAID,
+            actorType: this.isAdmin(user) ? OrderActorType.ADMIN : OrderActorType.CUSTOMER,
+            actorUserId: user.id,
+            note: `پرداخت آنلاین با gateway ${gatewayConfig.displayName} با موفقیت تایید شد`,
+          },
+        });
+      }
+
+      return {
+        message: verificationResult.success
+          ? 'payment با موفقیت verify شد'
+          : 'payment به حالت failed رفت',
+        payment: updatedPayment,
+        orderStatus: nextOrderStatus,
+        paymentStatus: nextOrderPaymentStatus,
+      };
+    });
+  }
+
+  async findOne(user: AuthenticatedUser, id: number) {
+    await this.expirePaymentIfNeeded(id);
+    const payment = await this.getPaymentOrThrow(id);
+    await this.assertCanAccessPayment(user, payment);
+    return payment;
+  }
+
+  async adminList(user: AuthenticatedUser, query: AdminListPaymentsQueryDto) {
+    this.assertAdmin(user);
+    await this.processExpiredPayments();
+
+    return this.prisma.payment.findMany({
+      where: {
+        status: query.expiredOnly ? PaymentStatus.EXPIRED : query.status,
+        gatewayKey: query.gatewayKey,
+        userId: query.userId,
+        orderId: query.orderId,
+      },
+      include: this.getPaymentInclude(),
+      orderBy: [{ createdAt: 'desc' }],
+    });
+  }
+
+  async processExpiredPayments(user?: AuthenticatedUser) {
+    if (user) {
+      this.assertAdmin(user);
+    }
+
+    const candidates = await this.prisma.payment.findMany({
+      where: {
+        status: PaymentStatus.PENDING,
+        expiresAt: {
+          lte: new Date(),
+        },
+      },
+      select: { id: true },
+      orderBy: { expiresAt: 'asc' },
+      take: 100,
+    });
+
+    let expiredCount = 0;
+    for (const candidate of candidates) {
+      const changed = await this.expirePaymentIfNeeded(candidate.id);
+      if (changed) {
+        expiredCount += 1;
+      }
+    }
+
+    return {
+      processedAt: new Date().toISOString(),
+      scannedCount: candidates.length,
+      expiredCount,
+    };
+  }
+
+  async handleGatewayCallback(
+    gatewayKey: string,
+    payload: Record<string, unknown>,
+  ) {
+    const gatewayConfig = await this.paymentGatewayService.resolveGatewaySelection({
+      gatewayKey,
+    });
+
+    const authority = this.extractStringValue(payload, ['authority', 'Authority']);
+    const paymentId = this.extractNumericValue(payload, ['paymentId', 'PaymentId']);
+
+    let payment: Awaited<ReturnType<PaymentService['getPaymentOrThrow']>> | null = null;
+    if (paymentId) {
+      payment = await this.prisma.payment.findUnique({
+        where: { id: paymentId },
+        include: this.getPaymentInclude(),
+      });
+    } else if (authority) {
+      payment = await this.prisma.payment.findUnique({
+        where: { authority },
+        include: this.getPaymentInclude(),
+      });
+    }
+
+    if (payment) {
+      await this.expirePaymentIfNeeded(payment.id);
+      const refreshedPayment = await this.getPaymentOrThrow(payment.id);
+
+      await this.prisma.payment.update({
+        where: { id: refreshedPayment.id },
+        data: {
+          rawVerifyData: this.toInputJson({
+            callbackReceivedAt: new Date().toISOString(),
+            gatewayKey,
+            authority: authority ?? null,
+            payload,
+          }),
+        },
+      });
+    }
+
+    return {
+      received: true,
+      gatewayKey: gatewayConfig.key,
+      matchedPaymentId: payment?.id ?? null,
+      message: payment
+        ? 'callback دریافت و به payment متناظر متصل شد'
+        : 'callback دریافت شد اما payment متناظر به صورت خودکار پیدا نشد',
+    };
+  }
+
+  private async getOrderForPayment(orderId: number) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        payment: true,
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('سفارش مورد نظر برای payment یافت نشد');
+    }
+
+    return order;
+  }
+
+  private async getPaymentOrThrow(id: number) {
+    const payment = await this.prisma.payment.findUnique({
+      where: { id },
+      include: this.getPaymentInclude(),
+    });
+
+    if (!payment) {
+      throw new NotFoundException('payment مورد نظر یافت نشد');
+    }
+
+    return payment;
+  }
+
+  private getPaymentInclude() {
+    return {
+      gatewayConfig: true,
+      order: {
+        select: {
+          id: true,
+          userId: true,
+          status: true,
+          paymentStatus: true,
+          paymentMethod: true,
+          totalAmount: true,
+          storeId: true,
+          storeName: true,
+          storeSlug: true,
+          store: {
+            select: {
+              ownerId: true,
+            },
+          },
+        },
+      },
+      user: {
+        select: {
+          id: true,
+          phoneNumber: true,
+          fullName: true,
+        },
+      },
+    };
+  }
+
+  private buildGatewaySnapshot(config: {
+    id: number;
+    key: string;
+    displayName: string;
+    driver: string;
+    sandboxMode: boolean;
+  }) {
+    return {
+      id: config.id,
+      key: config.key,
+      displayName: config.displayName,
+      driver: config.driver,
+      sandboxMode: config.sandboxMode,
+    };
+  }
+
+  private toInputJson(value: Record<string, unknown>) {
+    return value as Prisma.InputJsonValue;
+  }
+
+  private async expirePaymentIfNeeded(paymentId: number) {
+    const payment = await this.prisma.payment.findUnique({
+      where: { id: paymentId },
+      include: {
+        order: {
+          include: {
+            orderItems: true,
+          },
+        },
+      },
+    });
+
+    if (!payment || payment.status !== PaymentStatus.PENDING || !this.isExpired(payment.expiresAt)) {
+      return false;
+    }
+
+    const restoredQuantities = new Map<number, number>();
+    for (const item of payment.order.orderItems) {
+      restoredQuantities.set(
+        item.productId,
+        (restoredQuantities.get(item.productId) ?? 0) + item.quantity,
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.payment.update({
+        where: { id: payment.id },
+        data: {
+          status: PaymentStatus.EXPIRED,
+          failureReason: 'مهلت پرداخت به پایان رسید',
+          rawVerifyData: this.toInputJson({
+            expiredAt: new Date().toISOString(),
+            reason: 'payment window expired',
+          }),
+        },
+      });
+
+      await tx.order.update({
+        where: { id: payment.orderId },
+        data: {
+          status: OrderStatus.CANCELLED,
+          paymentStatus: PaymentStatus.EXPIRED,
+          cancelledAt: new Date(),
+        },
+      });
+
+      for (const [productId, quantity] of restoredQuantities.entries()) {
+        await tx.product.update({
+          where: { id: productId },
+          data: {
+            quantity: {
+              increment: quantity,
+            },
+          },
+        });
+      }
+
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId: payment.orderId,
+          fromStatus: payment.order.status,
+          toStatus: OrderStatus.CANCELLED,
+          actorType: OrderActorType.SYSTEM,
+          reason: 'مهلت پرداخت سفارش به پایان رسید',
+          note: 'به علت انقضای payment، موجودی رزروشده آزاد شد',
+        },
+      });
+    });
+
+    return true;
+  }
+
+  private isExpired(expiresAt: Date | null) {
+    return !!expiresAt && expiresAt.getTime() <= Date.now();
+  }
+
+  private readPositiveIntConfig(
+    config: Prisma.JsonValue | null,
+    key: string,
+    fallback: number,
+  ) {
+    if (!config || typeof config !== 'object' || Array.isArray(config)) {
+      return fallback;
+    }
+
+    const rawValue = (config as Record<string, unknown>)[key];
+    const numericValue =
+      typeof rawValue === 'number'
+        ? rawValue
+        : typeof rawValue === 'string'
+          ? Number(rawValue)
+          : NaN;
+
+    return Number.isInteger(numericValue) && numericValue > 0
+      ? numericValue
+      : fallback;
+  }
+
+  private extractStringValue(
+    payload: Record<string, unknown>,
+    keys: string[],
+  ) {
+    for (const key of keys) {
+      const value = payload[key];
+      if (typeof value === 'string' && value.trim().length > 0) {
+        return value.trim();
+      }
+    }
+
+    return null;
+  }
+
+  private extractNumericValue(
+    payload: Record<string, unknown>,
+    keys: string[],
+  ) {
+    for (const key of keys) {
+      const value = payload[key];
+      if (typeof value === 'number' && Number.isInteger(value) && value > 0) {
+        return value;
+      }
+      if (typeof value === 'string' && value.trim().length > 0) {
+        const parsed = Number(value);
+        if (Number.isInteger(parsed) && parsed > 0) {
+          return parsed;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  private async assertCanAccessOrderPayment(
+    user: AuthenticatedUser,
+    order: Awaited<ReturnType<PaymentService['getOrderForPayment']>>,
+  ) {
+    if (this.isAdmin(user)) {
+      return;
+    }
+
+    const ability = await this.abilityFactory.createForUser(user);
+    if (order.userId === user.id && ability.can('read', subject('Order', { userId: user.id }))) {
+      return;
+    }
+
+    throw new ForbiddenException('شما اجازه دسترسی به payment این سفارش را ندارید');
+  }
+
+  private async assertCanAccessPayment(
+    user: AuthenticatedUser,
+    payment: Awaited<ReturnType<PaymentService['getPaymentOrThrow']>>,
+  ) {
+    if (this.isAdmin(user)) {
+      return;
+    }
+
+    const ability = await this.abilityFactory.createForUser(user);
+    if (payment.userId === user.id && ability.can('read', subject('Order', { userId: user.id }))) {
+      return;
+    }
+
+    throw new ForbiddenException('شما اجازه مشاهده این payment را ندارید');
+  }
+
+  private isAdmin(user: AuthenticatedUser) {
+    return user.roles.includes('ADMIN');
+  }
+
+  private assertAdmin(user: AuthenticatedUser) {
+    if (!this.isAdmin(user)) {
+      throw new ForbiddenException('این endpoint فقط برای ادمین مجاز است');
+    }
+  }
+
+  private isTerminalOrderStatus(status: OrderStatus) {
+    const terminalStatuses: OrderStatus[] = [
+      OrderStatus.DELIVERED,
+      OrderStatus.REJECTED_BY_VENDOR,
+      OrderStatus.CANCELLED,
+      OrderStatus.CANCELLED_BY_ADMIN,
+      OrderStatus.CANCELLED_BY_CUSTOMER,
+    ];
+
+    return terminalStatuses.includes(status);
+  }
+}

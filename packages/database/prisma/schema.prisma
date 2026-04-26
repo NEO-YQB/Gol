@@ -23,6 +23,7 @@ model User {
   cart          Cart?
   store         Store?
   orders        Order[]
+  payments      Payment[]
   reviews       Review[]
 
   createdAt     DateTime @default(now())
@@ -263,6 +264,7 @@ model Order {
   estimatedDeliveryMaxHours Int?
   userId               Int
   user                 User          @relation(fields: [userId], references: [id])
+  payment              Payment?
   orderItems           OrderItem[]
   statusHistories      OrderStatusHistory[]
   acceptedAt           DateTime?
@@ -271,6 +273,64 @@ model Order {
   cancelledAt          DateTime?
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
+}
+
+enum PaymentGateway {
+  MOCK
+}
+
+model Payment {
+  id              Int           @id @default(autoincrement())
+  orderId          Int           @unique
+  order            Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  userId           Int
+  user             User          @relation(fields: [userId], references: [id])
+  gatewayConfigId  Int?
+  gatewayConfig    PaymentGatewayConfig? @relation(fields: [gatewayConfigId], references: [id], onDelete: SetNull)
+  gateway          String
+  gatewayKey       String?
+  authority        String        @unique
+  refId            String?
+  amount           Decimal       @db.Decimal(12, 2)
+  status           PaymentStatus @default(PENDING)
+  paymentUrl       String?
+  failureReason    String?       @db.Text
+  initiatedAt      DateTime?
+  expiresAt        DateTime?
+  verifiedAt       DateTime?
+  attemptCount     Int           @default(0)
+  gatewaySnapshot  Json?
+  rawInitiateData  Json?
+  rawVerifyData    Json?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([gatewayConfigId])
+  @@index([userId])
+  @@index([status])
+}
+
+model PaymentGatewayConfig {
+  id               Int       @id @default(autoincrement())
+  key              String    @unique
+  displayName      String
+  driver           String
+  isActive         Boolean   @default(true)
+  isDefault        Boolean   @default(false)
+  priority         Int       @default(100)
+  sandboxMode      Boolean   @default(true)
+  merchantConfig   Json?
+  technicalConfig  Json?
+  callbackUrl      String?
+  returnUrl        String?
+  notes            String?   @db.Text
+  metadata         Json?
+  payments         Payment[]
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([isActive, isDefault])
+  @@index([priority])
 }
 
 enum OrderStatus {
@@ -290,6 +350,7 @@ enum PaymentStatus {
   PENDING
   PAID
   FAILED
+  EXPIRED
   REFUNDED
   CANCELLED
 }

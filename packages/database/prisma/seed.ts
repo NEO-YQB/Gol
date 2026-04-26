@@ -41,6 +41,12 @@ const permissionCatalog: PermissionSeed[] = [
   { action: 'read', subject: 'Order', conditions: { userId: '{{user.id}}' } },
   { action: 'update', subject: 'Order', conditions: { userId: '{{user.id}}' } },
 
+  { action: 'create', subject: 'Payment', conditions: { userId: '{{user.id}}' } },
+  { action: 'read', subject: 'Payment', conditions: { userId: '{{user.id}}' } },
+  { action: 'read', subject: 'PaymentGatewayConfig', conditions: null },
+  { action: 'create', subject: 'PaymentGatewayConfig', conditions: null },
+  { action: 'update', subject: 'PaymentGatewayConfig', conditions: null },
+
   { action: 'create', subject: 'Cart', conditions: { userId: '{{user.id}}' } },
   { action: 'read', subject: 'Cart', conditions: { userId: '{{user.id}}' } },
   { action: 'update', subject: 'Cart', conditions: { userId: '{{user.id}}' } },
@@ -104,6 +110,8 @@ const defaultRolePermissions: Record<string, string[]> = {
     'create:Order',
     'read:Order',
     'update:Order',
+    'create:Payment',
+    'read:Payment',
     'create:UserAddress',
     'read:UserAddress',
     'delete:UserAddress',
@@ -240,6 +248,49 @@ async function ensureAdminUser(roleIds: Map<string, { id: number }>) {
   });
 }
 
+async function ensureDefaultPaymentGatewayConfig() {
+  console.log('Ensuring default payment gateway config exists...');
+
+  await prisma.paymentGatewayConfig.upsert({
+    where: { key: 'mock-default' },
+    update: {
+      displayName: 'Mock Gateway',
+      driver: 'mock',
+      isActive: true,
+      isDefault: true,
+      priority: 1,
+      sandboxMode: true,
+      merchantConfig: {
+        merchantId: 'mock-merchant',
+      },
+      technicalConfig: {
+        baseUrl: 'https://mock-gateway.local',
+        paymentWindowMinutes: 15,
+        maxRetryAttempts: 3,
+      },
+      notes: 'درگاه پیش فرض تستی برای localhost و توسعه',
+    },
+    create: {
+      key: 'mock-default',
+      displayName: 'Mock Gateway',
+      driver: 'mock',
+      isActive: true,
+      isDefault: true,
+      priority: 1,
+      sandboxMode: true,
+      merchantConfig: {
+        merchantId: 'mock-merchant',
+      },
+      technicalConfig: {
+        baseUrl: 'https://mock-gateway.local',
+        paymentWindowMinutes: 15,
+        maxRetryAttempts: 3,
+      },
+      notes: 'درگاه پیش فرض تستی برای localhost و توسعه',
+    },
+  });
+}
+
 async function main() {
   console.log('🌱 Starting safe idempotent seed...');
 
@@ -247,6 +298,7 @@ async function main() {
   const roleIds = await upsertRoles();
   await syncDefaultRolePermissions(roleIds);
   await ensureAdminUser(roleIds);
+  await ensureDefaultPaymentGatewayConfig();
 
   console.log('✅ Seed completed. Existing business data was preserved.');
 }

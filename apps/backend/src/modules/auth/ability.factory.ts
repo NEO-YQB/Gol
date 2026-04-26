@@ -15,6 +15,8 @@ type AppSubjects =
   | 'Store'
   | 'File'
   | 'Order'
+  | 'Payment'
+  | 'PaymentGatewayConfig'
   | 'Cart'
   | 'UserAddress';
 
@@ -157,6 +159,7 @@ export class AbilityFactory {
       CUSTOMER: [
         { action: 'read', subject: ['Product', 'Category', 'Store'] },
         { action: ['create', 'read', 'update'], subject: 'Order', conditions: { userId: user.id } },
+        { action: ['create', 'read'], subject: 'Payment', conditions: { userId: user.id } },
         { action: ['create', 'read', 'update', 'delete'], subject: 'Cart', conditions: { userId: user.id } },
         { action: 'manage', subject: 'UserAddress', conditions: { userId: user.id } },
       ],
