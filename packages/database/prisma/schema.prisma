@@ -293,11 +293,16 @@ model Payment {
   refId            String?
   amount           Decimal       @db.Decimal(12, 2)
   status           PaymentStatus @default(PENDING)
+  reviewStatus     PaymentReviewStatus @default(NONE)
   paymentUrl       String?
   failureReason    String?       @db.Text
+  reviewReason     String?       @db.Text
+  reviewNote       String?       @db.Text
   initiatedAt      DateTime?
   expiresAt        DateTime?
   verifiedAt       DateTime?
+  reviewedAt       DateTime?
+  reviewedByUserId Int?
   attemptCount     Int           @default(0)
   gatewaySnapshot  Json?
   rawInitiateData  Json?
@@ -353,6 +358,13 @@ enum PaymentStatus {
   EXPIRED
   REFUNDED
   CANCELLED
+}
+
+enum PaymentReviewStatus {
+  NONE
+  NEEDS_REVIEW
+  UNDER_REVIEW
+  RESOLVED
 }
 
 enum PaymentMethod {

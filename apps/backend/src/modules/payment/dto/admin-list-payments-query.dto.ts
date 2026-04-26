@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { PaymentStatus } from '@prisma/client';
+import { PaymentReviewStatus, PaymentStatus } from '@prisma/client';
 import { Transform, Type } from 'class-transformer';
 import { IsBoolean, IsEnum, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 
@@ -34,4 +34,9 @@ export class AdminListPaymentsQueryDto {
   @Transform(({ value }) => value === true || value === 'true')
   @IsBoolean()
   expiredOnly?: boolean;
+
+  @ApiPropertyOptional({ enum: PaymentReviewStatus })
+  @IsOptional()
+  @IsEnum(PaymentReviewStatus)
+  reviewStatus?: PaymentReviewStatus;
 }

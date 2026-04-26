@@ -4,11 +4,13 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { OrderActorType, OrderStatus, PaymentMethod, PaymentStatus, Prisma } from '@prisma/client';
+import { OrderActorType, OrderStatus, PaymentMethod, PaymentReviewStatus, PaymentStatus, Prisma } from '@prisma/client';
 import { subject } from '@casl/ability';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AbilityFactory } from '../auth/ability.factory';
+import { AdminManualRefundDto } from './dto/admin-manual-refund.dto';
 import { AdminListPaymentsQueryDto } from './dto/admin-list-payments-query.dto';
+import { AdminUpdatePaymentReviewDto } from './dto/admin-update-payment-review.dto';
 import { InitiatePaymentDto } from './dto/initiate-payment.dto';
 import { MockVerifyPaymentDto } from './dto/mock-verify-payment.dto';
 import { PaymentGatewayRegistryService } from './payment-gateway-registry.service';
@@ -288,6 +290,7 @@ export class PaymentService {
     return this.prisma.payment.findMany({
       where: {
         status: query.expiredOnly ? PaymentStatus.EXPIRED : query.status,
+        reviewStatus: query.reviewStatus,
         gatewayKey: query.gatewayKey,
         userId: query.userId,
         orderId: query.orderId,
@@ -327,6 +330,116 @@ export class PaymentService {
       scannedCount: candidates.length,
       expiredCount,
     };
+  }
+
+  async adminUpdateReview(
+    user: AuthenticatedUser,
+    paymentId: number,
+    dto: AdminUpdatePaymentReviewDto,
+  ) {
+    this.assertAdmin(user);
+    await this.expirePaymentIfNeeded(paymentId);
+
+    const payment = await this.getPaymentOrThrow(paymentId);
+
+    return this.prisma.payment.update({
+      where: { id: paymentId },
+      data: {
+        reviewStatus: dto.reviewStatus,
+        reviewReason: dto.reviewReason ?? payment.reviewReason,
+        reviewNote: dto.reviewNote ?? payment.reviewNote,
+        reviewedAt: new Date(),
+        reviewedByUserId: user.id,
+        rawVerifyData: this.toInputJson({
+          ...(this.ensureJsonObject(payment.rawVerifyData)),
+          adminReview: {
+            reviewStatus: dto.reviewStatus,
+            reviewReason: dto.reviewReason ?? payment.reviewReason ?? null,
+            reviewNote: dto.reviewNote ?? payment.reviewNote ?? null,
+            reviewedAt: new Date().toISOString(),
+            reviewedByUserId: user.id,
+          },
+        }),
+      },
+      include: this.getPaymentInclude(),
+    });
+  }
+
+  async adminManualRefund(
+    user: AuthenticatedUser,
+    paymentId: number,
+    dto: AdminManualRefundDto,
+  ) {
+    this.assertAdmin(user);
+    await this.expirePaymentIfNeeded(paymentId);
+
+    const payment = await this.getPaymentOrThrow(paymentId);
+
+    if (payment.status !== PaymentStatus.PAID || payment.order.paymentStatus !== PaymentStatus.PAID) {
+      throw new BadRequestException('فقط payment پرداخت‌شده قابلیت ثبت refund دستی دارد');
+    }
+
+    const refundableOrderStatuses: OrderStatus[] = [
+      OrderStatus.REJECTED_BY_VENDOR,
+      OrderStatus.CANCELLED,
+      OrderStatus.CANCELLED_BY_ADMIN,
+      OrderStatus.CANCELLED_BY_CUSTOMER,
+    ];
+
+    if (!refundableOrderStatuses.includes(payment.order.status)) {
+      throw new BadRequestException(
+        'فعلا refund دستی فقط برای سفارش‌های cancel/rejected شده مجاز است',
+      );
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const updatedPayment = await tx.payment.update({
+        where: { id: paymentId },
+        data: {
+          status: PaymentStatus.REFUNDED,
+          reviewStatus: PaymentReviewStatus.RESOLVED,
+          reviewReason: dto.reason,
+          reviewNote: dto.note ?? payment.reviewNote,
+          reviewedAt: new Date(),
+          reviewedByUserId: user.id,
+          rawVerifyData: this.toInputJson({
+            ...(this.ensureJsonObject(payment.rawVerifyData)),
+            manualRefund: {
+              reason: dto.reason,
+              note: dto.note ?? null,
+              refundedAt: new Date().toISOString(),
+              refundedByUserId: user.id,
+            },
+          }),
+        },
+        include: this.getPaymentInclude(),
+      });
+
+      await tx.order.update({
+        where: { id: payment.orderId },
+        data: {
+          paymentStatus: PaymentStatus.REFUNDED,
+        },
+      });
+
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId: payment.orderId,
+          fromStatus: payment.order.status,
+          toStatus: payment.order.status,
+          actorType: OrderActorType.ADMIN,
+          actorUserId: user.id,
+          reason: dto.reason,
+          note: dto.note ?? 'refund دستی برای payment ثبت شد',
+        },
+      });
+
+      return {
+        message: 'refund دستی با موفقیت ثبت شد',
+        payment: updatedPayment,
+        orderPaymentStatus: PaymentStatus.REFUNDED,
+      };
+    });
   }
 
   async handleGatewayCallback(
@@ -457,6 +570,14 @@ export class PaymentService {
 
   private toInputJson(value: Record<string, unknown>) {
     return value as Prisma.InputJsonValue;
+  }
+
+  private ensureJsonObject(value: Prisma.JsonValue | null) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return {};
+    }
+
+    return value as Record<string, unknown>;
   }
 
   private async expirePaymentIfNeeded(paymentId: number) {

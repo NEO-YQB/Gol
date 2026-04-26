@@ -11,7 +11,9 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { GetUser } from '../../common/decorators/get-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { AdminManualRefundDto } from './dto/admin-manual-refund.dto';
 import { AdminListPaymentsQueryDto } from './dto/admin-list-payments-query.dto';
+import { AdminUpdatePaymentReviewDto } from './dto/admin-update-payment-review.dto';
 import { InitiatePaymentDto } from './dto/initiate-payment.dto';
 import { MockVerifyPaymentDto } from './dto/mock-verify-payment.dto';
 import { PaymentService } from './payment.service';
@@ -54,6 +56,26 @@ export class PaymentController {
   @ApiOperation({ summary: 'اجرای دستی sweep برای paymentهای منقضی توسط ادمین' })
   runExpirySweep(@GetUser() user: { id: number; roles: string[] }) {
     return this.paymentService.processExpiredPayments(user);
+  }
+
+  @Post('admin/:id/review')
+  @ApiOperation({ summary: 'ثبت یا به‌روزرسانی وضعیت بررسی دستی payment توسط ادمین' })
+  adminUpdateReview(
+    @GetUser() user: { id: number; roles: string[] },
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: AdminUpdatePaymentReviewDto,
+  ) {
+    return this.paymentService.adminUpdateReview(user, id, dto);
+  }
+
+  @Post('admin/:id/manual-refund')
+  @ApiOperation({ summary: 'ثبت refund دستی برای payment توسط ادمین' })
+  adminManualRefund(
+    @GetUser() user: { id: number; roles: string[] },
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: AdminManualRefundDto,
+  ) {
+    return this.paymentService.adminManualRefund(user, id, dto);
   }
 
   @Get(':id')
