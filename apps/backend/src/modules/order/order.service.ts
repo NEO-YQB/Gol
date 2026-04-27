@@ -11,12 +11,14 @@ import {
   PaymentMethod,
   PaymentStatus,
   Prisma,
+  SettlementStatus,
   UserAddress,
 } from '@prisma/client';
 import { subject } from '@casl/ability';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AbilityFactory } from '../auth/ability.factory';
 import { PricingService } from '../discount/pricing.service';
+import { FinanceService } from '../finance/finance.service';
 import { CheckoutPreviewDto } from './dto/checkout-preview.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { CreateOrderFromCartDto } from './dto/create-order-from-cart.dto';
@@ -77,6 +79,7 @@ export class OrderService {
     private readonly prisma: PrismaService,
     private readonly abilityFactory: AbilityFactory,
     private readonly pricingService: PricingService,
+    private readonly financeService: FinanceService,
   ) {}
 
   async previewFromCart(user: AuthenticatedUser, dto: CheckoutPreviewDto) {
@@ -294,6 +297,39 @@ export class OrderService {
     }, INTERACTIVE_TX_OPTIONS);
   }
 
+  async deliver(user: AuthenticatedUser, id: number, dto: OrderActionNoteDto) {
+    const order = await this.getOrderOrThrow(id);
+    await this.assertCanManageVendorOrder(user, order);
+
+    if (order.status !== OrderStatus.SHIPPED) {
+      throw new BadRequestException('فقط سفارش ارسال شده قابل ثبت به عنوان تحویل داده شده است');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const updatedOrder = await tx.order.update({
+        where: { id: order.id },
+        data: {
+          status: OrderStatus.DELIVERED,
+          deliveredAt: new Date(),
+        },
+        include: this.getOrderInclude(),
+      });
+
+      await this.createHistory(tx, order.id, {
+        fromStatus: order.status,
+        toStatus: OrderStatus.DELIVERED,
+        actorType: this.isAdmin(user) ? OrderActorType.ADMIN : OrderActorType.VENDOR,
+        actorUserId: user.id,
+        note: dto.note,
+      });
+
+      return updatedOrder;
+    }, INTERACTIVE_TX_OPTIONS).then(async (updatedOrder) => {
+      await this.financeService.holdOrderVendorEarning(updatedOrder.id);
+      return this.getOrderOrThrow(updatedOrder.id);
+    });
+  }
+
   async vendorCancel(user: AuthenticatedUser, id: number, dto: OrderReasonDto) {
     const order = await this.getOrderOrThrow(id);
     await this.assertCanManageVendorOrder(user, order);
@@ -413,6 +449,12 @@ export class OrderService {
     const pricedItemMap = new Map(
       pricing.items.map((item) => [item.productId, item]),
     );
+    const finance = await this.financeService.resolveOrderFinance({
+      storeId: store.id,
+      discountedItemSubtotal: pricing.pricing.subtotalAfterLineDiscounts,
+      pricing: pricing.pricing as unknown as Record<string, unknown>,
+      coupon: pricing.coupon as Record<string, unknown> | null,
+    });
 
     const orderCreateInput: Prisma.OrderUncheckedCreateInput = {
       userId: user.id,
@@ -430,10 +472,27 @@ export class OrderService {
         pricing.pricing.couponDiscountAmount,
       ),
       discountAmount: new Prisma.Decimal(discountAmount),
+      commissionRuleId: finance.commissionRuleId,
+      settlementStatus: finance.settlementStatus,
+      commissionRate: new Prisma.Decimal(finance.commissionRate),
+      commissionBaseAmount: new Prisma.Decimal(finance.commissionBaseAmount),
+      platformCommissionAmount: new Prisma.Decimal(
+        finance.platformCommissionAmount,
+      ),
+      systemServiceFeeAmount: new Prisma.Decimal(
+        finance.systemServiceFeeAmount,
+      ),
+      platformTotalShareAmount: new Prisma.Decimal(
+        finance.platformTotalShareAmount,
+      ),
+      vendorShareAmount: new Prisma.Decimal(finance.vendorShareAmount),
+      settlementHoldDays: finance.settlementHoldDays,
+      settlementAutoReleaseEnabled: finance.autoReleaseEnabled,
       couponCode: pricing.coupon?.code ?? null,
       couponTitle: pricing.coupon?.title ?? null,
       couponApplyOn: pricing.coupon?.applyOn ?? null,
       pricingSnapshot: this.buildOrderPricingSnapshot(pricing),
+      financialSnapshot: finance.financialSnapshot,
       status: OrderStatus.PENDING,
       paymentStatus: PaymentStatus.PENDING,
       paymentMethod: options.paymentMethod,
@@ -550,6 +609,7 @@ export class OrderService {
             order.paymentStatus === PaymentStatus.PAID
               ? PaymentStatus.REFUNDED
               : PaymentStatus.CANCELLED,
+          settlementStatus: SettlementStatus.REVERSED,
           cancelledAt: new Date(),
         },
         include: this.getOrderInclude(),
@@ -594,7 +654,10 @@ export class OrderService {
       });
 
       return updatedOrder;
-    }, INTERACTIVE_TX_OPTIONS);
+    }, INTERACTIVE_TX_OPTIONS).then(async (updatedOrder) => {
+      await this.financeService.reverseOrderSettlement(order.id, payload.actorUserId);
+      return this.getOrderOrThrow(updatedOrder.id);
+    });
   }
 
   private extractSingleStore(products: ProductSnapshot[]) {
@@ -975,6 +1038,7 @@ export class OrderService {
         data: {
           status: OrderStatus.CANCELLED,
           paymentStatus: PaymentStatus.EXPIRED,
+          settlementStatus: SettlementStatus.REVERSED,
           cancelledAt: new Date(),
         },
       });
@@ -1002,6 +1066,8 @@ export class OrderService {
         note: 'به علت انقضای payment، موجودی رزروشده آزاد شد',
       });
     }, INTERACTIVE_TX_OPTIONS);
+
+    await this.financeService.reverseOrderSettlement(order.id);
 
     return true;
   }

@@ -103,6 +103,9 @@ model Store {
   owner         User     @relation(fields: [ownerId], references: [id])
   products      Product[]
   orders        Order[]
+  commissionRules CommissionRule[]
+  wallet        StoreWallet?
+  walletTransactions WalletTransaction[]
   vendorDiscounts VendorDiscount[]
   promotions    PromotionOnStores[]
   couponScopes  CouponOnStores[]
@@ -430,10 +433,27 @@ model Order {
   lineDiscountAmount   Decimal       @default(0) @db.Decimal(12, 2)
   couponDiscountAmount Decimal       @default(0) @db.Decimal(12, 2)
   discountAmount       Decimal       @default(0) @db.Decimal(12, 2)
+  commissionRuleId     Int?
+  commissionRule       CommissionRule? @relation(fields: [commissionRuleId], references: [id], onDelete: SetNull)
+  settlementStatus     SettlementStatus @default(PENDING)
+  commissionRate       Decimal       @default(0) @db.Decimal(5, 2)
+  commissionBaseAmount Decimal       @default(0) @db.Decimal(12, 2)
+  platformCommissionAmount Decimal   @default(0) @db.Decimal(12, 2)
+  systemServiceFeeAmount Decimal     @default(0) @db.Decimal(12, 2)
+  platformTotalShareAmount Decimal   @default(0) @db.Decimal(12, 2)
+  vendorShareAmount    Decimal       @default(0) @db.Decimal(12, 2)
+  settlementHoldDays   Int           @default(3)
+  settlementAutoReleaseEnabled Boolean @default(true)
+  settlementEligibleAt DateTime?
+  earningsHeldAt       DateTime?
+  earningsReleasedAt   DateTime?
+  settlementReviewedAt DateTime?
+  settlementReviewedByUserId Int?
   couponCode           String?
   couponTitle          String?
   couponApplyOn        CouponApplyOn?
   pricingSnapshot      Json?
+  financialSnapshot    Json?
   status               OrderStatus   @default(PENDING)
   paymentStatus        PaymentStatus @default(PENDING)
   paymentMethod        PaymentMethod @default(COD)
@@ -456,6 +476,7 @@ model Order {
   payment              Payment?
   couponRedemptions    CouponRedemption[]
   orderItems           OrderItem[]
+  walletTransactions   WalletTransaction[]
   statusHistories      OrderStatusHistory[]
   acceptedAt           DateTime?
   shippedAt            DateTime?
@@ -565,6 +586,99 @@ enum PaymentMethod {
 enum DeliveryType {
   STANDARD
   EXPRESS
+}
+
+enum SettlementStatus {
+  PENDING
+  ELIGIBLE
+  PROCESSING
+  SETTLED
+  ON_HOLD
+  REVERSED
+}
+
+enum CommissionRuleScope {
+  GLOBAL
+  STORE
+}
+
+enum WalletTransactionType {
+  ORDER_EARNING
+  ORDER_RELEASE
+  ORDER_REVERSAL
+  MANUAL_CREDIT
+  MANUAL_DEBIT
+  PROMOTION_SPEND
+  TOP_UP
+  SETTLEMENT_PAYOUT
+  ADJUSTMENT
+}
+
+enum WalletTransactionDirection {
+  CREDIT
+  DEBIT
+}
+
+model CommissionRule {
+  id                    Int                 @id @default(autoincrement())
+  scope                 CommissionRuleScope @default(GLOBAL)
+  storeId               Int?
+  store                 Store?              @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  title                 String
+  description           String?             @db.Text
+  commissionRate        Decimal             @db.Decimal(5, 2)
+  systemServiceFeeRate  Decimal             @default(0) @db.Decimal(5, 2)
+  systemServiceFeeFixed Decimal             @default(0) @db.Decimal(12, 2)
+  settlementHoldDays    Int                 @default(3)
+  autoReleaseEnabled    Boolean             @default(true)
+  priority              Int                 @default(100)
+  isActive              Boolean             @default(true)
+  startAt               DateTime?
+  endAt                 DateTime?
+  reason                String?             @db.Text
+  createdByUserId       Int?
+  metadata              Json?
+  orders                Order[]
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  @@index([scope, isActive, priority])
+  @@index([storeId, isActive, priority])
+}
+
+model StoreWallet {
+  id               Int                 @id @default(autoincrement())
+  storeId          Int                 @unique
+  store            Store               @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  currentBalance   Decimal             @default(0) @db.Decimal(12, 2)
+  availableBalance Decimal             @default(0) @db.Decimal(12, 2)
+  heldBalance      Decimal             @default(0) @db.Decimal(12, 2)
+  transactions     WalletTransaction[]
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+}
+
+model WalletTransaction {
+  id              Int                      @id @default(autoincrement())
+  walletId         Int
+  wallet           StoreWallet             @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  storeId          Int
+  store            Store                   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  orderId          Int?
+  order            Order?                  @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  type             WalletTransactionType
+  direction        WalletTransactionDirection
+  amount           Decimal                 @db.Decimal(12, 2)
+  title            String
+  description      String?                 @db.Text
+  batchKey         String?
+  createdByUserId  Int?
+  metadata         Json?
+  createdAt        DateTime                @default(now())
+
+  @@index([walletId, createdAt])
+  @@index([storeId, createdAt])
+  @@index([orderId])
 }
 
 enum OrderActorType {

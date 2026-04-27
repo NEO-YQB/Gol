@@ -16,6 +16,7 @@ import { OrderModule } from './modules/order/order.module';
 import { CartModule } from './modules/cart/cart.module';
 import { PaymentModule } from './modules/payment/payment.module';
 import { DiscountModule } from './modules/discount/discount.module';
+import { FinanceModule } from './modules/finance/finance.module';
 
 @Global() // این باعث می‌شود سرویس در کل اپلیکیشن در دسترس باشد
 @Module({
@@ -31,6 +32,7 @@ import { DiscountModule } from './modules/discount/discount.module';
     CartModule,
     PaymentModule,
     DiscountModule,
+    FinanceModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService, RolesGuard, AbilitiesGuard],

@@ -130,6 +130,17 @@ export class OrderController {
     return this.orderService.ship(user, id, dto);
   }
 
+  @Patch(':id/deliver')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'ثبت تحویل سفارش توسط فروشنده یا ادمین' })
+  deliver(
+    @GetUser() user: { id: number; roles: string[] },
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: OrderActionNoteDto,
+  ) {
+    return this.orderService.deliver(user, id, dto);
+  }
+
   @Patch(':id/vendor-cancel')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'لغو سفارش توسط فروشنده با دلیل اجباری' })

@@ -1,0 +1,781 @@
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  CommissionRule,
+  CommissionRuleScope,
+  OrderStatus,
+  Prisma,
+  SettlementStatus,
+  WalletTransactionDirection,
+  WalletTransactionType,
+} from '@prisma/client';
+import { PrismaService } from '../../prisma/prisma.service';
+import { CreateCommissionRuleDto } from './dto/create-commission-rule.dto';
+import { UpdateCommissionRuleDto } from './dto/update-commission-rule.dto';
+import { GetCommissionRulesQueryDto } from './dto/get-commission-rules-query.dto';
+import { ManualWalletAdjustmentDto } from './dto/manual-wallet-adjustment.dto';
+
+type AuthenticatedUser = {
+  id: number;
+  roles: string[];
+};
+
+const FINANCE_TX_OPTIONS = {
+  maxWait: 10_000,
+  timeout: 15_000,
+} as const;
+
+@Injectable()
+export class FinanceService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async adminCreateCommissionRule(user: AuthenticatedUser, dto: CreateCommissionRuleDto) {
+    this.assertAdmin(user);
+    await this.validateCommissionRuleDto(dto);
+
+    return this.prisma.commissionRule.create({
+      data: {
+        scope: dto.scope,
+        storeId: dto.scope === CommissionRuleScope.STORE ? dto.storeId : null,
+        title: dto.title,
+        description: dto.description,
+        commissionRate: dto.commissionRate,
+        systemServiceFeeRate: dto.systemServiceFeeRate ?? 0,
+        systemServiceFeeFixed: dto.systemServiceFeeFixed ?? 0,
+        settlementHoldDays: dto.settlementHoldDays ?? 3,
+        autoReleaseEnabled: dto.autoReleaseEnabled ?? true,
+        priority: dto.priority ?? 100,
+        isActive: dto.isActive ?? true,
+        startAt: dto.startAt,
+        endAt: dto.endAt,
+        reason: dto.reason,
+        createdByUserId: user.id,
+        metadata: this.toInputJson(dto.metadata),
+      },
+      include: this.commissionRuleInclude(),
+    });
+  }
+
+  async adminListCommissionRules(user: AuthenticatedUser, query: GetCommissionRulesQueryDto) {
+    this.assertAdmin(user);
+    const { page = 1, limit = 10, scope, isActive } = query;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.CommissionRuleWhereInput = {
+      ...(scope ? { scope } : {}),
+      ...(isActive !== undefined ? { isActive } : {}),
+    };
+
+    const [items, total] = await Promise.all([
+      this.prisma.commissionRule.findMany({
+        where,
+        skip,
+        take: limit,
+        include: this.commissionRuleInclude(),
+        orderBy: [{ scope: 'desc' }, { priority: 'asc' }, { id: 'desc' }],
+      }),
+      this.prisma.commissionRule.count({ where }),
+    ]);
+
+    return {
+      data: items,
+      meta: { total, page, lastPage: Math.ceil(total / limit) },
+    };
+  }
+
+  async adminGetCommissionRule(user: AuthenticatedUser, id: number) {
+    this.assertAdmin(user);
+    return this.getCommissionRuleOrThrow(id);
+  }
+
+  async adminUpdateCommissionRule(user: AuthenticatedUser, id: number, dto: UpdateCommissionRuleDto) {
+    this.assertAdmin(user);
+    const existing = await this.getCommissionRuleOrThrow(id);
+
+    const nextScope = dto.scope ?? existing.scope;
+    const nextStoreId = dto.storeId !== undefined ? dto.storeId : existing.storeId ?? undefined;
+    await this.validateCommissionRuleDto({
+      scope: nextScope,
+      storeId: nextStoreId,
+      title: dto.title ?? existing.title,
+      description: dto.description ?? existing.description ?? undefined,
+      commissionRate: dto.commissionRate ?? Number(existing.commissionRate),
+      systemServiceFeeRate: dto.systemServiceFeeRate ?? Number(existing.systemServiceFeeRate),
+      systemServiceFeeFixed: dto.systemServiceFeeFixed ?? Number(existing.systemServiceFeeFixed),
+      settlementHoldDays: dto.settlementHoldDays ?? existing.settlementHoldDays,
+      autoReleaseEnabled: dto.autoReleaseEnabled ?? existing.autoReleaseEnabled,
+      priority: dto.priority ?? existing.priority,
+      isActive: dto.isActive ?? existing.isActive,
+      startAt: dto.startAt ?? existing.startAt ?? undefined,
+      endAt: dto.endAt ?? existing.endAt ?? undefined,
+      reason: dto.reason ?? existing.reason ?? undefined,
+    });
+
+    return this.prisma.commissionRule.update({
+      where: { id },
+      data: {
+        scope: nextScope,
+        storeId: nextScope === CommissionRuleScope.STORE ? nextStoreId ?? null : null,
+        title: dto.title ?? existing.title,
+        description: dto.description ?? existing.description,
+        commissionRate: dto.commissionRate ?? existing.commissionRate,
+        systemServiceFeeRate: dto.systemServiceFeeRate ?? existing.systemServiceFeeRate,
+        systemServiceFeeFixed: dto.systemServiceFeeFixed ?? existing.systemServiceFeeFixed,
+        settlementHoldDays: dto.settlementHoldDays ?? existing.settlementHoldDays,
+        autoReleaseEnabled: dto.autoReleaseEnabled ?? existing.autoReleaseEnabled,
+        priority: dto.priority ?? existing.priority,
+        isActive: dto.isActive ?? existing.isActive,
+        startAt: dto.startAt !== undefined ? dto.startAt : existing.startAt,
+        endAt: dto.endAt !== undefined ? dto.endAt : existing.endAt,
+        reason: dto.reason ?? existing.reason,
+        metadata: dto.metadata !== undefined ? this.toInputJson(dto.metadata) : this.toNullableInputJson(existing.metadata),
+      },
+      include: this.commissionRuleInclude(),
+    });
+  }
+
+  async adminDeleteCommissionRule(user: AuthenticatedUser, id: number) {
+    this.assertAdmin(user);
+    await this.getCommissionRuleOrThrow(id);
+    await this.prisma.commissionRule.delete({ where: { id } });
+  }
+
+  async adminListWallets(user: AuthenticatedUser) {
+    this.assertAdmin(user);
+    return this.prisma.storeWallet.findMany({
+      include: {
+        store: {
+          select: { id: true, name: true, slug: true, ownerId: true },
+        },
+        transactions: {
+          take: 20,
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+  }
+
+  async adminGetWalletByStore(user: AuthenticatedUser, storeId: number) {
+    this.assertAdmin(user);
+    const wallet = await this.ensureWallet(storeId);
+    return this.prisma.storeWallet.findUnique({
+      where: { id: wallet.id },
+      include: {
+        store: {
+          select: { id: true, name: true, slug: true, ownerId: true },
+        },
+        transactions: {
+          orderBy: { createdAt: 'desc' },
+          take: 50,
+        },
+      },
+    });
+  }
+
+  async vendorGetOwnWallet(user: AuthenticatedUser) {
+    this.assertVendorOrAdmin(user);
+    const store = await this.prisma.store.findFirst({
+      where: { ownerId: user.id },
+      select: { id: true },
+    });
+
+    if (!store) {
+      throw new NotFoundException('فروشگاهی برای این فروشنده یافت نشد');
+    }
+
+    const wallet = await this.ensureWallet(store.id);
+    return this.prisma.storeWallet.findUnique({
+      where: { id: wallet.id },
+      include: {
+        store: {
+          select: { id: true, name: true, slug: true, ownerId: true },
+        },
+        transactions: {
+          orderBy: { createdAt: 'desc' },
+          take: 50,
+        },
+      },
+    });
+  }
+
+  async adminAdjustWallet(user: AuthenticatedUser, storeId: number, dto: ManualWalletAdjustmentDto) {
+    this.assertAdmin(user);
+    const wallet = await this.ensureWallet(storeId);
+    const amount = this.roundMoney(dto.amount);
+
+    if (dto.direction === WalletTransactionDirection.DEBIT && Number(wallet.availableBalance) < amount) {
+      throw new ConflictException('موجودی قابل برداشت/استفاده فروشگاه برای این برداشت کافی نیست');
+    }
+
+    const signed = dto.direction === WalletTransactionDirection.CREDIT ? amount : -amount;
+    const transactionType = dto.type ?? (dto.direction === WalletTransactionDirection.CREDIT
+      ? WalletTransactionType.MANUAL_CREDIT
+      : WalletTransactionType.MANUAL_DEBIT);
+
+    return this.prisma.$transaction(async (tx) => {
+      const updatedWallet = await tx.storeWallet.update({
+        where: { id: wallet.id },
+        data: {
+          currentBalance: {
+            increment: signed,
+          },
+          availableBalance: {
+            increment: signed,
+          },
+        },
+      });
+
+      const transaction = await tx.walletTransaction.create({
+        data: {
+          walletId: wallet.id,
+          storeId,
+          type: transactionType,
+          direction: dto.direction,
+          amount,
+          title: dto.title,
+          description: dto.description,
+          batchKey: dto.batchKey,
+          createdByUserId: user.id,
+          metadata: this.toInputJson(dto.metadata),
+        },
+      });
+
+      return {
+        wallet: updatedWallet,
+        transaction,
+      };
+    }, FINANCE_TX_OPTIONS);
+  }
+
+  async resolveOrderFinance(input: {
+    storeId: number;
+    discountedItemSubtotal: number;
+    pricing: Record<string, unknown>;
+    coupon: Record<string, unknown> | null;
+    orderedAt?: Date;
+  }) {
+    const rule = await this.resolveApplicableCommissionRule({
+      storeId: input.storeId,
+      at: input.orderedAt ?? new Date(),
+    });
+
+    const commissionBaseAmount = this.roundMoney(input.discountedItemSubtotal);
+    const commissionRate = Number(rule?.commissionRate ?? 0);
+    const systemServiceFeeRate = Number(rule?.systemServiceFeeRate ?? 0);
+    const systemServiceFeeFixed = Number(rule?.systemServiceFeeFixed ?? 0);
+    const settlementHoldDays = Number(rule?.settlementHoldDays ?? 3);
+    const autoReleaseEnabled = rule?.autoReleaseEnabled ?? true;
+
+    const platformCommissionAmount = this.roundMoney(
+      commissionBaseAmount * (commissionRate / 100),
+    );
+    const systemServiceFeeAmount = this.roundMoney(
+      commissionBaseAmount * (systemServiceFeeRate / 100) + systemServiceFeeFixed,
+    );
+    const platformTotalShareAmount = this.roundMoney(
+      platformCommissionAmount + systemServiceFeeAmount,
+    );
+    const vendorShareAmount = this.roundMoney(
+      Math.max(0, commissionBaseAmount - platformTotalShareAmount),
+    );
+
+    return {
+      settlementStatus: SettlementStatus.PENDING,
+      commissionRuleId: rule?.id ?? null,
+      commissionRuleTitle: rule?.title ?? null,
+      commissionRuleScope: rule?.scope ?? null,
+      commissionRate,
+      commissionBaseAmount,
+      platformCommissionAmount,
+      systemServiceFeeRate,
+      systemServiceFeeFixed,
+      systemServiceFeeAmount,
+      settlementHoldDays,
+      autoReleaseEnabled,
+      platformTotalShareAmount,
+      vendorShareAmount,
+      financialSnapshot: {
+        basis: {
+          discountedItemSubtotal: commissionBaseAmount,
+          deliveryExcludedFromCommission: true,
+          discountBurdenMode: 'shared_by_commission',
+        },
+        appliedRule: rule
+          ? {
+              id: rule.id,
+              title: rule.title,
+              scope: rule.scope,
+              storeId: rule.storeId,
+              commissionRate,
+              systemServiceFeeRate,
+              systemServiceFeeFixed,
+              settlementHoldDays,
+              autoReleaseEnabled,
+              priority: rule.priority,
+              reason: rule.reason,
+            }
+          : null,
+        amounts: {
+          commissionBaseAmount,
+          platformCommissionAmount,
+          systemServiceFeeAmount,
+          platformTotalShareAmount,
+          vendorShareAmount,
+          settlementHoldDays,
+          autoReleaseEnabled,
+        },
+        pricing: input.pricing,
+        coupon: input.coupon,
+      } as Prisma.InputJsonValue,
+    };
+  }
+
+  async holdOrderVendorEarning(orderId: number) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: {
+        id: true,
+        status: true,
+        storeId: true,
+        storeName: true,
+        vendorShareAmount: true,
+        settlementStatus: true,
+        settlementHoldDays: true,
+        settlementAutoReleaseEnabled: true,
+        settlementEligibleAt: true,
+        earningsHeldAt: true,
+      },
+    });
+
+    if (!order || !order.storeId) {
+      throw new NotFoundException('order مناسب برای hold earning یافت نشد');
+    }
+
+    if (order.status !== OrderStatus.DELIVERED) {
+      throw new ConflictException('earning فقط بعد از تحویل شدن سفارش می‌تواند hold شود');
+    }
+
+    if (Number(order.vendorShareAmount) <= 0) {
+      return null;
+    }
+
+    if (order.earningsHeldAt) {
+      return order;
+    }
+
+    if (order.settlementStatus === SettlementStatus.REVERSED) {
+      throw new ConflictException('برای order برگشت‌خورده امکان hold earning وجود ندارد');
+    }
+
+    const heldAt = new Date();
+    const eligibleAt = new Date(
+      heldAt.getTime() + order.settlementHoldDays * 24 * 60 * 60 * 1000,
+    );
+
+    const wallet = await this.ensureWallet(order.storeId);
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.storeWallet.update({
+        where: { id: wallet.id },
+        data: {
+          currentBalance: {
+            increment: order.vendorShareAmount,
+          },
+          heldBalance: {
+            increment: order.vendorShareAmount,
+          },
+        },
+      });
+
+      await tx.walletTransaction.create({
+        data: {
+          walletId: wallet.id,
+          storeId: order.storeId!,
+          orderId: order.id,
+          type: WalletTransactionType.ORDER_EARNING,
+          direction: WalletTransactionDirection.CREDIT,
+          amount: order.vendorShareAmount,
+          title: `درآمد معلق سفارش #${order.id}`,
+          description: 'درآمد سفارش ثبت شد و تا پایان بازه بررسی در held balance نگه داشته می‌شود',
+          metadata: {
+            stage: 'held',
+            holdDays: order.settlementHoldDays,
+          } as Prisma.InputJsonValue,
+        },
+      });
+
+      return tx.order.update({
+        where: { id: order.id },
+        data: {
+          settlementStatus: SettlementStatus.ON_HOLD,
+          settlementAutoReleaseEnabled: order.settlementAutoReleaseEnabled,
+          settlementEligibleAt: eligibleAt,
+          earningsHeldAt: heldAt,
+        },
+      });
+    }, FINANCE_TX_OPTIONS);
+  }
+
+  async adminReleaseOrderSettlement(user: AuthenticatedUser, orderId: number) {
+    this.assertAdmin(user);
+    return this.releaseOrderSettlement(orderId, { actorUserId: user.id, mode: 'manual' });
+  }
+
+  async adminReleaseDueSettlements(user: AuthenticatedUser) {
+    this.assertAdmin(user);
+    return this.releaseEligibleSettlements();
+  }
+
+  async releaseEligibleSettlements() {
+    const now = new Date();
+    const dueOrders = await this.prisma.order.findMany({
+      where: {
+        settlementStatus: SettlementStatus.ON_HOLD,
+        settlementAutoReleaseEnabled: true,
+        settlementEligibleAt: { lte: now },
+        earningsHeldAt: { not: null },
+        earningsReleasedAt: null,
+      },
+      select: { id: true },
+      orderBy: { settlementEligibleAt: 'asc' },
+    });
+
+    let releasedCount = 0;
+    for (const order of dueOrders) {
+      await this.releaseOrderSettlement(order.id, { mode: 'auto' });
+      releasedCount += 1;
+    }
+
+    return { releasedCount };
+  }
+
+  async reverseOrderSettlement(orderId: number, actorUserId?: number) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: {
+        id: true,
+        storeId: true,
+        vendorShareAmount: true,
+        settlementStatus: true,
+        earningsHeldAt: true,
+        earningsReleasedAt: true,
+      },
+    });
+
+    if (!order || !order.storeId || !order.earningsHeldAt) {
+      return null;
+    }
+
+    if (order.settlementStatus === SettlementStatus.REVERSED) {
+      return null;
+    }
+
+    if (Number(order.vendorShareAmount) <= 0) {
+      return null;
+    }
+
+    const storeId = order.storeId;
+    const wallet = await this.ensureWallet(order.storeId);
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.storeWallet.update({
+        where: { id: wallet.id },
+        data: order.earningsReleasedAt
+          ? {
+              currentBalance: { decrement: order.vendorShareAmount },
+              availableBalance: { decrement: order.vendorShareAmount },
+            }
+          : {
+              currentBalance: { decrement: order.vendorShareAmount },
+              heldBalance: { decrement: order.vendorShareAmount },
+            },
+      });
+
+      await tx.walletTransaction.create({
+        data: {
+          walletId: wallet.id,
+          storeId,
+          orderId: order.id,
+          type: WalletTransactionType.ORDER_REVERSAL,
+          direction: WalletTransactionDirection.DEBIT,
+          amount: order.vendorShareAmount,
+          title: `برگشت مالی سفارش #${order.id}`,
+          description: 'به دلیل لغو یا برگشت سفارش، درآمد ثبت شده فروشنده برگشت داده شد',
+          createdByUserId: actorUserId,
+          metadata: {
+            stage: order.earningsReleasedAt ? 'available-reversal' : 'held-reversal',
+          } as Prisma.InputJsonValue,
+        },
+      });
+
+      return tx.order.update({
+        where: { id: order.id },
+        data: {
+          settlementStatus: SettlementStatus.REVERSED,
+        },
+      });
+    }, FINANCE_TX_OPTIONS);
+  }
+
+  private async resolveApplicableCommissionRule(input: { storeId: number; at: Date }) {
+    const candidates = await this.prisma.commissionRule.findMany({
+      where: {
+        isActive: true,
+        OR: [
+          { scope: CommissionRuleScope.GLOBAL },
+          { scope: CommissionRuleScope.STORE, storeId: input.storeId },
+        ],
+      },
+      orderBy: [{ priority: 'asc' }, { id: 'desc' }],
+    });
+
+    const activeCandidates = candidates.filter((rule) => this.isActiveAt(rule, input.at));
+    if (activeCandidates.length === 0) {
+      return null;
+    }
+
+    activeCandidates.sort((a, b) => {
+      const aSpecificity = a.scope === CommissionRuleScope.STORE ? 0 : 1;
+      const bSpecificity = b.scope === CommissionRuleScope.STORE ? 0 : 1;
+      if (aSpecificity !== bSpecificity) {
+        return aSpecificity - bSpecificity;
+      }
+      if (a.priority !== b.priority) {
+        return a.priority - b.priority;
+      }
+      const aStart = a.startAt?.getTime() ?? 0;
+      const bStart = b.startAt?.getTime() ?? 0;
+      return bStart - aStart;
+    });
+
+    return activeCandidates[0];
+  }
+
+  private async validateCommissionRuleDto(dto: {
+    scope: CommissionRuleScope;
+    storeId?: number;
+    commissionRate: number;
+    systemServiceFeeRate?: number;
+    systemServiceFeeFixed?: number;
+        settlementHoldDays?: number;
+        autoReleaseEnabled?: boolean;
+    title?: string;
+    description?: string;
+    priority?: number;
+    isActive?: boolean;
+    startAt?: Date;
+    endAt?: Date;
+    reason?: string;
+  }) {
+    if (dto.scope === CommissionRuleScope.STORE) {
+      if (!dto.storeId) {
+        throw new BadRequestException('برای rule فروشگاهی، storeId اجباری است');
+      }
+
+      const store = await this.prisma.store.findUnique({ where: { id: dto.storeId } });
+      if (!store) {
+        throw new NotFoundException('فروشگاه مورد نظر برای rule کمیسیون یافت نشد');
+      }
+    }
+
+    if (dto.scope === CommissionRuleScope.GLOBAL && dto.storeId) {
+      throw new BadRequestException('rule عمومی نباید storeId داشته باشد');
+    }
+
+    if (dto.startAt && dto.endAt && dto.startAt > dto.endAt) {
+      throw new BadRequestException('startAt نمی‌تواند بعد از endAt باشد');
+    }
+
+    if (dto.systemServiceFeeRate !== undefined && dto.systemServiceFeeRate > 100) {
+      throw new BadRequestException('systemServiceFeeRate نمی‌تواند بیشتر از 100 باشد');
+    }
+
+    if (dto.systemServiceFeeFixed !== undefined && dto.systemServiceFeeFixed < 0) {
+      throw new BadRequestException('systemServiceFeeFixed نمی‌تواند منفی باشد');
+    }
+
+    if (dto.settlementHoldDays !== undefined && dto.settlementHoldDays < 0) {
+      throw new BadRequestException('settlementHoldDays نمی‌تواند منفی باشد');
+    }
+  }
+
+  private async getCommissionRuleOrThrow(id: number) {
+    const rule = await this.prisma.commissionRule.findUnique({
+      where: { id },
+      include: this.commissionRuleInclude(),
+    });
+
+    if (!rule) {
+      throw new NotFoundException('commission rule مورد نظر یافت نشد');
+    }
+
+    return rule;
+  }
+
+  private async ensureWallet(storeId: number) {
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: { id: true },
+    });
+
+    if (!store) {
+      throw new NotFoundException('فروشگاه مورد نظر یافت نشد');
+    }
+
+    return this.prisma.storeWallet.upsert({
+      where: { storeId },
+      update: {},
+      create: { storeId },
+    });
+  }
+
+  private commissionRuleInclude() {
+    return {
+      store: {
+        select: { id: true, name: true, slug: true, ownerId: true },
+      },
+    } satisfies Prisma.CommissionRuleInclude;
+  }
+
+  private assertAdmin(user: AuthenticatedUser) {
+    if (!user.roles.includes('ADMIN')) {
+      throw new ForbiddenException('این endpoint فقط برای ادمین مجاز است');
+    }
+  }
+
+  private assertVendorOrAdmin(user: AuthenticatedUser) {
+    if (!user.roles.some((role) => role === 'ADMIN' || role === 'VENDOR')) {
+      throw new ForbiddenException('این endpoint فقط برای فروشنده یا ادمین مجاز است');
+    }
+  }
+
+  private isActiveAt(rule: CommissionRule, at: Date) {
+    if (rule.startAt && rule.startAt > at) {
+      return false;
+    }
+
+    if (rule.endAt && rule.endAt < at) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private toInputJson(value: Record<string, unknown> | undefined) {
+    if (value === undefined) {
+      return undefined;
+    }
+
+    return value as Prisma.InputJsonValue;
+  }
+
+  private toNullableInputJson(value: Prisma.JsonValue | null) {
+    if (value === null) {
+      return Prisma.JsonNull;
+    }
+
+    return value as Prisma.InputJsonValue;
+  }
+
+  private roundMoney(value: number) {
+    return Math.round((value + Number.EPSILON) * 100) / 100;
+  }
+
+  private async releaseOrderSettlement(
+    orderId: number,
+    input: { actorUserId?: number; mode: 'manual' | 'auto' },
+  ) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: {
+        id: true,
+        storeId: true,
+        vendorShareAmount: true,
+        settlementStatus: true,
+        settlementEligibleAt: true,
+        earningsHeldAt: true,
+        earningsReleasedAt: true,
+      },
+    });
+
+    if (!order || !order.storeId) {
+      throw new NotFoundException('order مناسب برای release settlement یافت نشد');
+    }
+
+    if (order.settlementStatus === SettlementStatus.REVERSED) {
+      throw new ConflictException('settlement این order برگشت خورده و قابل release نیست');
+    }
+
+    if (!order.earningsHeldAt) {
+      throw new ConflictException('این order هنوز earning hold شده ندارد');
+    }
+
+    if (order.earningsReleasedAt) {
+      throw new ConflictException('settlement این order قبلا release شده است');
+    }
+
+    if (
+      input.mode === 'auto' &&
+      order.settlementEligibleAt &&
+      order.settlementEligibleAt.getTime() > Date.now()
+    ) {
+      throw new ConflictException('هنوز زمان auto release این order نرسیده است');
+    }
+
+    const wallet = await this.ensureWallet(order.storeId);
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.storeWallet.update({
+        where: { id: wallet.id },
+        data: {
+          heldBalance: {
+            decrement: order.vendorShareAmount,
+          },
+          availableBalance: {
+            increment: order.vendorShareAmount,
+          },
+        },
+      });
+
+      await tx.walletTransaction.create({
+        data: {
+          walletId: wallet.id,
+          storeId: order.storeId!,
+          orderId: order.id,
+          type: WalletTransactionType.ORDER_RELEASE,
+          direction: WalletTransactionDirection.CREDIT,
+          amount: order.vendorShareAmount,
+          title:
+            input.mode === 'manual'
+              ? `آزادسازی دستی درآمد سفارش #${order.id}`
+              : `آزادسازی خودکار درآمد سفارش #${order.id}`,
+          description:
+            input.mode === 'manual'
+              ? 'درآمد held شده سفارش توسط ادمین/مالی آزاد شد'
+              : 'درآمد held شده سفارش پس از پایان بازه بررسی به صورت خودکار آزاد شد',
+          createdByUserId: input.actorUserId,
+          metadata: {
+            stage: 'released',
+            mode: input.mode,
+          } as Prisma.InputJsonValue,
+        },
+      });
+
+      return tx.order.update({
+        where: { id: order.id },
+        data: {
+          settlementStatus: SettlementStatus.SETTLED,
+          earningsReleasedAt: new Date(),
+          settlementReviewedAt: new Date(),
+          settlementReviewedByUserId: input.actorUserId ?? null,
+        },
+      });
+    }, FINANCE_TX_OPTIONS);
+  }
+}
