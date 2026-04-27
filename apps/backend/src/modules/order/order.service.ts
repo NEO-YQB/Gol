@@ -66,6 +66,11 @@ type HistoryPayload = {
   note?: string;
 };
 
+const INTERACTIVE_TX_OPTIONS = {
+  maxWait: 10_000,
+  timeout: 20_000,
+} as const;
+
 @Injectable()
 export class OrderService {
   constructor(
@@ -252,7 +257,7 @@ export class OrderService {
       });
 
       return updatedOrder;
-    });
+    }, INTERACTIVE_TX_OPTIONS);
   }
 
   async ship(user: AuthenticatedUser, id: number, dto: OrderActionNoteDto) {
@@ -286,7 +291,7 @@ export class OrderService {
       });
 
       return updatedOrder;
-    });
+    }, INTERACTIVE_TX_OPTIONS);
   }
 
   async vendorCancel(user: AuthenticatedUser, id: number, dto: OrderReasonDto) {
@@ -409,51 +414,70 @@ export class OrderService {
       pricing.items.map((item) => [item.productId, item]),
     );
 
+    const orderCreateInput: Prisma.OrderUncheckedCreateInput = {
+      userId: user.id,
+      totalAmount: new Prisma.Decimal(totalAmount),
+      subtotalBaseAmount: new Prisma.Decimal(pricing.pricing.subtotalBaseAmount),
+      subtotalAmount: new Prisma.Decimal(subtotalAmount),
+      subtotalAfterLineDiscounts: new Prisma.Decimal(
+        pricing.pricing.subtotalAfterLineDiscounts,
+      ),
+      deliveryFee: new Prisma.Decimal(deliveryFee),
+      lineDiscountAmount: new Prisma.Decimal(
+        pricing.pricing.lineDiscountAmount,
+      ),
+      couponDiscountAmount: new Prisma.Decimal(
+        pricing.pricing.couponDiscountAmount,
+      ),
+      discountAmount: new Prisma.Decimal(discountAmount),
+      couponCode: pricing.coupon?.code ?? null,
+      couponTitle: pricing.coupon?.title ?? null,
+      couponApplyOn: pricing.coupon?.applyOn ?? null,
+      pricingSnapshot: this.buildOrderPricingSnapshot(pricing),
+      status: OrderStatus.PENDING,
+      paymentStatus: PaymentStatus.PENDING,
+      paymentMethod: options.paymentMethod,
+      shippingAddressId: options.address?.id ?? null,
+      shippingAddressTitle: options.address?.title ?? null,
+      shippingAddressText: options.address?.address ?? null,
+      shippingCity: options.address?.city ?? null,
+      shippingLat: options.address?.lat ?? null,
+      shippingLng: options.address?.lng ?? null,
+      storeId: store.id,
+      storeName: store.name,
+      storeSlug: store.slug,
+      deliveryType: deliverySelection.deliveryType,
+      deliveryWindowLabel: deliverySelection.deliveryWindowLabel,
+      estimatedDeliveryMinHours: deliverySelection.estimatedDeliveryMinHours,
+      estimatedDeliveryMaxHours: deliverySelection.estimatedDeliveryMaxHours,
+      orderItems: {
+        create: normalizedItems.map((item) => {
+          const product = productMap.get(item.productId)!;
+          const pricedItem = pricedItemMap.get(item.productId);
+          return {
+            productId: item.productId,
+            quantity: item.quantity,
+            price: new Prisma.Decimal(
+              pricedItem?.pricing.finalUnitPriceBeforeCoupon ??
+                this.getEffectiveProductPrice(product),
+            ),
+            pricingSnapshot: pricedItem
+              ? this.buildOrderItemPricingSnapshot(pricedItem)
+              : undefined,
+            productName: product.name,
+            productSlug: product.slug,
+            productImage: product.mainImage,
+            storeId: product.store.id,
+            storeName: product.store.name,
+            storeSlug: product.store.slug,
+          };
+        }),
+      },
+    };
+
     return this.prisma.$transaction(async (tx) => {
       const order = await tx.order.create({
-        data: {
-          userId: user.id,
-          totalAmount: new Prisma.Decimal(totalAmount),
-          subtotalAmount: new Prisma.Decimal(subtotalAmount),
-          deliveryFee: new Prisma.Decimal(deliveryFee),
-          discountAmount: new Prisma.Decimal(discountAmount),
-          status: OrderStatus.PENDING,
-          paymentStatus: PaymentStatus.PENDING,
-          paymentMethod: options.paymentMethod,
-          shippingAddressId: options.address?.id ?? null,
-          shippingAddressTitle: options.address?.title ?? null,
-          shippingAddressText: options.address?.address ?? null,
-          shippingCity: options.address?.city ?? null,
-          shippingLat: options.address?.lat ?? null,
-          shippingLng: options.address?.lng ?? null,
-          storeId: store.id,
-          storeName: store.name,
-          storeSlug: store.slug,
-          deliveryType: deliverySelection.deliveryType,
-          deliveryWindowLabel: deliverySelection.deliveryWindowLabel,
-          estimatedDeliveryMinHours: deliverySelection.estimatedDeliveryMinHours,
-          estimatedDeliveryMaxHours: deliverySelection.estimatedDeliveryMaxHours,
-          orderItems: {
-            create: normalizedItems.map((item) => {
-              const product = productMap.get(item.productId)!;
-              const pricedItem = pricedItemMap.get(item.productId);
-              return {
-                productId: item.productId,
-                quantity: item.quantity,
-                price: new Prisma.Decimal(
-                  pricedItem?.pricing.finalUnitPriceBeforeCoupon ??
-                    this.getEffectiveProductPrice(product),
-                ),
-                productName: product.name,
-                productSlug: product.slug,
-                productImage: product.mainImage,
-                storeId: product.store.id,
-                storeName: product.store.name,
-                storeSlug: product.store.slug,
-              };
-            }),
-          },
-        },
+        data: orderCreateInput,
         include: this.getOrderInclude(),
       });
 
@@ -492,7 +516,7 @@ export class OrderService {
       }
 
       return order;
-    });
+    }, INTERACTIVE_TX_OPTIONS);
   }
 
   private async cancelWithInventoryRestore(
@@ -570,7 +594,7 @@ export class OrderService {
       });
 
       return updatedOrder;
-    });
+    }, INTERACTIVE_TX_OPTIONS);
   }
 
   private extractSingleStore(products: ProductSnapshot[]) {
@@ -791,6 +815,34 @@ export class OrderService {
     return product.discountPrice ?? product.price;
   }
 
+  private buildOrderPricingSnapshot(
+    pricing: Awaited<ReturnType<PricingService['resolveCartPricing']>>,
+  ) {
+    return {
+      pricing: pricing.pricing,
+      coupon: pricing.coupon,
+      items: pricing.items.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        lineTotal: item.lineTotal,
+        pricing: item.pricing,
+      })),
+    } as Prisma.InputJsonValue;
+  }
+
+  private buildOrderItemPricingSnapshot(
+    item: Awaited<ReturnType<PricingService['resolveCartPricing']>>['items'][number],
+  ) {
+    return {
+      productId: item.productId,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      lineTotal: item.lineTotal,
+      pricing: item.pricing,
+    } as Prisma.InputJsonValue;
+  }
+
   private isAdmin(user: AuthenticatedUser) {
     return user.roles.includes('ADMIN');
   }
@@ -949,7 +1001,7 @@ export class OrderService {
         reason: 'مهلت پرداخت سفارش به پایان رسید',
         note: 'به علت انقضای payment، موجودی رزروشده آزاد شد',
       });
-    });
+    }, INTERACTIVE_TX_OPTIONS);
 
     return true;
   }
