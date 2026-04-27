@@ -17,6 +17,9 @@ type AppSubjects =
   | 'Order'
   | 'Payment'
   | 'PaymentGatewayConfig'
+  | 'VendorDiscount'
+  | 'PlatformPromotion'
+  | 'Coupon'
   | 'Cart'
   | 'UserAddress';
 
@@ -154,10 +157,16 @@ export class AbilityFactory {
         { action: 'create', subject: 'Store' },
         { action: ['create', 'update', 'delete'], subject: 'Product', conditions: { ownerId: user.id } },
         { action: 'manage', subject: 'Store', conditions: { ownerId: user.id } },
+        {
+          action: ['create', 'read', 'update', 'delete'],
+          subject: 'VendorDiscount',
+          conditions: { ownerId: user.id },
+        },
         { action: 'create', subject: 'File' },
       ],
       CUSTOMER: [
         { action: 'read', subject: ['Product', 'Category', 'Store'] },
+        { action: 'read', subject: 'VendorDiscount' },
         { action: ['create', 'read', 'update'], subject: 'Order', conditions: { userId: user.id } },
         { action: ['create', 'read'], subject: 'Payment', conditions: { userId: user.id } },
         { action: ['create', 'read', 'update', 'delete'], subject: 'Cart', conditions: { userId: user.id } },

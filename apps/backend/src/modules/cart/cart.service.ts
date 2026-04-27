@@ -7,6 +7,7 @@ import {
 import { subject } from '@casl/ability';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AbilityFactory } from '../auth/ability.factory';
+import { PricingService } from '../discount/pricing.service';
 import { AddCartItemDto } from './dto/add-cart-item.dto';
 import { UpdateCartItemDto } from './dto/update-cart-item.dto';
 
@@ -15,6 +16,7 @@ export class CartService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly abilityFactory: AbilityFactory,
+    private readonly pricingService: PricingService,
   ) {}
 
   async getMyCart(user: { id: number; roles: string[] }) {
@@ -165,12 +167,21 @@ export class CartService {
         items: {
           include: {
             product: {
-              include: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                mainImage: true,
+                quantity: true,
+                price: true,
+                discountPrice: true,
+                categoryId: true,
                 store: {
                   select: {
                     id: true,
                     name: true,
                     slug: true,
+                    ownerId: true,
                   },
                 },
               },
@@ -185,28 +196,45 @@ export class CartService {
       throw new NotFoundException('سبد خرید یافت نشد');
     }
 
-    const items = cart.items.map((item) => {
-      const unitPrice = item.product.discountPrice ?? item.product.price;
-      const lineTotal = unitPrice * item.quantity;
-
+    if (cart.items.length === 0) {
       return {
+        id: cart.id,
+        userId,
+        items: [],
+        pricing: {
+          subtotalBaseAmount: 0,
+          subtotalAfterLineDiscounts: 0,
+          deliveryFee: 0,
+          lineDiscountAmount: 0,
+          couponDiscountAmount: 0,
+          discountAmount: 0,
+          totalAmount: 0,
+          totalItems: 0,
+        },
+        totalItems: 0,
+        totalAmount: 0,
+        createdAt: cart.createdAt,
+        updatedAt: cart.updatedAt,
+      };
+    }
+
+    const pricing = await this.pricingService.resolveCartPricing({
+      userId,
+      items: cart.items.map((item) => ({
         id: item.id,
         productId: item.productId,
         quantity: item.quantity,
-        unitPrice,
-        lineTotal,
         product: item.product,
-      };
+      })),
     });
-
-    const totalAmount = items.reduce((sum, item) => sum + item.lineTotal, 0);
 
     return {
       id: cart.id,
       userId,
-      items,
-      totalItems: items.reduce((sum, item) => sum + item.quantity, 0),
-      totalAmount,
+      items: pricing.items,
+      pricing: pricing.pricing,
+      totalItems: pricing.pricing.totalItems,
+      totalAmount: pricing.pricing.totalAmount,
       createdAt: cart.createdAt,
       updatedAt: cart.updatedAt,
     };

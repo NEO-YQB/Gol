@@ -16,6 +16,7 @@ import {
 import { subject } from '@casl/ability';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AbilityFactory } from '../auth/ability.factory';
+import { PricingService } from '../discount/pricing.service';
 import { CheckoutPreviewDto } from './dto/checkout-preview.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { CreateOrderFromCartDto } from './dto/create-order-from-cart.dto';
@@ -36,6 +37,7 @@ type ProductSnapshot = {
   quantity: number;
   price: number;
   discountPrice: number | null;
+  categoryId: number;
   store: {
     id: number;
     name: string;
@@ -69,6 +71,7 @@ export class OrderService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly abilityFactory: AbilityFactory,
+    private readonly pricingService: PricingService,
   ) {}
 
   async previewFromCart(user: AuthenticatedUser, dto: CheckoutPreviewDto) {
@@ -82,7 +85,16 @@ export class OrderService {
       throw new BadRequestException('سبد خرید خالی است و امکان checkout وجود ندارد');
     }
 
-    const pricing = this.buildPricing(cart.items);
+    const pricing = await this.pricingService.resolveCartPricing({
+      userId: user.id,
+      items: cart.items.map((item) => ({
+        id: item.id,
+        productId: item.productId,
+        quantity: item.quantity,
+        product: item.product,
+      })),
+      couponCode: dto.couponCode,
+    });
     const store = this.extractSingleStore(cart.items.map((item) => item.product));
 
     return {
@@ -94,7 +106,9 @@ export class OrderService {
         paymentMethod: PaymentMethod.COD,
         paymentStatus: PaymentStatus.PENDING,
       },
-      ...pricing,
+      items: pricing.items,
+      coupon: pricing.coupon,
+      ...pricing.pricing,
     };
   }
 
@@ -119,6 +133,7 @@ export class OrderService {
       paymentMethod: dto.paymentMethod,
       deliveryType: dto.deliveryType,
       deliveryWindowLabel: dto.deliveryWindowLabel,
+      couponCode: dto.couponCode,
       clearCartId: cart.id,
     });
   }
@@ -135,6 +150,7 @@ export class OrderService {
       paymentMethod: dto.paymentMethod ?? PaymentMethod.COD,
       deliveryType: dto.deliveryType,
       deliveryWindowLabel: dto.deliveryWindowLabel,
+      couponCode: dto.couponCode,
     });
   }
 
@@ -343,6 +359,7 @@ export class OrderService {
       paymentMethod: PaymentMethod;
       deliveryType?: DeliveryType;
       deliveryWindowLabel?: string;
+      couponCode?: string;
       clearCartId?: number;
     },
   ) {
@@ -374,14 +391,23 @@ export class OrderService {
       }
     }
 
-    const subtotalAmount = normalizedItems.reduce((sum, item) => {
-      const product = productMap.get(item.productId)!;
-      return sum + this.getEffectiveProductPrice(product) * item.quantity;
-    }, 0);
+    const pricing = await this.pricingService.resolveCartPricing({
+      userId: user.id,
+      items: normalizedItems.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        product: productMap.get(item.productId)!,
+      })),
+      couponCode: options.couponCode,
+    });
 
-    const deliveryFee = 0;
-    const discountAmount = 0;
-    const totalAmount = subtotalAmount + deliveryFee - discountAmount;
+    const subtotalAmount = pricing.pricing.subtotalAfterLineDiscounts;
+    const deliveryFee = pricing.pricing.deliveryFee;
+    const discountAmount = pricing.pricing.discountAmount;
+    const totalAmount = pricing.pricing.totalAmount;
+    const pricedItemMap = new Map(
+      pricing.items.map((item) => [item.productId, item]),
+    );
 
     return this.prisma.$transaction(async (tx) => {
       const order = await tx.order.create({
@@ -410,10 +436,14 @@ export class OrderService {
           orderItems: {
             create: normalizedItems.map((item) => {
               const product = productMap.get(item.productId)!;
+              const pricedItem = pricedItemMap.get(item.productId);
               return {
                 productId: item.productId,
                 quantity: item.quantity,
-                price: new Prisma.Decimal(this.getEffectiveProductPrice(product)),
+                price: new Prisma.Decimal(
+                  pricedItem?.pricing.finalUnitPriceBeforeCoupon ??
+                    this.getEffectiveProductPrice(product),
+                ),
                 productName: product.name,
                 productSlug: product.slug,
                 productImage: product.mainImage,
@@ -426,6 +456,16 @@ export class OrderService {
         },
         include: this.getOrderInclude(),
       });
+
+      if (pricing.coupon) {
+        await tx.couponRedemption.create({
+          data: {
+            couponId: pricing.coupon.id,
+            userId: user.id,
+            orderId: order.id,
+          },
+        });
+      }
 
       await this.createHistory(tx, order.id, {
         toStatus: OrderStatus.PENDING,
@@ -505,6 +545,10 @@ export class OrderService {
         },
       });
 
+      await tx.couponRedemption.deleteMany({
+        where: { orderId: order.id },
+      });
+
       for (const [productId, quantity] of restoredQuantities.entries()) {
         await tx.product.update({
           where: { id: productId },
@@ -527,52 +571,6 @@ export class OrderService {
 
       return updatedOrder;
     });
-  }
-
-  private buildPricing(
-    cartItems: Array<{
-      id: number;
-      quantity: number;
-      productId: number;
-      product: ProductSnapshot;
-    }>,
-  ) {
-    const items = cartItems.map((item) => {
-      const unitPrice = this.getEffectiveProductPrice(item.product);
-      const lineTotal = unitPrice * item.quantity;
-
-      return {
-        id: item.id,
-        productId: item.productId,
-        quantity: item.quantity,
-        unitPrice,
-        lineTotal,
-        product: {
-          id: item.product.id,
-          name: item.product.name,
-          slug: item.product.slug,
-          mainImage: item.product.mainImage,
-          store: {
-            id: item.product.store.id,
-            name: item.product.store.name,
-            slug: item.product.store.slug,
-          },
-        },
-      };
-    });
-
-    const subtotalAmount = items.reduce((sum, item) => sum + item.lineTotal, 0);
-    const deliveryFee = 0;
-    const discountAmount = 0;
-
-    return {
-      items,
-      subtotalAmount,
-      deliveryFee,
-      discountAmount,
-      totalAmount: subtotalAmount + deliveryFee - discountAmount,
-      totalItems: items.reduce((sum, item) => sum + item.quantity, 0),
-    };
   }
 
   private extractSingleStore(products: ProductSnapshot[]) {
@@ -677,6 +675,7 @@ export class OrderService {
         quantity: true,
         price: true,
         discountPrice: true,
+        categoryId: true,
         store: {
           select: {
             id: true,
@@ -728,6 +727,7 @@ export class OrderService {
                 quantity: true,
                 price: true,
                 discountPrice: true,
+                categoryId: true,
                 store: {
                   select: {
                     id: true,
@@ -827,6 +827,11 @@ export class OrderService {
           product: true,
         },
       },
+      couponRedemptions: {
+        include: {
+          coupon: true,
+        },
+      },
       statusHistories: {
         orderBy: {
           createdAt: 'desc' as const,
@@ -920,6 +925,10 @@ export class OrderService {
           paymentStatus: PaymentStatus.EXPIRED,
           cancelledAt: new Date(),
         },
+      });
+
+      await tx.couponRedemption.deleteMany({
+        where: { orderId: order.id },
       });
 
       for (const [productId, quantity] of restoredQuantities.entries()) {

@@ -22,4 +22,10 @@ export class CreateOrderFromCartDto {
   @IsString()
   @MaxLength(200)
   deliveryWindowLabel?: string;
+
+  @ApiProperty({ required: false, example: 'FIRSTBUY20' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  couponCode?: string;
 }

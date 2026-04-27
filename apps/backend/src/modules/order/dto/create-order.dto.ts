@@ -58,4 +58,9 @@ export class CreateOrderDto {
   @IsOptional()
   @IsString()
   deliveryWindowLabel?: string;
+
+  @ApiProperty({ required: false, example: 'FIRSTBUY20' })
+  @IsOptional()
+  @IsString()
+  couponCode?: string;
 }
