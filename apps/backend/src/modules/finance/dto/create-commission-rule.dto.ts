@@ -60,12 +60,19 @@ export class CreateCommissionRuleDto {
   @Min(0)
   systemServiceFeeFixed?: number;
 
-  @ApiProperty({ required: false, example: 3 })
+  @ApiProperty({ required: false, example: 7 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(0)
   settlementHoldDays?: number;
+
+  @ApiProperty({ required: false, example: 24 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  complaintWindowHours?: number;
 
   @ApiProperty({ required: false, example: true })
   @IsOptional()

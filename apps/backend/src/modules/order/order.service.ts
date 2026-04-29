@@ -487,6 +487,7 @@ export class OrderService {
       ),
       vendorShareAmount: new Prisma.Decimal(finance.vendorShareAmount),
       settlementHoldDays: finance.settlementHoldDays,
+      complaintWindowHours: finance.complaintWindowHours,
       settlementAutoReleaseEnabled: finance.autoReleaseEnabled,
       couponCode: pricing.coupon?.code ?? null,
       couponTitle: pricing.coupon?.title ?? null,

@@ -11,6 +11,7 @@ import {
   OrderStatus,
   Prisma,
   SettlementStatus,
+  SupportTicketStatus,
   WalletTransactionDirection,
   WalletTransactionType,
 } from '@prisma/client';
@@ -47,7 +48,8 @@ export class FinanceService {
         commissionRate: dto.commissionRate,
         systemServiceFeeRate: dto.systemServiceFeeRate ?? 0,
         systemServiceFeeFixed: dto.systemServiceFeeFixed ?? 0,
-        settlementHoldDays: dto.settlementHoldDays ?? 3,
+        settlementHoldDays: dto.settlementHoldDays ?? 7,
+        complaintWindowHours: dto.complaintWindowHours ?? 24,
         autoReleaseEnabled: dto.autoReleaseEnabled ?? true,
         priority: dto.priority ?? 100,
         isActive: dto.isActive ?? true,
@@ -108,6 +110,7 @@ export class FinanceService {
       systemServiceFeeRate: dto.systemServiceFeeRate ?? Number(existing.systemServiceFeeRate),
       systemServiceFeeFixed: dto.systemServiceFeeFixed ?? Number(existing.systemServiceFeeFixed),
       settlementHoldDays: dto.settlementHoldDays ?? existing.settlementHoldDays,
+      complaintWindowHours: dto.complaintWindowHours ?? existing.complaintWindowHours,
       autoReleaseEnabled: dto.autoReleaseEnabled ?? existing.autoReleaseEnabled,
       priority: dto.priority ?? existing.priority,
       isActive: dto.isActive ?? existing.isActive,
@@ -127,6 +130,7 @@ export class FinanceService {
         systemServiceFeeRate: dto.systemServiceFeeRate ?? existing.systemServiceFeeRate,
         systemServiceFeeFixed: dto.systemServiceFeeFixed ?? existing.systemServiceFeeFixed,
         settlementHoldDays: dto.settlementHoldDays ?? existing.settlementHoldDays,
+        complaintWindowHours: dto.complaintWindowHours ?? existing.complaintWindowHours,
         autoReleaseEnabled: dto.autoReleaseEnabled ?? existing.autoReleaseEnabled,
         priority: dto.priority ?? existing.priority,
         isActive: dto.isActive ?? existing.isActive,
@@ -269,7 +273,8 @@ export class FinanceService {
     const commissionRate = Number(rule?.commissionRate ?? 0);
     const systemServiceFeeRate = Number(rule?.systemServiceFeeRate ?? 0);
     const systemServiceFeeFixed = Number(rule?.systemServiceFeeFixed ?? 0);
-    const settlementHoldDays = Number(rule?.settlementHoldDays ?? 3);
+    const settlementHoldDays = Number(rule?.settlementHoldDays ?? 7);
+    const complaintWindowHours = Number(rule?.complaintWindowHours ?? 24);
     const autoReleaseEnabled = rule?.autoReleaseEnabled ?? true;
 
     const platformCommissionAmount = this.roundMoney(
@@ -297,6 +302,7 @@ export class FinanceService {
       systemServiceFeeFixed,
       systemServiceFeeAmount,
       settlementHoldDays,
+      complaintWindowHours,
       autoReleaseEnabled,
       platformTotalShareAmount,
       vendorShareAmount,
@@ -316,6 +322,7 @@ export class FinanceService {
               systemServiceFeeRate,
               systemServiceFeeFixed,
               settlementHoldDays,
+              complaintWindowHours,
               autoReleaseEnabled,
               priority: rule.priority,
               reason: rule.reason,
@@ -328,6 +335,7 @@ export class FinanceService {
           platformTotalShareAmount,
           vendorShareAmount,
           settlementHoldDays,
+          complaintWindowHours,
           autoReleaseEnabled,
         },
         pricing: input.pricing,
@@ -441,6 +449,19 @@ export class FinanceService {
         settlementEligibleAt: { lte: now },
         earningsHeldAt: { not: null },
         earningsReleasedAt: null,
+        supportTickets: {
+          none: {
+            status: {
+              in: [
+                SupportTicketStatus.OPEN,
+                SupportTicketStatus.IN_REVIEW,
+                SupportTicketStatus.WAITING_CUSTOMER,
+                SupportTicketStatus.WAITING_VENDOR,
+                SupportTicketStatus.ESCALATED_TO_FINANCE,
+              ],
+            },
+          },
+        },
       },
       select: { id: true },
       orderBy: { settlementEligibleAt: 'asc' },
@@ -465,6 +486,21 @@ export class FinanceService {
         settlementStatus: true,
         earningsHeldAt: true,
         earningsReleasedAt: true,
+        supportTickets: {
+          where: {
+            status: {
+              in: [
+                SupportTicketStatus.OPEN,
+                SupportTicketStatus.IN_REVIEW,
+                SupportTicketStatus.WAITING_CUSTOMER,
+                SupportTicketStatus.WAITING_VENDOR,
+                SupportTicketStatus.ESCALATED_TO_FINANCE,
+              ],
+            },
+          },
+          select: { id: true },
+          take: 1,
+        },
       },
     });
 
@@ -563,8 +599,9 @@ export class FinanceService {
     commissionRate: number;
     systemServiceFeeRate?: number;
     systemServiceFeeFixed?: number;
-        settlementHoldDays?: number;
-        autoReleaseEnabled?: boolean;
+    settlementHoldDays?: number;
+    complaintWindowHours?: number;
+    autoReleaseEnabled?: boolean;
     title?: string;
     description?: string;
     priority?: number;
@@ -602,6 +639,10 @@ export class FinanceService {
 
     if (dto.settlementHoldDays !== undefined && dto.settlementHoldDays < 0) {
       throw new BadRequestException('settlementHoldDays نمی‌تواند منفی باشد');
+    }
+
+    if (dto.complaintWindowHours !== undefined && dto.complaintWindowHours < 1) {
+      throw new BadRequestException('complaintWindowHours باید حداقل 1 ساعت باشد');
     }
   }
 
@@ -701,6 +742,21 @@ export class FinanceService {
         settlementEligibleAt: true,
         earningsHeldAt: true,
         earningsReleasedAt: true,
+        supportTickets: {
+          where: {
+            status: {
+              in: [
+                SupportTicketStatus.OPEN,
+                SupportTicketStatus.IN_REVIEW,
+                SupportTicketStatus.WAITING_CUSTOMER,
+                SupportTicketStatus.WAITING_VENDOR,
+                SupportTicketStatus.ESCALATED_TO_FINANCE,
+              ],
+            },
+          },
+          select: { id: true },
+          take: 1,
+        },
       },
     });
 
@@ -718,6 +774,10 @@ export class FinanceService {
 
     if (order.earningsReleasedAt) {
       throw new ConflictException('settlement این order قبلا release شده است');
+    }
+
+    if (order.supportTickets.length > 0) {
+      throw new ConflictException('برای این order تیکت فعال وجود دارد و settlement قابل release نیست');
     }
 
     if (
