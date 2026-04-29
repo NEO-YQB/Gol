@@ -282,13 +282,12 @@ export class SupportService {
       throw new ConflictException('فقط تیکت escalate شده به مالی قابل تصمیم مالی است');
     }
 
-    if (
-      [
-        SupportTicketFinanceOutcome.PARTIAL_REFUND,
-        SupportTicketFinanceOutcome.PARTIAL_REVERSAL,
-      ].includes(dto.outcome) &&
-      (dto.amount === undefined || dto.amount <= 0)
-    ) {
+    const partialOutcomes: SupportTicketFinanceOutcome[] = [
+      SupportTicketFinanceOutcome.PARTIAL_REFUND,
+      SupportTicketFinanceOutcome.PARTIAL_REVERSAL,
+    ];
+
+    if (partialOutcomes.includes(dto.outcome) && (dto.amount === undefined || dto.amount <= 0)) {
       throw new BadRequestException('برای تصمیم partial مقدار amount اجباری است');
     }
 
@@ -297,7 +296,7 @@ export class SupportService {
     }
 
     const now = new Date();
-      const orderUpdate = this.buildOrderUpdateForFinanceDecision(dto, now, user.id);
+    const orderUpdate = this.buildOrderUpdateForFinanceDecision(dto, now, user.id);
 
     return this.prisma.$transaction(async (tx) => {
       const updatedTicket = await tx.supportTicket.update({
@@ -367,14 +366,14 @@ export class SupportService {
       };
     }
 
-    if (
-      [
-        SupportTicketFinanceOutcome.FULL_REFUND,
-        SupportTicketFinanceOutcome.FULL_REVERSAL,
-        SupportTicketFinanceOutcome.PARTIAL_REFUND,
-        SupportTicketFinanceOutcome.PARTIAL_REVERSAL,
-      ].includes(dto.outcome)
-    ) {
+    const blockedSettlementOutcomes: SupportTicketFinanceOutcome[] = [
+      SupportTicketFinanceOutcome.FULL_REFUND,
+      SupportTicketFinanceOutcome.FULL_REVERSAL,
+      SupportTicketFinanceOutcome.PARTIAL_REFUND,
+      SupportTicketFinanceOutcome.PARTIAL_REVERSAL,
+    ];
+
+    if (blockedSettlementOutcomes.includes(dto.outcome)) {
       return {
         settlementStatus: SettlementStatus.ON_HOLD,
         settlementAutoReleaseEnabled: false,
@@ -440,11 +439,13 @@ export class SupportService {
   }
 
   private isFinalStatus(status: SupportTicketStatus) {
-    return [
+    const finalStatuses: SupportTicketStatus[] = [
       SupportTicketStatus.RESOLVED,
       SupportTicketStatus.REJECTED,
       SupportTicketStatus.CANCELLED,
-    ].includes(status);
+    ];
+
+    return finalStatuses.includes(status);
   }
 
   private assertAdmin(user: AuthenticatedUser) {
