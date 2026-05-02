@@ -4,6 +4,7 @@ import { join } from 'path';
 import { AbilitiesGuard } from './common/guards/abilities.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AddressModule } from './modules/address/address.module';
+import { AdminReportsModule } from './modules/admin-reports/admin-reports.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CartModule } from './modules/cart/cart.module';
 import { CatalogModule } from './modules/catalog/product.module';
@@ -23,6 +24,7 @@ import { PrismaService } from './prisma/prisma.service';
 @Module({
   imports: [
     AuthModule,
+    AdminReportsModule,
     StoreModule,
     CatalogModule,
     ConfigModule.forRoot({

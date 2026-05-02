@@ -99,6 +99,12 @@ model Store {
   maxDeliveryHours Int?
   expressDeliveryHours Int?
   deliveryWindows Json?
+  customerRatingAverage Decimal @default(0) @db.Decimal(3, 2)
+  customerRatingCount Int @default(0)
+  vendorHealthScore Int @default(100)
+  vendorHealthStatus VendorHealthStatus @default(GOOD)
+  vendorHealthCalculatedAt DateTime?
+  vendorHealthSnapshot Json?
   
   ownerId       Int      @unique
   owner         User     @relation(fields: [ownerId], references: [id])
@@ -450,6 +456,8 @@ model Order {
   settlementEligibleAt DateTime?
   earningsHeldAt       DateTime?
   earningsReleasedAt   DateTime?
+  settlementReleasedAmount Decimal @default(0) @db.Decimal(12, 2)
+  settlementReversedAmount Decimal @default(0) @db.Decimal(12, 2)
   settlementReviewedAt DateTime?
   settlementReviewedByUserId Int?
   couponCode           String?
@@ -459,6 +467,7 @@ model Order {
   financialSnapshot    Json?
   status               OrderStatus   @default(PENDING)
   paymentStatus        PaymentStatus @default(PENDING)
+  paymentRefundedAmount Decimal      @default(0) @db.Decimal(12, 2)
   paymentMethod        PaymentMethod @default(COD)
   shippingAddressId    Int?
   shippingAddressTitle String?
@@ -508,6 +517,7 @@ model Payment {
   refId            String?
   amount           Decimal       @db.Decimal(12, 2)
   status           PaymentStatus @default(PENDING)
+  refundedAmount   Decimal       @default(0) @db.Decimal(12, 2)
   reviewStatus     PaymentReviewStatus @default(NONE)
   paymentUrl       String?
   failureReason    String?       @db.Text
@@ -571,6 +581,7 @@ enum PaymentStatus {
   PAID
   FAILED
   EXPIRED
+  PARTIALLY_REFUNDED
   REFUNDED
   CANCELLED
 }
@@ -658,6 +669,13 @@ enum WalletTransactionType {
 enum WalletTransactionDirection {
   CREDIT
   DEBIT
+}
+
+enum VendorHealthStatus {
+  EXCELLENT
+  GOOD
+  WATCHLIST
+  AT_RISK
 }
 
 model CommissionRule {

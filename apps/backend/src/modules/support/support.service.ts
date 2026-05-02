@@ -14,6 +14,8 @@ import {
   SupportTicketStatus,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { FinanceService } from '../finance/finance.service';
+import { PaymentService } from '../payment/payment.service';
 import { AdminListSupportTicketsQueryDto } from './dto/admin-list-support-tickets-query.dto';
 import { CreateSupportTicketNoteDto } from './dto/create-support-ticket-note.dto';
 import { CreateSupportTicketDto } from './dto/create-support-ticket.dto';
@@ -40,7 +42,11 @@ const ACTIVE_TICKET_STATUSES: SupportTicketStatus[] = [
 
 @Injectable()
 export class SupportService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly financeService: FinanceService,
+    private readonly paymentService: PaymentService,
+  ) {}
 
   async customerCreateOrderTicket(
     user: AuthenticatedUser,
@@ -298,7 +304,7 @@ export class SupportService {
     const now = new Date();
     const orderUpdate = this.buildOrderUpdateForFinanceDecision(dto, now, user.id);
 
-    return this.prisma.$transaction(async (tx) => {
+    const updatedTicket = await this.prisma.$transaction(async (tx) => {
       const updatedTicket = await tx.supportTicket.update({
         where: { id },
         data: {
@@ -339,6 +345,10 @@ export class SupportService {
 
       return updatedTicket;
     }, SUPPORT_TX_OPTIONS);
+
+    await this.executeFinanceOutcome(ticket.orderId, dto, user.id);
+
+    return this.getTicketOrThrow(updatedTicket.id);
   }
 
   private buildOrderUpdateForFinanceDecision(
@@ -383,6 +393,48 @@ export class SupportService {
     }
 
     return { settlementReviewedAt: now, settlementReviewedByUserId: actorUserId };
+  }
+
+  private async executeFinanceOutcome(
+    orderId: number,
+    dto: SupportFinanceDecisionDto,
+    actorUserId: number,
+  ) {
+    if (dto.outcome === SupportTicketFinanceOutcome.NO_ACTION_RELEASE) {
+      return;
+    }
+
+    if (dto.outcome === SupportTicketFinanceOutcome.EXTEND_HOLD) {
+      return;
+    }
+
+    if (
+      dto.outcome === SupportTicketFinanceOutcome.FULL_REFUND ||
+      dto.outcome === SupportTicketFinanceOutcome.PARTIAL_REFUND
+    ) {
+      await this.paymentService.adminApplyRefundExecution({
+        actorUserId,
+        orderId,
+        amount: dto.outcome === SupportTicketFinanceOutcome.PARTIAL_REFUND ? dto.amount : undefined,
+        reason: dto.refundReason ?? 'بازگشت وجه بعد از تصمیم مالی تیکت پشتیبانی',
+        note: dto.refundNote ?? dto.note,
+      });
+    }
+
+    if (
+      dto.outcome === SupportTicketFinanceOutcome.FULL_REVERSAL ||
+      dto.outcome === SupportTicketFinanceOutcome.PARTIAL_REVERSAL
+    ) {
+      await this.financeService.applySettlementReversal({
+        orderId,
+        actorUserId,
+        amount:
+          dto.outcome === SupportTicketFinanceOutcome.PARTIAL_REVERSAL
+            ? dto.amount
+            : undefined,
+        note: dto.note,
+      });
+    }
   }
 
   private async getTicketOrThrow(id: number) {

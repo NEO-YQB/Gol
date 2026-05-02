@@ -9,6 +9,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { StoreService } from './store.service';
@@ -19,11 +20,16 @@ import { GetUser } from '../../common/decorators/get-user.decorator';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AbilitiesGuard } from '../../common/guards/abilities.guard';
 import { CheckAbilities } from '../../common/decorators/check-abilities.decorator';
+import { VendorHealthService } from './vendor-health.service';
+import { AdminListVendorHealthQueryDto } from './dto/admin-list-vendor-health-query.dto';
 
 @ApiTags('Stores')
 @Controller('stores')
 export class StoreController {
-  constructor(private readonly storeService: StoreService) {}
+  constructor(
+    private readonly storeService: StoreService,
+    private readonly vendorHealthService: VendorHealthService,
+  ) {}
 
   @Post()
   @UseGuards(JwtAuthGuard, AbilitiesGuard)
@@ -41,12 +47,6 @@ export class StoreController {
   @ApiOperation({ summary: 'دریافت لیست فروشگاه ها' })
   findAll() {
     return this.storeService.findAll();
-  }
-
-  @Get(':slug')
-  @ApiOperation({ summary: 'دریافت جزئیات فروشگاه با اسلاگ' })
-  findOne(@Param('slug') slug: string) {
-    return this.storeService.findBySlug(slug);
   }
 
   @Patch(':id')
@@ -71,5 +71,44 @@ export class StoreController {
     @GetUser() user: { id: number; roles: string[] },
   ) {
     await this.storeService.remove(id, user);
+  }
+
+  @Get('admin/vendor-health')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'لیست health score فروشنده‌ها برای ادمین' })
+  adminListVendorHealth(
+    @GetUser() user: { id: number; roles: string[] },
+    @Query() query: AdminListVendorHealthQueryDto,
+  ) {
+    return this.vendorHealthService.adminListVendorHealth(user, query);
+  }
+
+  @Get('admin/:id/vendor-health')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'جزئیات health score یک فروشگاه برای ادمین' })
+  adminGetVendorHealth(
+    @GetUser() user: { id: number; roles: string[] },
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.vendorHealthService.adminGetVendorHealth(user, id);
+  }
+
+  @Post('admin/:id/vendor-health/recalculate')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'محاسبه مجدد health score فروشگاه توسط ادمین' })
+  adminRecalculateVendorHealth(
+    @GetUser() user: { id: number; roles: string[] },
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.vendorHealthService.adminRecalculateVendorHealth(user, id);
+  }
+
+  @Get(':slug')
+  @ApiOperation({ summary: 'دریافت جزئیات فروشگاه با اسلاگ' })
+  findOne(@Param('slug') slug: string) {
+    return this.storeService.findBySlug(slug);
   }
 }

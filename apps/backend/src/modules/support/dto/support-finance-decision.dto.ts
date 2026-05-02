@@ -27,4 +27,16 @@ export class SupportFinanceDecisionDto {
   @IsString()
   @MaxLength(4000)
   note?: string;
+
+  @ApiPropertyOptional({ example: 'بازگشت وجه دستی بعد از تایید مالی' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  refundReason?: string;
+
+  @ApiPropertyOptional({ example: 'رسید واریز آفلاین برای مشتری ثبت شد' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  refundNote?: string;
 }

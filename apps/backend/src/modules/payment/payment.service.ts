@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -442,6 +443,124 @@ export class PaymentService {
     });
   }
 
+  async adminApplyRefundExecution(input: {
+    actorUserId: number;
+    orderId: number;
+    amount?: number;
+    reason: string;
+    note?: string;
+  }) {
+    const order = await this.getOrderForPayment(input.orderId);
+
+    if (order.paymentMethod !== PaymentMethod.ONLINE) {
+      throw new BadRequestException('execution refund فقط برای سفارش آنلاین پشتیبانی شده است');
+    }
+
+    if (!order.payment) {
+      throw new NotFoundException('payment متناظر با این سفارش یافت نشد');
+    }
+
+    const payment = await this.getPaymentOrThrow(order.payment.id);
+
+    if (
+      payment.status !== PaymentStatus.PAID &&
+      payment.status !== PaymentStatus.PARTIALLY_REFUNDED
+    ) {
+      throw new BadRequestException('فقط payment پرداخت‌شده یا partially refunded قابل refund است');
+    }
+
+    if (
+      payment.order.paymentStatus !== PaymentStatus.PAID &&
+      payment.order.paymentStatus !== PaymentStatus.PARTIALLY_REFUNDED
+    ) {
+      throw new BadRequestException('وضعیت پرداخت order برای refund execution معتبر نیست');
+    }
+
+    const totalAmount = this.roundMoney(Number(payment.amount));
+    const alreadyRefundedAmount = this.roundMoney(Number(payment.refundedAmount));
+    const remainingRefundableAmount = this.roundMoney(totalAmount - alreadyRefundedAmount);
+
+    if (remainingRefundableAmount <= 0) {
+      throw new ConflictException('این payment قبلا به طور کامل refund شده است');
+    }
+
+    const refundAmount = this.roundMoney(input.amount ?? remainingRefundableAmount);
+
+    if (refundAmount <= 0 || refundAmount > remainingRefundableAmount) {
+      throw new BadRequestException('مبلغ refund نامعتبر است');
+    }
+
+    const nextRefundedAmount = this.roundMoney(alreadyRefundedAmount + refundAmount);
+    const fullyRefunded = nextRefundedAmount === totalAmount;
+
+    return this.prisma.$transaction(async (tx) => {
+      const updatedPayment = await tx.payment.update({
+        where: { id: payment.id },
+        data: {
+          status: fullyRefunded ? PaymentStatus.REFUNDED : PaymentStatus.PARTIALLY_REFUNDED,
+          refundedAmount: {
+            increment: refundAmount,
+          },
+          reviewStatus: PaymentReviewStatus.RESOLVED,
+          reviewReason: input.reason,
+          reviewNote: input.note ?? payment.reviewNote,
+          reviewedAt: new Date(),
+          reviewedByUserId: input.actorUserId,
+          rawVerifyData: this.toInputJson({
+            ...(this.ensureJsonObject(payment.rawVerifyData)),
+            refundExecutions: [
+              ...this.ensureJsonArray(
+                this.ensureJsonObject(payment.rawVerifyData).refundExecutions,
+              ),
+              {
+                refundAmount,
+                reason: input.reason,
+                note: input.note ?? null,
+                refundedAt: new Date().toISOString(),
+                refundedByUserId: input.actorUserId,
+                full: fullyRefunded,
+              },
+            ],
+          }),
+        },
+        include: this.getPaymentInclude(),
+      });
+
+      await tx.order.update({
+        where: { id: payment.orderId },
+        data: {
+          paymentStatus: fullyRefunded ? PaymentStatus.REFUNDED : PaymentStatus.PARTIALLY_REFUNDED,
+          paymentRefundedAmount: {
+            increment: refundAmount,
+          },
+        },
+      });
+
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId: payment.orderId,
+          fromStatus: payment.order.status,
+          toStatus: payment.order.status,
+          actorType: OrderActorType.ADMIN,
+          actorUserId: input.actorUserId,
+          reason: input.reason,
+          note:
+            input.note ??
+            (fullyRefunded
+              ? 'refund کامل برای payment ثبت شد'
+              : 'refund جزئی برای payment ثبت شد'),
+        },
+      });
+
+      return {
+        payment: updatedPayment,
+        orderPaymentStatus: fullyRefunded ? PaymentStatus.REFUNDED : PaymentStatus.PARTIALLY_REFUNDED,
+        refundAmount,
+        fullyRefunded,
+      };
+    });
+  }
+
   async handleGatewayCallback(
     gatewayKey: string,
     payload: Record<string, unknown>,
@@ -580,6 +699,10 @@ export class PaymentService {
     return value as Record<string, unknown>;
   }
 
+  private ensureJsonArray(value: unknown) {
+    return Array.isArray(value) ? value : [];
+  }
+
   private async expirePaymentIfNeeded(paymentId: number) {
     const payment = await this.prisma.payment.findUnique({
       where: { id: paymentId },
@@ -654,6 +777,10 @@ export class PaymentService {
 
   private isExpired(expiresAt: Date | null) {
     return !!expiresAt && expiresAt.getTime() <= Date.now();
+  }
+
+  private roundMoney(value: number) {
+    return Math.round((value + Number.EPSILON) * 100) / 100;
   }
 
   private readPositiveIntConfig(

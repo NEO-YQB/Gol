@@ -486,6 +486,7 @@ export class FinanceService {
         settlementStatus: true,
         earningsHeldAt: true,
         earningsReleasedAt: true,
+        settlementReversedAmount: true,
         supportTickets: {
           where: {
             status: {
@@ -512,7 +513,14 @@ export class FinanceService {
       return null;
     }
 
-    if (Number(order.vendorShareAmount) <= 0) {
+    const remainingReversibleAmount = this.roundMoney(
+      Math.max(
+        0,
+        Number(order.vendorShareAmount) - Number(order.settlementReversedAmount),
+      ),
+    );
+
+    if (remainingReversibleAmount <= 0) {
       return null;
     }
 
@@ -524,12 +532,12 @@ export class FinanceService {
         where: { id: wallet.id },
         data: order.earningsReleasedAt
           ? {
-              currentBalance: { decrement: order.vendorShareAmount },
-              availableBalance: { decrement: order.vendorShareAmount },
+              currentBalance: { decrement: remainingReversibleAmount },
+              availableBalance: { decrement: remainingReversibleAmount },
             }
           : {
-              currentBalance: { decrement: order.vendorShareAmount },
-              heldBalance: { decrement: order.vendorShareAmount },
+              currentBalance: { decrement: remainingReversibleAmount },
+              heldBalance: { decrement: remainingReversibleAmount },
             },
       });
 
@@ -540,7 +548,7 @@ export class FinanceService {
           orderId: order.id,
           type: WalletTransactionType.ORDER_REVERSAL,
           direction: WalletTransactionDirection.DEBIT,
-          amount: order.vendorShareAmount,
+          amount: remainingReversibleAmount,
           title: `برگشت مالی سفارش #${order.id}`,
           description: 'به دلیل لغو یا برگشت سفارش، درآمد ثبت شده فروشنده برگشت داده شد',
           createdByUserId: actorUserId,
@@ -554,6 +562,137 @@ export class FinanceService {
         where: { id: order.id },
         data: {
           settlementStatus: SettlementStatus.REVERSED,
+          settlementReversedAmount: {
+            increment: remainingReversibleAmount,
+          },
+        },
+      });
+    }, FINANCE_TX_OPTIONS);
+  }
+
+  async applySettlementReversal(input: {
+    orderId: number;
+    amount?: number;
+    actorUserId?: number;
+    note?: string;
+  }) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: input.orderId },
+      select: {
+        id: true,
+        storeId: true,
+        vendorShareAmount: true,
+        settlementStatus: true,
+        earningsHeldAt: true,
+        earningsReleasedAt: true,
+        settlementReleasedAmount: true,
+        settlementReversedAmount: true,
+      },
+    });
+
+    if (!order || !order.storeId || !order.earningsHeldAt) {
+      throw new NotFoundException('order مناسب برای reversal settlement یافت نشد');
+    }
+
+    if (order.settlementStatus === SettlementStatus.REVERSED) {
+      throw new ConflictException('settlement این order قبلا کامل reverse شده است');
+    }
+
+    const maxReversibleAmount = this.roundMoney(
+      Math.max(
+        0,
+        Number(order.vendorShareAmount) - Number(order.settlementReversedAmount),
+      ),
+    );
+
+    if (maxReversibleAmount <= 0) {
+      throw new ConflictException('مبلغی برای reversal باقی نمانده است');
+    }
+
+    const reversalAmount = this.roundMoney(input.amount ?? maxReversibleAmount);
+
+    if (reversalAmount <= 0 || reversalAmount > maxReversibleAmount) {
+      throw new BadRequestException('مبلغ reversal نامعتبر است');
+    }
+
+    const releasedAmount = this.roundMoney(
+      Number(order.settlementReleasedAmount) > 0
+        ? Number(order.settlementReleasedAmount)
+        : order.earningsReleasedAt
+          ? Math.max(0, Number(order.vendorShareAmount) - Number(order.settlementReversedAmount))
+          : 0,
+    );
+    const fromAvailableAmount = Math.min(releasedAmount, reversalAmount);
+    const fromHeldAmount = this.roundMoney(reversalAmount - fromAvailableAmount);
+
+    const wallet = await this.ensureWallet(order.storeId);
+
+    if (fromAvailableAmount > Number(wallet.availableBalance)) {
+      throw new ConflictException('موجودی available wallet برای reversal کافی نیست');
+    }
+
+    if (fromHeldAmount > Number(wallet.heldBalance)) {
+      throw new ConflictException('موجودی held wallet برای reversal کافی نیست');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.storeWallet.update({
+        where: { id: wallet.id },
+        data: {
+          currentBalance: { decrement: reversalAmount },
+          ...(fromAvailableAmount > 0
+            ? { availableBalance: { decrement: fromAvailableAmount } }
+            : {}),
+          ...(fromHeldAmount > 0
+            ? { heldBalance: { decrement: fromHeldAmount } }
+            : {}),
+        },
+      });
+
+      await tx.walletTransaction.create({
+        data: {
+          walletId: wallet.id,
+          storeId: order.storeId!,
+          orderId: order.id,
+          type: WalletTransactionType.ORDER_REVERSAL,
+          direction: WalletTransactionDirection.DEBIT,
+          amount: reversalAmount,
+          title:
+            reversalAmount === maxReversibleAmount
+              ? `برگشت کامل settlement سفارش #${order.id}`
+              : `برگشت جزئی settlement سفارش #${order.id}`,
+          description:
+            input.note ??
+            (reversalAmount === maxReversibleAmount
+              ? 'تمام سهم فروشنده از order به دلیل تصمیم مالی reverse شد'
+              : 'بخشی از سهم فروشنده از order به دلیل تصمیم مالی reverse شد'),
+          createdByUserId: input.actorUserId,
+          metadata: {
+            stage: fromAvailableAmount > 0 && fromHeldAmount > 0
+              ? 'mixed-reversal'
+              : fromAvailableAmount > 0
+                ? 'available-reversal'
+                : 'held-reversal',
+            reversedAmount: reversalAmount,
+            fromAvailableAmount,
+            fromHeldAmount,
+            remainingReversibleAmount: this.roundMoney(maxReversibleAmount - reversalAmount),
+          } as Prisma.InputJsonValue,
+        },
+      });
+
+      return tx.order.update({
+        where: { id: order.id },
+        data: {
+          settlementReversedAmount: {
+            increment: reversalAmount,
+          },
+          settlementStatus:
+            reversalAmount === maxReversibleAmount
+              ? SettlementStatus.REVERSED
+              : SettlementStatus.ON_HOLD,
+          settlementReviewedAt: new Date(),
+          settlementReviewedByUserId: input.actorUserId ?? null,
         },
       });
     }, FINANCE_TX_OPTIONS);
@@ -742,6 +881,8 @@ export class FinanceService {
         settlementEligibleAt: true,
         earningsHeldAt: true,
         earningsReleasedAt: true,
+        settlementReleasedAmount: true,
+        settlementReversedAmount: true,
         supportTickets: {
           where: {
             status: {
@@ -788,17 +929,34 @@ export class FinanceService {
       throw new ConflictException('هنوز زمان auto release این order نرسیده است');
     }
 
+    const releasableAmount = this.roundMoney(
+      Math.max(
+        0,
+        Number(order.vendorShareAmount) -
+          Number(order.settlementReleasedAmount) -
+          Number(order.settlementReversedAmount),
+      ),
+    );
+
+    if (releasableAmount <= 0) {
+      throw new ConflictException('مبلغی برای release settlement باقی نمانده است');
+    }
+
     const wallet = await this.ensureWallet(order.storeId);
+
+    if (releasableAmount > Number(wallet.heldBalance)) {
+      throw new ConflictException('موجودی held wallet برای release این settlement کافی نیست');
+    }
 
     return this.prisma.$transaction(async (tx) => {
       await tx.storeWallet.update({
         where: { id: wallet.id },
         data: {
           heldBalance: {
-            decrement: order.vendorShareAmount,
+            decrement: releasableAmount,
           },
           availableBalance: {
-            increment: order.vendorShareAmount,
+            increment: releasableAmount,
           },
         },
       });
@@ -810,7 +968,7 @@ export class FinanceService {
           orderId: order.id,
           type: WalletTransactionType.ORDER_RELEASE,
           direction: WalletTransactionDirection.CREDIT,
-          amount: order.vendorShareAmount,
+          amount: releasableAmount,
           title:
             input.mode === 'manual'
               ? `آزادسازی دستی درآمد سفارش #${order.id}`
@@ -832,6 +990,9 @@ export class FinanceService {
         data: {
           settlementStatus: SettlementStatus.SETTLED,
           earningsReleasedAt: new Date(),
+          settlementReleasedAmount: {
+            increment: releasableAmount,
+          },
           settlementReviewedAt: new Date(),
           settlementReviewedByUserId: input.actorUserId ?? null,
         },
