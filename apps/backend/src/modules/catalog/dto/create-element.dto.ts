@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsEnum, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { ElementType } from '@prisma/client';
 
 export class CreateElementDto {
@@ -8,13 +8,25 @@ export class CreateElementDto {
   @IsNotEmpty()
   name!: string;
 
-  @ApiProperty({ 
-    example: 'MATERIAL', 
+  @ApiProperty({
+    example: 'ACCESSORY',
     enum: ElementType,
-    description: 'نوع المان' 
+    description: 'نوع المان',
   })
   @IsEnum(ElementType)
   @IsString()
   @IsNotEmpty()
   type!: ElementType;
+
+  @ApiPropertyOptional({ example: 'عدد' })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  unit?: string;
+
+  @ApiPropertyOptional({ example: 'https://images.example.com/elements/walnut-wood.jpg' })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  image?: string;
 }

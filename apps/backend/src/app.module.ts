@@ -20,6 +20,7 @@ import { PaymentModule } from './modules/payment/payment.module';
 import { StoreModule } from './modules/store/store.module';
 import { SupportModule } from './modules/support/support.module';
 import { VendorDashboardModule } from './modules/vendor-dashboard/vendor-dashboard.module';
+import { ReviewsModule } from './modules/reviews/reviews.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaService } from './prisma/prisma.service';
@@ -48,6 +49,7 @@ import { PrismaService } from './prisma/prisma.service';
     FinanceModule,
     SupportModule,
     VendorDashboardModule,
+    ReviewsModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService, RolesGuard, AbilitiesGuard],

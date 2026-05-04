@@ -684,11 +684,22 @@ export class PaymentService {
       where: { id: orderId },
       include: {
         payment: true,
+        store: {
+          select: {
+            vendorHealthStatus: true,
+            vendorHealthSnapshot: true,
+          },
+        },
       },
     });
 
     if (!order) {
       throw new NotFoundException('سفارش مورد نظر برای payment یافت نشد');
+    }
+
+    const riskPolicy = this.extractRiskPolicy(order.store?.vendorHealthSnapshot ?? null);
+    if (riskPolicy.manualReviewRequired) {
+      throw new BadRequestException('پرداخت براي اين فروشنده نياز به بررسي دستي دارد و فعلا غيرفعال است');
     }
 
     return order;
@@ -741,6 +752,21 @@ export class PaymentService {
       domainEvents: {
         orderBy: { createdAt: 'desc' as const },
       },
+    };
+  }
+
+  private extractRiskPolicy(snapshot: Prisma.JsonValue | null) {
+    if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) {
+      return { manualReviewRequired: false };
+    }
+
+    const effective = (snapshot as Record<string, unknown>).riskPolicyEffective;
+    if (!effective || typeof effective !== 'object' || Array.isArray(effective)) {
+      return { manualReviewRequired: false };
+    }
+
+    return {
+      manualReviewRequired: Boolean((effective as Record<string, unknown>).manualReviewRequired),
     };
   }
 

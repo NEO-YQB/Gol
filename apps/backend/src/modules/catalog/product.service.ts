@@ -221,7 +221,12 @@ export class ProductService {
 
   async createElement(dto: CreateElementDto) {
     return this.prisma.productElement.create({
-      data: { name: dto.name, type: dto.type }
+      data: {
+        name: dto.name,
+        type: dto.type,
+        unit: dto.unit ?? 'عدد',
+        image: dto.image ?? null,
+      },
     });
   }
 

@@ -403,20 +403,20 @@ model CouponOnStores {
 }
 
 model CouponOnCategories {
-  couponId   Int
-  coupon     Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  couponId  Int
+  coupon    Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
   categoryId Int
-  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  category  Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@id([couponId, categoryId])
 }
 
 model ProductElement {
-  id          Int          @id @default(autoincrement())
-  name        String       @unique
-  type        ElementType  
-  unit        String       @default("شاخه") 
-  image       String?      
+  id        Int         @id @default(autoincrement())
+  name      String      @unique
+  type      ElementType
+  unit      String
+  image     String?
   compositions ProductComposition[]
 }
 
@@ -493,6 +493,7 @@ model Order {
   statusHistories      OrderStatusHistory[]
   supportTickets       SupportTicket[]
   domainEvents         DomainEvent[]
+  reviews              Review[]
   acceptedAt           DateTime?
   shippedAt            DateTime?
   deliveredAt          DateTime?
@@ -864,7 +865,11 @@ model Review {
   user          User     @relation(fields: [userId], references: [id])
   productId     Int
   product       Product  @relation(fields: [productId], references: [id])
+  orderId       Int      @unique
+  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   createdAt     DateTime @default(now())
+
+  @@index([userId, productId])
 }
 
 model OtpCode {

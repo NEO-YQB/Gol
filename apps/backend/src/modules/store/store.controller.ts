@@ -22,6 +22,7 @@ import { AbilitiesGuard } from '../../common/guards/abilities.guard';
 import { CheckAbilities } from '../../common/decorators/check-abilities.decorator';
 import { VendorHealthService } from './vendor-health.service';
 import { AdminListVendorHealthQueryDto } from './dto/admin-list-vendor-health-query.dto';
+import { AdminUpsertVendorRiskPolicyDto } from './dto/admin-upsert-vendor-risk-policy.dto';
 
 @ApiTags('Stores')
 @Controller('stores')
@@ -104,6 +105,18 @@ export class StoreController {
     @Param('id', ParseIntPipe) id: number,
   ) {
     return this.vendorHealthService.adminRecalculateVendorHealth(user, id);
+  }
+
+  @Patch('admin/:id/risk-policy')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'ثبت يا override policy ريسک فروشنده توسط ادمين' })
+  adminUpsertVendorRiskPolicy(
+    @GetUser() user: { id: number; roles: string[] },
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: AdminUpsertVendorRiskPolicyDto,
+  ) {
+    return this.vendorHealthService.adminUpsertVendorRiskPolicy(user, id, dto);
   }
 
   @Get(':slug')

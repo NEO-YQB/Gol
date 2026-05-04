@@ -24,7 +24,8 @@ type AppSubjects =
   | 'PlatformPromotion'
   | 'Coupon'
   | 'Cart'
-  | 'UserAddress';
+  | 'UserAddress'
+  | 'Review';
 
 type RuleDefinition = {
   action: string | string[];
@@ -174,6 +175,7 @@ export class AbilityFactory {
         { action: ['create', 'read'], subject: 'Payment', conditions: { userId: user.id } },
         { action: ['create', 'read', 'update', 'delete'], subject: 'Cart', conditions: { userId: user.id } },
         { action: 'manage', subject: 'UserAddress', conditions: { userId: user.id } },
+        { action: ['create', 'read'], subject: 'Review', conditions: { userId: user.id } },
       ],
     };
 

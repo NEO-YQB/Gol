@@ -13,6 +13,7 @@ import {
   Prisma,
   SettlementStatus,
   SupportTicketStatus,
+  VendorHealthStatus,
   WalletTransactionDirection,
   WalletTransactionType,
 } from '@prisma/client';
@@ -290,13 +291,31 @@ export class FinanceService {
       at: input.orderedAt ?? new Date(),
     });
 
+    const store = await this.prisma.store.findUnique({
+      where: { id: input.storeId },
+      select: {
+        id: true,
+        vendorHealthStatus: true,
+        vendorHealthSnapshot: true,
+      },
+    });
+
+    if (!store) {
+      throw new NotFoundException('فروشگاه سفارش براي محاسبه مالي يافت نشد');
+    }
+
+    const riskPolicy = this.extractRiskPolicy(store.vendorHealthSnapshot);
     const commissionBaseAmount = this.roundMoney(input.discountedItemSubtotal);
     const commissionRate = Number(rule?.commissionRate ?? 0);
     const systemServiceFeeRate = Number(rule?.systemServiceFeeRate ?? 0);
     const systemServiceFeeFixed = Number(rule?.systemServiceFeeFixed ?? 0);
-    const settlementHoldDays = Number(rule?.settlementHoldDays ?? 7);
+    const settlementHoldDays = Number(
+      riskPolicy.settlementHoldDaysOverride ?? rule?.settlementHoldDays ?? 7,
+    );
     const complaintWindowHours = Number(rule?.complaintWindowHours ?? 24);
-    const autoReleaseEnabled = rule?.autoReleaseEnabled ?? true;
+    const autoReleaseEnabled = riskPolicy.autoSettlementHoldEnabled
+      ? false
+      : rule?.autoReleaseEnabled ?? true;
 
     const platformCommissionAmount = this.roundMoney(
       commissionBaseAmount * (commissionRate / 100),
@@ -349,6 +368,15 @@ export class FinanceService {
               reason: rule.reason,
             }
           : null,
+        riskPolicy: {
+          autoSettlementHoldEnabled: riskPolicy.autoSettlementHoldEnabled,
+          settlementHoldDaysOverride: riskPolicy.settlementHoldDaysOverride,
+          manualReviewRequired: riskPolicy.manualReviewRequired,
+          blockNewDiscounts: riskPolicy.blockNewDiscounts,
+          source: riskPolicy.source,
+          note: riskPolicy.note,
+          vendorHealthStatus: store.vendorHealthStatus,
+        },
         amounts: {
           commissionBaseAmount,
           platformCommissionAmount,
@@ -765,6 +793,44 @@ export class FinanceService {
         },
       });
     }, FINANCE_TX_OPTIONS);
+  }
+
+  private extractRiskPolicy(snapshot: Prisma.JsonValue | null) {
+    if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) {
+      return {
+        autoSettlementHoldEnabled: false,
+        settlementHoldDaysOverride: null,
+        manualReviewRequired: false,
+        blockNewDiscounts: false,
+        source: 'AUTO',
+        note: '',
+      };
+    }
+
+    const effective = (snapshot as Record<string, unknown>).riskPolicyEffective;
+    if (!effective || typeof effective !== 'object' || Array.isArray(effective)) {
+      return {
+        autoSettlementHoldEnabled: false,
+        settlementHoldDaysOverride: null,
+        manualReviewRequired: false,
+        blockNewDiscounts: false,
+        source: 'AUTO',
+        note: '',
+      };
+    }
+
+    const policy = effective as Record<string, unknown>;
+    return {
+      autoSettlementHoldEnabled: Boolean(policy.autoSettlementHoldEnabled),
+      settlementHoldDaysOverride:
+        typeof policy.settlementHoldDaysOverride === 'number'
+          ? policy.settlementHoldDaysOverride
+          : null,
+      manualReviewRequired: Boolean(policy.manualReviewRequired),
+      blockNewDiscounts: Boolean(policy.blockNewDiscounts),
+      source: policy.source === 'MANUAL_OVERRIDE' ? 'MANUAL_OVERRIDE' : 'AUTO',
+      note: typeof policy.note === 'string' ? policy.note : '',
+    };
   }
 
   private async resolveApplicableCommissionRule(input: { storeId: number; at: Date }) {

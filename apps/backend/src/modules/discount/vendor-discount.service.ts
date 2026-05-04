@@ -8,6 +8,7 @@ import {
 import { Prisma, Product, Store, VendorDiscount } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AbilityFactory } from '../auth/ability.factory';
+import { VendorHealthService } from '../store/vendor-health.service';
 import { CreateVendorDiscountDto } from './dto/create-vendor-discount.dto';
 import { UpdateVendorDiscountDto } from './dto/update-vendor-discount.dto';
 import { GetVendorDiscountsQueryDto } from './dto/get-vendor-discounts-query.dto';
@@ -20,7 +21,9 @@ type AuthenticatedUser = {
 
 type VendorDiscountWithRelations = VendorDiscount & {
   product: Pick<Product, 'id' | 'name' | 'price' | 'storeId'>;
-  store: Pick<Store, 'id' | 'name' | 'ownerId' | 'slug'>;
+  store: Pick<Store, 'id' | 'name' | 'ownerId' | 'slug'> & {
+    vendorHealthSnapshot?: Prisma.JsonValue | null;
+  };
 };
 
 @Injectable()
@@ -28,6 +31,7 @@ export class VendorDiscountService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly abilityFactory: AbilityFactory,
+    private readonly vendorHealthService: VendorHealthService,
   ) {}
 
   async create(user: AuthenticatedUser, dto: CreateVendorDiscountDto) {
@@ -35,6 +39,7 @@ export class VendorDiscountService {
 
     const product = await this.getOwnedProductOrThrow(dto.productId);
     await this.assertCanManageDiscount(user, 'create', product.store.ownerId);
+    this.assertStoreRiskPolicyAllowsDiscount(product.store.vendorHealthSnapshot);
 
     this.validateDiscountPayload({
       productPrice: Number(product.price),
@@ -139,6 +144,7 @@ export class VendorDiscountService {
 
     const discount = await this.getDiscountOrThrow(id);
     await this.assertCanManageDiscount(user, 'update', discount.store.ownerId);
+    this.assertStoreRiskPolicyAllowsDiscount(discount.store.vendorHealthSnapshot);
 
     if (dto.productId && dto.productId !== discount.productId) {
       throw new BadRequestException('در فاز فعلی تغییر product برای vendor discount مجاز نیست');
@@ -212,7 +218,13 @@ export class VendorDiscountService {
       where: { id: productId },
       include: {
         store: {
-          select: { id: true, ownerId: true, name: true, slug: true },
+          select: {
+            id: true,
+            ownerId: true,
+            name: true,
+            slug: true,
+            vendorHealthSnapshot: true,
+          },
         },
       },
     });
@@ -232,7 +244,13 @@ export class VendorDiscountService {
           select: { id: true, name: true, price: true, storeId: true },
         },
         store: {
-          select: { id: true, name: true, ownerId: true, slug: true },
+          select: {
+            id: true,
+            name: true,
+            ownerId: true,
+            slug: true,
+            vendorHealthSnapshot: true,
+          },
         },
       },
     });
@@ -259,9 +277,16 @@ export class VendorDiscountService {
     }
   }
 
+  private assertStoreRiskPolicyAllowsDiscount(snapshot: Prisma.JsonValue | null | undefined) {
+    const policy = this.vendorHealthService.getEffectiveRiskPolicyFromSnapshot(snapshot ?? null);
+    if (policy.blockNewDiscounts) {
+      throw new ConflictException('براي اين فروشنده به دليل policy ريسک، ثبت يا ويرايش discount موقتا مسدود است');
+    }
+  }
+
   private assertVendorOrAdmin(user: AuthenticatedUser) {
-    if (!user.roles.some((role) => role === 'ADMIN' || role === 'VENDOR')) {
-      throw new ForbiddenException('این بخش فقط برای فروشنده یا ادمین مجاز است');
+    if (!user.roles.includes('ADMIN') && !user.roles.includes('VENDOR')) {
+      throw new ForbiddenException('این endpoint فقط برای فروشنده یا ادمین مجاز است');
     }
   }
 
@@ -272,21 +297,26 @@ export class VendorDiscountService {
     startAt?: Date;
     endAt?: Date;
   }) {
-    if (input.startAt && input.endAt && input.startAt > input.endAt) {
-      throw new BadRequestException('startAt نمی‌تواند بعد از endAt باشد');
+    if (input.value <= 0) {
+      throw new BadRequestException('مقدار discount باید بیشتر از صفر باشد');
     }
 
-    if (input.valueType === 'PERCENTAGE' && input.value > 100) {
-      throw new BadRequestException('درصد تخفیف باید بین 0.01 تا 100 باشد');
+    if (
+      input.valueType === 'PERCENTAGE' &&
+      (input.value <= 0 || input.value > 100)
+    ) {
+      throw new BadRequestException('درصد discount باید بین 1 تا 100 باشد');
     }
 
     if (
       input.valueType === 'FIXED_AMOUNT' &&
       input.value >= input.productPrice
     ) {
-      throw new BadRequestException(
-        'مبلغ تخفیف ثابت باید از قیمت خود محصول کمتر باشد',
-      );
+      throw new BadRequestException('discount ثابت باید کمتر از قیمت محصول باشد');
+    }
+
+    if (input.startAt && input.endAt && input.startAt >= input.endAt) {
+      throw new BadRequestException('زمان پایان باید بعد از زمان شروع باشد');
     }
   }
 
@@ -301,50 +331,41 @@ export class VendorDiscountService {
       return;
     }
 
-    const candidates = await this.prisma.vendorDiscount.findMany({
+    const overlapping = await this.prisma.vendorDiscount.findFirst({
       where: {
         productId: input.productId,
         isActive: true,
         ...(input.excludeId ? { id: { not: input.excludeId } } : {}),
+        OR: [
+          {
+            startAt: null,
+            endAt: null,
+          },
+          {
+            AND: [
+              { startAt: { lte: input.endAt ?? new Date('9999-12-31') } },
+              { endAt: { gte: input.startAt ?? new Date('1970-01-01') } },
+            ],
+          },
+          {
+            startAt: null,
+            endAt: { gte: input.startAt ?? new Date('1970-01-01') },
+          },
+          {
+            startAt: { lte: input.endAt ?? new Date('9999-12-31') },
+            endAt: null,
+          },
+        ],
       },
-      select: {
-        id: true,
-        startAt: true,
-        endAt: true,
-      },
+      select: { id: true },
     });
 
-    const hasOverlap = candidates.some((candidate) =>
-      this.windowsOverlap(
-        input.startAt ?? null,
-        input.endAt ?? null,
-        candidate.startAt,
-        candidate.endAt,
-      ),
-    );
-
-    if (hasOverlap) {
-      throw new ConflictException(
-        'برای این محصول یک vendor discount فعال در همین بازه زمانی وجود دارد',
-      );
+    if (overlapping) {
+      throw new ConflictException('برای این محصول یک vendor discount فعال و همپوشان وجود دارد');
     }
   }
 
-  private windowsOverlap(
-    startA: Date | null,
-    endA: Date | null,
-    startB: Date | null,
-    endB: Date | null,
-  ) {
-    const normalizedStartA = startA?.getTime() ?? Number.NEGATIVE_INFINITY;
-    const normalizedEndA = endA?.getTime() ?? Number.POSITIVE_INFINITY;
-    const normalizedStartB = startB?.getTime() ?? Number.NEGATIVE_INFINITY;
-    const normalizedEndB = endB?.getTime() ?? Number.POSITIVE_INFINITY;
-
-    return normalizedStartA <= normalizedEndB && normalizedStartB <= normalizedEndA;
-  }
-
-  private toInputJson(value: Record<string, unknown> | undefined) {
+  private toInputJson(value?: Record<string, unknown>) {
     if (value === undefined) {
       return undefined;
     }
