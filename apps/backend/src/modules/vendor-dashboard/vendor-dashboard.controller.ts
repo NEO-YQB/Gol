@@ -44,4 +44,18 @@ export class VendorDashboardController {
   getHealthSummary(@GetUser() user: { id: number; roles: string[] }) {
     return this.vendorDashboardService.getHealthSummary(user);
   }
+
+  @Get('policy-restrictions')
+  @ApiOperation({ summary: 'مشاهده restrictionها و policy موثر فروشنده جاری' })
+  getPolicyRestrictions(@GetUser() user: { id: number; roles: string[] }) {
+    return this.vendorDashboardService.getPolicyRestrictions(user);
+  }
+
+  @Get('policy-timeline')
+  @ApiOperation({ summary: 'timeline خلاصه policy و alertهای فروشنده جاری' })
+  getPolicyTimeline(@GetUser() user: { id: number; roles: string[] }) {
+    return this.vendorDashboardService.getPolicyTimeline(user);
+  }
 }
+
+

@@ -1,8 +1,9 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { GetUser } from '../../common/decorators/get-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AdminOperationsService } from './admin-operations.service';
+import { UpdateAlertStatusDto } from './dto/update-alert-status.dto';
 
 @ApiTags('Admin Operations')
 @ApiBearerAuth('JWT-auth')
@@ -33,5 +34,30 @@ export class AdminOperationsController {
   @ApiOperation({ summary: 'لیست تیکت‌ها و follow-upهای عملیاتی' })
   getSupportFollowUps(@GetUser() user: { id: number; roles: string[] }) {
     return this.adminOperationsService.getSupportFollowUps(user);
+  }
+
+  @Get('alerts')
+  @ApiOperation({ summary: 'فید alertهای عملیاتی برای ادمین' })
+  getAlerts(@GetUser() user: { id: number; roles: string[] }) {
+    return this.adminOperationsService.getAlerts(user);
+  }
+
+  @Post('alerts/:key/status')
+  @ApiOperation({ summary: 'تغییر lifecycle یک alert عملیاتی توسط ادمین' })
+  updateAlertStatus(
+    @GetUser() user: { id: number; roles: string[] },
+    @Param('key') key: string,
+    @Body() dto: UpdateAlertStatusDto,
+  ) {
+    return this.adminOperationsService.updateAlertStatus(user, key, dto);
+  }
+
+  @Get('vendors/:storeId/policy-timeline')
+  @ApiOperation({ summary: 'timeline policy/alert فروشگاه برای ادمین' })
+  getVendorPolicyTimeline(
+    @GetUser() user: { id: number; roles: string[] },
+    @Param('storeId', ParseIntPipe) storeId: number,
+  ) {
+    return this.adminOperationsService.getVendorPolicyTimeline(user, storeId);
   }
 }

@@ -1,5 +1,6 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import {
+  PaymentMethod,
   Prisma,
   SettlementStatus,
   SupportTicketFinanceOutcome,
@@ -265,6 +266,108 @@ export class VendorDashboardService {
     };
   }
 
+
+  async getPolicyRestrictions(user: AuthenticatedUser) {
+    const store = await this.getVendorStoreOrThrow(user);
+    const snapshot = this.asObject(store.vendorHealthSnapshot);
+    const effective = this.asObject(snapshot.riskPolicyEffective);
+    const autoPolicy = this.asObject(snapshot.riskPolicyAuto);
+    const manualOverride = this.asObject(snapshot.riskPolicyManualOverride);
+
+    const recentBlockedOrders = await this.prisma.order.findMany({
+      where: {
+        storeId: store.id,
+        paymentMethod: PaymentMethod.ONLINE,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+      select: {
+        id: true,
+        paymentStatus: true,
+        settlementStatus: true,
+        createdAt: true,
+        financialSnapshot: true,
+      },
+    });
+
+    return {
+      store: {
+        ...this.toStoreSummary(store),
+        vendorHealthScore: store.vendorHealthScore,
+        vendorHealthStatus: store.vendorHealthStatus,
+      },
+      policy: {
+        auto: autoPolicy,
+        manualOverride,
+        effective,
+      },
+      restrictions: {
+        manualReviewRequired: Boolean(effective.manualReviewRequired),
+        blockNewDiscounts: Boolean(effective.blockNewDiscounts),
+        autoSettlementHoldEnabled: Boolean(effective.autoSettlementHoldEnabled),
+        settlementHoldDaysOverride:
+          typeof effective.settlementHoldDaysOverride === 'number'
+            ? effective.settlementHoldDaysOverride
+            : null,
+      },
+      explanation: {
+        note: typeof effective.note === 'string' ? effective.note : null,
+        source: effective.source === 'MANUAL_OVERRIDE' ? 'MANUAL_OVERRIDE' : 'AUTO',
+      },
+      recentOrders: recentBlockedOrders.map((order) => ({
+        id: order.id,
+        paymentStatus: order.paymentStatus,
+        settlementStatus: order.settlementStatus,
+        createdAt: order.createdAt,
+        financialSnapshot: order.financialSnapshot,
+      })),
+    };
+  }
+
+
+  async getPolicyTimeline(user: AuthenticatedUser) {
+    const store = await this.getVendorStoreOrThrow(user);
+    const events = await this.prisma.domainEvent.findMany({
+      where: {
+        OR: [
+          {
+            aggregateType: 'admin-alert',
+            storeId: store.id,
+          },
+          {
+            aggregateType: 'review',
+            storeId: store.id,
+          },
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+
+    const snapshot = this.asObject(store.vendorHealthSnapshot);
+
+    return {
+      store: {
+        ...this.toStoreSummary(store),
+        vendorHealthScore: store.vendorHealthScore,
+        vendorHealthStatus: store.vendorHealthStatus,
+      },
+      currentPolicy: {
+        auto: this.asObject(snapshot.riskPolicyAuto),
+        manualOverride: this.asObject(snapshot.riskPolicyManualOverride),
+        effective: this.asObject(snapshot.riskPolicyEffective),
+      },
+      timeline: events.map((event) => ({
+        id: event.id,
+        aggregateType: event.aggregateType,
+        summary: event.summary,
+        payload: event.payload,
+        metadata: event.metadata,
+        createdAt: event.createdAt,
+      })),
+    };
+  }
+
   private async getVendorStoreOrThrow(user: AuthenticatedUser) {
     this.assertVendor(user);
 
@@ -289,6 +392,15 @@ export class VendorDashboardService {
     }
 
     return store;
+  }
+
+
+  private asObject(value: Prisma.JsonValue | null | undefined): Record<string, any> {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return {};
+    }
+
+    return value as Record<string, any>;
   }
 
   private buildRangeResponse(range: ResolvedJalaliDateRange) {
