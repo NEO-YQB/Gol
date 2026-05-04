@@ -8,6 +8,7 @@ import {
 import {
   CommissionRule,
   CommissionRuleScope,
+  DomainEventType,
   OrderStatus,
   Prisma,
   SettlementStatus,
@@ -15,6 +16,7 @@ import {
   WalletTransactionDirection,
   WalletTransactionType,
 } from '@prisma/client';
+import { DomainEventsService } from '../../common/services/domain-events.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateCommissionRuleDto } from './dto/create-commission-rule.dto';
 import { UpdateCommissionRuleDto } from './dto/update-commission-rule.dto';
@@ -33,7 +35,10 @@ const FINANCE_TX_OPTIONS = {
 
 @Injectable()
 export class FinanceService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly domainEvents: DomainEventsService,
+  ) {}
 
   async adminCreateCommissionRule(user: AuthenticatedUser, dto: CreateCommissionRuleDto) {
     this.assertAdmin(user);
@@ -250,6 +255,22 @@ export class FinanceService {
         },
       });
 
+      await this.domainEvents.record(tx, {
+        eventType: DomainEventType.WALLET_ADJUSTED,
+        aggregateType: 'wallet',
+        aggregateId: wallet.id,
+        actorUserId: user.id,
+        storeId,
+        walletId: wallet.id,
+        summary: `کیف پول فروشگاه #${storeId} به‌صورت دستی تنظیم شد`,
+        payload: {
+          direction: dto.direction,
+          amount,
+          type: transactionType,
+          title: dto.title,
+        },
+      });
+
       return {
         wallet: updatedWallet,
         transaction,
@@ -418,6 +439,20 @@ export class FinanceService {
         },
       });
 
+      await this.domainEvents.record(tx, {
+        eventType: DomainEventType.SETTLEMENT_HELD,
+        aggregateType: 'order',
+        aggregateId: order.id,
+        storeId: order.storeId,
+        orderId: order.id,
+        walletId: wallet.id,
+        summary: `درآمد سفارش #${order.id} hold شد`,
+        payload: {
+          vendorShareAmount: Number(order.vendorShareAmount),
+          holdDays: order.settlementHoldDays,
+        },
+      });
+
       return tx.order.update({
         where: { id: order.id },
         data: {
@@ -558,6 +593,21 @@ export class FinanceService {
         },
       });
 
+      await this.domainEvents.record(tx, {
+        eventType: DomainEventType.SETTLEMENT_REVERSED,
+        aggregateType: 'order',
+        aggregateId: order.id,
+        actorUserId: actorUserId ?? null,
+        storeId,
+        orderId: order.id,
+        walletId: wallet.id,
+        summary: `settlement سفارش #${order.id} reverse شد`,
+        payload: {
+          amount: remainingReversibleAmount,
+          stage: order.earningsReleasedAt ? 'available-reversal' : 'held-reversal',
+        },
+      });
+
       return tx.order.update({
         where: { id: order.id },
         data: {
@@ -678,6 +728,25 @@ export class FinanceService {
             fromHeldAmount,
             remainingReversibleAmount: this.roundMoney(maxReversibleAmount - reversalAmount),
           } as Prisma.InputJsonValue,
+        },
+      });
+
+      await this.domainEvents.record(tx, {
+        eventType: DomainEventType.SETTLEMENT_REVERSED,
+        aggregateType: 'order',
+        aggregateId: order.id,
+        actorUserId: input.actorUserId ?? null,
+        storeId: order.storeId,
+        orderId: order.id,
+        walletId: wallet.id,
+        summary:
+          reversalAmount === maxReversibleAmount
+            ? `settlement سفارش #${order.id} کامل reverse شد`
+            : `settlement سفارش #${order.id} جزئی reverse شد`,
+        payload: {
+          reversalAmount,
+          fromAvailableAmount,
+          fromHeldAmount,
         },
       });
 
@@ -982,6 +1051,24 @@ export class FinanceService {
             stage: 'released',
             mode: input.mode,
           } as Prisma.InputJsonValue,
+        },
+      });
+
+      await this.domainEvents.record(tx, {
+        eventType: DomainEventType.SETTLEMENT_RELEASED,
+        aggregateType: 'order',
+        aggregateId: order.id,
+        actorUserId: input.actorUserId ?? null,
+        storeId: order.storeId,
+        orderId: order.id,
+        walletId: wallet.id,
+        summary:
+          input.mode === 'manual'
+            ? `settlement سفارش #${order.id} دستی آزاد شد`
+            : `settlement سفارش #${order.id} خودکار آزاد شد`,
+        payload: {
+          amount: releasableAmount,
+          mode: input.mode,
         },
       });
 

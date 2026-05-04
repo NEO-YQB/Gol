@@ -5,8 +5,9 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { OrderActorType, OrderStatus, PaymentMethod, PaymentReviewStatus, PaymentStatus, Prisma } from '@prisma/client';
+import { DomainEventType, OrderActorType, OrderStatus, PaymentMethod, PaymentReviewStatus, PaymentStatus, Prisma } from '@prisma/client';
 import { subject } from '@casl/ability';
+import { DomainEventsService } from '../../common/services/domain-events.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AbilityFactory } from '../auth/ability.factory';
 import { AdminManualRefundDto } from './dto/admin-manual-refund.dto';
@@ -26,6 +27,7 @@ type AuthenticatedUser = {
 export class PaymentService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly domainEvents: DomainEventsService,
     private readonly abilityFactory: AbilityFactory,
     private readonly paymentGatewayService: PaymentGatewayService,
     private readonly paymentGatewayRegistry: PaymentGatewayRegistryService,
@@ -163,6 +165,22 @@ export class PaymentService {
       include: this.getPaymentInclude(),
     });
 
+    await this.domainEvents.record(this.prisma, {
+      eventType: DomainEventType.PAYMENT_INITIATED,
+      aggregateType: 'payment',
+      aggregateId: payment.id,
+      actorUserId: user.id,
+      storeId: refreshedOrder.storeId,
+      orderId: refreshedOrder.id,
+      paymentId: payment.id,
+      summary: `پرداخت برای سفارش #${refreshedOrder.id} شروع شد`,
+      payload: {
+        gatewayKey: gatewayConfig.key,
+        attemptCount: nextAttemptCount,
+        expiresAt: expiresAt.toISOString(),
+      },
+    });
+
     if (refreshedOrder.paymentStatus !== PaymentStatus.PENDING) {
       await this.prisma.order.update({
         where: { id: refreshedOrder.id },
@@ -266,6 +284,28 @@ export class PaymentService {
         });
       }
 
+      await this.domainEvents.record(tx, {
+        eventType: verificationResult.success
+          ? DomainEventType.PAYMENT_SUCCEEDED
+          : DomainEventType.PAYMENT_FAILED,
+        aggregateType: 'payment',
+        aggregateId: payment.id,
+        actorUserId: user.id,
+        storeId: payment.order.storeId,
+        orderId: payment.orderId,
+        paymentId: payment.id,
+        summary: verificationResult.success
+          ? `پرداخت سفارش #${payment.orderId} موفق شد`
+          : `پرداخت سفارش #${payment.orderId} ناموفق شد`,
+        payload: {
+          previousOrderStatus: payment.order.status,
+          nextOrderStatus,
+          nextPaymentStatus: nextOrderPaymentStatus,
+          refId: verificationResult.refId ?? null,
+          failureReason: verificationResult.failureReason ?? null,
+        },
+      });
+
       return {
         message: verificationResult.success
           ? 'payment با موفقیت verify شد'
@@ -281,7 +321,18 @@ export class PaymentService {
     await this.expirePaymentIfNeeded(id);
     const payment = await this.getPaymentOrThrow(id);
     await this.assertCanAccessPayment(user, payment);
-    return payment;
+    return {
+      ...payment,
+      timeline: payment.order.domainEvents,
+      auditTrail: payment.domainEvents,
+      latestOperationalFlags: [
+        ...(payment.reviewStatus === PaymentReviewStatus.NEEDS_REVIEW ||
+        payment.reviewStatus === PaymentReviewStatus.UNDER_REVIEW
+          ? ['REVIEW_REQUIRED']
+          : []),
+        ...(payment.status === PaymentStatus.FAILED ? ['PAYMENT_FAILED'] : []),
+      ],
+    };
   }
 
   async adminList(user: AuthenticatedUser, query: AdminListPaymentsQueryDto) {
@@ -432,6 +483,22 @@ export class PaymentService {
           actorUserId: user.id,
           reason: dto.reason,
           note: dto.note ?? 'refund دستی برای payment ثبت شد',
+        },
+      });
+
+      await this.domainEvents.record(tx, {
+        eventType: DomainEventType.PAYMENT_REFUNDED,
+        aggregateType: 'payment',
+        aggregateId: paymentId,
+        actorUserId: user.id,
+        storeId: payment.order.storeId,
+        orderId: payment.orderId,
+        paymentId: payment.id,
+        summary: `refund دستی برای payment #${payment.id} ثبت شد`,
+        payload: {
+          reason: dto.reason,
+          note: dto.note ?? null,
+          refundedAmount: Number(payment.amount),
         },
       });
 
@@ -659,6 +726,9 @@ export class PaymentService {
               ownerId: true,
             },
           },
+          domainEvents: {
+            orderBy: { createdAt: 'desc' as const },
+          },
         },
       },
       user: {
@@ -667,6 +737,9 @@ export class PaymentService {
           phoneNumber: true,
           fullName: true,
         },
+      },
+      domainEvents: {
+        orderBy: { createdAt: 'desc' as const },
       },
     };
   }
@@ -768,6 +841,19 @@ export class PaymentService {
           actorType: OrderActorType.SYSTEM,
           reason: 'مهلت پرداخت سفارش به پایان رسید',
           note: 'به علت انقضای payment، موجودی رزروشده آزاد شد',
+        },
+      });
+      await this.domainEvents.record(tx, {
+        eventType: DomainEventType.PAYMENT_EXPIRED,
+        aggregateType: 'payment',
+        aggregateId: payment.id,
+        storeId: payment.order.storeId,
+        orderId: payment.orderId,
+        paymentId: payment.id,
+        summary: `payment #${payment.id} منقضی شد`,
+        payload: {
+          previousOrderStatus: payment.order.status,
+          nextOrderStatus: OrderStatus.CANCELLED,
         },
       });
     });

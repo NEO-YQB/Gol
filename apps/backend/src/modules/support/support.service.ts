@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  DomainEventType,
   OrderStatus,
   Prisma,
   SettlementStatus,
@@ -13,6 +14,7 @@ import {
   SupportTicketFinanceOutcome,
   SupportTicketStatus,
 } from '@prisma/client';
+import { DomainEventsService } from '../../common/services/domain-events.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { FinanceService } from '../finance/finance.service';
 import { PaymentService } from '../payment/payment.service';
@@ -44,6 +46,7 @@ const ACTIVE_TICKET_STATUSES: SupportTicketStatus[] = [
 export class SupportService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly domainEvents: DomainEventsService,
     private readonly financeService: FinanceService,
     private readonly paymentService: PaymentService,
   ) {}
@@ -140,6 +143,21 @@ export class SupportService {
         },
       });
 
+      await this.domainEvents.record(tx, {
+        eventType: DomainEventType.SUPPORT_TICKET_CREATED,
+        aggregateType: 'support-ticket',
+        aggregateId: ticket.id,
+        actorUserId: user.id,
+        storeId: order.storeId,
+        orderId: order.id,
+        supportTicketId: ticket.id,
+        summary: `تیکت #${ticket.id} برای سفارش #${order.id} ثبت شد`,
+        payload: {
+          reason: dto.reason,
+          title: dto.title,
+        },
+      });
+
       return ticket;
     }, SUPPORT_TX_OPTIONS);
   }
@@ -163,15 +181,15 @@ export class SupportService {
     }
 
     if (this.isAdmin(user)) {
-      return ticket;
+      return this.attachOperationalView(ticket);
     }
 
     if (ticket.customerId === user.id) {
-      return ticket;
+      return this.attachOperationalView(ticket);
     }
 
     if (this.isVendor(user) && ticket.store?.ownerId === user.id) {
-      return ticket;
+      return this.attachOperationalView(ticket);
     }
 
     throw new ForbiddenException('شما اجازه مشاهده این تیکت را ندارید');
@@ -246,6 +264,22 @@ export class SupportService {
             toStatus: dto.status,
             internalNote: dto.internalNote ?? null,
           } as Prisma.InputJsonValue,
+        },
+      });
+
+      await this.domainEvents.record(tx, {
+        eventType: DomainEventType.SUPPORT_TICKET_STATUS_CHANGED,
+        aggregateType: 'support-ticket',
+        aggregateId: ticket.id,
+        actorUserId: user.id,
+        storeId: ticket.storeId,
+        orderId: ticket.orderId,
+        supportTicketId: ticket.id,
+        summary: `وضعیت تیکت #${ticket.id} تغییر کرد`,
+        payload: {
+          fromStatus: ticket.status,
+          toStatus: dto.status,
+          note: dto.note ?? null,
         },
       });
 
@@ -340,6 +374,22 @@ export class SupportService {
             amount: dto.amount ?? null,
             extendHoldDays: dto.extendHoldDays ?? null,
           } as Prisma.InputJsonValue,
+        },
+      });
+
+      await this.domainEvents.record(tx, {
+        eventType: DomainEventType.SUPPORT_FINANCE_DECISION_APPLIED,
+        aggregateType: 'support-ticket',
+        aggregateId: ticket.id,
+        actorUserId: user.id,
+        storeId: ticket.storeId,
+        orderId: ticket.orderId,
+        supportTicketId: ticket.id,
+        summary: `تصمیم مالی برای تیکت #${ticket.id} ثبت شد`,
+        payload: {
+          outcome: dto.outcome,
+          amount: dto.amount ?? null,
+          extendHoldDays: dto.extendHoldDays ?? null,
         },
       });
 
@@ -475,7 +525,24 @@ export class SupportService {
         where: includeInternalNotes ? {} : { isInternal: false },
         orderBy: { createdAt: 'asc' as const },
       },
+      domainEvents: {
+        orderBy: { createdAt: 'desc' as const },
+      },
     } satisfies Prisma.SupportTicketInclude;
+  }
+
+  private attachOperationalView(ticket: Awaited<ReturnType<typeof this.getTicketOrThrow>>) {
+    return {
+      ...ticket,
+      timeline: ticket.notes,
+      auditTrail: ticket.domainEvents,
+      latestOperationalFlags: [
+        ...(ACTIVE_TICKET_STATUSES.includes(ticket.status) ? ['FOLLOW_UP_REQUIRED'] : []),
+        ...(ticket.status === SupportTicketStatus.ESCALATED_TO_FINANCE
+          ? ['FINANCE_REVIEW_PENDING']
+          : []),
+      ],
+    };
   }
 
   private resolveActorType(user: AuthenticatedUser) {

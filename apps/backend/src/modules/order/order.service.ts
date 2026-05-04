@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  DomainEventType,
   DeliveryType,
   OrderActorType,
   OrderStatus,
@@ -14,6 +15,7 @@ import {
   SettlementStatus,
   UserAddress,
 } from '@prisma/client';
+import { DomainEventsService } from '../../common/services/domain-events.service';
 import { subject } from '@casl/ability';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AbilityFactory } from '../auth/ability.factory';
@@ -77,6 +79,7 @@ const INTERACTIVE_TX_OPTIONS = {
 export class OrderService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly domainEvents: DomainEventsService,
     private readonly abilityFactory: AbilityFactory,
     private readonly pricingService: PricingService,
     private readonly financeService: FinanceService,
@@ -219,7 +222,7 @@ export class OrderService {
   async findOne(user: AuthenticatedUser, id: number) {
     const order = await this.getOrderOrThrow(id);
     await this.assertCanViewOrder(user, order);
-    return order;
+    return this.attachOperationalView(order);
   }
 
   async accept(user: AuthenticatedUser, id: number, dto: OrderActionNoteDto) {
@@ -258,6 +261,16 @@ export class OrderService {
         actorUserId: user.id,
         note: dto.note,
       });
+      await this.domainEvents.record(tx, {
+        eventType: DomainEventType.ORDER_ACCEPTED,
+        aggregateType: 'order',
+        aggregateId: order.id,
+        actorUserId: user.id,
+        storeId: order.storeId,
+        orderId: order.id,
+        summary: `سفارش #${order.id} پذیرفته شد`,
+        payload: { fromStatus: order.status, toStatus: OrderStatus.ACCEPTED, note: dto.note ?? null },
+      });
 
       return updatedOrder;
     }, INTERACTIVE_TX_OPTIONS);
@@ -292,6 +305,16 @@ export class OrderService {
         actorUserId: user.id,
         note: dto.note,
       });
+      await this.domainEvents.record(tx, {
+        eventType: DomainEventType.ORDER_SHIPPED,
+        aggregateType: 'order',
+        aggregateId: order.id,
+        actorUserId: user.id,
+        storeId: order.storeId,
+        orderId: order.id,
+        summary: `سفارش #${order.id} ارسال شد`,
+        payload: { fromStatus: order.status, toStatus: OrderStatus.SHIPPED, note: dto.note ?? null },
+      });
 
       return updatedOrder;
     }, INTERACTIVE_TX_OPTIONS);
@@ -321,6 +344,16 @@ export class OrderService {
         actorType: this.isAdmin(user) ? OrderActorType.ADMIN : OrderActorType.VENDOR,
         actorUserId: user.id,
         note: dto.note,
+      });
+      await this.domainEvents.record(tx, {
+        eventType: DomainEventType.ORDER_DELIVERED,
+        aggregateType: 'order',
+        aggregateId: order.id,
+        actorUserId: user.id,
+        storeId: order.storeId,
+        orderId: order.id,
+        summary: `سفارش #${order.id} تحویل شد`,
+        payload: { fromStatus: order.status, toStatus: OrderStatus.DELIVERED, note: dto.note ?? null },
       });
 
       return updatedOrder;
@@ -557,6 +590,20 @@ export class OrderService {
         actorUserId: user.id,
         note: 'سفارش ایجاد شد',
       });
+      await this.domainEvents.record(tx, {
+        eventType: DomainEventType.ORDER_CREATED,
+        aggregateType: 'order',
+        aggregateId: order.id,
+        actorUserId: user.id,
+        storeId: order.storeId,
+        orderId: order.id,
+        summary: `سفارش #${order.id} ایجاد شد`,
+        payload: {
+          paymentMethod: order.paymentMethod,
+          totalAmount: Number(order.totalAmount),
+          itemCount: normalizedItems.length,
+        },
+      });
 
       for (const item of normalizedItems) {
         await tx.product.update({
@@ -652,6 +699,21 @@ export class OrderService {
         actorUserId: payload.actorUserId,
         reason: payload.reason,
         note: payload.note,
+      });
+      await this.domainEvents.record(tx, {
+        eventType: DomainEventType.ORDER_CANCELLED,
+        aggregateType: 'order',
+        aggregateId: order.id,
+        actorUserId: payload.actorUserId,
+        storeId: order.storeId,
+        orderId: order.id,
+        summary: `سفارش #${order.id} لغو شد`,
+        payload: {
+          fromStatus: order.status,
+          toStatus: payload.status,
+          reason: payload.reason ?? null,
+          note: payload.note ?? null,
+        },
       });
 
       return updatedOrder;
@@ -953,6 +1015,52 @@ export class OrderService {
           createdAt: 'desc' as const,
         },
       },
+      domainEvents: {
+        orderBy: {
+          createdAt: 'desc' as const,
+        },
+      },
+    };
+  }
+
+  private attachOperationalView(
+    order: Awaited<ReturnType<OrderService['getOrderOrThrow']>>,
+  ) {
+    const latestOperationalFlags = [
+      ...(order.paymentMethod === PaymentMethod.ONLINE &&
+      order.paymentStatus === PaymentStatus.EXPIRED
+        ? ['PAYMENT_EXPIRED']
+        : []),
+      ...(order.status === OrderStatus.DELIVERED &&
+      order.settlementStatus === SettlementStatus.PENDING
+        ? ['SETTLEMENT_NOT_HELD']
+        : []),
+      ...(order.settlementStatus === SettlementStatus.ON_HOLD &&
+      order.settlementEligibleAt &&
+      !order.earningsReleasedAt &&
+      order.settlementEligibleAt.getTime() < Date.now()
+        ? ['SETTLEMENT_OVERDUE']
+        : []),
+    ];
+
+    return {
+      ...order,
+      timeline: order.statusHistories,
+      auditTrail: order.domainEvents,
+      latestOperationalFlags,
+      availableActions: {
+        canAccept:
+          order.status === OrderStatus.PENDING || order.status === OrderStatus.PAID,
+        canShip:
+          order.status === OrderStatus.ACCEPTED || order.status === OrderStatus.PROCESSING,
+        canDeliver: order.status === OrderStatus.SHIPPED,
+        canCancel: !this.isTerminalStatus(order.status),
+        canInitiatePayment:
+          order.paymentMethod === PaymentMethod.ONLINE &&
+          !this.isTerminalStatus(order.status) &&
+          order.paymentStatus !== PaymentStatus.PAID &&
+          order.paymentStatus !== PaymentStatus.EXPIRED,
+      },
     };
   }
 
@@ -1065,6 +1173,20 @@ export class OrderService {
         actorType: OrderActorType.SYSTEM,
         reason: 'مهلت پرداخت سفارش به پایان رسید',
         note: 'به علت انقضای payment، موجودی رزروشده آزاد شد',
+      });
+      await this.domainEvents.record(tx, {
+        eventType: DomainEventType.PAYMENT_EXPIRED,
+        aggregateType: 'payment',
+        aggregateId: payment.id,
+        storeId: order.storeId,
+        orderId: order.id,
+        paymentId: payment.id,
+        summary: `پرداخت سفارش #${order.id} منقضی شد`,
+        payload: {
+          fromOrderStatus: order.status,
+          toOrderStatus: OrderStatus.CANCELLED,
+          paymentStatus: PaymentStatus.EXPIRED,
+        },
       });
     }, INTERACTIVE_TX_OPTIONS);
 

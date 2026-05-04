@@ -1,5 +1,6 @@
 -- CreateEnum
 CREATE TYPE "PaymentGateway" AS ENUM ('MOCK');
+CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'PAID', 'FAILED');
 
 -- CreateTable
 CREATE TABLE "Payment" (

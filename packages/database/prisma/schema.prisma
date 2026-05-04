@@ -114,6 +114,7 @@ model Store {
   wallet        StoreWallet?
   walletTransactions WalletTransaction[]
   supportTickets SupportTicket[]
+  domainEvents   DomainEvent[]
   vendorDiscounts VendorDiscount[]
   promotions    PromotionOnStores[]
   couponScopes  CouponOnStores[]
@@ -491,6 +492,7 @@ model Order {
   walletTransactions   WalletTransaction[]
   statusHistories      OrderStatusHistory[]
   supportTickets       SupportTicket[]
+  domainEvents         DomainEvent[]
   acceptedAt           DateTime?
   shippedAt            DateTime?
   deliveredAt          DateTime?
@@ -532,6 +534,7 @@ model Payment {
   gatewaySnapshot  Json?
   rawInitiateData  Json?
   rawVerifyData    Json?
+  domainEvents     DomainEvent[]
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
@@ -678,6 +681,32 @@ enum VendorHealthStatus {
   AT_RISK
 }
 
+enum DomainEventType {
+  ORDER_CREATED
+  ORDER_ACCEPTED
+  ORDER_SHIPPED
+  ORDER_DELIVERED
+  ORDER_CANCELLED
+  PAYMENT_INITIATED
+  PAYMENT_SUCCEEDED
+  PAYMENT_FAILED
+  PAYMENT_EXPIRED
+  PAYMENT_REFUNDED
+  SUPPORT_TICKET_CREATED
+  SUPPORT_TICKET_STATUS_CHANGED
+  SUPPORT_FINANCE_DECISION_APPLIED
+  SETTLEMENT_HELD
+  SETTLEMENT_RELEASED
+  SETTLEMENT_REVERSED
+  WALLET_ADJUSTED
+}
+
+enum DomainEventStatus {
+  PENDING
+  PROCESSED
+  FAILED
+}
+
 model CommissionRule {
   id                    Int                 @id @default(autoincrement())
   scope                 CommissionRuleScope @default(GLOBAL)
@@ -714,6 +743,7 @@ model StoreWallet {
   availableBalance Decimal             @default(0) @db.Decimal(12, 2)
   heldBalance      Decimal             @default(0) @db.Decimal(12, 2)
   transactions     WalletTransaction[]
+  domainEvents     DomainEvent[]
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
 }
@@ -765,6 +795,7 @@ model SupportTicket {
   createdAt             DateTime                    @default(now())
   updatedAt             DateTime                    @updatedAt
   notes                 SupportTicketNote[]
+  domainEvents          DomainEvent[]
 
   @@index([orderId])
   @@index([customerId, createdAt])
@@ -844,4 +875,39 @@ model OtpCode {
   createdAt DateTime @default(now())
 
   @@index([phoneNumber])
+}
+
+model DomainEvent {
+  id              Int               @id @default(autoincrement())
+  eventType       DomainEventType
+  aggregateType   String
+  aggregateId     Int
+  status          DomainEventStatus @default(PENDING)
+  actorUserId     Int?
+  storeId         Int?
+  orderId         Int?
+  paymentId       Int?
+  supportTicketId Int?
+  walletId        Int?
+  summary         String?
+  payload         Json?
+  metadata        Json?
+  processedAt     DateTime?
+  failureReason   String?           @db.Text
+  createdAt       DateTime          @default(now())
+
+  store           Store?            @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  order           Order?            @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  payment         Payment?          @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  supportTicket   SupportTicket?    @relation(fields: [supportTicketId], references: [id], onDelete: SetNull)
+  wallet          StoreWallet?      @relation(fields: [walletId], references: [id], onDelete: SetNull)
+
+  @@index([aggregateType, aggregateId, createdAt])
+  @@index([eventType, createdAt])
+  @@index([status, createdAt])
+  @@index([orderId, createdAt])
+  @@index([paymentId, createdAt])
+  @@index([supportTicketId, createdAt])
+  @@index([storeId, createdAt])
+  @@index([walletId, createdAt])
 }
