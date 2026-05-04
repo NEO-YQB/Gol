@@ -18,6 +18,7 @@ import { DomainEventsService } from '../../common/services/domain-events.service
 import { PrismaService } from '../../prisma/prisma.service';
 import { FinanceService } from '../finance/finance.service';
 import { PaymentService } from '../payment/payment.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { AdminListSupportTicketsQueryDto } from './dto/admin-list-support-tickets-query.dto';
 import { CreateSupportTicketNoteDto } from './dto/create-support-ticket-note.dto';
 import { CreateSupportTicketDto } from './dto/create-support-ticket.dto';
@@ -49,6 +50,7 @@ export class SupportService {
     private readonly domainEvents: DomainEventsService,
     private readonly financeService: FinanceService,
     private readonly paymentService: PaymentService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async customerCreateOrderTicket(
@@ -156,6 +158,23 @@ export class SupportService {
           reason: dto.reason,
           title: dto.title,
         },
+      });
+
+      await this.notificationsService.enqueue(tx, {
+        userId: order.userId,
+        storeId: order.storeId,
+        orderId: order.id,
+        supportTicketId: ticket.id,
+        topic: 'support.ticket.created',
+        title: 'تیکت پشتیبانی ثبت شد',
+        body: `تیکت پشتیبانی برای سفارش #${order.id} با موفقیت ثبت شد`,
+        payload: {
+          ticketId: ticket.id,
+          orderId: order.id,
+          reason: dto.reason,
+          status: ticket.status,
+        },
+        dedupeKey: `support-ticket-created:${ticket.id}`,
       });
 
       return ticket;

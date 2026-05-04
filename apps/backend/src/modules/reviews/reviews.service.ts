@@ -10,6 +10,7 @@ import { DomainEventsService } from '../../common/services/domain-events.service
 import { PrismaService } from '../../prisma/prisma.service';
 import { AbilityFactory } from '../auth/ability.factory';
 import { VendorHealthService } from '../store/vendor-health.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { GetMyReviewsQueryDto } from './dto/get-my-reviews-query.dto';
 
@@ -30,6 +31,7 @@ export class ReviewsService {
     private readonly domainEvents: DomainEventsService,
     private readonly abilityFactory: AbilityFactory,
     private readonly vendorHealthService: VendorHealthService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async create(user: AuthenticatedUser, dto: CreateReviewDto) {
@@ -129,6 +131,21 @@ export class ReviewsService {
     }, REVIEW_TX_OPTIONS);
 
     const health = await this.vendorHealthService.recalculateStoreHealth(product.storeId);
+
+    await this.notificationsService.enqueue(this.prisma, {
+      userId: user.id,
+      storeId: product.storeId,
+      orderId: order.id,
+      topic: 'review.created',
+      title: 'نظر شما ثبت شد',
+      body: `نظر شما برای سفارش #${order.id} با موفقیت ثبت شد`,
+      payload: {
+        reviewId: review.id,
+        orderId: order.id,
+        rating: dto.rating,
+      },
+      dedupeKey: `review-created:${review.id}`,
+    });
 
     return {
       message: 'review با موفقيت ثبت شد',

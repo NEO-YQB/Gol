@@ -27,6 +27,7 @@ model User {
   couponRedemptions CouponRedemption[]
   supportTickets SupportTicket[]
   reviews       Review[]
+  notifications Notification[]
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -118,6 +119,7 @@ model Store {
   vendorDiscounts VendorDiscount[]
   promotions    PromotionOnStores[]
   couponScopes  CouponOnStores[]
+  notifications Notification[]
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -494,6 +496,7 @@ model Order {
   supportTickets       SupportTicket[]
   domainEvents         DomainEvent[]
   reviews              Review[]
+  notifications        Notification[]
   acceptedAt           DateTime?
   shippedAt            DateTime?
   deliveredAt          DateTime?
@@ -536,6 +539,7 @@ model Payment {
   rawInitiateData  Json?
   rawVerifyData    Json?
   domainEvents     DomainEvent[]
+  notifications    Notification[]
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
@@ -708,6 +712,21 @@ enum DomainEventStatus {
   FAILED
 }
 
+enum NotificationChannel {
+  IN_APP
+  SMS
+  EMAIL
+  PUSH
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+
 model CommissionRule {
   id                    Int                 @id @default(autoincrement())
   scope                 CommissionRuleScope @default(GLOBAL)
@@ -797,6 +816,7 @@ model SupportTicket {
   updatedAt             DateTime                    @updatedAt
   notes                 SupportTicketNote[]
   domainEvents          DomainEvent[]
+  notifications         Notification[]
 
   @@index([orderId])
   @@index([customerId, createdAt])
@@ -880,6 +900,38 @@ model OtpCode {
   createdAt DateTime @default(now())
 
   @@index([phoneNumber])
+}
+
+model Notification {
+  id            Int                 @id @default(autoincrement())
+  userId        Int
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  storeId       Int?
+  store         Store?              @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  orderId       Int?
+  order         Order?              @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  paymentId     Int?
+  payment       Payment?            @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  supportTicketId Int?
+  supportTicket SupportTicket?      @relation(fields: [supportTicketId], references: [id], onDelete: SetNull)
+  channel       NotificationChannel @default(IN_APP)
+  status        NotificationStatus  @default(PENDING)
+  topic         String
+  title         String
+  body          String              @db.Text
+  payload       Json?
+  sentAt        DateTime?
+  failedAt      DateTime?
+  cancelledAt   DateTime?
+  failureReason String?             @db.Text
+  dedupeKey     String?             @unique
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@index([storeId, createdAt])
+  @@index([orderId, createdAt])
 }
 
 model DomainEvent {
