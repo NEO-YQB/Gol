@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { GetUser } from '../../common/decorators/get-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AdminListSupportTicketsQueryDto } from './dto/admin-list-support-tickets-query.dto';
@@ -18,6 +18,19 @@ export class SupportController {
 
   @Post('orders/:orderId/tickets')
   @ApiOperation({ summary: 'ثبت شکایت/تیکت برای سفارش تحویل‌شده توسط مشتری' })
+  @ApiParam({ name: 'orderId', type: Number, description: 'شناسه سفارش تحویل‌شده' })
+  @ApiOkResponse({
+    description: 'تیکت پشتیبانی با موفقیت ثبت شد',
+    schema: {
+      example: {
+        id: 9,
+        orderId: 45,
+        status: 'OPEN',
+        reason: 'QUALITY_ISSUE',
+        title: 'کیفیت گل مناسب نبود',
+      },
+    },
+  })
   createOrderTicket(
     @GetUser() user: { id: number; roles: string[] },
     @Param('orderId', ParseIntPipe) orderId: number,
@@ -28,12 +41,33 @@ export class SupportController {
 
   @Get('tickets/me')
   @ApiOperation({ summary: 'لیست تیکت‌های مشتری جاری' })
+  @ApiOkResponse({
+    description: 'لیست تیکت‌های مشتری جاری',
+    schema: {
+      example: [
+        { id: 9, orderId: 45, status: 'OPEN', reason: 'QUALITY_ISSUE' },
+      ],
+    },
+  })
   myTickets(@GetUser() user: { id: number; roles: string[] }) {
     return this.supportService.customerListMyTickets(user);
   }
 
   @Get('tickets/:id')
   @ApiOperation({ summary: 'جزئیات تیکت برای مشتری، فروشنده مالک سفارش یا ادمین' })
+  @ApiParam({ name: 'id', type: Number, description: 'شناسه تیکت' })
+  @ApiOkResponse({
+    description: 'جزئیات کامل تیکت',
+    schema: {
+      example: {
+        id: 9,
+        orderId: 45,
+        status: 'IN_REVIEW',
+        notes: [],
+        financeDecision: null,
+      },
+    },
+  })
   getTicket(
     @GetUser() user: { id: number; roles: string[] },
     @Param('id', ParseIntPipe) id: number,
@@ -43,6 +77,7 @@ export class SupportController {
 
   @Post('tickets/:id/notes')
   @ApiOperation({ summary: 'ثبت پیام یا note روی تیکت' })
+  @ApiParam({ name: 'id', type: Number, description: 'شناسه تیکت' })
   addNote(
     @GetUser() user: { id: number; roles: string[] },
     @Param('id', ParseIntPipe) id: number,
@@ -62,6 +97,7 @@ export class SupportController {
 
   @Patch('admin/tickets/:id/status')
   @ApiOperation({ summary: 'تغییر وضعیت تیکت توسط ادمین/پشتیبانی' })
+  @ApiParam({ name: 'id', type: Number, description: 'شناسه تیکت' })
   adminUpdateStatus(
     @GetUser() user: { id: number; roles: string[] },
     @Param('id', ParseIntPipe) id: number,
@@ -72,6 +108,7 @@ export class SupportController {
 
   @Post('admin/tickets/:id/finance-decision')
   @ApiOperation({ summary: 'ثبت تصمیم مالی برای تیکت escalate شده' })
+  @ApiParam({ name: 'id', type: Number, description: 'شناسه تیکت' })
   adminFinanceDecision(
     @GetUser() user: { id: number; roles: string[] },
     @Param('id', ParseIntPipe) id: number,

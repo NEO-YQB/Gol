@@ -28,6 +28,7 @@ model User {
   supportTickets SupportTicket[]
   reviews       Review[]
   notifications Notification[]
+  notificationDeliveries NotificationDelivery[]
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -120,6 +121,7 @@ model Store {
   promotions    PromotionOnStores[]
   couponScopes  CouponOnStores[]
   notifications Notification[]
+  notificationDeliveries NotificationDelivery[]
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -931,6 +933,7 @@ model Notification {
   providerResponse Json?
   providerMessageId String?
   dedupeKey     String?             @unique
+  deliveries    NotificationDelivery[]
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
 
@@ -938,6 +941,37 @@ model Notification {
   @@index([status, createdAt])
   @@index([storeId, createdAt])
   @@index([orderId, createdAt])
+}
+
+model NotificationDelivery {
+  id                Int                 @id @default(autoincrement())
+  notificationId    Int
+  notification      Notification        @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  userId            Int
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  storeId           Int?
+  store             Store?              @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  channel           NotificationChannel
+  status            NotificationStatus  @default(PENDING)
+  title             String
+  body              String              @db.Text
+  attempts          Int                 @default(0)
+  lastAttemptAt     DateTime?
+  sentAt            DateTime?
+  failedAt          DateTime?
+  cancelledAt       DateTime?
+  failureReason     String?             @db.Text
+  providerResponse  Json?
+  providerMessageId String?
+  dedupeKey         String?             @unique
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@index([notificationId, createdAt])
+  @@index([userId, createdAt])
+  @@index([storeId, createdAt])
+  @@index([channel, createdAt])
+  @@index([status, createdAt])
 }
 
 model DomainEvent {

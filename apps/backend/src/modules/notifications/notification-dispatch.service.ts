@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Notification, NotificationChannel, NotificationStatus, Prisma } from '@prisma/client';
+import { Notification, NotificationChannel, NotificationDelivery, NotificationStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationTemplatesService } from './notification-templates.service';
 
@@ -12,8 +12,16 @@ type AdapterDispatchResult = {
 
 type DispatchContext = {
   notification: Notification;
+  delivery: NotificationDelivery;
   title: string;
   body: string;
+};
+
+type DispatchResult = {
+  ok: boolean;
+  reason: string | null;
+  notification: Notification & { deliveries?: NotificationDelivery[] };
+  delivery: NotificationDelivery;
 };
 
 interface NotificationAdapter {
@@ -29,7 +37,7 @@ class InAppNotificationAdapter implements NotificationAdapter {
   async dispatch(context: DispatchContext): Promise<AdapterDispatchResult> {
     return {
       ok: true,
-      providerMessageId: `in-app:${context.notification.id}`,
+      providerMessageId: `in-app:${context.notification.id}:${context.delivery.id}`,
       providerResponse: {
         adapter: 'in-app',
         simulated: true,
@@ -48,7 +56,7 @@ class MockExternalNotificationAdapter implements NotificationAdapter {
   async dispatch(context: DispatchContext): Promise<AdapterDispatchResult> {
     return {
       ok: true,
-      providerMessageId: `${this.channel.toLowerCase()}:${context.notification.id}`,
+      providerMessageId: `${this.channel.toLowerCase()}:${context.notification.id}:${context.delivery.id}`,
       providerResponse: {
         adapter: `mock-${this.channel.toLowerCase()}`,
         simulated: true,
@@ -79,88 +87,116 @@ export class NotificationDispatchService {
     notificationId: number,
     options?: {
       overrideChannel?: NotificationChannel;
+      overrideChannels?: NotificationChannel[];
       forceRetry?: boolean;
     },
   ) {
     const notification = await this.prisma.notification.findUnique({
       where: { id: notificationId },
+      include: {
+        deliveries: {
+          orderBy: [{ createdAt: 'asc' }],
+        },
+      },
     });
 
     if (!notification) {
       return null;
     }
 
-    if (
-      !options?.forceRetry &&
-      (notification.status === NotificationStatus.SENT ||
-        notification.status === NotificationStatus.CANCELLED)
-    ) {
-      return this.buildResult(notification, false, 'notification در وضعیت قابل dispatch نیست');
-    }
+    const channels = Array.from(
+      new Set(
+        options?.overrideChannels?.length
+          ? options.overrideChannels
+          : [options?.overrideChannel ?? notification.channel],
+      ),
+    );
+    const results: DispatchResult[] = [];
 
-    const channel = options?.overrideChannel ?? notification.channel;
-    const adapter = this.adapters.find((item) => item.supports(channel));
+    for (const channel of channels) {
+      const delivery = await this.findOrCreateDelivery(notification, channel);
 
-    if (!adapter) {
-      return this.failNotification(notification, channel, 'adapter مناسب برای این channel یافت نشد');
-    }
-
-    const rendered = this.resolveContent(notification);
-    const attemptTime = new Date();
-
-    try {
-      const result = await adapter.dispatch({
-        notification,
-        title: rendered.title,
-        body: rendered.body,
-      });
-
-      if (!result.ok) {
-        return this.failNotification(
-          notification,
-          channel,
-          result.failureReason ?? 'dispatch ناموفق بود',
-          result.providerResponse ?? null,
-          attemptTime,
-        );
+      if (
+        !options?.forceRetry &&
+        (delivery.status === NotificationStatus.SENT ||
+          delivery.status === NotificationStatus.CANCELLED)
+      ) {
+        results.push(this.buildResult(notification, delivery, false, 'delivery در وضعیت قابل dispatch نیست'));
+        continue;
       }
 
-      const updated = await this.prisma.notification.update({
-        where: { id: notification.id },
-        data: {
-          channel,
+      const adapter = this.adapters.find((item) => item.supports(channel));
+
+      if (!adapter) {
+        results.push(
+          await this.failDelivery(notification, delivery, channel, 'adapter مناسب برای این channel یافت نشد'),
+        );
+        continue;
+      }
+
+      const rendered = this.resolveContent(notification);
+      const attemptTime = new Date();
+
+      try {
+        const result = await adapter.dispatch({
+          notification,
+          delivery,
           title: rendered.title,
           body: rendered.body,
-          status: NotificationStatus.SENT,
-          attempts: { increment: 1 },
-          lastAttemptAt: attemptTime,
-          sentAt: attemptTime,
-          failedAt: null,
-          cancelledAt: null,
-          failureReason: null,
-          providerMessageId: result.providerMessageId ?? null,
-          providerResponse: this.toJson(result.providerResponse ?? null),
-        },
-      });
+        });
 
-      return this.buildResult(updated, true);
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : 'dispatch با خطا مواجه شد';
-      return this.failNotification(notification, channel, reason, null, attemptTime);
+        if (!result.ok) {
+          results.push(
+            await this.failDelivery(
+              notification,
+              delivery,
+              channel,
+              result.failureReason ?? 'dispatch ناموفق بود',
+              result.providerResponse ?? null,
+              attemptTime,
+            ),
+          );
+          continue;
+        }
+
+        const updated = await this.prisma.notificationDelivery.update({
+          where: { id: delivery.id },
+          data: {
+            status: NotificationStatus.SENT,
+            attempts: { increment: 1 },
+            lastAttemptAt: attemptTime,
+            sentAt: attemptTime,
+            failedAt: null,
+            cancelledAt: null,
+            failureReason: null,
+            providerMessageId: result.providerMessageId ?? null,
+            providerResponse: this.toJson(result.providerResponse ?? null),
+          },
+        });
+
+        await this.syncNotificationSnapshot(notification.id);
+        const refreshed = await this.getNotificationWithDeliveries(notification.id);
+        results.push(this.buildResult(refreshed, updated, true));
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : 'dispatch با خطا مواجه شد';
+        results.push(await this.failDelivery(notification, delivery, channel, reason, null, attemptTime));
+      }
     }
+
+    return results;
   }
 
-  private async failNotification(
+  private async failDelivery(
     notification: Notification,
-    channel: NotificationChannel,
+    delivery: NotificationDelivery,
+    _channel: NotificationChannel,
     reason: string,
     providerResponse?: Record<string, unknown> | null,
     attemptTime = new Date(),
   ) {
-    const updated = await this.prisma.notification.update({
-      where: { id: notification.id },
+    const updated = await this.prisma.notificationDelivery.update({
+      where: { id: delivery.id },
       data: {
-        channel,
         status: NotificationStatus.FAILED,
         attempts: { increment: 1 },
         lastAttemptAt: attemptTime,
@@ -170,7 +206,10 @@ export class NotificationDispatchService {
       },
     });
 
-    return this.buildResult(updated, false, reason);
+    await this.syncNotificationSnapshot(notification.id);
+    const refreshed = await this.getNotificationWithDeliveries(notification.id);
+
+    return this.buildResult(refreshed, updated, false, reason);
   }
 
   private resolveContent(notification: Notification) {
@@ -184,12 +223,90 @@ export class NotificationDispatchService {
     };
   }
 
-  private buildResult(notification: Notification, ok: boolean, reason?: string) {
+  private buildResult(
+    notification: Notification & { deliveries?: NotificationDelivery[] },
+    delivery: NotificationDelivery,
+    ok: boolean,
+    reason?: string,
+  ) {
     return {
       ok,
       reason: reason ?? null,
       notification,
+      delivery,
     };
+  }
+
+  private async findOrCreateDelivery(
+    notification: Notification & { deliveries?: NotificationDelivery[] },
+    channel: NotificationChannel,
+  ) {
+    const existing = notification.deliveries?.find((item) => item.channel === channel);
+    if (existing) {
+      return existing;
+    }
+
+    return this.prisma.notificationDelivery.create({
+      data: {
+        notificationId: notification.id,
+        userId: notification.userId,
+        storeId: notification.storeId,
+        channel,
+        title: notification.title,
+        body: notification.body,
+        dedupeKey: notification.dedupeKey ? `${notification.dedupeKey}:${channel}` : `${notification.id}:${channel}`,
+      },
+    });
+  }
+
+  private async syncNotificationSnapshot(notificationId: number) {
+    const deliveries = await this.prisma.notificationDelivery.findMany({
+      where: { notificationId },
+      orderBy: [{ lastAttemptAt: 'desc' }, { createdAt: 'desc' }],
+    });
+
+    const latest = deliveries[0];
+    const sent = deliveries.some((item) => item.status === NotificationStatus.SENT);
+    const pending = deliveries.some((item) => item.status === NotificationStatus.PENDING);
+    const failed = deliveries.some((item) => item.status === NotificationStatus.FAILED);
+    const cancelled = deliveries.every((item) => item.status === NotificationStatus.CANCELLED);
+
+    await this.prisma.notification.update({
+      where: { id: notificationId },
+      data: {
+        channel: latest?.channel ?? NotificationChannel.IN_APP,
+        title: latest?.title,
+        body: latest?.body,
+        status: sent
+          ? NotificationStatus.SENT
+          : pending
+            ? NotificationStatus.PENDING
+            : failed
+              ? NotificationStatus.FAILED
+              : cancelled
+                ? NotificationStatus.CANCELLED
+                : NotificationStatus.PENDING,
+        attempts: deliveries.reduce((sum, item) => sum + item.attempts, 0),
+        lastAttemptAt: latest?.lastAttemptAt ?? null,
+        sentAt: latest?.sentAt ?? null,
+        failedAt: latest?.failedAt ?? null,
+        cancelledAt: latest?.cancelledAt ?? null,
+        failureReason: latest?.failureReason ?? null,
+        providerMessageId: latest?.providerMessageId ?? null,
+        providerResponse: this.toJson(this.toRecord(latest?.providerResponse ?? null)),
+      },
+    });
+  }
+
+  private getNotificationWithDeliveries(id: number) {
+    return this.prisma.notification.findUniqueOrThrow({
+      where: { id },
+      include: {
+        deliveries: {
+          orderBy: [{ createdAt: 'asc' }],
+        },
+      },
+    });
   }
 
   private toRecord(value: Prisma.JsonValue | null): Record<string, unknown> | null {

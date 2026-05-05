@@ -13,7 +13,9 @@ import {
 import {
   ApiBearerAuth,
   ApiBody,
+  ApiOkResponse,
   ApiOperation,
+  ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -35,6 +37,17 @@ export class OrderController {
 
   @Post('preview')
   @ApiOperation({ summary: 'پیش نمایش checkout از روی سبد خرید' })
+  @ApiOkResponse({
+    description: 'پیش‌نمایش checkout از سبد خرید',
+    schema: {
+      example: {
+        cartId: 4,
+        payment: { paymentMethod: 'COD', paymentStatus: 'PENDING' },
+        items: [],
+        totalAmount: 850000,
+      },
+    },
+  })
   preview(
     @GetUser() user: { id: number; roles: string[] },
     @Body() dto: CheckoutPreviewDto,
@@ -44,6 +57,17 @@ export class OrderController {
 
   @Post('from-cart')
   @ApiOperation({ summary: 'ایجاد سفارش از روی سبد خرید' })
+  @ApiOkResponse({
+    description: 'سفارش با موفقیت از روی سبد خرید ایجاد شد',
+    schema: {
+      example: {
+        id: 45,
+        status: 'PENDING',
+        paymentStatus: 'PENDING',
+        totalAmount: '850000',
+      },
+    },
+  })
   createFromCart(
     @GetUser() user: { id: number; roles: string[] },
     @Body() dto: CreateOrderFromCartDto,
@@ -60,6 +84,17 @@ export class OrderController {
           { productId: 1, quantity: 1 },
           { productId: 2, quantity: 2 },
         ],
+      },
+    },
+  })
+  @ApiOkResponse({
+    description: 'سفارش جدید با موفقیت ایجاد شد',
+    schema: {
+      example: {
+        id: 45,
+        status: 'PENDING',
+        paymentStatus: 'PENDING',
+        totalAmount: '850000',
       },
     },
   })
@@ -90,6 +125,19 @@ export class OrderController {
 
   @Get(':id')
   @ApiOperation({ summary: 'دریافت جزئیات یک سفارش' })
+  @ApiParam({ name: 'id', type: Number, description: 'شناسه سفارش' })
+  @ApiOkResponse({
+    description: 'جزئیات کامل سفارش',
+    schema: {
+      example: {
+        id: 45,
+        status: 'DELIVERED',
+        paymentStatus: 'PAID',
+        items: [],
+        timeline: [],
+      },
+    },
+  })
   findOne(
     @GetUser() user: { id: number; roles: string[] },
     @Param('id', ParseIntPipe) id: number,
@@ -100,6 +148,7 @@ export class OrderController {
   @Patch(':id/cancel')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'لغو سفارش توسط مشتری یا ادمین در وضعیت مجاز' })
+  @ApiParam({ name: 'id', type: Number, description: 'شناسه سفارش' })
   cancel(
     @GetUser() user: { id: number; roles: string[] },
     @Param('id', ParseIntPipe) id: number,
@@ -111,6 +160,7 @@ export class OrderController {
   @Patch(':id/accept')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'پذیرفتن سفارش توسط فروشنده یا ادمین' })
+  @ApiParam({ name: 'id', type: Number, description: 'شناسه سفارش' })
   accept(
     @GetUser() user: { id: number; roles: string[] },
     @Param('id', ParseIntPipe) id: number,
@@ -122,6 +172,7 @@ export class OrderController {
   @Patch(':id/ship')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'ثبت ارسال سفارش توسط فروشنده یا ادمین' })
+  @ApiParam({ name: 'id', type: Number, description: 'شناسه سفارش' })
   ship(
     @GetUser() user: { id: number; roles: string[] },
     @Param('id', ParseIntPipe) id: number,
@@ -133,6 +184,7 @@ export class OrderController {
   @Patch(':id/deliver')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'ثبت تحویل سفارش توسط فروشنده یا ادمین' })
+  @ApiParam({ name: 'id', type: Number, description: 'شناسه سفارش' })
   deliver(
     @GetUser() user: { id: number; roles: string[] },
     @Param('id', ParseIntPipe) id: number,
@@ -144,6 +196,7 @@ export class OrderController {
   @Patch(':id/vendor-cancel')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'لغو سفارش توسط فروشنده با دلیل اجباری' })
+  @ApiParam({ name: 'id', type: Number, description: 'شناسه سفارش' })
   vendorCancel(
     @GetUser() user: { id: number; roles: string[] },
     @Param('id', ParseIntPipe) id: number,

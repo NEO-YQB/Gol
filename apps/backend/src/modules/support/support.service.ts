@@ -174,6 +174,7 @@ export class SupportService {
           reason: dto.reason,
           status: ticket.status,
         },
+        channels: ['IN_APP', 'SMS', 'EMAIL'],
         dedupeKey: `support-ticket-created:${ticket.id}`,
       });
 

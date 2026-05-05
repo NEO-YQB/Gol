@@ -42,6 +42,7 @@ export class NotificationsService {
       templateKey?: string | null;
       templateData?: Record<string, unknown> | null;
       channel?: NotificationChannel;
+      channels?: NotificationChannel[];
       dedupeKey?: string | null;
     },
   ) {
@@ -53,7 +54,7 @@ export class NotificationsService {
     const title = input.title ?? rendered?.title ?? input.topic;
     const body = input.body ?? rendered?.body ?? input.topic;
 
-    return executor.notification.upsert({
+    const notification = await executor.notification.upsert({
       where: {
         dedupeKey: input.dedupeKey ?? undefined,
       },
@@ -97,6 +98,61 @@ export class NotificationsService {
         dedupeKey: input.dedupeKey ?? null,
       },
     });
+
+    const channels = Array.from(
+      new Set(input.channels?.length ? input.channels : [input.channel ?? NotificationChannel.IN_APP]),
+    );
+
+    await Promise.all(
+      channels.map((channel) =>
+        executor.notificationDelivery.upsert({
+          where: {
+            dedupeKey: input.dedupeKey ? `${input.dedupeKey}:${channel}` : `${notification.id}:${channel}`,
+          },
+          update: {
+            userId: input.userId,
+            storeId: input.storeId ?? null,
+            channel,
+            title,
+            body,
+            status: NotificationStatus.PENDING,
+            attempts: 0,
+            lastAttemptAt: null,
+            sentAt: null,
+            failedAt: null,
+            cancelledAt: null,
+            failureReason: null,
+            providerResponse: Prisma.JsonNull,
+            providerMessageId: null,
+          },
+          create: {
+            notificationId: notification.id,
+            userId: input.userId,
+            storeId: input.storeId ?? null,
+            channel,
+            title,
+            body,
+            status: NotificationStatus.PENDING,
+            dedupeKey: input.dedupeKey ? `${input.dedupeKey}:${channel}` : `${notification.id}:${channel}`,
+          },
+        }),
+      ),
+    );
+
+    const item = await executor.notification.findUnique({
+      where: { id: notification.id },
+      include: {
+        deliveries: {
+          orderBy: [{ createdAt: 'asc' }],
+        },
+      },
+    });
+
+    if (!item) {
+      throw new NotFoundException('notification مورد نظر یافت نشد');
+    }
+
+    return item;
   }
 
   async adminList(user: AuthenticatedUser, query: AdminListNotificationsQueryDto) {
@@ -116,6 +172,9 @@ export class NotificationsService {
         take: limit,
         orderBy: { createdAt: 'desc' },
         include: {
+          deliveries: {
+            orderBy: [{ createdAt: 'asc' }],
+          },
           user: { select: { id: true, phoneNumber: true, fullName: true } },
           store: { select: { id: true, name: true, slug: true } },
         },
@@ -147,16 +206,17 @@ export class NotificationsService {
 
   async adminDispatch(user: AuthenticatedUser, id: number, dto: AdminDispatchNotificationDto) {
     this.assertAdmin(user);
-    const item = await this.dispatchService.simulateDispatch(id, {
+    const items = await this.dispatchService.simulateDispatch(id, {
       overrideChannel: dto.channel,
+      overrideChannels: dto.channels,
       forceRetry: dto.forceRetry,
     });
 
-    if (!item) {
+    if (!items || items.length === 0) {
       throw new NotFoundException('notification مورد نظر یافت نشد');
     }
 
-    return item;
+    return dto.channels?.length ? { results: items } : items[0];
   }
 
   async myNotifications(user: AuthenticatedUser) {
@@ -164,6 +224,11 @@ export class NotificationsService {
       where: { userId: user.id },
       orderBy: { createdAt: 'desc' },
       take: 50,
+      include: {
+        deliveries: {
+          orderBy: [{ createdAt: 'asc' }],
+        },
+      },
     });
   }
 
@@ -187,11 +252,23 @@ export class NotificationsService {
       },
       orderBy: { createdAt: 'desc' },
       take: 50,
+      include: {
+        deliveries: {
+          orderBy: [{ createdAt: 'asc' }],
+        },
+      },
     });
   }
 
   private async getOrThrow(id: number) {
-    const item = await this.prisma.notification.findUnique({ where: { id } });
+    const item = await this.prisma.notification.findUnique({
+      where: { id },
+      include: {
+        deliveries: {
+          orderBy: [{ createdAt: 'asc' }],
+        },
+      },
+    });
     if (!item) {
       throw new NotFoundException('notification مورد نظر یافت نشد');
     }
