@@ -6,6 +6,9 @@ import {
   PrismaClient,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { NotificationDispatchService } from './notification-dispatch.service';
+import { NotificationTemplatesService } from './notification-templates.service';
+import { AdminDispatchNotificationDto } from './dto/admin-dispatch-notification.dto';
 import { AdminListNotificationsQueryDto } from './dto/admin-list-notifications-query.dto';
 import { MarkNotificationStatusDto } from './dto/mark-notification-status.dto';
 
@@ -18,7 +21,11 @@ type NotificationExecutor = PrismaService | Prisma.TransactionClient | PrismaCli
 
 @Injectable()
 export class NotificationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly templatesService: NotificationTemplatesService,
+    private readonly dispatchService: NotificationDispatchService,
+  ) {}
 
   async enqueue(
     executor: NotificationExecutor,
@@ -29,13 +36,23 @@ export class NotificationsService {
       paymentId?: number | null;
       supportTicketId?: number | null;
       topic: string;
-      title: string;
-      body: string;
+      title?: string;
+      body?: string;
       payload?: Record<string, unknown> | null;
+      templateKey?: string | null;
+      templateData?: Record<string, unknown> | null;
       channel?: NotificationChannel;
       dedupeKey?: string | null;
     },
   ) {
+    const templateKey = input.templateKey ?? input.topic;
+    const templateData = input.templateData ?? input.payload ?? null;
+    const rendered = templateKey
+      ? this.templatesService.render(templateKey, templateData ?? undefined)
+      : null;
+    const title = input.title ?? rendered?.title ?? input.topic;
+    const body = input.body ?? rendered?.body ?? input.topic;
+
     return executor.notification.upsert({
       where: {
         dedupeKey: input.dedupeKey ?? undefined,
@@ -47,15 +64,21 @@ export class NotificationsService {
         paymentId: input.paymentId ?? null,
         supportTicketId: input.supportTicketId ?? null,
         topic: input.topic,
-        title: input.title,
-        body: input.body,
+        templateKey,
+        title,
+        body,
         payload: this.toInputJson(input.payload),
+        templateData: this.toInputJson(templateData),
         channel: input.channel ?? NotificationChannel.IN_APP,
         status: NotificationStatus.PENDING,
+        attempts: 0,
+        lastAttemptAt: null,
         sentAt: null,
         failedAt: null,
         cancelledAt: null,
         failureReason: null,
+        providerResponse: Prisma.JsonNull,
+        providerMessageId: null,
       },
       create: {
         userId: input.userId,
@@ -64,9 +87,11 @@ export class NotificationsService {
         paymentId: input.paymentId ?? null,
         supportTicketId: input.supportTicketId ?? null,
         topic: input.topic,
-        title: input.title,
-        body: input.body,
+        templateKey,
+        title,
+        body,
         payload: this.toInputJson(input.payload),
+        templateData: this.toInputJson(templateData),
         channel: input.channel ?? NotificationChannel.IN_APP,
         status: NotificationStatus.PENDING,
         dedupeKey: input.dedupeKey ?? null,
@@ -118,6 +143,20 @@ export class NotificationsService {
         failureReason: dto.status === NotificationStatus.FAILED ? dto.note ?? 'delivery failed' : null,
       },
     });
+  }
+
+  async adminDispatch(user: AuthenticatedUser, id: number, dto: AdminDispatchNotificationDto) {
+    this.assertAdmin(user);
+    const item = await this.dispatchService.simulateDispatch(id, {
+      overrideChannel: dto.channel,
+      forceRetry: dto.forceRetry,
+    });
+
+    if (!item) {
+      throw new NotFoundException('notification مورد نظر یافت نشد');
+    }
+
+    return item;
   }
 
   async myNotifications(user: AuthenticatedUser) {

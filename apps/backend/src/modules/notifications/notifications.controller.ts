@@ -1,7 +1,8 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { GetUser } from '../../common/decorators/get-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { AdminDispatchNotificationDto } from './dto/admin-dispatch-notification.dto';
 import { AdminListNotificationsQueryDto } from './dto/admin-list-notifications-query.dto';
 import { MarkNotificationStatusDto } from './dto/mark-notification-status.dto';
 import { NotificationsService } from './notifications.service';
@@ -30,6 +31,16 @@ export class NotificationsController {
     @Body() dto: MarkNotificationStatusDto,
   ) {
     return this.notificationsService.adminMarkStatus(user, id, dto);
+  }
+
+  @Post('admin/:id/dispatch')
+  @ApiOperation({ summary: 'dispatch simulation برای notification توسط ادمین' })
+  adminDispatch(
+    @GetUser() user: { id: number; roles: string[] },
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: AdminDispatchNotificationDto,
+  ) {
+    return this.notificationsService.adminDispatch(user, id, dto);
   }
 
   @Get('me')

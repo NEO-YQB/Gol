@@ -917,13 +917,19 @@ model Notification {
   channel       NotificationChannel @default(IN_APP)
   status        NotificationStatus  @default(PENDING)
   topic         String
+  templateKey   String?
   title         String
   body          String              @db.Text
   payload       Json?
+  templateData  Json?
+  attempts      Int                 @default(0)
+  lastAttemptAt DateTime?
   sentAt        DateTime?
   failedAt      DateTime?
   cancelledAt   DateTime?
   failureReason String?             @db.Text
+  providerResponse Json?
+  providerMessageId String?
   dedupeKey     String?             @unique
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
