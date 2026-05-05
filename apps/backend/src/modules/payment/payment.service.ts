@@ -232,89 +232,93 @@ export class PaymentService {
       failureReason: dto.failureReason,
     });
 
-    return this.prisma.$transaction(async (tx) => {
-      const nextOrderPaymentStatus = verificationResult.success
-        ? PaymentStatus.PAID
-        : PaymentStatus.FAILED;
-      const nextOrderStatus = verificationResult.success
-        ? payment.order.status === OrderStatus.PENDING
-          ? OrderStatus.PAID
-          : payment.order.status
-        : OrderStatus.PENDING;
+    const nextOrderPaymentStatus = verificationResult.success
+      ? PaymentStatus.PAID
+      : PaymentStatus.FAILED;
+    const nextOrderStatus = verificationResult.success
+      ? payment.order.status === OrderStatus.PENDING
+        ? OrderStatus.PAID
+        : payment.order.status
+      : OrderStatus.PENDING;
+    const verifiedAt = verificationResult.success ? new Date() : null;
+    const rawVerifyData = this.toInputJson({
+      actorUserId: user.id,
+      driver: gatewayConfig.driver,
+      gatewayKey: gatewayConfig.key,
+      success: verificationResult.success,
+      refId: verificationResult.refId ?? null,
+      failureReason: verificationResult.failureReason ?? null,
+      verifiedAt: new Date().toISOString(),
+      adapterResponse: verificationResult.rawData ?? null,
+    });
 
-      const updatedPayment = await tx.payment.update({
+    await this.prisma.$transaction([
+      this.prisma.payment.update({
         where: { id: payment.id },
         data: {
           status: nextOrderPaymentStatus,
           refId: verificationResult.refId ?? null,
           failureReason: verificationResult.failureReason ?? null,
-          verifiedAt: verificationResult.success ? new Date() : null,
-          rawVerifyData: this.toInputJson({
-            actorUserId: user.id,
-            driver: gatewayConfig.driver,
-            gatewayKey: gatewayConfig.key,
-            success: verificationResult.success,
-            refId: verificationResult.refId ?? null,
-            failureReason: verificationResult.failureReason ?? null,
-            verifiedAt: new Date().toISOString(),
-            adapterResponse: verificationResult.rawData ?? null,
-          }),
+          verifiedAt,
+          rawVerifyData,
         },
-        include: this.getPaymentInclude(),
-      });
-
-      await tx.order.update({
+      }),
+      this.prisma.order.update({
         where: { id: payment.orderId },
         data: {
           paymentStatus: nextOrderPaymentStatus,
           status: nextOrderStatus,
         },
-      });
-
-      if (verificationResult.success && payment.order.status === OrderStatus.PENDING) {
-        await tx.orderStatusHistory.create({
-          data: {
-            orderId: payment.orderId,
-            fromStatus: payment.order.status,
-            toStatus: OrderStatus.PAID,
-            actorType: this.isAdmin(user) ? OrderActorType.ADMIN : OrderActorType.CUSTOMER,
-            actorUserId: user.id,
-            note: `پرداخت آنلاین با gateway ${gatewayConfig.displayName} با موفقیت تایید شد`,
-          },
-        });
-      }
-
-      await this.domainEvents.record(tx, {
-        eventType: verificationResult.success
-          ? DomainEventType.PAYMENT_SUCCEEDED
-          : DomainEventType.PAYMENT_FAILED,
-        aggregateType: 'payment',
-        aggregateId: payment.id,
-        actorUserId: user.id,
-        storeId: payment.order.storeId,
-        orderId: payment.orderId,
-        paymentId: payment.id,
-        summary: verificationResult.success
-          ? `پرداخت سفارش #${payment.orderId} موفق شد`
-          : `پرداخت سفارش #${payment.orderId} ناموفق شد`,
-        payload: {
-          previousOrderStatus: payment.order.status,
-          nextOrderStatus,
-          nextPaymentStatus: nextOrderPaymentStatus,
-          refId: verificationResult.refId ?? null,
-          failureReason: verificationResult.failureReason ?? null,
+      }),
+      ...(verificationResult.success && payment.order.status === OrderStatus.PENDING
+        ? [
+            this.prisma.orderStatusHistory.create({
+              data: {
+                orderId: payment.orderId,
+                fromStatus: payment.order.status,
+                toStatus: OrderStatus.PAID,
+                actorType: this.isAdmin(user) ? OrderActorType.ADMIN : OrderActorType.CUSTOMER,
+                actorUserId: user.id,
+                note: `پرداخت آنلاین با gateway ${gatewayConfig.displayName} با موفقیت تایید شد`,
+              },
+            }),
+          ]
+        : []),
+      this.prisma.domainEvent.create({
+        data: {
+          eventType: verificationResult.success
+            ? DomainEventType.PAYMENT_SUCCEEDED
+            : DomainEventType.PAYMENT_FAILED,
+          aggregateType: 'payment',
+          aggregateId: payment.id,
+          actorUserId: user.id,
+          storeId: payment.order.storeId,
+          orderId: payment.orderId,
+          paymentId: payment.id,
+          summary: verificationResult.success
+            ? `پرداخت سفارش #${payment.orderId} موفق شد`
+            : `پرداخت سفارش #${payment.orderId} ناموفق شد`,
+          payload: this.toInputJson({
+            previousOrderStatus: payment.order.status,
+            nextOrderStatus,
+            nextPaymentStatus: nextOrderPaymentStatus,
+            refId: verificationResult.refId ?? null,
+            failureReason: verificationResult.failureReason ?? null,
+          }),
         },
-      });
+      }),
+    ]);
 
-      return {
-        message: verificationResult.success
-          ? 'payment با موفقیت verify شد'
-          : 'payment به حالت failed رفت',
-        payment: updatedPayment,
-        orderStatus: nextOrderStatus,
-        paymentStatus: nextOrderPaymentStatus,
-      };
-    });
+    const updatedPayment = await this.getPaymentOrThrow(payment.id);
+
+    return {
+      message: verificationResult.success
+        ? 'payment با موفقیت verify شد'
+        : 'payment به حالت failed رفت',
+      payment: updatedPayment,
+      orderStatus: nextOrderStatus,
+      paymentStatus: nextOrderPaymentStatus,
+    };
   }
 
   async findOne(user: AuthenticatedUser, id: number) {
