@@ -2,23 +2,24 @@
 FROM node:22-bookworm-slim AS builder
 WORKDIR /app
 
-# کپی فایل‌های اصلی برای نصب وابستگی‌ها
-COPY package*.json ./
-# اگر فایل‌های دیگر در روت دارید مثل turborepo یا ... کپی کنید
-RUN npm install
-
-# کپی کل پروژه
+# ابتدا کل پروژه را کپی می‌کنیم (برای مونو‌ریپو این روش مطمئن‌تر است)
 COPY . .
 
-# اجرای بیلد پنل ادمین (نام ورک‌اسپیس را چک کنید)
+# نصب تمام وابستگی‌ها (شامل روت و ورک‌اسپیس‌ها)
+# استفاده از --include=dev برای اطمینان از نصب Vite و TypeScript
+RUN npm install --include=dev
+
+# اجرای بیلد با استفاده از ورک‌اسپیس
 RUN npm run build -w admin-panel
 
 # مرحله نهایی: وب‌سرور Nginx
 FROM nginx:alpine
-# کپی فایل‌های بیلد شده از مرحله قبل
-COPY --from=builder /app/apps/admin-panel/dist /usr/share/nginx/html
 
-# تنظیم Nginx برای SPA (حل مشکل مسیرها)
+# کپی فایل‌های بیلد شده (مسیر خروجی را مطابق ساختار پروژه چک کنید)
+# معمولاً در مونو‌ریپوها مسیر اینجاست:
+COPY --from=builder /apps/admin-panel/dist /usr/share/nginx/html
+
+# تنظیم Nginx برای SPA
 RUN echo 'server { \
     listen 80; \
     location / { \
