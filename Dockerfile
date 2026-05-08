@@ -1,25 +1,26 @@
 # مرحله بیلد
 FROM node:22-bookworm-slim AS builder
+
+# این پوشه کاری در داخل کانتینر است (ربطی به مسیر ویندوز شما ندارد)
 WORKDIR /app
 
-# ابتدا کل پروژه را کپی می‌کنیم (برای مونو‌ریپو این روش مطمئن‌تر است)
+# کپی کردن تمام محتویات پوشه Gol به داخل پوشه /app در داکر
 COPY . .
 
-# نصب تمام وابستگی‌ها (شامل روت و ورک‌اسپیس‌ها)
-# استفاده از --include=dev برای اطمینان از نصب Vite و TypeScript
+# نصب پکیج‌ها در روت مونو‌ریپو
 RUN npm install --include=dev
 
-# اجرای بیلد با استفاده از ورک‌اسپیس
+# اجرای بیلد مخصوص اپلیکیشن admin-panel
 RUN npm run build -w admin-panel
 
-# مرحله نهایی: وب‌سرور Nginx
+# مرحله نهایی: وب‌سرور برای سرو کردن فایل‌های استاتیک
 FROM nginx:alpine
 
-# کپی فایل‌های بیلد شده (مسیر خروجی را مطابق ساختار پروژه چک کنید)
-# معمولاً در مونو‌ریپوها مسیر اینجاست:
-COPY --from=builder /apps/admin-panel/dist /usr/share/nginx/html
+# کپی کردن فایل‌های تولید شده از مرحله قبل
+# مسیر: /app (WORKDIR) + apps/admin-panel (مسیر پروژه) + dist (پوشه خروجی بیلد)
+COPY --from=builder /app/apps/admin-panel/dist /usr/share/nginx/html
 
-# تنظیم Nginx برای SPA
+# تنظیمات Nginx برای جلوگیری از خطای 404 در صورت رفرش صفحات (SPA)
 RUN echo 'server { \
     listen 80; \
     location / { \
