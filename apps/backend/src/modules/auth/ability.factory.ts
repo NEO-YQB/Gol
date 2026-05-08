@@ -25,7 +25,11 @@ type AppSubjects =
   | 'Coupon'
   | 'Cart'
   | 'UserAddress'
-  | 'Review';
+  | 'Review'
+  | 'Article'
+  | 'ArticleCategory'
+  | 'Author'
+  | 'ArticleTag';
 
 type RuleDefinition = {
   action: string | string[];
@@ -176,6 +180,20 @@ export class AbilityFactory {
         { action: ['create', 'read', 'update', 'delete'], subject: 'Cart', conditions: { userId: user.id } },
         { action: 'manage', subject: 'UserAddress', conditions: { userId: user.id } },
         { action: ['create', 'read'], subject: 'Review', conditions: { userId: user.id } },
+      ],
+      CONTENT_WRITER: [
+        { action: 'read', subject: ['Article', 'ArticleCategory', 'Author', 'ArticleTag'] },
+        { action: ['create', 'update'], subject: 'Article' },
+      ],
+      CONTENT_EDITOR: [
+        { action: 'read', subject: ['Article', 'ArticleCategory', 'Author', 'ArticleTag'] },
+        { action: ['create', 'update', 'delete', 'assignTags'], subject: 'Article' },
+        { action: ['create', 'update'], subject: ['ArticleCategory', 'Author', 'ArticleTag'] },
+      ],
+      SEO_MANAGER: [
+        { action: 'read', subject: ['Article', 'ArticleCategory', 'Author', 'ArticleTag'] },
+        { action: ['create', 'update', 'delete', 'assignTags'], subject: 'Article' },
+        { action: ['create', 'update', 'delete'], subject: ['ArticleCategory', 'Author', 'ArticleTag'] },
       ],
     };
 

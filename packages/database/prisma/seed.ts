@@ -95,12 +95,32 @@ const permissionCatalog: PermissionSeed[] = [
   { action: 'delete', subject: 'UserAddress', conditions: { userId: '{{user.id}}' } },
   { action: 'create', subject: 'Review', conditions: { userId: '{{user.id}}' } },
   { action: 'read', subject: 'Review', conditions: { userId: '{{user.id}}' } },
+  { action: 'read', subject: 'Article', conditions: null },
+  { action: 'create', subject: 'Article', conditions: null },
+  { action: 'update', subject: 'Article', conditions: null },
+  { action: 'delete', subject: 'Article', conditions: null },
+  { action: 'assignTags', subject: 'Article', conditions: null },
+  { action: 'read', subject: 'ArticleCategory', conditions: null },
+  { action: 'create', subject: 'ArticleCategory', conditions: null },
+  { action: 'update', subject: 'ArticleCategory', conditions: null },
+  { action: 'delete', subject: 'ArticleCategory', conditions: null },
+  { action: 'read', subject: 'Author', conditions: null },
+  { action: 'create', subject: 'Author', conditions: null },
+  { action: 'update', subject: 'Author', conditions: null },
+  { action: 'delete', subject: 'Author', conditions: null },
+  { action: 'read', subject: 'ArticleTag', conditions: null },
+  { action: 'create', subject: 'ArticleTag', conditions: null },
+  { action: 'update', subject: 'ArticleTag', conditions: null },
+  { action: 'delete', subject: 'ArticleTag', conditions: null },
 ];
 
 const roleCatalog = [
   { name: 'ADMIN', label: 'مدیر کل سیستم', description: 'دسترسی کامل به همه بخش‌های سیستم' },
   { name: 'VENDOR', label: 'فروشنده گل و گیاه', description: 'مدیریت فروشگاه و محصولات متعلق به خود' },
   { name: 'CUSTOMER', label: 'مشتری عادی', description: 'ثبت سفارش و مدیریت آدرس‌های شخصی' },
+  { name: 'CONTENT_WRITER', label: 'نویسنده محتوا', description: 'ساخت و ویرایش draftهای محتوایی مرتبط با پروفایل خودش' },
+  { name: 'CONTENT_EDITOR', label: 'ویراستار محتوا', description: 'ویرایش محتوای تیم، مدیریت نویسنده و دسته‌بندی، و انتشار محتوا' },
+  { name: 'SEO_MANAGER', label: 'مدیر سئو', description: 'کنترل نهایی انتشار محتوا و تنظیمات SEO تیم محتوا' },
 ] as const;
 
 const defaultRolePermissions: Record<string, string[]> = {
@@ -132,6 +152,24 @@ const defaultRolePermissions: Record<string, string[]> = {
     'create:Payment', 'read:Payment',
     'create:UserAddress', 'read:UserAddress', 'delete:UserAddress',
     'create:Review', 'read:Review',
+  ],
+  CONTENT_WRITER: [
+    'read:Article', 'create:Article', 'update:Article',
+    'read:ArticleCategory',
+    'read:Author',
+    'read:ArticleTag',
+  ],
+  CONTENT_EDITOR: [
+    'read:Article', 'create:Article', 'update:Article', 'delete:Article', 'assignTags:Article',
+    'read:ArticleCategory', 'create:ArticleCategory', 'update:ArticleCategory',
+    'read:Author', 'create:Author', 'update:Author',
+    'read:ArticleTag', 'create:ArticleTag', 'update:ArticleTag',
+  ],
+  SEO_MANAGER: [
+    'read:Article', 'create:Article', 'update:Article', 'delete:Article', 'assignTags:Article',
+    'read:ArticleCategory', 'create:ArticleCategory', 'update:ArticleCategory', 'delete:ArticleCategory',
+    'read:Author', 'create:Author', 'update:Author', 'delete:Author',
+    'read:ArticleTag', 'create:ArticleTag', 'update:ArticleTag', 'delete:ArticleTag',
   ],
 };
 
@@ -319,15 +357,33 @@ async function ensureUsers(roleIds: Map<string, { id: number }>) {
       update: { fullName: 'مشتری سوم', isActive: true, email: 'customer3@gol.local' },
       create: { phoneNumber: '09125555555', fullName: 'مشتری سوم', isActive: true, email: 'customer3@gol.local' },
     }),
+    contentWriter: await prisma.user.upsert({
+      where: { phoneNumber: '09126666666' },
+      update: { fullName: 'نویسنده محتوا', isActive: true, email: 'writer@gol.local' },
+      create: { phoneNumber: '09126666666', fullName: 'نویسنده محتوا', isActive: true, email: 'writer@gol.local' },
+    }),
+    contentEditor: await prisma.user.upsert({
+      where: { phoneNumber: '09127777777' },
+      update: { fullName: 'ویراستار محتوا', isActive: true, email: 'editor@gol.local' },
+      create: { phoneNumber: '09127777777', fullName: 'ویراستار محتوا', isActive: true, email: 'editor@gol.local' },
+    }),
+    seoManager: await prisma.user.upsert({
+      where: { phoneNumber: '09128888888' },
+      update: { fullName: 'مدیر سئو', isActive: true, email: 'seo.manager@gol.local' },
+      create: { phoneNumber: '09128888888', fullName: 'مدیر سئو', isActive: true, email: 'seo.manager@gol.local' },
+    }),
   };
 
-  const assignments: Array<[keyof typeof users, 'ADMIN' | 'VENDOR' | 'CUSTOMER']> = [
+  const assignments: Array<[keyof typeof users, 'ADMIN' | 'VENDOR' | 'CUSTOMER' | 'CONTENT_WRITER' | 'CONTENT_EDITOR' | 'SEO_MANAGER']> = [
     ['admin', 'ADMIN'],
     ['vendorOne', 'VENDOR'],
     ['vendorTwo', 'VENDOR'],
     ['customerOne', 'CUSTOMER'],
     ['customerTwo', 'CUSTOMER'],
     ['customerThree', 'CUSTOMER'],
+    ['contentWriter', 'CONTENT_WRITER'],
+    ['contentEditor', 'CONTENT_EDITOR'],
+    ['seoManager', 'SEO_MANAGER'],
   ];
 
   for (const [userKey, roleName] of assignments) {
@@ -350,6 +406,67 @@ async function ensureUsers(roleIds: Map<string, { id: number }>) {
   }
 
   return users;
+}
+
+async function ensureContentAuthors(users: Awaited<ReturnType<typeof ensureUsers>>) {
+  console.log('Ensuring content authors for SEO team...');
+
+  await prisma.author.upsert({
+    where: { slug: 'content-writer' },
+    update: {
+      name: 'نویسنده تیم محتوا',
+      bio: 'عضو تیم محتوا و مسئول نگارش پیش‌نویس مقاله‌ها',
+      avatarImage: 'https://example.com/authors/content-writer.jpg',
+      isActive: true,
+      userId: users.contentWriter.id,
+    },
+    create: {
+      name: 'نویسنده تیم محتوا',
+      slug: 'content-writer',
+      bio: 'عضو تیم محتوا و مسئول نگارش پیش‌نویس مقاله‌ها',
+      avatarImage: 'https://example.com/authors/content-writer.jpg',
+      isActive: true,
+      userId: users.contentWriter.id,
+    },
+  });
+
+  await prisma.author.upsert({
+    where: { slug: 'content-editor' },
+    update: {
+      name: 'ویراستار تیم محتوا',
+      bio: 'عضو تیم تحریریه و مسئول ویرایش و آماده‌سازی محتوا',
+      avatarImage: 'https://example.com/authors/content-editor.jpg',
+      isActive: true,
+      userId: users.contentEditor.id,
+    },
+    create: {
+      name: 'ویراستار تیم محتوا',
+      slug: 'content-editor',
+      bio: 'عضو تیم تحریریه و مسئول ویرایش و آماده‌سازی محتوا',
+      avatarImage: 'https://example.com/authors/content-editor.jpg',
+      isActive: true,
+      userId: users.contentEditor.id,
+    },
+  });
+
+  await prisma.author.upsert({
+    where: { slug: 'seo-manager' },
+    update: {
+      name: 'مدیر سئو',
+      bio: 'مسئول نهایی استراتژی سئو، انتشار و کنترل metadata',
+      avatarImage: 'https://example.com/authors/seo-manager.jpg',
+      isActive: true,
+      userId: users.seoManager.id,
+    },
+    create: {
+      name: 'مدیر سئو',
+      slug: 'seo-manager',
+      bio: 'مسئول نهایی استراتژی سئو، انتشار و کنترل metadata',
+      avatarImage: 'https://example.com/authors/seo-manager.jpg',
+      isActive: true,
+      userId: users.seoManager.id,
+    },
+  });
 }
 
 async function upsertAddress(data: {
@@ -1641,6 +1758,7 @@ async function main() {
   await syncDefaultRolePermissions(roleIds);
   const gateway = await ensureDefaultPaymentGatewayConfig();
   const users = await ensureUsers(roleIds);
+  await ensureContentAuthors(users);
   await seedAddresses(users);
   const catalog = await seedCatalogAndStores(users);
   const financeSetup = await seedPricingAndPolicies(
@@ -1664,6 +1782,9 @@ async function main() {
   console.log('- ADMIN: 09120000000');
   console.log('- VENDOR: 09121111111 / 09122222222');
   console.log('- CUSTOMER: 09123333333 / 09124444444 / 09125555555');
+  console.log('- CONTENT_WRITER: 09126666666');
+  console.log('- CONTENT_EDITOR: 09127777777');
+  console.log('- SEO_MANAGER: 09128888888');
 }
 
 main()
