@@ -5,9 +5,6 @@ WORKDIR /app
 
 # کپی کردن فایل‌های ضروری برای نصب پکیج‌ها
 COPY package*.json ./
-# اگر فایل turbo.json ندارید، این خط حذف شده است. 
-# اگر فایل‌های دیگری در ریشه دارید که برای نصب لازم است اینجا اضافه کنید.
-
 COPY apps/storefront/package*.json ./apps/storefront/
 COPY packages/database/package*.json ./packages/database/
 
@@ -18,43 +15,47 @@ FROM node:20-slim AS builder
 RUN apt-get update && apt-get install -y openssl curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
-# کپی کردن node_modules از مرحله قبل
+# کپی کردن node_modules و فایل‌های پروژه
 COPY --from=installer /app/node_modules ./node_modules
 COPY package*.json ./
-
-# کپی کردن پوشه‌های مورد نیاز به صورت مجزا
 COPY packages/database ./packages/database
 COPY apps/storefront ./apps/storefront
 
-# اطمینان از اینکه هیچ پوشه بک‌ا‌ند یا ادمینی به اشتباه وارد بیلد نمی‌شود
+# حذف فایل‌های اضافی برای بیلد تمیز
 RUN rm -rf apps/backend apps/admin-panel
 
-# تولید کلاینت پریزما و بیلد (ترکیب شده برای اطمینان از ترتیب)
+# تولید کلاینت پریزما و بیلد Next.js
 RUN npx prisma generate --schema=packages/database/prisma/schema.prisma && \
     npm run build --workspace=storefront
 
 # 3. Runner Stage
 FROM node:20-slim AS runner
-RUN apt-get update && apt-get install -y openssl
+# نصب curl برای Healthcheck پلتفرم Coolify
+RUN apt-get update && apt-get install -y openssl curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PORT 3001
-ENV HOSTNAME "0.0.0.0"
+ENV PORT=3001
+ENV HOSTNAME="0.0.0.0"
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# کپی فایل‌های خروجی بیلد
-COPY --from=builder /app/apps/storefront/next.config.* ./
-COPY --from=builder /app/apps/storefront/package.json ./
+# --- بخش حیاتی: کپی فایل‌های ریشه برای شناسایی ورک‌اسپیس ---
+COPY --from=builder /app/package*.json ./
+# کپی فایل‌های بیلد شده
+COPY --from=builder /app/apps/storefront/next.config.* ./apps/storefront/
+COPY --from=builder /app/apps/storefront/package.json ./apps/storefront/
 COPY --from=builder /app/apps/storefront/public ./apps/storefront/public
 COPY --from=builder /app/apps/storefront/.next ./apps/storefront/.next
 COPY --from=builder /app/node_modules ./node_modules
+
+# اصلاح دسترسی کاربر
+RUN chown -R nextjs:nodejs /app
 
 USER nextjs
 
 EXPOSE 3001
 
-# دستور اجرا
+# دستور اجرا با استفاده از ورک‌اسپیس
 CMD ["npm", "start", "-w", "apps/storefront", "--", "-p", "3001"]
