@@ -27,14 +27,17 @@ COPY . .
 # این خط باید دقیقاً قبل از دستور build باشد
 
 RUN rm -rf apps/backend apps/admin-panel
-
 COPY packages/database/prisma/schema.prisma ./packages/database/prisma/schema.prisma
 
+# ادغام برای اطمینان از ترتیب و عدم استفاده از کش اشتباه
+RUN npx prisma generate --schema=packages/database/prisma/schema.prisma && \
+    npm run build --workspace=storefront
 
-RUN npx prisma generate --schema=packages/database/prisma/schema.prisma
-
-# اجرای بیلد storefront
-RUN npm run build --workspace=storefront
+# در مرحله Runner (بسیار مهم)
+# به جای کپی تک تک فایل‌ها، اگر حجم کانتینر خیلی برایتان مهم نیست:
+COPY --from=builder /app/node_modules ./node_modules
+# یا حداقل مطمئن شوید کل پکیج پریزما کپی شده:
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
 # 3. Runner Stage
 FROM node:20-slim AS runner
