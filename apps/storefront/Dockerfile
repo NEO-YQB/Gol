@@ -46,7 +46,7 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 # کپی فایل‌های خروجی بیلد
-COPY --from=builder /app/apps/storefront/next.config.mjs ./
+COPY --from=builder /app/apps/storefront/next.config.* ./
 COPY --from=builder /app/apps/storefront/package.json ./
 COPY --from=builder /app/apps/storefront/public ./apps/storefront/public
 COPY --from=builder /app/apps/storefront/.next ./apps/storefront/.next
