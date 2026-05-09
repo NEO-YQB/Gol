@@ -12,6 +12,9 @@
   "scripts": {
     "dev:backend": "npm run start:dev -w apps/backend",
     "dev:storefront": "npm run dev -w apps/storefront",
+    "dev:admin": "npm run dev -w apps/admin-panel",
+    "dev:vendor": "npm run dev -w apps/vendor-panel",
+    "dev:all": "concurrently \"npm run dev:backend\" \"npm run dev:storefront\" \"npm run dev:admin\" \"npm run dev:vendor\"",
     "build": "npm run build --workspaces"
   },
   "dependencies": {
@@ -33,6 +36,7 @@
     "@types/node": "^25.6.0",
     "@types/passport-jwt": "^4.0.1",
     "@types/uuid": "^8.3.4",
+    "concurrently": "^9.2.1",
     "prisma": "^6.19.3",
     "tsx": "^4.21.0"
   },
