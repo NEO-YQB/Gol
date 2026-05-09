@@ -1,6 +1,6 @@
 # 1. Base Stage: Install dependencies
 FROM node:20-slim AS installer
-RUN apt-get update && apt-get install -y openssl
+RUN apt-get update && apt-get install -y openssl curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 # کپی کردن فایل‌های ضروری برای نصب پکیج‌ها
@@ -15,7 +15,7 @@ RUN npm install
 
 # 2. Build Stage
 FROM node:20-slim AS builder
-RUN apt-get update && apt-get install -y openssl
+RUN apt-get update && apt-get install -y openssl curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 # کپی کردن node_modules از مرحله قبل
