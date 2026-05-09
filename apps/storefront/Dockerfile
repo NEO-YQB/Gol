@@ -28,7 +28,7 @@ COPY . .
 RUN npx prisma generate --schema=packages/database/prisma/schema.prisma
 
 # اجرای بیلد storefront
-RUN npm run build -w apps/storefront
+RUN npm run build --workspace=storefront
 
 # 3. Runner Stage
 FROM node:20-slim AS runner
