@@ -1,0 +1,19 @@
+export const adminRouteOrder = [
+  'dashboard',
+  'orders',
+  'settlements',
+  'support',
+  'content',
+  'alerts',
+] as const
+
+export type AdminRoute = (typeof adminRouteOrder)[number]
+
+export const adminRouteLabels: Record<AdminRoute, string> = {
+  dashboard: 'داشبورد',
+  orders: 'سفارش‌ها',
+  settlements: 'تسویه و مالی',
+  support: 'پشتیبانی',
+  content: 'محتوا و SEO',
+  alerts: 'هشدارها و اعلان‌ها',
+}

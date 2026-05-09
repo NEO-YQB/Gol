@@ -73,8 +73,8 @@ export function AppShell({
         </nav>
 
         <div className="fm-sidebar-footer">
-          <p>Backend-ready architecture</p>
-          <strong>FE-1 foundation active</strong>
+          <p>Design system + backend contracts</p>
+          <strong>Admin workspace in progress</strong>
         </div>
       </aside>
 

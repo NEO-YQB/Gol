@@ -1,250 +1,265 @@
 import {
-  ActivityFeed,
   AppShell,
-  DataTable,
   Pill,
-  SectionCard,
-  Spotlight,
-  StatCard,
-  type FeedItem,
   type NavSection,
-  type StatItem,
-  type TableColumn,
-  type TableRow,
 } from '@frontend-core'
+import { useEffect, useMemo, useState } from 'react'
 import './App.css'
+import { adminApi } from './lib/api'
+import { adminRouteLabels, type AdminRoute } from './lib/routes'
+import { clearSession, loadSession, saveSession, type AuthSession } from './lib/session'
+import { AlertsPage } from './pages/AlertsPage'
+import { ContentPage } from './pages/ContentPage'
+import { DashboardPage } from './pages/DashboardPage'
+import { LoginPage } from './pages/LoginPage'
+import { OrdersPage } from './pages/OrdersPage'
+import { SettlementsPage } from './pages/SettlementsPage'
+import { SupportPage } from './pages/SupportPage'
 
-const adminNav: NavSection[] = [
-  {
-    title: 'عملیات اصلی',
-    items: [
-      { label: 'داشبورد', hint: 'خلاصه وضعیت کل مارکت‌پلیس', active: true },
-      { label: 'سفارش‌ها', hint: 'پردازش، مانیتورینگ و exceptions', badge: '128' },
-      { label: 'پرداخت و تسویه', hint: 'wallet, ledger, release, reversal' },
-      { label: 'پشتیبانی', hint: 'ticket, finance decision, escalation', badge: '23' },
-    ],
-  },
-  {
-    title: 'کنترل و رشد',
-    items: [
-      { label: 'فروشندگان و ریسک', hint: 'health score, policy, watchlist' },
-      { label: 'محتوا و SEO', hint: 'article, taxonomy, audit, search' },
-      { label: 'هشدارها و اعلان‌ها', hint: 'alert lifecycle, notification ops', badge: '9' },
-      { label: 'گزارش‌های مالی', hint: 'summary, trend, audit visibility' },
-    ],
-  },
-]
+const defaultRoute: AdminRoute = 'dashboard'
 
-const stats: StatItem[] = [
-  {
-    label: 'سفارش‌های نیازمند بررسی',
-    value: '128',
-    delta: '+14 امروز',
-    detail: 'ترکیب review payment، settlement hold و support follow-up',
-    tone: 'warning',
-  },
-  {
-    label: 'تسویه‌های آماده release',
-    value: '42',
-    delta: '87% سالم',
-    detail: 'مبتنی بر policy effective snapshot و health gating',
-    tone: 'success',
-  },
-  {
-    label: 'alertهای باز',
-    value: '9',
-    delta: '3 بحرانی',
-    detail: 'ترکیب risk policy، payment anomaly و support escalations',
-    tone: 'danger',
-  },
-  {
-    label: 'وظایف محتوایی SEO',
-    value: '31',
-    delta: '6 قابل انتشار',
-    detail: 'article audit، keyword gap و taxonomy hygiene',
-    tone: 'primary',
-  },
-]
+function buildNav(currentRoute: AdminRoute): NavSection[] {
+  return [
+    {
+      title: 'عملیات اصلی',
+      items: [
+        { key: 'dashboard', label: 'داشبورد', hint: 'وضعیت کلی عملیات', active: currentRoute === 'dashboard' },
+        { key: 'orders', label: 'سفارش‌ها', hint: 'orders/admin و exception flow', active: currentRoute === 'orders' },
+        { key: 'settlements', label: 'تسویه و مالی', hint: 'wallets, reports, settlement exceptions', active: currentRoute === 'settlements' },
+        { key: 'support', label: 'پشتیبانی', hint: 'tickets و follow-ups', active: currentRoute === 'support' },
+      ],
+    },
+    {
+      title: 'رشد و کنترل',
+      items: [
+        { key: 'content', label: 'محتوا و SEO', hint: 'articles, tags, audits', active: currentRoute === 'content' },
+        { key: 'alerts', label: 'هشدارها و اعلان‌ها', hint: 'alerts + notification ops', active: currentRoute === 'alerts' },
+      ],
+    },
+  ]
+}
 
-const queueColumns: TableColumn[] = [
-  { key: 'queue', label: 'صف' },
-  { key: 'owner', label: 'مسئول' },
-  { key: 'sla', label: 'SLA' },
-  { key: 'status', label: 'وضعیت' },
-]
+function getPageMeta(route: AdminRoute) {
+  switch (route) {
+    case 'orders':
+      return {
+        eyebrow: 'Orders workspace',
+        title: 'سفارش‌ها و exception flow',
+        description: 'این صفحه پایه table-first برای list سفارش‌ها، queueهای مسئله‌دار و detail workspace بعدی را از endpointهای واقعی backend می‌گیرد.',
+      }
+    case 'settlements':
+      return {
+        eyebrow: 'Finance workspace',
+        title: 'تسویه، کیف پول و دید مالی',
+        description: 'wallet visibility، settlement exceptions و report summaryها از همین‌جا به صفحه‌های عملیاتی کامل‌تر تبدیل می‌شوند.',
+      }
+    case 'support':
+      return {
+        eyebrow: 'Support workspace',
+        title: 'تیکت‌ها و پیگیری‌های پشتیبانی',
+        description: 'این route برای list, note, finance decision و support timeline design شده و به endpointهای فعال backend تکیه دارد.',
+      }
+    case 'content':
+      return {
+        eyebrow: 'Content workspace',
+        title: 'محتوا، taxonomy و SEO operations',
+        description: 'سطح اولیه routeهای content بر پایه article/category/tag/audit endpointهای backend ساخته شده تا بعدا editorial tooling روی آن سوار شود.',
+      }
+    case 'alerts':
+      return {
+        eyebrow: 'Operations feed',
+        title: 'هشدارها، outbox و visibility عملیاتی',
+        description: 'alert lifecycle و notification ops باید در پنل ادمین سریع، واضح و drill-down-friendly باشند؛ این route شروع همان مسیر است.',
+      }
+    case 'dashboard':
+    default:
+      return {
+        eyebrow: 'Admin foundation',
+        title: 'داشبورد ادمین روی session و endpointهای واقعی سوار شد',
+        description: 'از اینجا به بعد ساخت فرانت دیگر صرفا visual نیست؛ session، page boundary و data fetching contracts برای backend موجود تعریف شده‌اند.',
+      }
+  }
+}
 
-const queueRows: TableRow[] = [
-  {
-    id: '1',
-    queue: 'refund / reversal review',
-    owner: 'finance ops',
-    sla: '17 دقیقه',
-    status: 'نیازمند تصمیم',
-  },
-  {
-    id: '2',
-    queue: 'vendor at-risk watchlist',
-    owner: 'risk desk',
-    sla: '43 دقیقه',
-    status: 'در حال پایش',
-  },
-  {
-    id: '3',
-    queue: 'content SEO audit',
-    owner: 'content team',
-    sla: 'امروز',
-    status: 'قابل اقدام',
-  },
-  {
-    id: '4',
-    queue: 'notification dispatch failures',
-    owner: 'ops control',
-    sla: '9 دقیقه',
-    status: 'نیازمند بازبینی',
-  },
-]
-
-const feedItems: FeedItem[] = [
-  {
-    id: '1',
-    title: 'hold خودکار برای settlement یک فروشنده اعمال شد',
-    meta: '10 دقیقه پیش',
-    description: 'health score فروشگاه به مرز AT_RISK رسیده و policy موثر به‌روزرسانی شده است.',
-    tone: 'warning',
-  },
-  {
-    id: '2',
-    title: 'مقاله راهنمای انتخاب گل آپدیت و آماده publish شد',
-    meta: '27 دقیقه پیش',
-    description: 'focus keyword و canonical بررسی شده و audit SEO مورد تایید قرار گرفته است.',
-    tone: 'success',
-  },
-  {
-    id: '3',
-    title: 'payment anomaly برای یک batch از سفارش‌ها ثبت شد',
-    meta: '46 دقیقه پیش',
-    description: 'پنل باید مسیر رسیدگی سریع، timeline و drill-down روشن برای تیم عملیات داشته باشد.',
-    tone: 'danger',
-  },
-]
+function renderRoute(route: AdminRoute, session: AuthSession) {
+  switch (route) {
+    case 'orders':
+      return <OrdersPage session={session} />
+    case 'settlements':
+      return <SettlementsPage session={session} />
+    case 'support':
+      return <SupportPage session={session} />
+    case 'content':
+      return <ContentPage session={session} />
+    case 'alerts':
+      return <AlertsPage session={session} />
+    case 'dashboard':
+    default:
+      return <DashboardPage session={session} />
+  }
+}
 
 export default function App() {
+  const [session, setSession] = useState<AuthSession | null>(null)
+  const [route, setRoute] = useState<AdminRoute>(defaultRoute)
+  const [phoneNumber, setPhoneNumber] = useState('')
+  const [code, setCode] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [otpExpiresAt, setOtpExpiresAt] = useState<string | null>(null)
+  const [otpCountdown, setOtpCountdown] = useState<string | null>(null)
+
+  useEffect(() => {
+    setSession(loadSession())
+  }, [])
+
+  useEffect(() => {
+    if (!otpExpiresAt) {
+      setOtpCountdown(null)
+      return
+    }
+
+    const formatter = new Intl.NumberFormat('fa-IR')
+
+    const updateCountdown = () => {
+      const diffMs = new Date(otpExpiresAt).getTime() - Date.now()
+
+      if (Number.isNaN(diffMs) || diffMs <= 0) {
+        setOtpCountdown(null)
+        setOtpExpiresAt(null)
+        return
+      }
+
+      const totalSeconds = Math.ceil(diffMs / 1000)
+      const minutes = Math.floor(totalSeconds / 60)
+      const seconds = totalSeconds % 60
+
+      if (minutes > 0) {
+        setOtpCountdown(`${formatter.format(minutes)} دقیقه و ${formatter.format(seconds)} ثانیه`)
+        return
+      }
+
+      setOtpCountdown(`${formatter.format(totalSeconds)} ثانیه`)
+    }
+
+    updateCountdown()
+    const intervalId = window.setInterval(updateCountdown, 1000)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [otpExpiresAt])
+
+  const pageMeta = useMemo(() => getPageMeta(route), [route])
+
+  async function handleSendOtp() {
+    if (!phoneNumber.trim()) {
+      setError('شماره موبایل را وارد کن.')
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+    setMessage(null)
+
+    try {
+      const response = await adminApi.sendOtp(phoneNumber.trim())
+      setMessage('کد تایید ارسال شد.')
+      setOtpExpiresAt(response.expiresAt)
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'ارسال OTP ناموفق بود')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleVerifyOtp() {
+    if (!phoneNumber.trim() || !code.trim()) {
+      setError('شماره موبایل و کد تایید الزامی هستند.')
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+    setMessage(null)
+
+    try {
+      const response = await adminApi.verifyOtp(phoneNumber.trim(), code.trim())
+      const nextSession: AuthSession = {
+        accessToken: response.access_token,
+        user: response.user,
+      }
+
+      saveSession(nextSession)
+      setSession(nextSession)
+      setRoute(defaultRoute)
+      setCode('')
+      setOtpExpiresAt(null)
+      setOtpCountdown(null)
+      setMessage('ورود موفق بود و session ذخیره شد.')
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'تایید OTP ناموفق بود')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function handleLogout() {
+    clearSession()
+    setSession(null)
+    setCode('')
+    setMessage(null)
+    setError(null)
+    setOtpExpiresAt(null)
+    setOtpCountdown(null)
+  }
+
+  if (!session) {
+    return (
+      <LoginPage
+        code={code}
+        error={error}
+        loading={loading}
+        message={message}
+        otpCountdown={otpCountdown}
+        onCodeChange={setCode}
+        onPhoneChange={setPhoneNumber}
+        onSendOtp={handleSendOtp}
+        onVerifyOtp={handleVerifyOtp}
+        phoneNumber={phoneNumber}
+      />
+    )
+  }
+
   return (
     <AppShell
       tone="admin"
       productName="Admin Control Center"
       productSubtitle="Flower Marketplace Operations"
       workspaceLabel="Admin panel"
-      userName="افشین"
-      userRole="Platform admin"
-      pageEyebrow="FE-1 / Foundation"
-      pageTitle="Foundation پنل ادمین شکل گرفت"
-      pageDescription="این خروجی عمدا روی app shell، hierarchy، component patterns و data-heavy layout تمرکز دارد تا قبل از ورود به routing و integration عمیق، ساختار کلی پنل به‌صورت واقعی چکش‌کاری شود."
-      navSections={adminNav}
+      userName={session.user.fullName || session.user.phoneNumber}
+      userRole={session.user.roles.join(' / ') || 'Authenticated user'}
+      pageEyebrow={pageMeta.eyebrow}
+      pageTitle={pageMeta.title}
+      pageDescription={pageMeta.description}
+      navSections={buildNav(route)}
+      onNavigate={(next) => setRoute(next as AdminRoute)}
       actions={[
-        { label: 'ایجاد alert view', tone: 'ghost' },
-        { label: 'مرور معماری محتوا', tone: 'secondary' },
-        { label: 'شروع domain integration', tone: 'primary' },
+        { label: adminRouteLabels[route], tone: 'ghost' },
+        { label: 'Session active', tone: 'secondary' },
+        { label: 'Backend-connected foundation', tone: 'primary' },
       ]}
     >
-      <div className="fm-grid">
-        {stats.map((item) => (
-          <StatCard key={item.label} {...item} />
-        ))}
+      <div className="admin-toolbar-note">
+        <Pill tone="success">OTP + JWT</Pill>
+        <Pill tone="warning">route contracts active</Pill>
+        <Pill>{session.user.phoneNumber}</Pill>
+        <button className="admin-logout" onClick={handleLogout} type="button">
+          خروج از پنل
+        </button>
       </div>
-
-      <Spotlight
-        eyebrow="Operational blueprint"
-        title="ساختار کلی برای یک مارکت‌پلیس بزرگ باید از اولین قدم قابلیت scale داشته باشد"
-        description="در این نسخه، تمرکز روی یک shell مشترک، table pattern، summary cards، activity feed و visual language یکپارچه است تا بعدا domainهای order, settlement, support, finance و content بدون آشفتگی روی آن سوار شوند."
-        metrics={[
-          { label: 'shared tokens', value: 'فعال' },
-          { label: 'layout system', value: 'مشترک' },
-          { label: 'role-aware surfaces', value: 'آماده' },
-          { label: 'design direction', value: 'premium ops' },
-        ]}
-      >
-        <div className="fm-chip-row">
-          <span className="fm-chip">sidebar چندبخشی</span>
-          <span className="fm-chip">topbar اقدام‌محور</span>
-          <span className="fm-chip">table-first interfaces</span>
-          <span className="fm-chip">state-friendly cards</span>
-          <span className="fm-chip">foundation برای RBAC visibility</span>
-        </div>
-      </Spotlight>
-
-      <div className="fm-two-column">
-        <SectionCard
-          eyebrow="Queue visibility"
-          title="صف‌های اصلی عملیات"
-          description="این بخش نشان می‌دهد که table pattern و hierarchy داده‌ای برای بخش‌های عملیاتی از همین حالا آماده است."
-          actions={<Pill tone="warning">server-side ready</Pill>}
-        >
-          <DataTable columns={queueColumns} rows={queueRows} />
-        </SectionCard>
-
-        <SectionCard
-          eyebrow="Live activity"
-          title="فید رخدادها"
-          description="timeline و event feed باید در domainهای alert، support، settlement و content قابل‌اتکا باشند."
-          actions={<Pill tone="success">timeline-friendly</Pill>}
-        >
-          <ActivityFeed items={feedItems} />
-        </SectionCard>
-      </div>
-
-      <div className="fm-three-column">
-        <SectionCard
-          eyebrow="Admin priorities"
-          title="سطح‌های بعدی اجرا"
-          description="فاز بعدی باید روی routing، auth/session و اتصال domainهای اصلی backend متمرکز شود."
-        >
-          <div className="admin-checklist">
-            <article>
-              <strong>1) shell to routes</strong>
-              <p>تبدیل navigation فعلی به route-based workspace با page contracts مشخص.</p>
-            </article>
-            <article>
-              <strong>2) auth + permissions</strong>
-              <p>انطباق UI با RBAC backend و پنهان‌سازی actionهای خارج از scope نقش.</p>
-            </article>
-            <article>
-              <strong>3) real data domains</strong>
-              <p>شروع از orders، settlements، support و content dashboard summaries.</p>
-            </article>
-          </div>
-        </SectionCard>
-
-        <SectionCard
-          eyebrow="Visual rules"
-          title="اصول یکدستی"
-          description="این قواعد باید در تمام pageها حفظ شوند تا پنل ادمین شلوغ یا generic نشود."
-        >
-          <ul className="admin-rules">
-            <li>رنگ فقط برای معنا، نه تزئین</li>
-            <li>فضای سفید کنترل‌شده برای data density</li>
-            <li>drawer و detail page به‌جای modalهای بی‌نظم</li>
-            <li>summary بالا، drill-down پایین</li>
-          </ul>
-        </SectionCard>
-
-        <SectionCard
-          eyebrow="Backend alignment"
-          title="آمادگی برای domainهای موجود"
-          description="ساختار فعلی دقیقا با دامنه‌های تاییدشده backend align شده است."
-        >
-          <div className="admin-domain-pills">
-            <Pill>orders</Pill>
-            <Pill>payments</Pill>
-            <Pill>settlements</Pill>
-            <Pill>support</Pill>
-            <Pill>policy</Pill>
-            <Pill>alerts</Pill>
-            <Pill>content</Pill>
-            <Pill>notifications</Pill>
-          </div>
-        </SectionCard>
-      </div>
+      {renderRoute(route, session)}
     </AppShell>
   )
 }
