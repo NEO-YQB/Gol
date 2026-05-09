@@ -25,6 +25,10 @@ COPY . .
 
 # مرحله حیاتی: تولید کلاینت پریزما قبل از بیلد اپلیکیشن
 # این خط باید دقیقاً قبل از دستور build باشد
+
+COPY packages/database/prisma/schema.prisma ./packages/database/prisma/schema.prisma
+
+
 RUN npx prisma generate --schema=packages/database/prisma/schema.prisma
 
 # اجرای بیلد storefront
