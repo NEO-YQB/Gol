@@ -14,6 +14,11 @@
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@frontend-core": ["../../packages/frontend-core/src/index.ts"],
+      "@frontend-core/*": ["../../packages/frontend-core/src/*"]
+    },
 
     /* Linting */
     "noUnusedLocals": true,
