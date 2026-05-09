@@ -11,7 +11,7 @@ import {
   type StatItem,
   type TableColumn,
   type TableRow,
-} from '@frontend-core'
+} from '@flower-marketplace/frontend-core'
 import './App.css'
 
 const vendorNav: NavSection[] = [

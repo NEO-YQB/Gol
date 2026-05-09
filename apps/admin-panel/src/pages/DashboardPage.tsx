@@ -1,4 +1,4 @@
-import { SectionCard, Spotlight, StatCard } from '@frontend-core'
+import { SectionCard, Spotlight, StatCard } from '@flower-marketplace/frontend-core'
 import { useEffect, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { adminApi, apiConfig } from '../lib/api'

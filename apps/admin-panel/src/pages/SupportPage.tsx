@@ -1,4 +1,4 @@
-import { ActivityFeed, DataTable, Pill, SectionCard } from '@frontend-core'
+import { ActivityFeed, DataTable, Pill, SectionCard } from '@flower-marketplace/frontend-core'
 import { useEffect, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { adminApi } from '../lib/api'

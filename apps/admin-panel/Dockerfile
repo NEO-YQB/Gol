@@ -1,12 +1,13 @@
 # مرحله اول: Build
-FROM node:20-alpine AS build
+FROM node:22-alpine AS build
 
 WORKDIR /app
 
 # کپی کردن فایل‌های پیکربندی مونو‌ریپو از ریشه
 COPY package.json package-lock.json ./
-# کپی کردن فایل پیکربندی خود اپلیکیشن
+# کپی کردن فایل پیکربندی اپلیکیشن و پکیج shared قبل از install تا workspace درست resolve شود
 COPY apps/admin-panel/package.json ./apps/admin-panel/
+COPY packages/frontend-core/package.json ./packages/frontend-core/
 
 # نصب وابستگی‌ها
 RUN npm install

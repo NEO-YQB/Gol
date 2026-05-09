@@ -1,6 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import '@frontend-core/styles/theme.css'
+import '@flower-marketplace/frontend-core/styles/theme.css'
 import './index.css'
 import App from './App.tsx'
 

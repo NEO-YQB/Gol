@@ -2,7 +2,7 @@ import {
   AppShell,
   Pill,
   type NavSection,
-} from '@frontend-core'
+} from '@flower-marketplace/frontend-core'
 import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 import { adminApi } from './lib/api'

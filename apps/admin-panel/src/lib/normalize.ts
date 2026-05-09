@@ -1,4 +1,4 @@
-import type { FeedItem, StatItem, TableRow } from '@frontend-core'
+import type { FeedItem, StatItem, TableRow } from '@flower-marketplace/frontend-core'
 
 function toRecord(value: unknown): Record<string, unknown> {
   return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {}

@@ -1,4 +1,4 @@
-import { Pill } from '@frontend-core'
+import { Pill } from '@flower-marketplace/frontend-core'
 
 type LoginPageProps = {
   phoneNumber: string

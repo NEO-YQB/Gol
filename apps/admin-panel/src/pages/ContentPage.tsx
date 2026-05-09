@@ -1,4 +1,4 @@
-import { DataTable, Pill, SectionCard, StatCard } from '@frontend-core'
+import { DataTable, Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
 import { useEffect, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { adminApi } from '../lib/api'
