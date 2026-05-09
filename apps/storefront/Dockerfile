@@ -21,9 +21,6 @@ COPY package*.json ./
 COPY packages/database ./packages/database
 COPY apps/storefront ./apps/storefront
 
-# حذف فایل‌های اضافی برای بیلد تمیز
-RUN rm -rf apps/backend apps/admin-panel
-
 # تولید کلاینت پریزما و بیلد Next.js
 RUN npx prisma generate --schema=packages/database/prisma/schema.prisma && \
     npm run build --workspace=storefront
