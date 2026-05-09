@@ -18,19 +18,19 @@ const vendorNav: NavSection[] = [
   {
     title: 'کارهای روزانه',
     items: [
-      { label: 'نمای کلی', hint: 'فروش، سفارش و کیفیت فروشگاه', active: true },
-      { label: 'سفارش‌ها', hint: 'آماده‌سازی، ارسال و پیگیری' },
-      { label: 'تسویه و کیف پول', hint: 'held earning, release, finance visibility' },
-      { label: 'پشتیبانی', hint: 'ticketها و follow-upها', badge: '4' },
+      { key: 'overview', label: 'نمای کلی', hint: 'فروش، سفارش و کیفیت فروشگاه', active: true },
+      { key: 'orders', label: 'سفارش‌ها', hint: 'آماده‌سازی، ارسال و پیگیری' },
+      { key: 'wallet', label: 'تسویه و کیف پول', hint: 'held earning, release, finance visibility' },
+      { key: 'support', label: 'پشتیبانی', hint: 'ticketها و follow-upها', badge: '4' },
     ],
   },
   {
     title: 'رشد فروشگاه',
     items: [
-      { label: 'محصولات', hint: 'موجودی، قیمت و آماده‌سازی' },
-      { label: 'تخفیف‌ها', hint: 'coupon, promotion, restrictions' },
-      { label: 'review و health', hint: 'امتیاز، بازخورد و بهبود کیفیت' },
-      { label: 'اعلان‌ها', hint: 'پیام‌های عملیاتی و هشدارها', badge: '11' },
+      { key: 'products', label: 'محصولات', hint: 'موجودی، قیمت و آماده‌سازی' },
+      { key: 'discounts', label: 'تخفیف‌ها', hint: 'coupon, promotion, restrictions' },
+      { key: 'reviews', label: 'review و health', hint: 'امتیاز، بازخورد و بهبود کیفیت' },
+      { key: 'notifications', label: 'اعلان‌ها', hint: 'پیام‌های عملیاتی و هشدارها', badge: '11' },
     ],
   },
 ]
