@@ -26,6 +26,8 @@ COPY . .
 # مرحله حیاتی: تولید کلاینت پریزما قبل از بیلد اپلیکیشن
 # این خط باید دقیقاً قبل از دستور build باشد
 
+RUN rm -rf apps/backend apps/admin-panel
+
 COPY packages/database/prisma/schema.prisma ./packages/database/prisma/schema.prisma
 
 
