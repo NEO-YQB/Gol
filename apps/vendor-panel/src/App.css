@@ -260,6 +260,106 @@
   grid-column: 1 / -1;
 }
 
+.vendor-support-toolbar {
+  display: grid;
+  gap: 16px;
+}
+
+.vendor-support-search {
+  max-width: 420px;
+}
+
+.vendor-support-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.vendor-support-filter-chip {
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--fm-border-soft);
+  background: rgba(255, 253, 248, 0.82);
+  color: var(--fm-text-secondary);
+}
+
+.vendor-support-filter-chip.is-active {
+  background: var(--fm-brand-primary);
+  color: var(--fm-text-inverse);
+  border-color: var(--fm-brand-primary);
+}
+
+.vendor-support-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+  gap: 18px;
+}
+
+.vendor-support-table-card,
+.vendor-support-detail-column {
+  display: grid;
+  gap: 16px;
+}
+
+.vendor-support-selection-list {
+  display: grid;
+  gap: 10px;
+}
+
+.vendor-support-selection-item {
+  border: 1px solid var(--fm-border-soft);
+  background: rgba(255, 253, 248, 0.86);
+  border-radius: 18px;
+  padding: 14px 16px;
+  text-align: right;
+  display: grid;
+  gap: 4px;
+}
+
+.vendor-support-selection-item strong {
+  color: var(--fm-text-primary);
+}
+
+.vendor-support-selection-item span,
+.vendor-support-selection-item small {
+  color: var(--fm-text-secondary);
+}
+
+.vendor-support-selection-item.is-active {
+  border-color: rgba(31, 106, 82, 0.28);
+  box-shadow: 0 0 0 4px rgba(31, 106, 82, 0.08);
+}
+
+.vendor-support-detail-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.vendor-support-detail-item {
+  border: 1px solid var(--fm-border-soft);
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(255, 253, 248, 0.86);
+  display: grid;
+  gap: 8px;
+}
+
+.vendor-support-detail-item span {
+  color: var(--fm-text-secondary);
+  font-size: 0.88rem;
+}
+
+.vendor-support-detail-item strong {
+  color: var(--fm-text-primary);
+  line-height: 1.8;
+}
+
+.vendor-support-detail-item--wide {
+  grid-column: 1 / -1;
+}
+
 .vendor-review-grid {
   display: grid;
   gap: 20px;
@@ -268,6 +368,8 @@
 
 @media (max-width: 920px) {
   .vendor-orders-layout,
+  .vendor-support-layout,
+  .vendor-support-detail-grid,
   .vendor-orders-detail-grid,
   .vendor-review-grid {
     grid-template-columns: 1fr;
