@@ -547,6 +547,46 @@
   line-height: 1.8;
 }
 
+.vendor-review-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.9fr);
+  gap: 18px;
+}
+
+.vendor-review-column {
+  display: grid;
+  gap: 16px;
+}
+
+.vendor-review-detail-grid,
+.vendor-review-restrictions {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.vendor-review-detail-item,
+.vendor-review-restriction-item {
+  border: 1px solid var(--fm-border-soft);
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(255, 253, 248, 0.86);
+  display: grid;
+  gap: 8px;
+}
+
+.vendor-review-detail-item span,
+.vendor-review-restriction-item span {
+  color: var(--fm-text-secondary);
+  font-size: 0.88rem;
+}
+
+.vendor-review-detail-item strong,
+.vendor-review-restriction-item strong {
+  color: var(--fm-text-primary);
+  line-height: 1.8;
+}
+
 .vendor-review-grid {
   display: grid;
   gap: 20px;
@@ -561,6 +601,9 @@
   .vendor-wallet-detail-grid,
   .vendor-notifications-layout,
   .vendor-notifications-detail-grid,
+  .vendor-review-layout,
+  .vendor-review-detail-grid,
+  .vendor-review-restrictions,
   .vendor-orders-detail-grid,
   .vendor-review-grid {
     grid-template-columns: 1fr;
