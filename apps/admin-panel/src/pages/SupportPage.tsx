@@ -1,9 +1,11 @@
-import { ActivityFeed, DataTable, Pill, SectionCard } from '@flower-marketplace/frontend-core'
-import { useEffect, useState } from 'react'
+import { ActivityFeed, DataTable, Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
+import { useEffect, useMemo, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { adminApi } from '../lib/api'
-import { makeFeed, makeRows, toArray } from '../lib/normalize'
+import { makeFeed, makeRows, readText, toArray } from '../lib/normalize'
 import type { AuthSession } from '../lib/session'
+
+type TicketRecord = Record<string, unknown>
 
 const ticketColumns = [
   { key: 'id', label: 'تیکت' },
@@ -12,11 +14,34 @@ const ticketColumns = [
   { key: 'reason', label: 'علت' },
 ]
 
+function getTicketStatus(record: TicketRecord) {
+  return readText(record, ['status'], 'UNKNOWN')
+}
+
+function getTicketReason(record: TicketRecord) {
+  return readText(record, ['reason', 'title'], '—')
+}
+
+function getTicketOrder(record: TicketRecord) {
+  return readText(record, ['orderId'], '—')
+}
+
+function statusOptions(items: TicketRecord[]) {
+  const unique = Array.from(new Set(items.map((item) => getTicketStatus(item))))
+  return ['ALL', ...unique]
+}
+
 export function SupportPage({ session }: { session: AuthSession }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [ticketRows, setTicketRows] = useState([] as ReturnType<typeof makeRows>)
-  const [feed, setFeed] = useState(() => makeFeed([], 'support'))
+  const [tickets, setTickets] = useState<TicketRecord[]>([])
+  const [followUps, setFollowUps] = useState<TicketRecord[]>([])
+  const [statusFilter, setStatusFilter] = useState('ALL')
+  const [search, setSearch] = useState('')
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [detailError, setDetailError] = useState<string | null>(null)
+  const [selectedTicket, setSelectedTicket] = useState<TicketRecord | null>(null)
 
   useEffect(() => {
     let active = true
@@ -26,23 +51,20 @@ export function SupportPage({ session }: { session: AuthSession }) {
       setError(null)
 
       try {
-        const [tickets, followUps] = await Promise.all([
+        const [ticketsPayload, followUpsPayload] = await Promise.all([
           adminApi.getSupportTickets(session),
           adminApi.getSupportFollowUps(session),
         ])
 
         if (!active) return
 
-        setTicketRows(
-          makeRows(toArray(tickets).slice(0, 8), [
-            { key: 'id', source: ['id'] },
-            { key: 'order', source: ['orderId'] },
-            { key: 'status', source: ['status'] },
-            { key: 'reason', source: ['reason', 'title'] },
-          ]),
-        )
-
-        setFeed(makeFeed(toArray(followUps), 'support follow-up'))
+        const ticketList = toArray(ticketsPayload)
+        const followUpList = toArray(followUpsPayload)
+        setTickets(ticketList)
+        setFollowUps(followUpList)
+        if (ticketList.length > 0) {
+          setSelectedTicketId(readText(ticketList[0], ['id'], ''))
+        }
       } catch (loadError) {
         if (!active) return
         setError(loadError instanceof Error ? loadError.message : 'خطا در بارگذاری پشتیبانی')
@@ -58,25 +80,215 @@ export function SupportPage({ session }: { session: AuthSession }) {
     }
   }, [session])
 
+  useEffect(() => {
+    if (!selectedTicketId) {
+      setSelectedTicket(null)
+      setDetailError(null)
+      return
+    }
+
+    let active = true
+
+    async function loadDetail() {
+      setDetailLoading(true)
+      setDetailError(null)
+
+      try {
+        const payload = await adminApi.getSupportTicketDetail(session, selectedTicketId)
+        if (!active) return
+        setSelectedTicket((payload as Record<string, unknown>) ?? null)
+      } catch (loadError) {
+        if (!active) return
+        setDetailError(loadError instanceof Error ? loadError.message : 'خطا در بارگذاری جزئیات تیکت')
+      } finally {
+        if (active) setDetailLoading(false)
+      }
+    }
+
+    void loadDetail()
+
+    return () => {
+      active = false
+    }
+  }, [selectedTicketId, session])
+
+  const filteredTickets = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase()
+    return tickets.filter((item) => {
+      const matchesStatus = statusFilter === 'ALL' || getTicketStatus(item) === statusFilter
+      if (!matchesStatus) return false
+      if (!normalizedSearch) return true
+
+      const haystack = [
+        readText(item, ['id'], ''),
+        getTicketOrder(item),
+        getTicketStatus(item),
+        getTicketReason(item),
+      ]
+        .join(' ')
+        .toLowerCase()
+
+      return haystack.includes(normalizedSearch)
+    })
+  }, [tickets, search, statusFilter])
+
+  const ticketRows = useMemo(
+    () =>
+      makeRows(filteredTickets.slice(0, 20), [
+        { key: 'id', source: ['id'] },
+        { key: 'order', source: ['orderId'] },
+        { key: 'status', source: ['status'] },
+        { key: 'reason', source: ['reason', 'title'] },
+      ]),
+    [filteredTickets],
+  )
+
+  const feed = useMemo(() => makeFeed(followUps, 'support follow-up'), [followUps])
+
+  const stats = useMemo(
+    () => [
+      {
+        label: 'کل تیکت‌ها',
+        value: String(tickets.length),
+        delta: `${filteredTickets.length} در view فعلی`,
+        detail: 'پایه اصلی support workspace',
+        tone: 'primary' as const,
+      },
+      {
+        label: 'تیکت‌های باز',
+        value: String(tickets.filter((item) => getTicketStatus(item) === 'OPEN').length),
+        delta: 'نیازمند پاسخ اولیه',
+        detail: 'ورودی اصلی برای تیم پشتیبانی',
+        tone: 'warning' as const,
+      },
+      {
+        label: 'ارجاع‌های مالی',
+        value: String(tickets.filter((item) => getTicketStatus(item) === 'ESCALATED_TO_FINANCE').length),
+        delta: 'finance decision flow',
+        detail: 'تیکت‌هایی که به تصمیم مالی می‌رسند',
+        tone: 'danger' as const,
+      },
+      {
+        label: 'follow-upها',
+        value: String(followUps.length),
+        delta: 'ops feed',
+        detail: 'فید eventهای قابل پیگیری برای ادمین',
+        tone: 'success' as const,
+      },
+    ],
+    [tickets, filteredTickets.length, followUps.length],
+  )
+
+  const selectedSummary = selectedTicket
+    ? [
+        { label: 'سفارش', value: getTicketOrder(selectedTicket) },
+        { label: 'وضعیت', value: getTicketStatus(selectedTicket) },
+        { label: 'علت', value: getTicketReason(selectedTicket) },
+        { label: 'خروجی مالی', value: readText(selectedTicket, ['financeOutcome'], '—') },
+      ]
+    : []
+
   return (
-    <div className="fm-two-column">
+    <div className="fm-stack">
       <LoadableState error={error} loading={loading}>
-        <SectionCard
-          eyebrow="Support tickets"
-          title="تیکت‌های ادمین / پشتیبانی"
-          description="صفحه پایه برای list, detail, note و finance decision روی support domain."
-          actions={<Pill tone="primary">support admin</Pill>}
-        >
-          <DataTable columns={ticketColumns} rows={ticketRows} />
-        </SectionCard>
+        <div className="fm-grid">
+          {stats.map((item) => (
+            <StatCard key={item.label} {...item} />
+          ))}
+        </div>
 
         <SectionCard
-          eyebrow="Follow-up feed"
-          title="پیگیری‌های عملیاتی"
-          description="follow-upها باید بعدا به timeline و quick action drawer متصل شوند."
-          actions={<Pill tone="warning">timeline next</Pill>}
+          eyebrow="Support workspace"
+          title="workspace تیکت‌های پشتیبانی"
+          description="این صفحه حالا لیست، filter، selection، detail summary و feed رخدادهای پشتیبانی را در یک surface واحد جمع می‌کند."
+          actions={<Pill tone="primary">support workspace v1</Pill>}
         >
-          <ActivityFeed items={feed} />
+          <div className="support-toolbar">
+            <div className="fm-field support-search">
+              <label htmlFor="support-search">جستجو</label>
+              <input
+                id="support-search"
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="شناسه تیکت، سفارش، علت یا وضعیت"
+                value={search}
+              />
+            </div>
+
+            <div className="support-filters">
+              {statusOptions(tickets).map((status) => (
+                <button
+                  className={`support-filter-chip${status === statusFilter ? ' is-active' : ''}`}
+                  key={status}
+                  onClick={() => setStatusFilter(status)}
+                  type="button"
+                >
+                  {status === 'ALL' ? 'همه' : status}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="support-layout">
+            <div className="support-table-card">
+              <DataTable columns={ticketColumns} rows={ticketRows} />
+              <div className="support-selection-list">
+                {filteredTickets.slice(0, 8).map((item) => {
+                  const ticketId = readText(item, ['id'], '')
+                  return (
+                    <button
+                      className={`support-selection-item${selectedTicketId === ticketId ? ' is-active' : ''}`}
+                      key={ticketId}
+                      onClick={() => setSelectedTicketId(ticketId)}
+                      type="button"
+                    >
+                      <strong>تیکت #{ticketId}</strong>
+                      <span>سفارش #{getTicketOrder(item)}</span>
+                      <small>
+                        {getTicketStatus(item)} / {getTicketReason(item)}
+                      </small>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="support-detail-column">
+              <SectionCard
+                eyebrow="Selected ticket"
+                title={selectedTicketId ? `جزئیات تیکت #${selectedTicketId}` : 'هیچ تیکتی انتخاب نشده'}
+                description="این بلوک فعلا summary detail را از `/support/tickets/:id` می‌گیرد و بعدا به full ticket workspace با notes و finance actions تبدیل می‌شود."
+                actions={<Pill tone="success">detail ready</Pill>}
+              >
+                {detailLoading ? <div className="fm-message">در حال بارگذاری جزئیات تیکت...</div> : null}
+                {detailError ? <div className="fm-message fm-message--danger">{detailError}</div> : null}
+                {!detailLoading && !detailError && selectedSummary.length > 0 ? (
+                  <div className="support-detail-grid">
+                    {selectedSummary.map((item) => (
+                      <article className="support-detail-item" key={item.label}>
+                        <span>{item.label}</span>
+                        <strong>{item.value}</strong>
+                      </article>
+                    ))}
+                    <article className="support-detail-item support-detail-item--wide">
+                      <span>notes / finance decision readiness</span>
+                      <strong>
+                        در مرحله بعدی، notes، history، status change و finance decision به همین فضای detail اضافه می‌شوند.
+                      </strong>
+                    </article>
+                  </div>
+                ) : null}
+              </SectionCard>
+
+              <SectionCard
+                eyebrow="Follow-up feed"
+                title="فید پیگیری‌های عملیاتی"
+                description="event feed این بخش باید برای escalationها، waiting states و follow-upهای پشتیبانی مرجع اصلی اپراتور باشد."
+                actions={<Pill tone="warning">timeline next</Pill>}
+              >
+                <ActivityFeed items={feed} />
+              </SectionCard>
+            </div>
+          </div>
         </SectionCard>
       </LoadableState>
     </div>

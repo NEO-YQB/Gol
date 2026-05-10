@@ -25,7 +25,10 @@ export type VerifyOtpResponse = {
   }
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/v1'
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ??
+  import.meta.env.VITE_API_URL ??
+  'http://localhost:3000/v1'
 
 async function readJson(response: Response) {
   const text = await response.text()
@@ -87,6 +90,9 @@ export const adminApi = {
   getAdminOrders(session: AuthSession) {
     return request<unknown[]>('/orders/admin', {}, session.accessToken)
   },
+  getOrderDetail(session: AuthSession, orderId: string) {
+    return request<unknown>(`/orders/${orderId}`, {}, session.accessToken)
+  },
   getOrderExceptions(session: AuthSession) {
     return request<unknown[]>('/admin/operations/orders/exceptions', {}, session.accessToken)
   },
@@ -95,6 +101,9 @@ export const adminApi = {
   },
   getSupportTickets(session: AuthSession) {
     return request<unknown[]>('/support/admin/tickets', {}, session.accessToken)
+  },
+  getSupportTicketDetail(session: AuthSession, ticketId: string) {
+    return request<unknown>(`/support/tickets/${ticketId}`, {}, session.accessToken)
   },
   getSupportFollowUps(session: AuthSession) {
     return request<unknown[]>('/admin/operations/support/follow-ups', {}, session.accessToken)
@@ -117,11 +126,17 @@ export const adminApi = {
   getArticles(session: AuthSession) {
     return request<unknown>('/content/articles', {}, session.accessToken)
   },
+  getArticleDetail(session: AuthSession, articleId: string) {
+    return request<unknown>(`/content/articles/${articleId}`, {}, session.accessToken)
+  },
   getArticleCategories(session: AuthSession) {
     return request<unknown[]>('/content/article-categories', {}, session.accessToken)
   },
   getArticleTags(session: AuthSession) {
     return request<unknown>('/content/article-tags', {}, session.accessToken)
+  },
+  getAuthors(session: AuthSession) {
+    return request<unknown[]>('/content/authors', {}, session.accessToken)
   },
   getContentAudits(session: AuthSession) {
     return request<unknown[]>('/content/articles/audits/list', {}, session.accessToken)
