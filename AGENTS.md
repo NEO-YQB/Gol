@@ -37,6 +37,8 @@ Backend coverage uses Jest and Supertest. Follow existing backend naming:
 - e2e config: `apps/backend/test/jest-e2e.json`
 
 Frontend work currently relies on build and manual verification. At minimum, confirm changed workspaces build successfully with `npm run build --workspace=<workspace>`.
+- از این به بعد در این پروژه، AI نباید خودش `npm` commandها، build، test یا verification runtime را اجرا کند؛ کاربر شخصاً این بررسی‌ها را انجام می‌دهد.
+- AI باید در پاسخ نهایی همیشه یک متن commit پیشنهادی و آماده‌استفاده هم ارائه کند تا کاربر بتواند همان scope را commit و deploy کند.
 
 ## Commit & Pull Request Guidelines
 Recent history uses Conventional Commit style, for example:
