@@ -2,7 +2,7 @@ import { SectionCard, Spotlight, StatCard } from '@flower-marketplace/frontend-c
 import { useEffect, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { apiConfig, vendorApi } from '../lib/api'
-import { formatFaNumber, makeStats, readNestedCount, readText, toArray } from '../lib/normalize'
+import { formatFaNumber, makeStats, readNestedCount, readText } from '../lib/normalize'
 import type { AuthSession } from '../lib/session'
 
 export function OverviewPage({ session }: { session: AuthSession }) {
