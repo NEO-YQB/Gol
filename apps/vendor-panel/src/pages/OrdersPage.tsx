@@ -237,7 +237,7 @@ export function OrdersPage({ session }: { session: AuthSession }) {
             eyebrow="Orders table"
             title="لیست سفارش‌های قابل اسکن"
             description="برای اینکه فروشنده سریع وضعیت صف سفارش‌ها را ببیند، table و selection list کنار هم آمده‌اند."
-            actions={<Pill tone="success">{formatFaNumber(filteredOrders.length)} سفارش</Pill>}
+            actions={<Pill tone="success">{`${formatFaNumber(filteredOrders.length)} سفارش`}</Pill>}
           >
             <div className="vendor-orders-table-card">
               <DataTable columns={orderColumns} rows={rows} />
