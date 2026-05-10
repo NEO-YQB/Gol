@@ -26,10 +26,6 @@ function getTransactionDirection(record: WalletRecord) {
   return readText(record, ['direction'], 'UNKNOWN')
 }
 
-function getTransactionType(record: WalletRecord) {
-  return readText(record, ['type'], '—')
-}
-
 function getSettlementStatus(record: WalletRecord) {
   return readText(record, ['settlementStatus', 'status'], 'UNKNOWN')
 }
