@@ -1,230 +1,250 @@
-import {
-  ActivityFeed,
-  AppShell,
-  DataTable,
-  Pill,
-  SectionCard,
-  Spotlight,
-  StatCard,
-  type FeedItem,
-  type NavSection,
-  type StatItem,
-  type TableColumn,
-  type TableRow,
-} from '@flower-marketplace/frontend-core'
+import { AppShell, Pill, type NavSection } from '@flower-marketplace/frontend-core'
+import { useEffect, useMemo, useState } from 'react'
 import './App.css'
+import { clearSession, loadSession, saveSession, type AuthSession } from './lib/session'
+import { vendorApi } from './lib/api'
+import { vendorRouteLabels, type VendorRoute } from './lib/routes'
+import { LoginPage } from './pages/LoginPage'
+import { NotificationsPage } from './pages/NotificationsPage'
+import { OrdersPage } from './pages/OrdersPage'
+import { OverviewPage } from './pages/OverviewPage'
+import { ReviewsPage } from './pages/ReviewsPage'
+import { SupportPage } from './pages/SupportPage'
+import { WalletPage } from './pages/WalletPage'
 
-const vendorNav: NavSection[] = [
-  {
-    title: 'کارهای روزانه',
-    items: [
-      { key: 'overview', label: 'نمای کلی', hint: 'فروش، سفارش و کیفیت فروشگاه', active: true },
-      { key: 'orders', label: 'سفارش‌ها', hint: 'آماده‌سازی، ارسال و پیگیری' },
-      { key: 'wallet', label: 'تسویه و کیف پول', hint: 'held earning, release, finance visibility' },
-      { key: 'support', label: 'پشتیبانی', hint: 'ticketها و follow-upها', badge: '4' },
-    ],
-  },
-  {
-    title: 'رشد فروشگاه',
-    items: [
-      { key: 'products', label: 'محصولات', hint: 'موجودی، قیمت و آماده‌سازی' },
-      { key: 'discounts', label: 'تخفیف‌ها', hint: 'coupon, promotion, restrictions' },
-      { key: 'reviews', label: 'review و health', hint: 'امتیاز، بازخورد و بهبود کیفیت' },
-      { key: 'notifications', label: 'اعلان‌ها', hint: 'پیام‌های عملیاتی و هشدارها', badge: '11' },
-    ],
-  },
-]
+const defaultRoute: VendorRoute = 'overview'
 
-const stats: StatItem[] = [
-  {
-    label: 'سفارش‌های امروز',
-    value: '36',
-    delta: '+12 نسبت به دیروز',
-    detail: 'درک سریع وضعیت روز، بدون شلوغی اضافه',
-    tone: 'success',
-  },
-  {
-    label: 'مبلغ آماده تسویه',
-    value: '48.2M',
-    delta: '7 مورد hold',
-    detail: 'شفافیت مالی باید برای فروشنده فوری و قابل‌فهم باشد',
-    tone: 'primary',
-  },
-  {
-    label: 'میانگین رضایت',
-    value: '4.7 / 5',
-    delta: '+0.2 این هفته',
-    detail: 'نمایش ساده اما دقیق از review و health score',
-    tone: 'warning',
-  },
-  {
-    label: 'پیگیری‌های باز',
-    value: '6',
-    delta: '2 فوری',
-    detail: 'ticket، policy restriction و پیام‌های نیازمند اقدام',
-    tone: 'danger',
-  },
-]
+function buildNav(currentRoute: VendorRoute): NavSection[] {
+  return [
+    {
+      title: 'فروشگاه',
+      items: [
+        { key: 'overview', label: 'نمای کلی', hint: 'خلاصه فروشگاه و restrictionها', active: currentRoute === 'overview' },
+        { key: 'orders', label: 'سفارش‌ها', hint: 'سفارش‌های فروشگاه از backend', active: currentRoute === 'orders' },
+        { key: 'wallet', label: 'کیف پول و تسویه', hint: 'wallet summary و settlements', active: currentRoute === 'wallet' },
+        { key: 'support', label: 'پشتیبانی', hint: 'ticket summary و follow-up', active: currentRoute === 'support' },
+      ],
+    },
+    {
+      title: 'سلامت و ارتباط',
+      items: [
+        { key: 'reviews', label: 'کیفیت و سلامت', hint: 'rating, health score, policy note', active: currentRoute === 'reviews' },
+        { key: 'notifications', label: 'اعلان‌ها', hint: 'vendor notifications و policy timeline', active: currentRoute === 'notifications' },
+      ],
+    },
+  ]
+}
 
-const orderColumns: TableColumn[] = [
-  { key: 'order', label: 'سفارش' },
-  { key: 'customer', label: 'مشتری' },
-  { key: 'delivery', label: 'تحویل' },
-  { key: 'status', label: 'وضعیت' },
-]
+function getPageMeta(route: VendorRoute) {
+  switch (route) {
+    case 'orders':
+      return {
+        eyebrow: 'Vendor orders',
+        title: 'سفارش‌های فروشگاه',
+        description: 'فروشنده از اینجا باید بتواند سفارش‌های خودش را روی داده واقعی backend ببیند و برای actionهای بعدی آماده باشد.',
+      }
+    case 'wallet':
+      return {
+        eyebrow: 'Wallet & settlement',
+        title: 'کیف پول، جریان پول و تسویه‌ها',
+        description: 'این route با wallet summary و settlement summary پر می‌شود تا وضعیت مالی فروشگاه شفاف و قابل‌پیگیری باشد.',
+      }
+    case 'support':
+      return {
+        eyebrow: 'Vendor support',
+        title: 'تیکت‌ها و پیگیری‌های مرتبط با فروشگاه',
+        description: 'فروشنده باید با کمترین اصطکاک بداند چه تیکتی باز است و چه چیزی نیازمند پاسخ یا اقدام است.',
+      }
+    case 'reviews':
+      return {
+        eyebrow: 'Health & quality',
+        title: 'کیفیت فروشگاه، امتیازها و policy موثر',
+        description: 'health score و restrictionهای موثر باید برای فروشنده روشن، انسانی و قابل‌اقدام باشند.',
+      }
+    case 'notifications':
+      return {
+        eyebrow: 'Notifications',
+        title: 'اعلان‌ها و timeline policy',
+        description: 'این صفحه تاریخچه notificationهای فروشنده و timeline eventهایی که روی وضعیت فروشگاه اثر می‌گذارند را جمع می‌کند.',
+      }
+    case 'overview':
+    default:
+      return {
+        eyebrow: 'Vendor workspace',
+        title: 'پنل فروشنده حالا به summaryهای واقعی backend متصل است',
+        description: 'از اینجا به بعد فروشنده یک mock dashboard نمی‌بیند؛ بلکه داده واقعی سفارش، پول، سلامت و policy فروشگاهش را می‌بیند.',
+      }
+  }
+}
 
-const orderRows: TableRow[] = [
-  {
-    id: '1',
-    order: '#FM-1208',
-    customer: 'سارا رستگار',
-    delivery: 'امروز / 18:00',
-    status: 'در حال آماده‌سازی',
-  },
-  {
-    id: '2',
-    order: '#FM-1207',
-    customer: 'مهدی حسینی',
-    delivery: 'امروز / 20:00',
-    status: 'آماده ارسال',
-  },
-  {
-    id: '3',
-    order: '#FM-1204',
-    customer: 'پریناز محمدی',
-    delivery: 'فردا / 11:00',
-    status: 'نیازمند تایید موجودی',
-  },
-]
-
-const feedItems: FeedItem[] = [
-  {
-    id: '1',
-    title: 'یک review جدید برای سفارش تحویل‌شده ثبت شد',
-    meta: '12 دقیقه پیش',
-    description: 'پنل فروشنده باید بازخورد را در کنار health score و actionهای بهبود نمایش دهد.',
-    tone: 'success',
-  },
-  {
-    id: '2',
-    title: 'policy محدودیت تخفیف برای فروشگاه اعمال شد',
-    meta: '34 دقیقه پیش',
-    description: 'visibility این تصمیم باید شفاف، انسانی و قابل پیگیری باشد.',
-    tone: 'warning',
-  },
-  {
-    id: '3',
-    title: 'ticket جدید برای سفارش دیرتحویل ایجاد شد',
-    meta: '1 ساعت پیش',
-    description: 'priority، timeline و next step باید بدون بار شناختی اضافی دیده شوند.',
-    tone: 'danger',
-  },
-]
+function renderRoute(route: VendorRoute, session: AuthSession) {
+  switch (route) {
+    case 'orders':
+      return <OrdersPage session={session} />
+    case 'wallet':
+      return <WalletPage session={session} />
+    case 'support':
+      return <SupportPage session={session} />
+    case 'reviews':
+      return <ReviewsPage session={session} />
+    case 'notifications':
+      return <NotificationsPage session={session} />
+    case 'overview':
+    default:
+      return <OverviewPage session={session} />
+  }
+}
 
 export default function App() {
+  const [session, setSession] = useState<AuthSession | null>(null)
+  const [route, setRoute] = useState<VendorRoute>(defaultRoute)
+  const [phoneNumber, setPhoneNumber] = useState('')
+  const [code, setCode] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [otpExpiresAt, setOtpExpiresAt] = useState<string | null>(null)
+  const [otpCountdown, setOtpCountdown] = useState<string | null>(null)
+
+  useEffect(() => {
+    setSession(loadSession())
+  }, [])
+
+  useEffect(() => {
+    if (!otpExpiresAt) {
+      setOtpCountdown(null)
+      return
+    }
+
+    const formatter = new Intl.NumberFormat('fa-IR')
+
+    const updateCountdown = () => {
+      const diffMs = new Date(otpExpiresAt).getTime() - Date.now()
+      if (Number.isNaN(diffMs) || diffMs <= 0) {
+        setOtpCountdown(null)
+        setOtpExpiresAt(null)
+        return
+      }
+
+      const totalSeconds = Math.ceil(diffMs / 1000)
+      const minutes = Math.floor(totalSeconds / 60)
+      const seconds = totalSeconds % 60
+      if (minutes > 0) {
+        setOtpCountdown(`${formatter.format(minutes)} دقیقه و ${formatter.format(seconds)} ثانیه`)
+        return
+      }
+      setOtpCountdown(`${formatter.format(totalSeconds)} ثانیه`)
+    }
+
+    updateCountdown()
+    const intervalId = window.setInterval(updateCountdown, 1000)
+    return () => window.clearInterval(intervalId)
+  }, [otpExpiresAt])
+
+  const pageMeta = useMemo(() => getPageMeta(route), [route])
+
+  async function handleSendOtp() {
+    if (!phoneNumber.trim()) {
+      setError('شماره موبایل را وارد کن.')
+      return
+    }
+    setLoading(true)
+    setError(null)
+    setMessage(null)
+    try {
+      const response = await vendorApi.sendOtp(phoneNumber.trim())
+      setMessage('کد تایید ارسال شد.')
+      setOtpExpiresAt(response.expiresAt)
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'ارسال OTP ناموفق بود')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleVerifyOtp() {
+    if (!phoneNumber.trim() || !code.trim()) {
+      setError('شماره موبایل و کد تایید الزامی هستند.')
+      return
+    }
+    setLoading(true)
+    setError(null)
+    setMessage(null)
+    try {
+      const response = await vendorApi.verifyOtp(phoneNumber.trim(), code.trim())
+      const nextSession: AuthSession = {
+        accessToken: response.access_token,
+        user: response.user,
+      }
+      saveSession(nextSession)
+      setSession(nextSession)
+      setRoute(defaultRoute)
+      setCode('')
+      setOtpExpiresAt(null)
+      setOtpCountdown(null)
+      setMessage('ورود موفق بود.')
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'تایید OTP ناموفق بود')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function handleLogout() {
+    clearSession()
+    setSession(null)
+    setCode('')
+    setMessage(null)
+    setError(null)
+    setOtpExpiresAt(null)
+    setOtpCountdown(null)
+  }
+
+  if (!session) {
+    return (
+      <LoginPage
+        phoneNumber={phoneNumber}
+        code={code}
+        loading={loading}
+        message={message}
+        error={error}
+        otpCountdown={otpCountdown}
+        onPhoneChange={setPhoneNumber}
+        onCodeChange={setCode}
+        onSendOtp={handleSendOtp}
+        onVerifyOtp={handleVerifyOtp}
+      />
+    )
+  }
+
   return (
     <AppShell
       tone="vendor"
       productName="Vendor Workspace"
       productSubtitle="Store Operations & Growth"
       workspaceLabel="Vendor panel"
-      userName="فروشگاه رزینا"
-      userRole="Store owner"
-      pageEyebrow="FE-1 / Foundation"
-      pageTitle="Foundation پنل فروشنده با شخصیت مستقل آماده شد"
-      pageDescription="پنل فروشنده باید از زبان طراحی مشترک استفاده کند، اما لحن آن انسانی‌تر، روشن‌تر و task-oriented باشد. این خروجی همین تمایز را از حالا نشان می‌دهد."
-      navSections={vendorNav}
+      userName={session.user.fullName || session.user.phoneNumber}
+      userRole={session.user.roles.join(' / ') || 'Vendor user'}
+      pageEyebrow={pageMeta.eyebrow}
+      pageTitle={pageMeta.title}
+      pageDescription={pageMeta.description}
+      navSections={buildNav(route)}
+      onNavigate={(next) => setRoute(next as VendorRoute)}
       actions={[
-        { label: 'مشاهده اعلان‌ها', tone: 'ghost' },
-        { label: 'مدیریت موجودی', tone: 'secondary' },
-        { label: 'بررسی سفارش‌های امروز', tone: 'primary' },
+        { label: vendorRouteLabels[route], tone: 'ghost' },
+        { label: 'Session active', tone: 'secondary' },
+        { label: 'Vendor backend connected', tone: 'primary' },
       ]}
     >
-      <div className="fm-grid">
-        {stats.map((item) => (
-          <StatCard key={item.label} {...item} />
-        ))}
+      <div className="vendor-toolbar-note">
+        <Pill tone="success">OTP + JWT</Pill>
+        <Pill tone="warning">vendor summaries active</Pill>
+        <Pill>{session.user.phoneNumber}</Pill>
+        <button className="vendor-logout" onClick={handleLogout} type="button">
+          خروج از پنل
+        </button>
       </div>
-
-      <Spotlight
-        eyebrow="Vendor experience"
-        title="فروشنده باید سریع بفهمد امروز چه کاری مهم‌تر است و چرا"
-        description="طراحی این پنل روی clarity، اعتماد و سرعت تصمیم‌گیری تمرکز دارد؛ نه روی data overload. هر widget باید به یک اقدام واقعی ختم شود."
-        metrics={[
-          { label: 'clarity level', value: 'بالا' },
-          { label: 'daily tasks', value: 'مرتب' },
-          { label: 'financial visibility', value: 'شفاف' },
-          { label: 'shared system', value: 'یکپارچه' },
-        ]}
-      >
-        <div className="fm-chip-row">
-          <span className="fm-chip">friendly summaries</span>
-          <span className="fm-chip">financial confidence</span>
-          <span className="fm-chip">review-driven improvements</span>
-          <span className="fm-chip">policy visibility</span>
-        </div>
-      </Spotlight>
-
-      <div className="fm-two-column">
-        <SectionCard
-          eyebrow="Today queue"
-          title="سفارش‌های نزدیک و نیازمند اقدام"
-          description="الگوی table در پنل فروشنده باید ساده‌تر از ادمین باشد، اما همچنان حرفه‌ای و scale-ready بماند."
-          actions={<Pill tone="primary">quick actions next</Pill>}
-        >
-          <DataTable columns={orderColumns} rows={orderRows} />
-        </SectionCard>
-
-        <SectionCard
-          eyebrow="Signals"
-          title="سیگنال‌های مهم فروشگاه"
-          description="ترکیب اعلان، بازخورد مشتری و محدودیت‌های policy در یک surface خوانا."
-          actions={<Pill tone="warning">action-oriented</Pill>}
-        >
-          <ActivityFeed items={feedItems} />
-        </SectionCard>
-      </div>
-
-      <div className="fm-three-column">
-        <SectionCard
-          eyebrow="Vendor principles"
-          title="اصل‌های تجربه کاربری"
-          description="پنل فروشنده باید استرس عملیاتی را کم کند، نه اینکه فقط داده نمایش دهد."
-        >
-          <ul className="vendor-principles">
-            <li>هر summary باید به یک تصمیم روشن ختم شود</li>
-            <li>زبان پیام‌ها انسانی و بدون ابهام باشد</li>
-            <li>موجودی، سفارش و تسویه در دسترس‌ترین بخش‌ها باشند</li>
-            <li>restrictionها شفاف و قابل اقدام نمایش داده شوند</li>
-          </ul>
-        </SectionCard>
-
-        <SectionCard
-          eyebrow="Readiness"
-          title="اتصال به backend موجود"
-          description="این foundation برای دامنه‌های فعال backend پروژه طراحی شده و از mock business دوری می‌کند."
-        >
-          <div className="vendor-domain-pills">
-            <Pill>orders</Pill>
-            <Pill>wallet</Pill>
-            <Pill>settlement</Pill>
-            <Pill>reviews</Pill>
-            <Pill>health score</Pill>
-            <Pill>support</Pill>
-          </div>
-        </SectionCard>
-
-        <SectionCard
-          eyebrow="Next step"
-          title="بعد از این foundation"
-          description="گام بعدی باید route structure، session handling و integration واقعی order/finance باشد."
-        >
-          <div className="vendor-next-step">
-            <strong>تمرکز پیشنهادی:</strong>
-            <p>اول auth و shell routing، بعد dashboard overview، سپس orders و wallet/settlements.</p>
-          </div>
-        </SectionCard>
-      </div>
+      {renderRoute(route, session)}
     </AppShell>
   )
 }
