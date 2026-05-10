@@ -31,7 +31,60 @@ function getArticleTitle(record: ContentRecord) {
 }
 
 function getArticleAuthor(record: ContentRecord) {
+  const author = record.author
+  if (typeof author === 'object' && author !== null) {
+    return readText(author as ContentRecord, ['name', 'slug'], '—')
+  }
+
   return readText(record, ['authorName', 'authorId'], '—')
+}
+
+function getArticleCategory(record: ContentRecord) {
+  const category = record.category
+  if (typeof category === 'object' && category !== null) {
+    return readText(category as ContentRecord, ['title', 'slug'], '—')
+  }
+
+  return readText(record, ['categoryTitle', 'categoryId'], '—')
+}
+
+function getArticleTags(record: ContentRecord) {
+  const tags = record.tags
+  if (!Array.isArray(tags)) return []
+
+  return tags
+    .map((item) => {
+      if (typeof item !== 'object' || item === null) return null
+      const relation = item as ContentRecord
+      const tag = relation.tag
+      if (typeof tag === 'object' && tag !== null) {
+        return readText(tag as ContentRecord, ['title', 'slug'], '')
+      }
+      return readText(relation, ['title', 'slug'], '')
+    })
+    .filter((value): value is string => Boolean(value))
+}
+
+function formatPersianNumber(value: number | string) {
+  const numeric = typeof value === 'number' ? value : Number(value)
+  if (Number.isNaN(numeric)) {
+    return String(value)
+  }
+
+  return new Intl.NumberFormat('fa-IR').format(numeric)
+}
+
+function formatJalaliDate(value: unknown) {
+  if (typeof value !== 'string' || !value) return '—'
+
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return '—'
+
+  return new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(parsed)
 }
 
 function statusOptions(items: ContentRecord[]) {
@@ -148,6 +201,17 @@ export function ContentPage({ session }: { session: AuthSession }) {
     })
   }, [articles, search, statusFilter])
 
+  useEffect(() => {
+    if (filteredArticles.length === 0) {
+      return
+    }
+
+    const hasSelected = filteredArticles.some((item) => readText(item, ['id'], '') === selectedArticleId)
+    if (!hasSelected) {
+      setSelectedArticleId(readText(filteredArticles[0], ['id'], ''))
+    }
+  }, [filteredArticles, selectedArticleId])
+
   const articleRows = useMemo(
     () =>
       makeRows(filteredArticles.slice(0, 20), [
@@ -175,28 +239,28 @@ export function ContentPage({ session }: { session: AuthSession }) {
     () => [
       {
         label: 'مقاله‌ها',
-        value: String(articles.length),
-        delta: `${filteredArticles.length} در view فعلی`,
+        value: formatPersianNumber(articles.length),
+        delta: `${formatPersianNumber(filteredArticles.length)} در view فعلی`,
         detail: 'content/articles workspace',
         tone: 'primary' as const,
       },
       {
         label: 'نویسنده‌ها',
-        value: String(authors.length),
+        value: formatPersianNumber(authors.length),
         delta: 'editorial ownership',
         detail: 'author profile و ownership content',
         tone: 'success' as const,
       },
       {
         label: 'taxonomyها',
-        value: String(categories.length + tags.length),
-        delta: `${categories.length} category / ${tags.length} tag`,
+        value: formatPersianNumber(categories.length + tags.length),
+        delta: `${formatPersianNumber(categories.length)} category / ${formatPersianNumber(tags.length)} tag`,
         detail: 'pillar-cluster و tag structure',
         tone: 'warning' as const,
       },
       {
         label: 'auditها',
-        value: String(audits.length),
+        value: formatPersianNumber(audits.length),
         delta: 'SEO hygiene',
         detail: 'thin taxonomy و missing metadata checks',
         tone: 'danger' as const,
@@ -211,10 +275,63 @@ export function ContentPage({ session }: { session: AuthSession }) {
         { label: 'وضعیت', value: getArticleStatus(selectedArticle) },
         { label: 'slug', value: readText(selectedArticle, ['slug'], '—') },
         { label: 'نویسنده', value: getArticleAuthor(selectedArticle) },
+        { label: 'دسته‌بندی', value: getArticleCategory(selectedArticle) },
+        {
+          label: 'تگ‌ها',
+          value: getArticleTags(selectedArticle).length > 0 ? getArticleTags(selectedArticle).slice(0, 3).join(' / ') : 'بدون تگ',
+        },
+        {
+          label: 'زمان مطالعه',
+          value: readText(selectedArticle, ['readingTimeMinutes'], '—') === '—'
+            ? '—'
+            : `${formatPersianNumber(readText(selectedArticle, ['readingTimeMinutes'], '0'))} دقیقه`,
+        },
+        { label: 'انتشار', value: formatJalaliDate(selectedArticle.publishedAt) },
+        { label: 'آخرین بروزرسانی', value: formatJalaliDate(selectedArticle.updatedAt) },
         { label: 'meta title', value: readText(selectedArticle, ['metaTitle'], '—') },
         { label: 'focus keyword', value: readText(selectedArticle, ['focusKeyword'], '—') },
       ]
     : []
+
+  const editorialSignals = useMemo(
+    () => [
+      {
+        label: 'بدون تگ',
+        value: formatPersianNumber(articles.filter((item) => getArticleTags(item).length === 0).length),
+      },
+      {
+        label: 'بدون focus keyword',
+        value: formatPersianNumber(
+          articles.filter((item) => readText(item, ['focusKeyword'], '') === '').length,
+        ),
+      },
+      {
+        label: 'بدون meta title',
+        value: formatPersianNumber(
+          articles.filter((item) => readText(item, ['metaTitle'], '') === '').length,
+        ),
+      },
+    ],
+    [articles],
+  )
+
+  const taxonomyPreview = useMemo(
+    () => ({
+      categories: categories
+        .slice(0, 4)
+        .map((item) => readText(item, ['title', 'slug'], '—'))
+        .filter((value) => value !== '—'),
+      tags: tags
+        .slice(0, 5)
+        .map((item) => readText(item, ['title', 'slug'], '—'))
+        .filter((value) => value !== '—'),
+      authors: authors
+        .slice(0, 4)
+        .map((item) => readText(item, ['name', 'slug'], '—'))
+        .filter((value) => value !== '—'),
+    }),
+    [authors, categories, tags],
+  )
 
   return (
     <div className="fm-stack">
@@ -259,25 +376,29 @@ export function ContentPage({ session }: { session: AuthSession }) {
           <div className="content-layout">
             <div className="content-table-card">
               <DataTable columns={articleColumns} rows={articleRows} />
-              <div className="content-selection-list">
-                {filteredArticles.slice(0, 8).map((item) => {
-                  const articleId = readText(item, ['id'], '')
-                  return (
-                    <button
-                      className={`content-selection-item${selectedArticleId === articleId ? ' is-active' : ''}`}
-                      key={articleId}
-                      onClick={() => setSelectedArticleId(articleId)}
-                      type="button"
-                    >
-                      <strong>{getArticleTitle(item)}</strong>
-                      <span>{readText(item, ['slug'], '—')}</span>
-                      <small>
-                        {getArticleStatus(item)} / {getArticleAuthor(item)}
-                      </small>
-                    </button>
-                  )
-                })}
-              </div>
+              {filteredArticles.length > 0 ? (
+                <div className="content-selection-list">
+                  {filteredArticles.slice(0, 8).map((item) => {
+                    const articleId = readText(item, ['id'], '')
+                    return (
+                      <button
+                        className={`content-selection-item${selectedArticleId === articleId ? ' is-active' : ''}`}
+                        key={articleId}
+                        onClick={() => setSelectedArticleId(articleId)}
+                        type="button"
+                      >
+                        <strong>{getArticleTitle(item)}</strong>
+                        <span>{readText(item, ['slug'], '—')}</span>
+                        <small>
+                          {getArticleStatus(item)} / {getArticleAuthor(item)}
+                        </small>
+                      </button>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="fm-message">با این فیلترها مقاله‌ای پیدا نشد.</div>
+              )}
             </div>
 
             <div className="content-detail-column">
@@ -287,6 +408,14 @@ export function ContentPage({ session }: { session: AuthSession }) {
                 description="این بلوک summary detail را از `/content/articles/:id` می‌گیرد و در مرحله بعد به full editorial detail مجهز می‌شود."
                 actions={<Pill tone="success">detail ready</Pill>}
               >
+                <div className="content-signal-grid">
+                  {editorialSignals.map((item) => (
+                    <article className="content-signal-item" key={item.label}>
+                      <span>{item.label}</span>
+                      <strong>{item.value}</strong>
+                    </article>
+                  ))}
+                </div>
                 {detailLoading ? <div className="fm-message">در حال بارگذاری جزئیات مقاله...</div> : null}
                 {detailError ? <div className="fm-message fm-message--danger">{detailError}</div> : null}
                 {!detailLoading && !detailError && selectedSummary.length > 0 ? (
@@ -305,6 +434,9 @@ export function ContentPage({ session }: { session: AuthSession }) {
                     </article>
                   </div>
                 ) : null}
+                {!detailLoading && !detailError && selectedSummary.length === 0 ? (
+                  <div className="fm-message">برای مشاهده summary یک مقاله را از لیست انتخاب کن.</div>
+                ) : null}
               </SectionCard>
 
               <SectionCard
@@ -316,15 +448,29 @@ export function ContentPage({ session }: { session: AuthSession }) {
                 <div className="content-taxonomy-summary">
                   <article>
                     <span>categoryها</span>
-                    <strong>{categories.length}</strong>
+                    <strong>{formatPersianNumber(categories.length)}</strong>
                   </article>
                   <article>
                     <span>tagها</span>
-                    <strong>{tags.length}</strong>
+                    <strong>{formatPersianNumber(tags.length)}</strong>
                   </article>
                   <article>
                     <span>authorها</span>
-                    <strong>{authors.length}</strong>
+                    <strong>{formatPersianNumber(authors.length)}</strong>
+                  </article>
+                </div>
+                <div className="content-preview-grid">
+                  <article className="content-preview-card">
+                    <span>categoryهای شاخص</span>
+                    <strong>{taxonomyPreview.categories.join(' / ') || 'هنوز دسته‌بندی ثبت نشده'}</strong>
+                  </article>
+                  <article className="content-preview-card">
+                    <span>tagهای شاخص</span>
+                    <strong>{taxonomyPreview.tags.join(' / ') || 'هنوز تگی ثبت نشده'}</strong>
+                  </article>
+                  <article className="content-preview-card">
+                    <span>نویسنده‌های فعال</span>
+                    <strong>{taxonomyPreview.authors.join(' / ') || 'هنوز نویسنده‌ای ثبت نشده'}</strong>
                   </article>
                 </div>
                 <DataTable columns={auditColumns} rows={auditRows} />
