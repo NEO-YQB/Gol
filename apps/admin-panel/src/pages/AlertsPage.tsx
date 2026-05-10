@@ -9,7 +9,7 @@ type AlertRecord = Record<string, unknown>
 
 const notificationColumns = [
   { key: 'id', label: 'شناسه' },
-  { key: 'topic', label: 'topic' },
+  { key: 'topic', label: 'موضوع' },
   { key: 'status', label: 'وضعیت' },
   { key: 'channel', label: 'کانال' },
   { key: 'updated', label: 'بروزرسانی' },
@@ -112,7 +112,7 @@ export function AlertsPage({ session }: { session: AuthSession }) {
     () =>
       makeStats([
         { label: 'هشدارهای عملیاتی', value: alerts, detail: 'queue اصلی alert lifecycle', tone: 'danger' },
-        { label: 'outbox notifications', value: notifications, detail: 'visibility برای dispatch و delivery', tone: 'success' },
+        { label: 'اعلان‌های outbox', value: notifications, detail: 'دید روشن‌تر برای dispatch و delivery', tone: 'success' },
         { label: 'وضعیت‌های فعال', value: statusOptions(alerts).length - 1, detail: 'پایه filter و triage', tone: 'warning' },
       ]),
     [alerts, notifications],
@@ -128,7 +128,7 @@ export function AlertsPage({ session }: { session: AuthSession }) {
         { label: 'شناسه', value: readText(selectedAlert, ['id'], '—') },
         { label: 'عنوان', value: getAlertTitle(selectedAlert) },
         { label: 'وضعیت', value: getAlertStatus(selectedAlert) },
-        { label: 'meta', value: getAlertMeta(selectedAlert) },
+        { label: 'زمان / منبع', value: getAlertMeta(selectedAlert) },
         { label: 'پیام', value: readText(selectedAlert, ['message', 'description', 'note'], '—') },
         { label: 'نوع', value: readText(selectedAlert, ['type', 'aggregateType'], '—') },
       ]
@@ -144,10 +144,10 @@ export function AlertsPage({ session }: { session: AuthSession }) {
         </div>
 
         <SectionCard
-          eyebrow="Alerts workspace"
+          eyebrow="کارتابل هشدارها"
           title="workspace هشدارها و outbox عملیاتی"
           description="این route برای triage سریع alertها و دید روشن‌تر روی outbox ادمین یک surface یکپارچه می‌سازد."
-          actions={<Pill tone="danger">alerts v2</Pill>}
+          actions={<Pill tone="danger">هشدارها v2</Pill>}
         >
           <div className="alerts-filters">
             {statusOptions(alerts).map((status) => (
@@ -165,7 +165,7 @@ export function AlertsPage({ session }: { session: AuthSession }) {
 
         <div className="alerts-layout">
           <SectionCard
-            eyebrow="Alert lifecycle"
+            eyebrow="چرخه هشدار"
             title="فید هشدارهای عملیاتی"
             description="سطح اولیه برای acknowledge، resolve، reopen و snooze روی alertها، حالا با selection و context بهتر."
             actions={<Pill tone="warning">{`${filteredAlerts.length} alert`}</Pill>}
@@ -197,8 +197,8 @@ export function AlertsPage({ session }: { session: AuthSession }) {
 
           <div className="alerts-detail-column">
             <SectionCard
-              eyebrow="Selected alert"
-              title={selectedAlert ? `alert #${readText(selectedAlert, ['id'], '—')}` : 'alertی انتخاب نشده'}
+              eyebrow="هشدار انتخاب‌شده"
+              title={selectedAlert ? `هشدار #${readText(selectedAlert, ['id'], '—')}` : 'هشداری انتخاب نشده'}
               description="این summary پایه drawer بعدی و actionهای عملیاتی alert lifecycle است."
               actions={<Pill tone="danger">{selectedAlert ? getAlertStatus(selectedAlert) : 'بدون انتخاب'}</Pill>}
             >
@@ -212,12 +212,12 @@ export function AlertsPage({ session }: { session: AuthSession }) {
                   ))}
                 </div>
               ) : (
-                <div className="fm-message">در این فیلتر هنوز alertی برای نمایش جزئیات وجود ندارد.</div>
+                <div className="fm-message">در این فیلتر هنوز هشداری برای نمایش جزئیات وجود ندارد.</div>
               )}
             </SectionCard>
 
             <SectionCard
-              eyebrow="Notification ops"
+              eyebrow="عملیات اعلان"
               title="outbox و delivery visibility"
               description="notificationها در این route باید سریع اسکن شوند تا بعدا filters و dispatch controls روی آن سوار شوند."
               actions={<Pill tone="success">outbox</Pill>}

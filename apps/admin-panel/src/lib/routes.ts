@@ -14,6 +14,6 @@ export const adminRouteLabels: Record<AdminRoute, string> = {
   orders: 'سفارش‌ها',
   settlements: 'تسویه و مالی',
   support: 'پشتیبانی',
-  content: 'محتوا و SEO',
+  content: 'محتوا و سئو',
   alerts: 'هشدارها و اعلان‌ها',
 }

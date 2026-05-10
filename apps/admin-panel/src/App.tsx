@@ -24,16 +24,16 @@ function buildNav(currentRoute: AdminRoute): NavSection[] {
       title: 'عملیات اصلی',
       items: [
         { key: 'dashboard', label: 'داشبورد', hint: 'وضعیت کلی عملیات', active: currentRoute === 'dashboard' },
-        { key: 'orders', label: 'سفارش‌ها', hint: 'orders/admin و exception flow', active: currentRoute === 'orders' },
-        { key: 'settlements', label: 'تسویه و مالی', hint: 'wallets, reports, settlement exceptions', active: currentRoute === 'settlements' },
-        { key: 'support', label: 'پشتیبانی', hint: 'tickets و follow-ups', active: currentRoute === 'support' },
+        { key: 'orders', label: 'سفارش‌ها', hint: 'صف سفارش‌ها و استثناهای عملیاتی', active: currentRoute === 'orders' },
+        { key: 'settlements', label: 'تسویه و مالی', hint: 'کیف پول‌ها، گزارش‌ها و استثناهای تسویه', active: currentRoute === 'settlements' },
+        { key: 'support', label: 'پشتیبانی', hint: 'تیکت‌ها و پیگیری‌های بعدی', active: currentRoute === 'support' },
       ],
     },
     {
       title: 'رشد و کنترل',
       items: [
-        { key: 'content', label: 'محتوا و SEO', hint: 'articles, tags, audits', active: currentRoute === 'content' },
-        { key: 'alerts', label: 'هشدارها و اعلان‌ها', hint: 'alerts + notification ops', active: currentRoute === 'alerts' },
+        { key: 'content', label: 'محتوا و سئو', hint: 'مقاله‌ها، taxonomy و auditها', active: currentRoute === 'content' },
+        { key: 'alerts', label: 'هشدارها و اعلان‌ها', hint: 'هشدارهای عملیاتی و outbox', active: currentRoute === 'alerts' },
       ],
     },
   ]
@@ -43,40 +43,40 @@ function getPageMeta(route: AdminRoute) {
   switch (route) {
     case 'orders':
       return {
-        eyebrow: 'Orders workspace',
-        title: 'سفارش‌ها و exception flow',
-        description: 'این صفحه پایه table-first برای list سفارش‌ها، queueهای مسئله‌دار و detail workspace بعدی را از endpointهای واقعی backend می‌گیرد.',
+        eyebrow: 'کارتابل سفارش‌ها',
+        title: 'سفارش‌ها و صف استثناهای عملیاتی',
+        description: 'این صفحه پایه table-first برای فهرست سفارش‌ها، صف موارد مسئله‌دار و detail workspace بعدی را از endpointهای واقعی backend می‌گیرد.',
       }
     case 'settlements':
       return {
-        eyebrow: 'Finance workspace',
+        eyebrow: 'کارتابل مالی',
         title: 'تسویه، کیف پول و دید مالی',
-        description: 'wallet visibility، settlement exceptions و report summaryها از همین‌جا به صفحه‌های عملیاتی کامل‌تر تبدیل می‌شوند.',
+        description: 'دید کیف پول، استثناهای تسویه و summaryهای گزارش از همین‌جا به صفحه‌های عملیاتی کامل‌تر تبدیل می‌شوند.',
       }
     case 'support':
       return {
-        eyebrow: 'Support workspace',
+        eyebrow: 'کارتابل پشتیبانی',
         title: 'تیکت‌ها و پیگیری‌های پشتیبانی',
-        description: 'این route برای list, note, finance decision و support timeline design شده و به endpointهای فعال backend تکیه دارد.',
+        description: 'این route برای فهرست، note، تصمیم مالی و timeline پشتیبانی طراحی شده و به endpointهای فعال backend تکیه دارد.',
       }
     case 'content':
       return {
-        eyebrow: 'Content workspace',
-        title: 'محتوا، taxonomy و SEO operations',
-        description: 'سطح اولیه routeهای content بر پایه article/category/tag/audit endpointهای backend ساخته شده تا بعدا editorial tooling روی آن سوار شود.',
+        eyebrow: 'کارتابل محتوا',
+        title: 'محتوا، taxonomy و عملیات سئو',
+        description: 'سطح اولیه routeهای content بر پایه endpointهای مقاله، category، tag و audit ساخته شده تا بعدا editorial tooling روی آن سوار شود.',
       }
     case 'alerts':
       return {
-        eyebrow: 'Operations feed',
-        title: 'هشدارها، outbox و visibility عملیاتی',
+        eyebrow: 'کارتابل هشدارها',
+        title: 'هشدارها، outbox و دید عملیاتی',
         description: 'alert lifecycle و notification ops باید در پنل ادمین سریع، واضح و drill-down-friendly باشند؛ این route شروع همان مسیر است.',
       }
     case 'dashboard':
     default:
       return {
-        eyebrow: 'Admin foundation',
+        eyebrow: 'زیربنای ادمین',
         title: 'داشبورد ادمین روی session و endpointهای واقعی سوار شد',
-        description: 'از اینجا به بعد ساخت فرانت دیگر صرفا visual نیست؛ session، page boundary و data fetching contracts برای backend موجود تعریف شده‌اند.',
+        description: 'از اینجا به بعد ساخت فرانت دیگر صرفا visual نیست؛ session، page boundary و data fetching contractهای backend موجود تعریف شده‌اند.',
       }
   }
 }
@@ -235,11 +235,11 @@ export default function App() {
   return (
     <AppShell
       tone="admin"
-      productName="Admin Control Center"
-      productSubtitle="Flower Marketplace Operations"
-      workspaceLabel="Admin panel"
+      productName="مرکز کنترل ادمین"
+      productSubtitle="عملیات بازار گل"
+      workspaceLabel="پنل ادمین"
       userName={session.user.fullName || session.user.phoneNumber}
-      userRole={session.user.roles.join(' / ') || 'Authenticated user'}
+      userRole={session.user.roles.join(' / ') || 'کاربر احراز هویت شده'}
       pageEyebrow={pageMeta.eyebrow}
       pageTitle={pageMeta.title}
       pageDescription={pageMeta.description}
@@ -247,13 +247,13 @@ export default function App() {
       onNavigate={(next) => setRoute(next as AdminRoute)}
       actions={[
         { label: adminRouteLabels[route], tone: 'ghost' },
-        { label: 'Session active', tone: 'secondary' },
-        { label: 'Backend-connected foundation', tone: 'primary' },
+        { label: 'نشست فعال', tone: 'secondary' },
+        { label: 'متصل به بک‌اند', tone: 'primary' },
       ]}
     >
       <div className="admin-toolbar-note">
         <Pill tone="success">OTP + JWT</Pill>
-        <Pill tone="warning">route contracts active</Pill>
+        <Pill tone="warning">قرارداد routeها فعال</Pill>
         <Pill>{session.user.phoneNumber}</Pill>
         <button className="admin-logout" onClick={handleLogout} type="button">
           خروج از پنل

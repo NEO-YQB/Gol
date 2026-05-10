@@ -11,7 +11,7 @@ const walletColumns = [
   { key: 'id', label: 'شناسه' },
   { key: 'store', label: 'فروشگاه' },
   { key: 'balance', label: 'موجودی' },
-  { key: 'held', label: 'held' },
+  { key: 'held', label: 'نگه‌داری‌شده' },
   { key: 'updated', label: 'آخرین تغییر' },
 ]
 
@@ -70,10 +70,10 @@ export function SettlementsPage({ session }: { session: AuthSession }) {
 
         setStats(
           makeStats([
-            { label: 'کیف پول‌ها', value: wallets, detail: 'ورودی اصلی finance admin', tone: 'primary' },
-            { label: 'settlement exceptions', value: exceptions, detail: 'block / inconsistency queue', tone: 'warning' },
-            { label: 'wallet summary', value: financeSummary, detail: 'summary endpoint برای report widgets', tone: 'success' },
-            { label: 'refund summary', value: refundSummary, detail: 'refund / reversal visibility', tone: 'danger' },
+            { label: 'کیف پول‌ها', value: wallets, detail: 'ورودی اصلی کارتابل مالی ادمین', tone: 'primary' },
+            { label: 'استثناهای تسویه', value: exceptions, detail: 'صف block و ناسازگاری‌های تسویه', tone: 'warning' },
+            { label: 'خلاصه کیف پول', value: financeSummary, detail: 'summary endpoint برای widgetهای گزارش', tone: 'success' },
+            { label: 'خلاصه refund', value: refundSummary, detail: 'دید refund و reversal', tone: 'danger' },
           ]),
         )
         setWallets(walletList)
@@ -165,10 +165,10 @@ export function SettlementsPage({ session }: { session: AuthSession }) {
         </div>
 
         <SectionCard
-          eyebrow="Settlements workspace"
+          eyebrow="کارتابل مالی"
           title="workspace مالی، کیف پول و صف استثناها"
           description="این route حالا به‌جای دو جدول خام، دید triage بهتری روی کیف پول‌ها و settlement exceptionها می‌دهد."
-          actions={<Pill tone="success">finance workspace v2</Pill>}
+          actions={<Pill tone="success">مالی v2</Pill>}
         >
           <div className="settlements-filters">
             {statusOptions(exceptions).map((status) => (
@@ -186,20 +186,20 @@ export function SettlementsPage({ session }: { session: AuthSession }) {
 
         <div className="settlements-layout">
           <SectionCard
-            eyebrow="Wallets"
+            eyebrow="کیف پول‌ها"
             title="کیف پول فروشگاه‌ها"
-            description="Foundation این صفحه برای wallet ledger visibility، adjustment و release flow آماده شده است."
-            actions={<Pill tone="success">{`${wallets.length} wallet`}</Pill>}
+            description="Foundation این صفحه برای دید ledger، adjustment و release flow آماده شده است."
+            actions={<Pill tone="success">{`${wallets.length} کیف پول`}</Pill>}
           >
             <DataTable columns={walletColumns} rows={walletRows} />
           </SectionCard>
 
           <div className="settlements-detail-column">
             <SectionCard
-              eyebrow="Settlement queue"
+              eyebrow="صف استثناهای تسویه"
               title="موارد نیازمند بررسی تسویه"
               description="پایه لازم برای release دستی، held earning review و پیگیری ناسازگاری‌ها."
-              actions={<Pill tone="warning">{`${filteredExceptions.length} exception`}</Pill>}
+              actions={<Pill tone="warning">{`${filteredExceptions.length} استثنا`}</Pill>}
             >
               <div className="settlements-table-card">
                 <DataTable columns={settlementColumns} rows={settlementRows} />
@@ -227,8 +227,8 @@ export function SettlementsPage({ session }: { session: AuthSession }) {
             </SectionCard>
 
             <SectionCard
-              eyebrow="Selected settlement"
-              title={selectedSettlement ? `exception #${readText(selectedSettlement, ['id', 'orderId'], '—')}` : 'exceptionی انتخاب نشده'}
+              eyebrow="استثنای انتخاب‌شده"
+              title={selectedSettlement ? `استثنا #${readText(selectedSettlement, ['id', 'orderId'], '—')}` : 'استثنایی انتخاب نشده'}
               description="این summary پایه detail drawer بعدی و actionهای release/review در finance workspace است."
               actions={<Pill tone="danger">{selectedSettlement ? getSettlementStatus(selectedSettlement) : 'بدون انتخاب'}</Pill>}
             >
@@ -242,7 +242,7 @@ export function SettlementsPage({ session }: { session: AuthSession }) {
                   ))}
                 </div>
               ) : (
-                <div className="fm-message">در این فیلتر هنوز exceptionی برای نمایش جزئیات وجود ندارد.</div>
+                <div className="fm-message">در این فیلتر هنوز استثنایی برای نمایش جزئیات وجود ندارد.</div>
               )}
             </SectionCard>
           </div>
