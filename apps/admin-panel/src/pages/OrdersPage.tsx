@@ -95,6 +95,7 @@ export function OrdersPage({ session }: { session: AuthSession }) {
       return
     }
 
+    const orderId = selectedOrderId
     let active = true
 
     async function loadDetail() {
@@ -102,7 +103,7 @@ export function OrdersPage({ session }: { session: AuthSession }) {
       setDetailError(null)
 
       try {
-        const payload = await adminApi.getOrderDetail(session, selectedOrderId)
+        const payload = await adminApi.getOrderDetail(session, orderId)
         if (!active) return
         setSelectedOrder((payload as Record<string, unknown>) ?? null)
       } catch (loadError) {

@@ -87,6 +87,7 @@ export function SupportPage({ session }: { session: AuthSession }) {
       return
     }
 
+    const ticketId = selectedTicketId
     let active = true
 
     async function loadDetail() {
@@ -94,7 +95,7 @@ export function SupportPage({ session }: { session: AuthSession }) {
       setDetailError(null)
 
       try {
-        const payload = await adminApi.getSupportTicketDetail(session, selectedTicketId)
+        const payload = await adminApi.getSupportTicketDetail(session, ticketId)
         if (!active) return
         setSelectedTicket((payload as Record<string, unknown>) ?? null)
       } catch (loadError) {

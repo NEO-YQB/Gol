@@ -103,13 +103,14 @@ export function ContentPage({ session }: { session: AuthSession }) {
       return
     }
 
+    const articleId = selectedArticleId
     let active = true
 
     async function loadDetail() {
       setDetailLoading(true)
       setDetailError(null)
       try {
-        const payload = await adminApi.getArticleDetail(session, selectedArticleId)
+        const payload = await adminApi.getArticleDetail(session, articleId)
         if (!active) return
         setSelectedArticle((payload as Record<string, unknown>) ?? null)
       } catch (loadError) {
