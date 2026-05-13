@@ -11,15 +11,15 @@ const articleColumns = [
   { key: 'id', label: 'شناسه' },
   { key: 'title', label: 'عنوان' },
   { key: 'status', label: 'وضعیت' },
-  { key: 'slug', label: 'slug' },
+  { key: 'slug', label: 'اسلاگ' },
   { key: 'author', label: 'نویسنده' },
 ]
 
 const auditColumns = [
-  { key: 'type', label: 'audit' },
-  { key: 'count', label: 'count' },
+  { key: 'type', label: 'نوع audit' },
+  { key: 'count', label: 'تعداد' },
   { key: 'message', label: 'جزئیات' },
-  { key: 'target', label: 'target' },
+  { key: 'target', label: 'هدف' },
 ]
 
 function getArticleStatus(record: ContentRecord) {
@@ -137,7 +137,7 @@ export function ContentPage({ session }: { session: AuthSession }) {
         }
       } catch (loadError) {
         if (!active) return
-        setError(loadError instanceof Error ? loadError.message : 'خطا در بارگذاری content workspace')
+        setError(loadError instanceof Error ? loadError.message : 'خطا در بارگذاری کارتابل محتوا')
       } finally {
         if (active) setLoading(false)
       }
@@ -241,28 +241,28 @@ export function ContentPage({ session }: { session: AuthSession }) {
         label: 'مقاله‌ها',
         value: formatPersianNumber(articles.length),
         delta: `${formatPersianNumber(filteredArticles.length)} در view فعلی`,
-        detail: 'content/articles workspace',
+        detail: 'کارتابل اصلی مقاله‌ها',
         tone: 'primary' as const,
       },
       {
         label: 'نویسنده‌ها',
         value: formatPersianNumber(authors.length),
-        delta: 'editorial ownership',
-        detail: 'author profile و ownership content',
+        delta: 'مالکیت تحریریه',
+        detail: 'پروفایل نویسنده و ownership محتوا',
         tone: 'success' as const,
       },
       {
         label: 'taxonomyها',
         value: formatPersianNumber(categories.length + tags.length),
-        delta: `${formatPersianNumber(categories.length)} category / ${formatPersianNumber(tags.length)} tag`,
-        detail: 'pillar-cluster و tag structure',
+        delta: `${formatPersianNumber(categories.length)} دسته / ${formatPersianNumber(tags.length)} تگ`,
+        detail: 'ساختار taxonomy و pillar-cluster',
         tone: 'warning' as const,
       },
       {
         label: 'auditها',
         value: formatPersianNumber(audits.length),
-        delta: 'SEO hygiene',
-        detail: 'thin taxonomy و missing metadata checks',
+        delta: 'بهداشت سئو',
+        detail: 'thin taxonomy و بررسی metadataهای ناقص',
         tone: 'danger' as const,
       },
     ],
@@ -273,7 +273,7 @@ export function ContentPage({ session }: { session: AuthSession }) {
     ? [
         { label: 'عنوان', value: getArticleTitle(selectedArticle) },
         { label: 'وضعیت', value: getArticleStatus(selectedArticle) },
-        { label: 'slug', value: readText(selectedArticle, ['slug'], '—') },
+        { label: 'اسلاگ', value: readText(selectedArticle, ['slug'], '—') },
         { label: 'نویسنده', value: getArticleAuthor(selectedArticle) },
         { label: 'دسته‌بندی', value: getArticleCategory(selectedArticle) },
         {
@@ -289,7 +289,7 @@ export function ContentPage({ session }: { session: AuthSession }) {
         { label: 'انتشار', value: formatJalaliDate(selectedArticle.publishedAt) },
         { label: 'آخرین بروزرسانی', value: formatJalaliDate(selectedArticle.updatedAt) },
         { label: 'meta title', value: readText(selectedArticle, ['metaTitle'], '—') },
-        { label: 'focus keyword', value: readText(selectedArticle, ['focusKeyword'], '—') },
+        { label: 'کلیدواژه کانونی', value: readText(selectedArticle, ['focusKeyword'], '—') },
       ]
     : []
 

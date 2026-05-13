@@ -11,12 +11,12 @@ export function DashboardPage({ session }: { session: AuthSession }) {
   const [stats, setStats] = useState(() =>
     makeStats([
       { label: 'سفارش‌های ادمین', value: [], detail: 'لیست واقعی از `/orders/admin`', tone: 'primary' },
-      { label: 'alertهای عملیاتی', value: [], detail: 'فید واقعی از `/admin/operations/alerts`', tone: 'danger' },
+      { label: 'هشدارهای عملیاتی', value: [], detail: 'فید واقعی از `/admin/operations/alerts`', tone: 'danger' },
       { label: 'تیکت‌های پشتیبانی', value: [], detail: 'لیست واقعی از `/support/admin/tickets`', tone: 'warning' },
-      { label: 'notification queue', value: [], detail: 'visibility از `/notifications/admin`', tone: 'success' },
+      { label: 'صف اعلان‌ها', value: [], detail: 'visibility از `/notifications/admin`', tone: 'success' },
     ]),
   )
-  const [feed, setFeed] = useState(() => makeFeed([], 'backend event'))
+  const [feed, setFeed] = useState(() => makeFeed([], 'رخداد بک‌اند'))
 
   useEffect(() => {
     let active = true
@@ -37,16 +37,16 @@ export function DashboardPage({ session }: { session: AuthSession }) {
 
         setStats(
           makeStats([
-            { label: 'سفارش‌های ادمین', value: orders, detail: 'ورودی اصلی برای order operations', tone: 'primary' },
-            { label: 'alertهای عملیاتی', value: alerts, detail: 'acknowledge / resolve / reopen readiness', tone: 'danger' },
-            { label: 'تیکت‌های پشتیبانی', value: tickets, detail: 'follow-up و finance decision surfaces', tone: 'warning' },
-            { label: 'notification queue', value: notifications, detail: 'dispatch و delivery visibility', tone: 'success' },
+            { label: 'سفارش‌های ادمین', value: orders, detail: 'ورودی اصلی برای عملیات سفارش', tone: 'primary' },
+            { label: 'هشدارهای عملیاتی', value: alerts, detail: 'آمادگی برای acknowledge / resolve / reopen', tone: 'danger' },
+            { label: 'تیکت‌های پشتیبانی', value: tickets, detail: 'surfaceهای پیگیری و تصمیم مالی', tone: 'warning' },
+            { label: 'صف اعلان‌ها', value: notifications, detail: 'دید روشن‌تر روی dispatch و delivery', tone: 'success' },
           ]),
         )
 
         setFeed([
-          ...makeFeed(toArray(alerts), 'alert'),
-          ...makeFeed(toArray(notifications), 'notification'),
+          ...makeFeed(toArray(alerts), 'هشدار'),
+          ...makeFeed(toArray(notifications), 'اعلان'),
         ].slice(0, 6))
       } catch (loadError) {
         if (!active) return
@@ -74,21 +74,21 @@ export function DashboardPage({ session }: { session: AuthSession }) {
       </LoadableState>
 
       <Spotlight
-        eyebrow="Backend handshake"
+        eyebrow="اتصال به بک‌اند"
         title="داشبورد ادمین حالا برای اتصال به endpointهای واقعی backend آماده شده است"
-        description="در این مرحله dashboard دیگر فقط mock visual نیست؛ ساختار آن با endpointهای orders, alerts, support و notifications سیم‌کشی شده تا از همین‌جا routing و page contracts روی داده واقعی شکل بگیرند."
+        description="در این مرحله dashboard دیگر فقط mock visual نیست؛ ساختار آن با endpointهای orders، alerts، support و notifications سیم‌کشی شده تا از همین‌جا routing و page contractها روی داده واقعی شکل بگیرند."
         metrics={[
           { label: 'API base', value: apiConfig.baseUrl },
-          { label: 'current user', value: session.user.fullName || session.user.phoneNumber },
-          { label: 'roles', value: session.user.roles.join(', ') || '—' },
-          { label: 'session', value: 'active' },
+          { label: 'کاربر فعلی', value: session.user.fullName || session.user.phoneNumber },
+          { label: 'نقش‌ها', value: session.user.roles.join(', ') || '—' },
+          { label: 'نشست', value: 'فعال' },
         ]}
       />
 
       <SectionCard
-        eyebrow="Operational notes"
+        eyebrow="یادداشت عملیاتی"
         title="چیزی که همین حالا تثبیت شده"
-        description="shell, session, data fetch contract و page boundaryها از اینجا به بعد مبنای اجرای routeهای واقعی می‌شوند."
+        description="shell، session، data fetch contract و page boundaryها از اینجا به بعد مبنای اجرای routeهای واقعی می‌شوند."
       >
         <div className="dashboard-feed-list">
           {feed.length ? (

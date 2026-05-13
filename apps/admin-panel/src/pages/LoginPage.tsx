@@ -35,14 +35,14 @@ export function LoginPage({
       <div className="auth-shell">
         <div className="auth-card auth-card--compact">
           <div className="auth-mark">
-            <Pill tone="primary">Admin panel</Pill>
+            <Pill tone="primary">پنل ادمین</Pill>
             <span className="auth-mark__dot" aria-hidden="true" />
             <span className="auth-mark__label">Flower Marketplace</span>
           </div>
 
           <div className="auth-card__header auth-card__header--compact">
             <h1>ورود به پنل ادمین</h1>
-            <p>شماره موبایل را وارد کن و با کد تایید وارد workspace شو.</p>
+            <p>شماره موبایل را وارد کن و با کد تایید وارد کارتابل عملیاتی ادمین شو.</p>
           </div>
 
           <div className="fm-form-grid auth-form-grid">
