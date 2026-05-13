@@ -123,13 +123,13 @@ export function NotificationsPage({ session }: { session: AuthSession }) {
           label: 'وضعیت‌های فعال',
           value: formatFaNumber(statusOptions(notifications).length - 1),
           delta: statusFilter === 'ALL' ? 'همه وضعیت‌ها' : statusFilter,
-          detail: 'برای اسکن سریع stateها',
+          detail: 'برای اسکن سریع وضعیت‌ها',
           tone: 'warning',
         },
         {
           label: 'رویدادهای timeline',
           value: formatFaNumber(timeline.length),
-          delta: 'policy visibility',
+          delta: 'دید policy',
           detail: 'رخدادهای موثر روی وضعیت فروشگاه',
           tone: 'success',
         },
@@ -163,10 +163,10 @@ export function NotificationsPage({ session }: { session: AuthSession }) {
         </div>
 
         <SectionCard
-          eyebrow="Notifications workspace"
+          eyebrow="کارتابل اعلان‌ها"
           title="workspace اعلان‌ها و timeline فروشنده"
-          description="این بخش notification history را با selection و policy timeline در یک surface قابل‌استفاده جمع می‌کند."
-          actions={<Pill tone="primary">notifications v2</Pill>}
+          description="این بخش تاریخچه اعلان‌ها را با selection و policy timeline در یک surface قابل‌استفاده جمع می‌کند."
+          actions={<Pill tone="primary">اعلان‌ها v2</Pill>}
         >
           <div className="vendor-notifications-filters">
             {statusOptions(notifications).map((status) => (
@@ -184,7 +184,7 @@ export function NotificationsPage({ session }: { session: AuthSession }) {
 
         <div className="vendor-notifications-layout">
           <SectionCard
-            eyebrow="Notifications"
+            eyebrow="اعلان‌ها"
             title="تاریخچه اعلان‌های فروشنده"
             description="اعلان‌ها باید سریع اسکن شوند تا فروشنده بفهمد چه چیزی فقط اطلاع‌رسانی بوده و چه چیزی نیاز به توجه دارد."
             actions={<Pill tone="success">{`${formatFaNumber(filteredNotifications.length)} اعلان`}</Pill>}
@@ -216,7 +216,7 @@ export function NotificationsPage({ session }: { session: AuthSession }) {
 
           <div className="vendor-notifications-detail-column">
             <SectionCard
-              eyebrow="Selected notification"
+              eyebrow="اعلان انتخاب‌شده"
               title={selectedNotification ? `اعلان #${readText(selectedNotification, ['id'], '—')}` : 'اعلانی انتخاب نشده'}
               description="خلاصه اعلان انتخاب‌شده برای ساخت detail drawer و actionهای بعدی آماده شده است."
               actions={<Pill tone="warning">{selectedNotification ? getNotificationStatus(selectedNotification) : 'بدون انتخاب'}</Pill>}
@@ -236,9 +236,9 @@ export function NotificationsPage({ session }: { session: AuthSession }) {
             </SectionCard>
 
             <SectionCard
-              eyebrow="Policy timeline"
-              title="timeline policy و alert"
-              description="فروشنده باید بداند چه eventهایی روی policy و وضعیت فروشگاهش اثر گذاشته‌اند."
+              eyebrow="timeline policy"
+              title="timeline policy و هشدار"
+              description="فروشنده باید بداند چه رخدادهایی روی policy و وضعیت فروشگاهش اثر گذاشته‌اند."
               actions={<Pill tone="danger">timeline</Pill>}
             >
               <ActivityFeed items={feed} />

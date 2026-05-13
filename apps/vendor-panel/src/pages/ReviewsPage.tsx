@@ -37,24 +37,24 @@ export function ReviewsPage({ session }: { session: AuthSession }) {
         setStats(
           makeStats([
             {
-              label: 'rating average',
+              label: 'میانگین امتیاز',
               value: formatFaNumber(Number(storeRecord.customerRatingAverage ?? 0)),
               delta: `${formatFaNumber(Number(storeRecord.customerRatingCount ?? 0))} نظر`,
-              detail: 'میانگین رضایت و تعداد reviewهای مشتری',
+              detail: 'میانگین رضایت و تعداد نظرهای مشتری',
               tone: 'success',
             },
             {
-              label: 'health score',
+              label: 'امتیاز سلامت',
               value: formatFaNumber(Number(storeRecord.vendorHealthScore ?? 0)),
               delta: readText(storeRecord, ['vendorHealthStatus'], 'UNKNOWN'),
-              detail: 'خروجی summary سلامت فروشگاه',
+              detail: 'خروجی خلاصه سلامت فروشگاه',
               tone: 'warning',
             },
             {
-              label: 'manual review',
+              label: 'بازبینی دستی',
               value: restrictionsRecord.manualReviewRequired ? 'فعال' : 'غیرفعال',
               delta: restrictionsRecord.blockNewDiscounts ? 'تخفیف محدود' : 'تخفیف آزاد',
-              detail: 'وضعیت restrictionهای موثر روی فروشگاه',
+              detail: 'وضعیت محدودیت‌های موثر روی فروشگاه',
               tone: 'danger',
             },
           ]),
@@ -90,7 +90,7 @@ export function ReviewsPage({ session }: { session: AuthSession }) {
   const restrictionSnapshot = useMemo(
     () => [
       {
-        label: 'manual review',
+        label: 'بازبینی دستی',
         value: restrictions.manualReviewRequired ? 'فعال' : 'غیرفعال',
       },
       {
@@ -119,10 +119,10 @@ export function ReviewsPage({ session }: { session: AuthSession }) {
         </div>
 
         <SectionCard
-          eyebrow="Health insight"
+          eyebrow="بینش سلامت"
           title="جمع‌بندی وضعیت کیفیت و policy"
           description="در این بخش فروشنده باید بفهمد چه چیزی روی سلامت فروشگاهش اثر گذاشته و چه محدودیتی فعال شده است."
-          actions={<Pill tone="warning">policy visibility</Pill>}
+          actions={<Pill tone="warning">دید policy</Pill>}
         >
           <div className="vendor-review-layout">
             <div className="vendor-review-column">
@@ -149,7 +149,7 @@ export function ReviewsPage({ session }: { session: AuthSession }) {
               </div>
 
               <div className="vendor-next-step">
-                <strong>مرحله بعدی این workspace</strong>
+                <strong>مرحله بعدی این کارتابل</strong>
                 <p>در گام بعدی می‌شود reasonهای افت health score، روند زمانی policy و breakdown شفاف‌تر محدودیت‌ها را روی همین ساختار سوار کرد.</p>
               </div>
             </div>

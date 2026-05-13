@@ -98,21 +98,21 @@ export function WalletPage({ session }: { session: AuthSession }) {
               label: 'موجودی فعلی',
               value: formatFaNumber(Number(walletData.currentBalance ?? 0)),
               delta: `${formatFaNumber(Number(walletData.availableBalance ?? 0))} قابل برداشت`,
-              detail: 'خروجی مستقیم store wallet',
+              detail: 'خروجی مستقیم کیف پول فروشگاه',
               tone: 'primary',
             },
             {
               label: 'تراکنش‌های بازه',
               value: formatFaNumber(Number(activity.transactionCount ?? 0)),
               delta: `${formatFaNumber(Number(activity.creditAmount ?? 0))} ورودی`,
-              detail: 'فعالیت کیف پول در بازه summary',
+              detail: 'فعالیت کیف پول در خلاصه بازه',
               tone: 'success',
             },
             {
-              label: 'released total',
+              label: 'جمع release شده',
               value: formatFaNumber(Number(amounts.releasedTotal ?? 0)),
               delta: `${formatFaNumber(Number(amounts.reversedTotal ?? 0))} برگشتی`,
-              detail: 'دریافتی و reversals فروشگاه',
+              detail: 'دریافتی و reversalهای فروشگاه',
               tone: 'warning',
             },
             {
@@ -220,7 +220,7 @@ export function WalletPage({ session }: { session: AuthSession }) {
 
   const financeNote = `${formatFaNumber(Number(walletMeta.availableBalance ?? 0))} قابل برداشت، ${formatFaNumber(
     Number(walletMeta.heldBalance ?? 0),
-  )} نگه داری شده و ${formatFaNumber(Number(walletMeta.debitAmount ?? 0))} خروجی در summary فعلی ثبت شده است.`
+  )} نگه‌داری شده و ${formatFaNumber(Number(walletMeta.debitAmount ?? 0))} خروجی در خلاصه فعلی ثبت شده است.`
 
   return (
     <div className="fm-stack">
@@ -232,19 +232,19 @@ export function WalletPage({ session }: { session: AuthSession }) {
         </div>
 
         <SectionCard
-          eyebrow="Wallet workspace"
+          eyebrow="کارتابل مالی"
           title="workspace مالی و تسویه فروشگاه"
-          description="این view حالا به فروشنده کمک می کند هم جریان پول را اسکن کند و هم وضعیت releaseها را سریع تر بفهمد."
-          actions={<Pill tone="success">finance workspace v2</Pill>}
+          description="این view حالا به فروشنده کمک می‌کند هم جریان پول را اسکن کند و هم وضعیت releaseها را سریع‌تر بفهمد."
+          actions={<Pill tone="success">مالی v2</Pill>}
         >
           <div className="vendor-wallet-note">{financeNote}</div>
         </SectionCard>
 
         <div className="vendor-wallet-layout">
           <SectionCard
-            eyebrow="Wallet activity"
-            title="تراکنش های اخیر کیف پول"
-            description="جهت و نوع تراکنش ها باید سریع قابل اسکن باشند تا فروشنده منشاء ورود و خروج پول را بفهمد."
+            eyebrow="فعالیت کیف پول"
+            title="تراکنش‌های اخیر کیف پول"
+            description="جهت و نوع تراکنش‌ها باید سریع قابل اسکن باشند تا فروشنده منشاء ورود و خروج پول را بفهمد."
             actions={<Pill tone="primary">{`${formatFaNumber(filteredTransactions.length)} تراکنش`}</Pill>}
           >
             <div className="vendor-wallet-table-card">
@@ -256,7 +256,7 @@ export function WalletPage({ session }: { session: AuthSession }) {
                     onClick={() => setTransactionDirectionFilter(direction)}
                     type="button"
                   >
-                    {direction === 'ALL' ? 'همه جهت ها' : direction}
+                    {direction === 'ALL' ? 'همه جهت‌ها' : direction}
                   </button>
                 ))}
               </div>
@@ -267,8 +267,8 @@ export function WalletPage({ session }: { session: AuthSession }) {
 
           <div className="vendor-wallet-detail-column">
             <SectionCard
-              eyebrow="Settlement summary"
-              title="صف تسویه های قابل پیگیری"
+              eyebrow="خلاصه تسویه"
+              title="صف تسویه‌های قابل پیگیری"
               description="این بخش پایه detail flow و توضیح وضعیت releaseهای فروشگاه است."
               actions={<Pill tone="warning">{`${formatFaNumber(filteredSettlements.length)} تسویه`}</Pill>}
             >
@@ -280,7 +280,7 @@ export function WalletPage({ session }: { session: AuthSession }) {
                     onClick={() => setSettlementStatusFilter(status)}
                     type="button"
                   >
-                    {status === 'ALL' ? 'همه وضعیت ها' : status}
+                    {status === 'ALL' ? 'همه وضعیت‌ها' : status}
                   </button>
                 ))}
               </div>
@@ -309,9 +309,9 @@ export function WalletPage({ session }: { session: AuthSession }) {
             </SectionCard>
 
             <SectionCard
-              eyebrow="Selected settlement"
-              title={selectedSettlement ? `جمع بندی سفارش #${readText(selectedSettlement, ['id'], '—')}` : 'تسویه ای انتخاب نشده'}
-              description="این summary برای توضیح سریع وضعیت مالی همان سفارش و آماده سازی detail drawer بعدی است."
+              eyebrow="تسویه انتخاب‌شده"
+              title={selectedSettlement ? `جمع‌بندی سفارش #${readText(selectedSettlement, ['id'], '—')}` : 'تسویه‌ای انتخاب نشده'}
+              description="این summary برای توضیح سریع وضعیت مالی همان سفارش و آماده‌سازی detail drawer بعدی است."
               actions={<Pill tone="danger">{selectedSettlement ? getSettlementStatus(selectedSettlement) : 'بدون انتخاب'}</Pill>}
             >
               {selectedSettlementSummary.length ? (
@@ -323,14 +323,14 @@ export function WalletPage({ session }: { session: AuthSession }) {
                     </article>
                   ))}
                   <article className="vendor-wallet-detail-item vendor-wallet-detail-item--wide">
-                    <span>یادداشت workspace</span>
+                    <span>یادداشت کارتابل</span>
                     <strong>
-                      مرحله بعدی این صفحه می تواند ledger itemها، دلیل hold، timeline release و توضیح reversal را روی همین ساختار سوار کند.
+                      مرحله بعدی این صفحه می‌تواند ledger itemها، دلیل hold، timeline release و توضیح reversal را روی همین ساختار سوار کند.
                     </strong>
                   </article>
                 </div>
               ) : (
-                <div className="vendor-note-card">در این فیلتر هنوز تسویه ای برای نمایش جزئیات وجود ندارد.</div>
+                <div className="vendor-note-card">در این فیلتر هنوز تسویه‌ای برای نمایش جزئیات وجود ندارد.</div>
               )}
             </SectionCard>
           </div>

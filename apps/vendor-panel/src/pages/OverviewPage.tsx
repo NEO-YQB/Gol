@@ -49,28 +49,28 @@ export function OverviewPage({ session }: { session: AuthSession }) {
               label: 'موجودی قابل برداشت',
               value: formatFaNumber(Number(walletData.availableBalance ?? 0)),
               delta: `${formatFaNumber(Number(walletData.heldBalance ?? 0))} نگه‌داری‌شده`,
-              detail: 'نمایش مستقیم از wallet summary فروشنده',
+              detail: 'نمایش مستقیم از خلاصه کیف پول فروشنده',
               tone: 'primary',
             },
             {
               label: 'تسویه‌های در جریان',
               value: formatFaNumber(readNestedCount(counts, ['processing']) + readNestedCount(counts, ['pending'])),
               delta: `${formatFaNumber(readNestedCount(counts, ['onHold']))} مورد hold`,
-              detail: 'ترکیب settlement summary و restrictionهای موثر',
+              detail: 'ترکیب خلاصه تسویه و محدودیت‌های موثر',
               tone: 'warning',
             },
             {
               label: 'تیکت‌های باز',
               value: formatFaNumber(readNestedCount(totals, ['open']) + readNestedCount(totals, ['inReview'])),
               delta: `${formatFaNumber(readNestedCount(totals, ['escalatedToFinance']))} ارجاع مالی`,
-              detail: 'خلاصه ticketهای مربوط به فروشنده',
+              detail: 'خلاصه تیکت‌های مربوط به فروشنده',
               tone: 'danger',
             },
             {
               label: 'امتیاز سلامت',
               value: formatFaNumber(Number(store.vendorHealthScore ?? 0)),
               delta: readText(store, ['vendorHealthStatus'], 'UNKNOWN'),
-              detail: 'health summary فعلی فروشگاه',
+              detail: 'خلاصه فعلی سلامت فروشگاه',
               tone: 'success',
             },
           ]),
@@ -106,21 +106,21 @@ export function OverviewPage({ session }: { session: AuthSession }) {
       </LoadableState>
 
       <Spotlight
-        eyebrow="Vendor overview"
+        eyebrow="نمای کلی فروشنده"
         title={`نمای کلی فروشگاه ${storeName}`}
         description="این صفحه از summaryهای واقعی backend پر می‌شود تا فروشنده خیلی سریع بفهمد وضعیت سفارش، پول، کیفیت و محدودیت‌های فروشگاهش چیست."
         metrics={[
           { label: 'API base', value: apiConfig.baseUrl },
-          { label: 'session', value: 'active' },
-          { label: 'workspace', value: 'vendor' },
-          { label: 'user', value: session.user.fullName || session.user.phoneNumber },
+          { label: 'نشست', value: 'فعال' },
+          { label: 'کارتابل', value: 'فروشنده' },
+          { label: 'کاربر', value: session.user.fullName || session.user.phoneNumber },
         ]}
       />
 
       <SectionCard
-        eyebrow="Policy note"
+        eyebrow="یادداشت policy"
         title="خلاصه policy موثر"
-        description="خروجی policy-restrictions باید برای فروشنده واضح و قابل‌اقدام باشد، نه مبهم و سیستمی."
+        description="خروجی policy restrictions باید برای فروشنده واضح و قابل‌اقدام باشد، نه مبهم و سیستمی."
       >
         <div className="vendor-note-card">{policyNote}</div>
       </SectionCard>

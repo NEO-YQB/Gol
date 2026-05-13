@@ -19,17 +19,17 @@ function buildNav(currentRoute: VendorRoute): NavSection[] {
     {
       title: 'فروشگاه',
       items: [
-        { key: 'overview', label: 'نمای کلی', hint: 'خلاصه فروشگاه و restrictionها', active: currentRoute === 'overview' },
-        { key: 'orders', label: 'سفارش‌ها', hint: 'سفارش‌های فروشگاه از backend', active: currentRoute === 'orders' },
-        { key: 'wallet', label: 'کیف پول و تسویه', hint: 'wallet summary و settlements', active: currentRoute === 'wallet' },
-        { key: 'support', label: 'پشتیبانی', hint: 'ticket summary و follow-up', active: currentRoute === 'support' },
+        { key: 'overview', label: 'نمای کلی', hint: 'خلاصه فروشگاه و محدودیت‌های موثر', active: currentRoute === 'overview' },
+        { key: 'orders', label: 'سفارش‌ها', hint: 'سفارش‌های فروشگاه روی داده واقعی', active: currentRoute === 'orders' },
+        { key: 'wallet', label: 'کیف پول و تسویه', hint: 'خلاصه کیف پول و صف تسویه‌ها', active: currentRoute === 'wallet' },
+        { key: 'support', label: 'پشتیبانی', hint: 'خلاصه تیکت‌ها و پیگیری‌ها', active: currentRoute === 'support' },
       ],
     },
     {
       title: 'سلامت و ارتباط',
       items: [
-        { key: 'reviews', label: 'کیفیت و سلامت', hint: 'rating, health score, policy note', active: currentRoute === 'reviews' },
-        { key: 'notifications', label: 'اعلان‌ها', hint: 'vendor notifications و policy timeline', active: currentRoute === 'notifications' },
+        { key: 'reviews', label: 'کیفیت و سلامت', hint: 'امتیازها، health score و policy note', active: currentRoute === 'reviews' },
+        { key: 'notifications', label: 'اعلان‌ها', hint: 'اعلان‌های فروشنده و timeline policy', active: currentRoute === 'notifications' },
       ],
     },
   ]
@@ -39,38 +39,38 @@ function getPageMeta(route: VendorRoute) {
   switch (route) {
     case 'orders':
       return {
-        eyebrow: 'Vendor orders',
+        eyebrow: 'کارتابل سفارش‌ها',
         title: 'سفارش‌های فروشگاه',
-        description: 'فروشنده از اینجا باید بتواند سفارش‌های خودش را روی داده واقعی backend ببیند و برای actionهای بعدی آماده باشد.',
+        description: 'فروشنده از اینجا باید بتواند سفارش‌های خودش را روی داده واقعی backend ببیند و برای اقدام‌های بعدی آماده باشد.',
       }
     case 'wallet':
       return {
-        eyebrow: 'Wallet & settlement',
+        eyebrow: 'کارتابل مالی',
         title: 'کیف پول، جریان پول و تسویه‌ها',
-        description: 'این route با wallet summary و settlement summary پر می‌شود تا وضعیت مالی فروشگاه شفاف و قابل‌پیگیری باشد.',
+        description: 'این route با خلاصه کیف پول و خلاصه تسویه‌ها پر می‌شود تا وضعیت مالی فروشگاه شفاف و قابل‌پیگیری باشد.',
       }
     case 'support':
       return {
-        eyebrow: 'Vendor support',
+        eyebrow: 'کارتابل پشتیبانی',
         title: 'تیکت‌ها و پیگیری‌های مرتبط با فروشگاه',
         description: 'فروشنده باید با کمترین اصطکاک بداند چه تیکتی باز است و چه چیزی نیازمند پاسخ یا اقدام است.',
       }
     case 'reviews':
       return {
-        eyebrow: 'Health & quality',
+        eyebrow: 'کارتابل سلامت',
         title: 'کیفیت فروشگاه، امتیازها و policy موثر',
-        description: 'health score و restrictionهای موثر باید برای فروشنده روشن، انسانی و قابل‌اقدام باشند.',
+        description: 'health score و محدودیت‌های موثر باید برای فروشنده روشن، انسانی و قابل‌اقدام باشند.',
       }
     case 'notifications':
       return {
-        eyebrow: 'Notifications',
+        eyebrow: 'کارتابل اعلان‌ها',
         title: 'اعلان‌ها و timeline policy',
-        description: 'این صفحه تاریخچه notificationهای فروشنده و timeline eventهایی که روی وضعیت فروشگاه اثر می‌گذارند را جمع می‌کند.',
+        description: 'این صفحه تاریخچه اعلان‌های فروشنده و timeline رخدادهایی را که روی وضعیت فروشگاه اثر می‌گذارند جمع می‌کند.',
       }
     case 'overview':
     default:
       return {
-        eyebrow: 'Vendor workspace',
+        eyebrow: 'زیربنای فروشنده',
         title: 'پنل فروشنده حالا به summaryهای واقعی backend متصل است',
         description: 'از اینجا به بعد فروشنده یک mock dashboard نمی‌بیند؛ بلکه داده واقعی سفارش، پول، سلامت و policy فروشگاهش را می‌بیند.',
       }
@@ -220,11 +220,11 @@ export default function App() {
   return (
     <AppShell
       tone="vendor"
-      productName="Vendor Workspace"
-      productSubtitle="Store Operations & Growth"
-      workspaceLabel="Vendor panel"
+      productName="کارتابل فروشنده"
+      productSubtitle="عملیات و رشد فروشگاه"
+      workspaceLabel="پنل فروشنده"
       userName={session.user.fullName || session.user.phoneNumber}
-      userRole={session.user.roles.join(' / ') || 'Vendor user'}
+      userRole={session.user.roles.join(' / ') || 'کاربر فروشنده'}
       pageEyebrow={pageMeta.eyebrow}
       pageTitle={pageMeta.title}
       pageDescription={pageMeta.description}
@@ -232,13 +232,13 @@ export default function App() {
       onNavigate={(next) => setRoute(next as VendorRoute)}
       actions={[
         { label: vendorRouteLabels[route], tone: 'ghost' },
-        { label: 'Session active', tone: 'secondary' },
-        { label: 'Vendor backend connected', tone: 'primary' },
+        { label: 'نشست فعال', tone: 'secondary' },
+        { label: 'متصل به بک‌اند فروشنده', tone: 'primary' },
       ]}
     >
       <div className="vendor-toolbar-note">
         <Pill tone="success">OTP + JWT</Pill>
-        <Pill tone="warning">vendor summaries active</Pill>
+        <Pill tone="warning">خلاصه‌های فروشنده فعال</Pill>
         <Pill>{session.user.phoneNumber}</Pill>
         <button className="vendor-logout" onClick={handleLogout} type="button">
           خروج از پنل

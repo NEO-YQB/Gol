@@ -35,9 +35,9 @@ export function LoginPage({
       <div className="vendor-auth-shell">
         <div className="vendor-auth-card">
           <div className="vendor-auth-mark">
-            <Pill tone="warning">Vendor panel</Pill>
+            <Pill tone="warning">پنل فروشنده</Pill>
             <span className="vendor-auth-mark__dot" aria-hidden="true" />
-            <span className="vendor-auth-mark__label">Store Workspace</span>
+            <span className="vendor-auth-mark__label">کارتابل فروشگاه</span>
           </div>
 
           <div className="vendor-auth-header">
