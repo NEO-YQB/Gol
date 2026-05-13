@@ -145,14 +145,14 @@ export function OrdersPage({ session }: { session: AuthSession }) {
       {
         label: 'نیازمند توجه پرداخت',
         value: formatFaNumber(orders.filter((item) => getPaymentStatus(item) !== 'PAID').length),
-        delta: 'payment status scan',
+        delta: 'پایش وضعیت پرداخت',
         detail: 'برای تشخیص سفارش‌های معطل یا ناقص',
         tone: 'warning' as const,
       },
       {
         label: 'سفارش‌های تحویل‌شده',
         value: formatFaNumber(orders.filter((item) => getOrderStatus(item) === 'DELIVERED').length),
-        delta: 'completed flow',
+        delta: 'جریان تکمیل‌شده',
         detail: 'نمای سریع از سفارش‌های نهایی‌شده',
         tone: 'success' as const,
       },
@@ -160,7 +160,7 @@ export function OrdersPage({ session }: { session: AuthSession }) {
         label: 'وضعیت‌های فعال',
         value: formatFaNumber(statusOptions(orders).length - 1),
         delta: statusFilter === 'ALL' ? 'همه وضعیت‌ها' : statusFilter,
-        detail: 'پایه ساخت saved views و filter chips',
+        detail: 'پایه ساخت viewهای ذخیره‌شده و filter chipها',
         tone: 'danger' as const,
       },
     ],
@@ -201,10 +201,10 @@ export function OrdersPage({ session }: { session: AuthSession }) {
         </div>
 
         <SectionCard
-          eyebrow="Vendor orders"
+          eyebrow="کارتابل سفارش‌ها"
           title="workspace سفارش‌های فروشگاه"
           description="این route دیگر فقط یک جدول خام نیست؛ search، filter، selection و خلاصه سفارش فعال را برای کار روزمره فروشنده در یک surface جمع می‌کند."
-          actions={<Pill tone="primary">vendor orders v2</Pill>}
+          actions={<Pill tone="primary">سفارش‌ها v2</Pill>}
         >
           <div className="vendor-orders-toolbar">
             <div className="fm-field vendor-orders-search">
@@ -234,7 +234,7 @@ export function OrdersPage({ session }: { session: AuthSession }) {
 
         <div className="vendor-orders-layout">
           <SectionCard
-            eyebrow="Orders table"
+            eyebrow="جدول سفارش‌ها"
             title="لیست سفارش‌های قابل اسکن"
             description="برای اینکه فروشنده سریع وضعیت صف سفارش‌ها را ببیند، table و selection list کنار هم آمده‌اند."
             actions={<Pill tone="success">{`${formatFaNumber(filteredOrders.length)} سفارش`}</Pill>}
@@ -268,7 +268,7 @@ export function OrdersPage({ session }: { session: AuthSession }) {
 
           <div className="vendor-orders-detail-column">
             <SectionCard
-              eyebrow="Selected order"
+              eyebrow="سفارش انتخاب‌شده"
               title={selectedOrder ? `سفارش #${readText(selectedOrder, ['id'], '—')}` : 'سفارشی انتخاب نشده'}
               description="این summary پایه detail panel بعدی است تا فروشنده بدون خروج از view اصلی، context سفارش را ببیند."
               actions={<Pill tone="warning">{selectedOrder ? getOrderStatus(selectedOrder) : 'بدون انتخاب'}</Pill>}
@@ -282,7 +282,7 @@ export function OrdersPage({ session }: { session: AuthSession }) {
                     </article>
                   ))}
                   <article className="vendor-orders-detail-item vendor-orders-detail-item--wide">
-                    <span>یادداشت workspace</span>
+                    <span>یادداشت کارتابل</span>
                     <strong>
                       این بخش آماده است تا بعدا actionهای سفارش، note داخلی، وضعیت ارسال و drill-down دقیق‌تر روی همین surface سوار شوند.
                     </strong>

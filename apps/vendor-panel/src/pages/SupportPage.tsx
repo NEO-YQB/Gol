@@ -143,7 +143,7 @@ export function SupportPage({ session }: { session: AuthSession }) {
           label: 'کل تیکت‌ها',
           value: formatFaNumber(tickets.length),
           delta: `${formatFaNumber(filteredTickets.length)} در view فعلی`,
-          detail: 'نمای سریع از queue پشتیبانی فروشگاه',
+          detail: 'نمای سریع از صف پشتیبانی فروشگاه',
           tone: 'primary',
         },
         {
@@ -164,7 +164,7 @@ export function SupportPage({ session }: { session: AuthSession }) {
           label: 'وضعیت‌های فعال',
           value: formatFaNumber(statusOptions(tickets).length - 1),
           delta: statusFilter === 'ALL' ? 'همه وضعیت‌ها' : statusFilter,
-          detail: 'پایه viewهای بعدی و filter chips',
+          detail: 'پایه viewهای بعدی و filter chipها',
           tone: 'success',
         },
       ]),
@@ -200,10 +200,10 @@ export function SupportPage({ session }: { session: AuthSession }) {
         </div>
 
         <SectionCard
-          eyebrow="Vendor support"
+          eyebrow="کارتابل پشتیبانی"
           title="workspace تیکت‌های فروشگاه"
           description="این view برای فروشنده تیکت‌ها را فقط لیست نمی‌کند؛ بلکه search، filter و summary سریع برای پیگیری بهتر فراهم می‌کند."
-          actions={<Pill tone="warning">support workspace v2</Pill>}
+          actions={<Pill tone="warning">پشتیبانی v2</Pill>}
         >
           <div className="vendor-support-toolbar">
             <div className="fm-field vendor-support-search">
@@ -233,7 +233,7 @@ export function SupportPage({ session }: { session: AuthSession }) {
 
         <div className="vendor-support-layout">
           <SectionCard
-            eyebrow="Tickets table"
+            eyebrow="جدول تیکت‌ها"
             title="لیست تیکت‌های قابل پیگیری"
             description="فروشنده باید بتواند تیکت‌ها را اسکن کند و سریع روی مهم‌ترین مورد تمرکز بگیرد."
             actions={<Pill tone="success">{`${formatFaNumber(filteredTickets.length)} تیکت`}</Pill>}
@@ -267,7 +267,7 @@ export function SupportPage({ session }: { session: AuthSession }) {
 
           <div className="vendor-support-detail-column">
             <SectionCard
-              eyebrow="Selected ticket"
+              eyebrow="تیکت انتخاب‌شده"
               title={selectedTicket ? `تیکت #${readText(selectedTicket, ['id'], '—')}` : 'تیکتی انتخاب نشده'}
               description="این summary پایه detail panel و پاسخ/پیگیری‌های بعدی فروشنده است."
               actions={<Pill tone="primary">{selectedTicket ? getTicketStatus(selectedTicket) : 'بدون انتخاب'}</Pill>}
@@ -281,7 +281,7 @@ export function SupportPage({ session }: { session: AuthSession }) {
                     </article>
                   ))}
                   <article className="vendor-support-detail-item vendor-support-detail-item--wide">
-                    <span>یادداشت workspace</span>
+                    <span>یادداشت کارتابل</span>
                     <strong>
                       مرحله بعدی این صفحه می‌تواند note thread، پاسخ فروشنده و نمایش روشن‌تر outcomeهای مالی را روی همین structure سوار کند.
                     </strong>
