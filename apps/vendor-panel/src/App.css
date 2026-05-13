@@ -451,6 +451,38 @@
   grid-column: 1 / -1;
 }
 
+.vendor-discounts-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.vendor-discounts-form-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.vendor-discounts-field--wide {
+  grid-column: 1 / -1;
+}
+
+.vendor-discounts-checkbox {
+  align-content: end;
+}
+
+.vendor-discounts-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--fm-text-secondary);
+}
+
+.vendor-discounts-submit-row {
+  display: grid;
+  gap: 12px;
+}
+
 .vendor-support-toolbar {
   display: grid;
   gap: 16px;
@@ -789,6 +821,7 @@
   .vendor-products-detail-grid,
   .vendor-discounts-layout,
   .vendor-discounts-detail-grid,
+  .vendor-discounts-form-grid,
   .vendor-orders-layout,
   .vendor-support-layout,
   .vendor-support-detail-grid,

@@ -1,11 +1,22 @@
 import { DataTable, Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
 import { useEffect, useMemo, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
-import { vendorApi } from '../lib/api'
+import { vendorApi, type VendorDiscountPayload } from '../lib/api'
 import { formatFaNumber, readText, toArray } from '../lib/normalize'
 import type { AuthSession } from '../lib/session'
 
 type DiscountRecord = Record<string, unknown>
+type ProductRecord = Record<string, unknown>
+
+type DiscountFormState = {
+  productId: string
+  title: string
+  description: string
+  valueType: 'PERCENTAGE' | 'FIXED'
+  value: string
+  priority: string
+  isActive: boolean
+}
 
 const discountColumns = [
   { key: 'id', label: 'شناسه' },
@@ -14,6 +25,16 @@ const discountColumns = [
   { key: 'value', label: 'مقدار' },
   { key: 'active', label: 'وضعیت' },
 ]
+
+const initialFormState: DiscountFormState = {
+  productId: '',
+  title: '',
+  description: '',
+  valueType: 'PERCENTAGE',
+  value: '',
+  priority: '',
+  isActive: true,
+}
 
 function getDiscountTitle(record: DiscountRecord) {
   return readText(record, ['title'], '—')
@@ -39,45 +60,90 @@ function getDiscountState(record: DiscountRecord) {
   return record.isActive ? 'فعال' : 'غیرفعال'
 }
 
+function getProductName(record: ProductRecord) {
+  return readText(record, ['name'], '—')
+}
+
 function stateOptions(items: DiscountRecord[]) {
   const unique = Array.from(new Set(items.map((item) => getDiscountState(item))))
   return ['ALL', ...unique]
 }
 
+function buildPayload(form: DiscountFormState): VendorDiscountPayload {
+  return {
+    productId: Number(form.productId),
+    title: form.title.trim(),
+    description: form.description.trim() || undefined,
+    valueType: form.valueType,
+    value: Number(form.value),
+    priority: form.priority.trim() ? Number(form.priority) : undefined,
+    isActive: form.isActive,
+  }
+}
+
 export function DiscountsPage({ session }: { session: AuthSession }) {
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [formError, setFormError] = useState<string | null>(null)
+  const [formMessage, setFormMessage] = useState<string | null>(null)
   const [discounts, setDiscounts] = useState<DiscountRecord[]>([])
+  const [products, setProducts] = useState<ProductRecord[]>([])
   const [stateFilter, setStateFilter] = useState('ALL')
   const [selectedDiscountId, setSelectedDiscountId] = useState<string | null>(null)
+  const [editingDiscountId, setEditingDiscountId] = useState<string | null>(null)
+  const [form, setForm] = useState<DiscountFormState>(initialFormState)
+
+  async function loadDiscountData(activeRef = { current: true }) {
+    const health = await vendorApi.getHealthSummary(session)
+    if (!activeRef.current) return
+
+    const store = (((health as Record<string, unknown>).store as Record<string, unknown>) ?? {})
+    const storeId = Number(readText(store, ['id'], '0'))
+
+    const [discountPayload, productsPayload] = await Promise.all([
+      vendorApi.getVendorDiscounts(session, { limit: 50 }),
+      storeId ? vendorApi.getProducts(session, { storeId, limit: 100 }) : Promise.resolve({ data: [] }),
+    ])
+    if (!activeRef.current) return
+
+    const discountList = toArray(discountPayload)
+    const productList = toArray(productsPayload)
+    setDiscounts(discountList)
+    setProducts(productList)
+
+    if (discountList.length > 0) {
+      setSelectedDiscountId((current) => current ?? readText(discountList[0], ['id'], ''))
+    }
+
+    if (productList.length > 0) {
+      setForm((current) => ({
+        ...current,
+        productId: current.productId || readText(productList[0], ['id'], ''),
+      }))
+    }
+  }
 
   useEffect(() => {
-    let active = true
+    const activeRef = { current: true }
 
     async function load() {
       setLoading(true)
       setError(null)
 
       try {
-        const payload = await vendorApi.getVendorDiscounts(session, { limit: 50 })
-        if (!active) return
-
-        const discountList = toArray(payload)
-        setDiscounts(discountList)
-        if (discountList.length > 0) {
-          setSelectedDiscountId(readText(discountList[0], ['id'], ''))
-        }
+        await loadDiscountData(activeRef)
       } catch (loadError) {
-        if (!active) return
+        if (!activeRef.current) return
         setError(loadError instanceof Error ? loadError.message : 'خطا در بارگذاری تخفیف‌های فروشگاه')
       } finally {
-        if (active) setLoading(false)
+        if (activeRef.current) setLoading(false)
       }
     }
 
     void load()
     return () => {
-      active = false
+      activeRef.current = false
     }
   }, [session])
 
@@ -162,6 +228,74 @@ export function DiscountsPage({ session }: { session: AuthSession }) {
       ]
     : []
 
+  function handleStartCreate() {
+    setEditingDiscountId(null)
+    setFormError(null)
+    setFormMessage(null)
+    setForm((current) => ({
+      ...initialFormState,
+      productId: current.productId || (products.length > 0 ? readText(products[0], ['id'], '') : ''),
+    }))
+  }
+
+  function handleStartEdit() {
+    if (!selectedDiscount) return
+
+    setEditingDiscountId(readText(selectedDiscount, ['id'], ''))
+    setFormError(null)
+    setFormMessage(null)
+    setForm({
+      productId: readText(selectedDiscount, ['productId'], readText((selectedDiscount.product as ProductRecord) ?? {}, ['id'], '')),
+      title: readText(selectedDiscount, ['title'], ''),
+      description: readText(selectedDiscount, ['description'], ''),
+      valueType: readText(selectedDiscount, ['valueType'], 'PERCENTAGE') === 'FIXED' ? 'FIXED' : 'PERCENTAGE',
+      value: readText(selectedDiscount, ['value'], ''),
+      priority: readText(selectedDiscount, ['priority'], ''),
+      isActive: Boolean(selectedDiscount.isActive),
+    })
+  }
+
+  async function handleSubmit() {
+    if (!form.productId || !form.title.trim() || !form.value.trim()) {
+      setFormError('محصول، عنوان و مقدار تخفیف الزامی هستند.')
+      return
+    }
+
+    setSaving(true)
+    setFormError(null)
+    setFormMessage(null)
+
+    try {
+      const payload = buildPayload(form)
+
+      if (editingDiscountId) {
+        await vendorApi.updateVendorDiscount(session, Number(editingDiscountId), {
+          title: payload.title,
+          description: payload.description,
+          valueType: payload.valueType,
+          value: payload.value,
+          priority: payload.priority,
+          isActive: payload.isActive,
+        })
+        setFormMessage('تخفیف با موفقیت به‌روزرسانی شد.')
+      } else {
+        await vendorApi.createVendorDiscount(session, payload)
+        setFormMessage('تخفیف جدید با موفقیت ایجاد شد.')
+      }
+
+      await loadDiscountData({ current: true })
+      setEditingDiscountId(null)
+      setForm((current) => ({
+        ...initialFormState,
+        productId: products.length > 0 ? readText(products[0], ['id'], '') : current.productId,
+      }))
+    } catch (submitError) {
+      setFormError(submitError instanceof Error ? submitError.message : 'ذخیره تخفیف ناموفق بود')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <div className="fm-stack">
       <LoadableState loading={loading} error={error}>
@@ -174,8 +308,8 @@ export function DiscountsPage({ session }: { session: AuthSession }) {
         <SectionCard
           eyebrow="کارتابل تخفیف‌ها"
           title="workspace تخفیف‌ها و promotion readiness"
-          description="این route دید روشنی روی vendor discountها می‌دهد و آماده است تا بعدا actionهای create/edit و promotion flow روی آن سوار شوند."
-          actions={<Pill tone="primary">تخفیف‌ها v1</Pill>}
+          description="این route هم visibility می‌دهد و هم حالا سطح اولیه create/edit را برای vendor discountها باز می‌کند."
+          actions={<Pill tone="primary">تخفیف‌ها v2</Pill>}
         >
           <div className="vendor-discounts-filters">
             {stateOptions(discounts).map((status) => (
@@ -241,13 +375,135 @@ export function DiscountsPage({ session }: { session: AuthSession }) {
                   <article className="vendor-discounts-detail-item vendor-discounts-detail-item--wide">
                     <span>یادداشت کارتابل</span>
                     <strong>
-                      مرحله بعدی این بخش می‌تواند create/edit discount، scheduling دقیق‌تر، stack policy و promotion actionها را روی همین ساختار سوار کند.
+                      مرحله بعدی این بخش می‌تواند scheduling دقیق‌تر، stack policy و promotion actionها را روی همین ساختار سوار کند.
                     </strong>
                   </article>
                 </div>
               ) : (
                 <div className="vendor-note-card">در این فیلتر هنوز تخفیفی برای نمایش جزئیات وجود ندارد.</div>
               )}
+            </SectionCard>
+
+            <SectionCard
+              eyebrow="مدیریت تخفیف"
+              title={editingDiscountId ? 'ویرایش تخفیف انتخاب‌شده' : 'ایجاد تخفیف جدید'}
+              description="در این مرحله فروشنده می‌تواند تخفیف جدید بسازد یا یک تخفیف موجود را به‌روزرسانی کند."
+              actions={
+                <div className="vendor-discounts-actions">
+                  <button className="fm-button fm-button--ghost" onClick={handleStartCreate} type="button">
+                    تخفیف جدید
+                  </button>
+                  <button
+                    className="fm-button fm-button--secondary"
+                    disabled={!selectedDiscount}
+                    onClick={handleStartEdit}
+                    type="button"
+                  >
+                    ویرایش انتخاب‌شده
+                  </button>
+                </div>
+              }
+            >
+              <div className="vendor-discounts-form-grid">
+                <div className="fm-field">
+                  <label htmlFor="discount-product">محصول</label>
+                  <select
+                    id="discount-product"
+                    onChange={(event) => setForm((current) => ({ ...current, productId: event.target.value }))}
+                    value={form.productId}
+                  >
+                    {products.map((product) => {
+                      const id = readText(product, ['id'], '')
+                      return (
+                        <option key={id} value={id}>
+                          {getProductName(product)}
+                        </option>
+                      )
+                    })}
+                  </select>
+                </div>
+
+                <div className="fm-field">
+                  <label htmlFor="discount-title">عنوان تخفیف</label>
+                  <input
+                    id="discount-title"
+                    onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
+                    placeholder="مثلا تخفیف آخر هفته"
+                    value={form.title}
+                  />
+                </div>
+
+                <div className="fm-field">
+                  <label htmlFor="discount-value-type">نوع تخفیف</label>
+                  <select
+                    id="discount-value-type"
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        valueType: event.target.value === 'FIXED' ? 'FIXED' : 'PERCENTAGE',
+                      }))
+                    }
+                    value={form.valueType}
+                  >
+                    <option value="PERCENTAGE">درصدی</option>
+                    <option value="FIXED">مبلغ ثابت</option>
+                  </select>
+                </div>
+
+                <div className="fm-field">
+                  <label htmlFor="discount-value">مقدار</label>
+                  <input
+                    id="discount-value"
+                    inputMode="decimal"
+                    onChange={(event) => setForm((current) => ({ ...current, value: event.target.value }))}
+                    placeholder={form.valueType === 'PERCENTAGE' ? 'مثلا ۱۵' : 'مثلا ۵۰۰۰۰'}
+                    value={form.value}
+                  />
+                </div>
+
+                <div className="fm-field">
+                  <label htmlFor="discount-priority">اولویت</label>
+                  <input
+                    id="discount-priority"
+                    inputMode="numeric"
+                    onChange={(event) => setForm((current) => ({ ...current, priority: event.target.value }))}
+                    placeholder="مثلا ۱۰۰"
+                    value={form.priority}
+                  />
+                </div>
+
+                <div className="fm-field vendor-discounts-checkbox">
+                  <label htmlFor="discount-active">وضعیت</label>
+                  <label className="vendor-discounts-toggle">
+                    <input
+                      checked={form.isActive}
+                      id="discount-active"
+                      onChange={(event) => setForm((current) => ({ ...current, isActive: event.target.checked }))}
+                      type="checkbox"
+                    />
+                    <span>{form.isActive ? 'فعال' : 'غیرفعال'}</span>
+                  </label>
+                </div>
+
+                <div className="fm-field vendor-discounts-field--wide">
+                  <label htmlFor="discount-description">توضیح</label>
+                  <textarea
+                    id="discount-description"
+                    onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
+                    placeholder="توضیح کوتاه برای تیم فروشگاه یا ثبت context تخفیف"
+                    rows={4}
+                    value={form.description}
+                  />
+                </div>
+
+                <div className="vendor-discounts-submit-row vendor-discounts-field--wide">
+                  <button className="fm-button fm-button--primary" disabled={saving} onClick={handleSubmit} type="button">
+                    {saving ? 'در حال ذخیره...' : editingDiscountId ? 'ذخیره تغییرات' : 'ایجاد تخفیف'}
+                  </button>
+                  {formMessage ? <div className="fm-message fm-message--success">{formMessage}</div> : null}
+                  {formError ? <div className="fm-message fm-message--danger">{formError}</div> : null}
+                </div>
+              </div>
             </SectionCard>
           </div>
         </div>

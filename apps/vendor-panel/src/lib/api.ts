@@ -25,6 +25,21 @@ export type VerifyOtpResponse = {
   }
 }
 
+export type VendorDiscountPayload = {
+  productId: number
+  title: string
+  description?: string
+  valueType: 'PERCENTAGE' | 'FIXED'
+  value: number
+  priority?: number
+  isActive?: boolean
+  isExclusive?: boolean
+  allowCouponStacking?: boolean
+  startAt?: string
+  endAt?: string
+  metadata?: Record<string, unknown>
+}
+
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ??
   import.meta.env.VITE_API_URL ??
@@ -114,6 +129,18 @@ export const vendorApi = {
     }
 
     return request<unknown>(`/vendor-discounts/mine?${params.toString()}`, {}, session.accessToken)
+  },
+  createVendorDiscount(session: AuthSession, payload: VendorDiscountPayload) {
+    return request<unknown>('/vendor-discounts', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }, session.accessToken)
+  },
+  updateVendorDiscount(session: AuthSession, discountId: number, payload: Partial<VendorDiscountPayload>) {
+    return request<unknown>(`/vendor-discounts/${discountId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }, session.accessToken)
   },
   getWalletSummary(session: AuthSession) {
     return request<unknown>('/vendor-dashboard/wallet-summary', {}, session.accessToken)
