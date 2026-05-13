@@ -532,8 +532,13 @@ export class FinanceService {
 
     let releasedCount = 0;
     for (const order of dueOrders) {
+      try {
       await this.releaseOrderSettlement(order.id, { mode: 'auto' });
       releasedCount += 1;
+      } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'خطای ناشناخته';
+      console.error(`❌ خطا در تسویه خودکار سفارش ${order.id}:`, errorMessage);
+    }
     }
 
     return { releasedCount };
