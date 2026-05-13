@@ -8,3 +8,14 @@ body {
   padding: 0;
   background: #07070a;
 }
+@font-face {
+  font-family: "YekanBakh";
+  src: url("../../../../packages/frontend-core/src/assets/fonts/yekan-bakh/YekanBakhFaNum-Regular.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+body {
+  font-family: "YekanBakh", sans-serif;
+}
