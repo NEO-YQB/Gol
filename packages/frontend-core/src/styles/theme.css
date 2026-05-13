@@ -255,6 +255,104 @@ button {
   transform: translateX(-2px);
 }
 
+.fm-jalali-field {
+  display: grid;
+  gap: 10px;
+  position: relative;
+}
+
+.fm-jalali-trigger,
+.fm-jalali-time {
+  min-height: 48px;
+  border-radius: var(--fm-radius-control);
+  border: 1px solid var(--fm-border-soft);
+  background: rgba(255, 253, 248, 0.92);
+  color: var(--fm-text-primary);
+  padding: 0 14px;
+}
+
+.fm-jalali-trigger {
+  text-align: right;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.fm-jalali-trigger.is-open {
+  border-color: var(--fm-brand-primary);
+  box-shadow: 0 0 0 4px rgba(31, 106, 82, 0.08);
+}
+
+.fm-jalali-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  inset-inline: 0;
+  z-index: 20;
+  border: 1px solid var(--fm-border-soft);
+  border-radius: 20px;
+  background: var(--fm-bg-surface-strong);
+  box-shadow: var(--fm-shadow-card);
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.fm-jalali-head,
+.fm-jalali-weekdays,
+.fm-jalali-grid {
+  display: grid;
+}
+
+.fm-jalali-head {
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.fm-jalali-head strong {
+  text-align: center;
+}
+
+.fm-jalali-nav {
+  min-height: 38px;
+  border-radius: 999px;
+  border: 1px solid var(--fm-border-soft);
+  background: rgba(255, 253, 248, 0.92);
+  color: var(--fm-text-primary);
+  padding: 0 12px;
+}
+
+.fm-jalali-weekdays,
+.fm-jalali-grid {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.fm-jalali-weekdays span {
+  text-align: center;
+  color: var(--fm-text-secondary);
+  font-size: 0.82rem;
+}
+
+.fm-jalali-day {
+  min-height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--fm-border-soft);
+  background: rgba(255, 253, 248, 0.92);
+  color: var(--fm-text-primary);
+}
+
+.fm-jalali-day.is-selected {
+  background: var(--fm-brand-primary);
+  color: var(--fm-text-inverse);
+  border-color: var(--fm-brand-primary);
+}
+
+.fm-jalali-day--empty {
+  border-style: dashed;
+  opacity: 0.3;
+}
+
 .fm-sidebar-footer {
   margin-top: auto;
   display: grid;

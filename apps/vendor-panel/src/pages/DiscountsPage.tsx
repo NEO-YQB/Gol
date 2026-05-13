@@ -1,4 +1,4 @@
-import { DataTable, Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
+import { DataTable, JalaliDatePicker, Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
 import { useEffect, useMemo, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { vendorApi, type VendorDiscountPayload } from '../lib/api'
@@ -538,20 +538,18 @@ export function DiscountsPage({ session }: { session: AuthSession }) {
 
                 <div className="fm-field">
                   <label htmlFor="discount-start-at">شروع</label>
-                  <input
-                    id="discount-start-at"
-                    onChange={(event) => setForm((current) => ({ ...current, startAt: event.target.value }))}
-                    placeholder="2026-05-12T00:00:00.000Z"
+                  <JalaliDatePicker
+                    includeTime
+                    onChange={(nextValue) => setForm((current) => ({ ...current, startAt: nextValue }))}
                     value={form.startAt}
                   />
                 </div>
 
                 <div className="fm-field">
                   <label htmlFor="discount-end-at">پایان</label>
-                  <input
-                    id="discount-end-at"
-                    onChange={(event) => setForm((current) => ({ ...current, endAt: event.target.value }))}
-                    placeholder="2026-05-20T23:59:59.000Z"
+                  <JalaliDatePicker
+                    includeTime
+                    onChange={(nextValue) => setForm((current) => ({ ...current, endAt: nextValue }))}
                     value={form.endAt}
                   />
                 </div>
