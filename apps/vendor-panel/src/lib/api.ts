@@ -100,6 +100,21 @@ export const vendorApi = {
 
     return request<unknown>(`/products?${params.toString()}`, {}, session.accessToken)
   },
+  getVendorDiscounts(
+    session: AuthSession,
+    query: { isActive?: boolean; productId?: number; limit?: number } = {},
+  ) {
+    const params = new URLSearchParams()
+    params.set('limit', String(query.limit ?? 50))
+    if (query.isActive !== undefined) {
+      params.set('isActive', String(query.isActive))
+    }
+    if (query.productId !== undefined) {
+      params.set('productId', String(query.productId))
+    }
+
+    return request<unknown>(`/vendor-discounts/mine?${params.toString()}`, {}, session.accessToken)
+  },
   getWalletSummary(session: AuthSession) {
     return request<unknown>('/vendor-dashboard/wallet-summary', {}, session.accessToken)
   },

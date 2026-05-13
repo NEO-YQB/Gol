@@ -6,6 +6,7 @@ import { vendorApi } from './lib/api'
 import { vendorRouteLabels, type VendorRoute } from './lib/routes'
 import { LoginPage } from './pages/LoginPage'
 import { NotificationsPage } from './pages/NotificationsPage'
+import { DiscountsPage } from './pages/DiscountsPage'
 import { OrdersPage } from './pages/OrdersPage'
 import { OverviewPage } from './pages/OverviewPage'
 import { ProductsPage } from './pages/ProductsPage'
@@ -23,6 +24,7 @@ function buildNav(currentRoute: VendorRoute): NavSection[] {
         { key: 'overview', label: 'نمای کلی', hint: 'خلاصه فروشگاه و محدودیت‌های موثر', active: currentRoute === 'overview' },
         { key: 'orders', label: 'سفارش‌ها', hint: 'سفارش‌های فروشگاه روی داده واقعی', active: currentRoute === 'orders' },
         { key: 'products', label: 'محصولات', hint: 'موجودی، دسته‌ها و محصول‌های نیازمند توجه', active: currentRoute === 'products' },
+        { key: 'discounts', label: 'تخفیف‌ها و پروموشن‌ها', hint: 'vendor discountها و readiness پروموشن', active: currentRoute === 'discounts' },
         { key: 'wallet', label: 'کیف پول و تسویه', hint: 'خلاصه کیف پول و صف تسویه‌ها', active: currentRoute === 'wallet' },
         { key: 'support', label: 'پشتیبانی', hint: 'خلاصه تیکت‌ها و پیگیری‌ها', active: currentRoute === 'support' },
       ],
@@ -56,6 +58,12 @@ function getPageMeta(route: VendorRoute) {
         eyebrow: 'کارتابل محصولات',
         title: 'محصول‌ها، موجودی و readiness فروشگاه',
         description: 'این route برای دید سریع روی موجودی، دسته‌ها و محصول‌های نیازمند تامین یا promotion ساخته شده است.',
+      }
+    case 'discounts':
+      return {
+        eyebrow: 'کارتابل تخفیف‌ها',
+        title: 'تخفیف‌ها، وضعیت فعال‌سازی و readiness پروموشن',
+        description: 'این route برای دید سریع روی vendor discountها و محصول‌های دارای تخفیف ساخته شده و پایه domain بعدی promotion است.',
       }
     case 'support':
       return {
@@ -91,6 +99,8 @@ function renderRoute(route: VendorRoute, session: AuthSession) {
       return <OrdersPage session={session} />
     case 'products':
       return <ProductsPage session={session} />
+    case 'discounts':
+      return <DiscountsPage session={session} />
     case 'wallet':
       return <WalletPage session={session} />
     case 'support':
