@@ -142,6 +142,11 @@ export const vendorApi = {
       body: JSON.stringify(payload),
     }, session.accessToken)
   },
+  deleteVendorDiscount(session: AuthSession, discountId: number) {
+    return request<unknown>(`/vendor-discounts/${discountId}`, {
+      method: 'DELETE',
+    }, session.accessToken)
+  },
   getWalletSummary(session: AuthSession) {
     return request<unknown>('/vendor-dashboard/wallet-summary', {}, session.accessToken)
   },

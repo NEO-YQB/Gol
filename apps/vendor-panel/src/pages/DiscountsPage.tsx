@@ -15,6 +15,8 @@ type DiscountFormState = {
   valueType: 'PERCENTAGE' | 'FIXED'
   value: string
   priority: string
+  startAt: string
+  endAt: string
   isActive: boolean
 }
 
@@ -33,6 +35,8 @@ const initialFormState: DiscountFormState = {
   valueType: 'PERCENTAGE',
   value: '',
   priority: '',
+  startAt: '',
+  endAt: '',
   isActive: true,
 }
 
@@ -77,6 +81,8 @@ function buildPayload(form: DiscountFormState): VendorDiscountPayload {
     valueType: form.valueType,
     value: Number(form.value),
     priority: form.priority.trim() ? Number(form.priority) : undefined,
+    startAt: form.startAt || undefined,
+    endAt: form.endAt || undefined,
     isActive: form.isActive,
   }
 }
@@ -251,8 +257,50 @@ export function DiscountsPage({ session }: { session: AuthSession }) {
       valueType: readText(selectedDiscount, ['valueType'], 'PERCENTAGE') === 'FIXED' ? 'FIXED' : 'PERCENTAGE',
       value: readText(selectedDiscount, ['value'], ''),
       priority: readText(selectedDiscount, ['priority'], ''),
+      startAt: readText(selectedDiscount, ['startAt'], ''),
+      endAt: readText(selectedDiscount, ['endAt'], ''),
       isActive: Boolean(selectedDiscount.isActive),
     })
+  }
+
+  async function handleToggleActive() {
+    if (!selectedDiscount) return
+
+    setSaving(true)
+    setFormError(null)
+    setFormMessage(null)
+
+    try {
+      const nextState = !Boolean(selectedDiscount.isActive)
+      await vendorApi.updateVendorDiscount(session, Number(readText(selectedDiscount, ['id'], '0')), {
+        isActive: nextState,
+      })
+      setFormMessage(nextState ? 'تخفیف فعال شد.' : 'تخفیف غیرفعال شد.')
+      await loadDiscountData({ current: true })
+    } catch (toggleError) {
+      setFormError(toggleError instanceof Error ? toggleError.message : 'تغییر وضعیت تخفیف ناموفق بود')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (!selectedDiscount) return
+
+    setSaving(true)
+    setFormError(null)
+    setFormMessage(null)
+
+    try {
+      await vendorApi.deleteVendorDiscount(session, Number(readText(selectedDiscount, ['id'], '0')))
+      setFormMessage('تخفیف با موفقیت حذف شد.')
+      setEditingDiscountId(null)
+      await loadDiscountData({ current: true })
+    } catch (deleteError) {
+      setFormError(deleteError instanceof Error ? deleteError.message : 'حذف تخفیف ناموفق بود')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleSubmit() {
@@ -401,6 +449,22 @@ export function DiscountsPage({ session }: { session: AuthSession }) {
                   >
                     ویرایش انتخاب‌شده
                   </button>
+                  <button
+                    className="fm-button fm-button--ghost"
+                    disabled={!selectedDiscount || saving}
+                    onClick={handleToggleActive}
+                    type="button"
+                  >
+                    {selectedDiscount?.isActive ? 'غیرفعال‌سازی' : 'فعال‌سازی'}
+                  </button>
+                  <button
+                    className="fm-button fm-button--secondary"
+                    disabled={!selectedDiscount || saving}
+                    onClick={handleDelete}
+                    type="button"
+                  >
+                    حذف انتخاب‌شده
+                  </button>
                 </div>
               }
             >
@@ -469,6 +533,26 @@ export function DiscountsPage({ session }: { session: AuthSession }) {
                     onChange={(event) => setForm((current) => ({ ...current, priority: event.target.value }))}
                     placeholder="مثلا ۱۰۰"
                     value={form.priority}
+                  />
+                </div>
+
+                <div className="fm-field">
+                  <label htmlFor="discount-start-at">شروع</label>
+                  <input
+                    id="discount-start-at"
+                    onChange={(event) => setForm((current) => ({ ...current, startAt: event.target.value }))}
+                    placeholder="2026-05-12T00:00:00.000Z"
+                    value={form.startAt}
+                  />
+                </div>
+
+                <div className="fm-field">
+                  <label htmlFor="discount-end-at">پایان</label>
+                  <input
+                    id="discount-end-at"
+                    onChange={(event) => setForm((current) => ({ ...current, endAt: event.target.value }))}
+                    placeholder="2026-05-20T23:59:59.000Z"
+                    value={form.endAt}
                   />
                 </div>
 
