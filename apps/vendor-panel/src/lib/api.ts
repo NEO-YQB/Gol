@@ -90,6 +90,16 @@ export const vendorApi = {
   getVendorOrders(session: AuthSession) {
     return request<unknown[]>('/orders/vendor', {}, session.accessToken)
   },
+  getProducts(session: AuthSession, query: { storeId: number; search?: string; limit?: number }) {
+    const params = new URLSearchParams()
+    params.set('storeId', String(query.storeId))
+    params.set('limit', String(query.limit ?? 50))
+    if (query.search?.trim()) {
+      params.set('search', query.search.trim())
+    }
+
+    return request<unknown>(`/products?${params.toString()}`, {}, session.accessToken)
+  },
   getWalletSummary(session: AuthSession) {
     return request<unknown>('/vendor-dashboard/wallet-summary', {}, session.accessToken)
   },

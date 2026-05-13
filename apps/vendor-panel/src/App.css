@@ -260,6 +260,106 @@
   grid-column: 1 / -1;
 }
 
+.vendor-products-toolbar {
+  display: grid;
+  gap: 16px;
+}
+
+.vendor-products-search {
+  max-width: 420px;
+}
+
+.vendor-products-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.vendor-products-filter-chip {
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--fm-border-soft);
+  background: rgba(255, 253, 248, 0.82);
+  color: var(--fm-text-secondary);
+}
+
+.vendor-products-filter-chip.is-active {
+  background: var(--fm-brand-primary);
+  color: var(--fm-text-inverse);
+  border-color: var(--fm-brand-primary);
+}
+
+.vendor-products-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+  gap: 18px;
+}
+
+.vendor-products-table-card,
+.vendor-products-detail-column {
+  display: grid;
+  gap: 16px;
+}
+
+.vendor-products-selection-list {
+  display: grid;
+  gap: 10px;
+}
+
+.vendor-products-selection-item {
+  border: 1px solid var(--fm-border-soft);
+  background: rgba(255, 253, 248, 0.86);
+  border-radius: 18px;
+  padding: 14px 16px;
+  text-align: right;
+  display: grid;
+  gap: 4px;
+}
+
+.vendor-products-selection-item strong {
+  color: var(--fm-text-primary);
+}
+
+.vendor-products-selection-item span,
+.vendor-products-selection-item small {
+  color: var(--fm-text-secondary);
+}
+
+.vendor-products-selection-item.is-active {
+  border-color: rgba(31, 106, 82, 0.28);
+  box-shadow: 0 0 0 4px rgba(31, 106, 82, 0.08);
+}
+
+.vendor-products-detail-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.vendor-products-detail-item {
+  border: 1px solid var(--fm-border-soft);
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(255, 253, 248, 0.86);
+  display: grid;
+  gap: 8px;
+}
+
+.vendor-products-detail-item span {
+  color: var(--fm-text-secondary);
+  font-size: 0.88rem;
+}
+
+.vendor-products-detail-item strong {
+  color: var(--fm-text-primary);
+  line-height: 1.8;
+}
+
+.vendor-products-detail-item--wide {
+  grid-column: 1 / -1;
+}
+
 .vendor-support-toolbar {
   display: grid;
   gap: 16px;
@@ -594,6 +694,8 @@
 }
 
 @media (max-width: 920px) {
+  .vendor-products-layout,
+  .vendor-products-detail-grid,
   .vendor-orders-layout,
   .vendor-support-layout,
   .vendor-support-detail-grid,

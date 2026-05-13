@@ -8,6 +8,7 @@ import { LoginPage } from './pages/LoginPage'
 import { NotificationsPage } from './pages/NotificationsPage'
 import { OrdersPage } from './pages/OrdersPage'
 import { OverviewPage } from './pages/OverviewPage'
+import { ProductsPage } from './pages/ProductsPage'
 import { ReviewsPage } from './pages/ReviewsPage'
 import { SupportPage } from './pages/SupportPage'
 import { WalletPage } from './pages/WalletPage'
@@ -21,6 +22,7 @@ function buildNav(currentRoute: VendorRoute): NavSection[] {
       items: [
         { key: 'overview', label: 'نمای کلی', hint: 'خلاصه فروشگاه و محدودیت‌های موثر', active: currentRoute === 'overview' },
         { key: 'orders', label: 'سفارش‌ها', hint: 'سفارش‌های فروشگاه روی داده واقعی', active: currentRoute === 'orders' },
+        { key: 'products', label: 'محصولات', hint: 'موجودی، دسته‌ها و محصول‌های نیازمند توجه', active: currentRoute === 'products' },
         { key: 'wallet', label: 'کیف پول و تسویه', hint: 'خلاصه کیف پول و صف تسویه‌ها', active: currentRoute === 'wallet' },
         { key: 'support', label: 'پشتیبانی', hint: 'خلاصه تیکت‌ها و پیگیری‌ها', active: currentRoute === 'support' },
       ],
@@ -48,6 +50,12 @@ function getPageMeta(route: VendorRoute) {
         eyebrow: 'کارتابل مالی',
         title: 'کیف پول، جریان پول و تسویه‌ها',
         description: 'این route با خلاصه کیف پول و خلاصه تسویه‌ها پر می‌شود تا وضعیت مالی فروشگاه شفاف و قابل‌پیگیری باشد.',
+      }
+    case 'products':
+      return {
+        eyebrow: 'کارتابل محصولات',
+        title: 'محصول‌ها، موجودی و readiness فروشگاه',
+        description: 'این route برای دید سریع روی موجودی، دسته‌ها و محصول‌های نیازمند تامین یا promotion ساخته شده است.',
       }
     case 'support':
       return {
@@ -81,6 +89,8 @@ function renderRoute(route: VendorRoute, session: AuthSession) {
   switch (route) {
     case 'orders':
       return <OrdersPage session={session} />
+    case 'products':
+      return <ProductsPage session={session} />
     case 'wallet':
       return <WalletPage session={session} />
     case 'support':
