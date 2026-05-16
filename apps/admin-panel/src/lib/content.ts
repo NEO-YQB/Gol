@@ -52,11 +52,11 @@ export function formatJalaliDate(value: unknown, withTime = false) {
 }
 
 export function translateArticleStatus(status: string) {
-  return articleStatusLabels[status] ?? status || 'نامشخص'
+  return (articleStatusLabels[status] ?? status) || 'نامشخص';
 }
 
 export function translateContentAuditType(type: string) {
-  return contentAuditLabels[type] ?? type || 'نامشخص'
+  return (contentAuditLabels[type] ?? type) || 'نامشخص';
 }
 
 export function normalizeSlug(value: string) {
