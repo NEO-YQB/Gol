@@ -2,17 +2,36 @@ import { DataTable, Pill, SectionCard, StatCard } from '@flower-marketplace/fron
 import { useEffect, useMemo, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { adminApi } from '../lib/api'
-import { makeRows, readText, toArray } from '../lib/normalize'
+import {
+  countRelatedArticles,
+  formatJalaliDate,
+  formatPersianNumber,
+  getArticleAuthor,
+  getArticleCategory,
+  getArticleStatus,
+  getArticleStatusLabel,
+  getArticleTags,
+  getArticleTitle,
+  toContentRecord,
+  translateContentAuditType,
+} from '../lib/content'
+import { readText, toArray } from '../lib/normalize'
 import type { AuthSession } from '../lib/session'
+
+type ContentPageProps = {
+  session: AuthSession
+  onCreateArticle: () => void
+  onEditArticle: (articleId: string) => void
+}
 
 type ContentRecord = Record<string, unknown>
 
 const articleColumns = [
-  { key: 'id', label: 'شناسه' },
-  { key: 'title', label: 'عنوان' },
+  { key: 'title', label: 'مقاله' },
   { key: 'status', label: 'وضعیت' },
-  { key: 'slug', label: 'اسلاگ' },
   { key: 'author', label: 'نویسنده' },
+  { key: 'category', label: 'دسته بندی' },
+  { key: 'updatedAt', label: 'آخرین بروزرسانی' },
 ]
 
 const auditColumns = [
@@ -22,77 +41,18 @@ const auditColumns = [
   { key: 'target', label: 'هدف' },
 ]
 
-function getArticleStatus(record: ContentRecord) {
-  return readText(record, ['status'], 'UNKNOWN')
+const statusFilterOptions = [
+  { value: 'ALL', label: 'همه وضعیت ها' },
+  { value: 'DRAFT', label: 'پیش نویس' },
+  { value: 'PUBLISHED', label: 'منتشرشده' },
+] as const
+
+function toNumericId(value: string) {
+  const parsed = Number(value)
+  return Number.isNaN(parsed) || parsed <= 0 ? undefined : parsed
 }
 
-function getArticleTitle(record: ContentRecord) {
-  return readText(record, ['title'], '—')
-}
-
-function getArticleAuthor(record: ContentRecord) {
-  const author = record.author
-  if (typeof author === 'object' && author !== null) {
-    return readText(author as ContentRecord, ['name', 'slug'], '—')
-  }
-
-  return readText(record, ['authorName', 'authorId'], '—')
-}
-
-function getArticleCategory(record: ContentRecord) {
-  const category = record.category
-  if (typeof category === 'object' && category !== null) {
-    return readText(category as ContentRecord, ['title', 'slug'], '—')
-  }
-
-  return readText(record, ['categoryTitle', 'categoryId'], '—')
-}
-
-function getArticleTags(record: ContentRecord) {
-  const tags = record.tags
-  if (!Array.isArray(tags)) return []
-
-  return tags
-    .map((item) => {
-      if (typeof item !== 'object' || item === null) return null
-      const relation = item as ContentRecord
-      const tag = relation.tag
-      if (typeof tag === 'object' && tag !== null) {
-        return readText(tag as ContentRecord, ['title', 'slug'], '')
-      }
-      return readText(relation, ['title', 'slug'], '')
-    })
-    .filter((value): value is string => Boolean(value))
-}
-
-function formatPersianNumber(value: number | string) {
-  const numeric = typeof value === 'number' ? value : Number(value)
-  if (Number.isNaN(numeric)) {
-    return String(value)
-  }
-
-  return new Intl.NumberFormat('fa-IR').format(numeric)
-}
-
-function formatJalaliDate(value: unknown) {
-  if (typeof value !== 'string' || !value) return '—'
-
-  const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) return '—'
-
-  return new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  }).format(parsed)
-}
-
-function statusOptions(items: ContentRecord[]) {
-  const unique = Array.from(new Set(items.map((item) => getArticleStatus(item))))
-  return ['ALL', ...unique]
-}
-
-export function ContentPage({ session }: { session: AuthSession }) {
+export function ContentPage({ session, onCreateArticle, onEditArticle }: ContentPageProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [articles, setArticles] = useState<ContentRecord[]>([])
@@ -100,7 +60,10 @@ export function ContentPage({ session }: { session: AuthSession }) {
   const [tags, setTags] = useState<ContentRecord[]>([])
   const [authors, setAuthors] = useState<ContentRecord[]>([])
   const [audits, setAudits] = useState<ContentRecord[]>([])
-  const [statusFilter, setStatusFilter] = useState('ALL')
+  const [statusFilter, setStatusFilter] = useState<(typeof statusFilterOptions)[number]['value']>('ALL')
+  const [authorFilter, setAuthorFilter] = useState('ALL')
+  const [categoryFilter, setCategoryFilter] = useState('ALL')
+  const [tagFilter, setTagFilter] = useState('ALL')
   const [search, setSearch] = useState('')
   const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
@@ -110,31 +73,62 @@ export function ContentPage({ session }: { session: AuthSession }) {
   useEffect(() => {
     let active = true
 
-    async function load() {
-      setLoading(true)
-      setError(null)
-
+    async function loadReferenceData() {
       try {
-        const [articlesPayload, categoriesPayload, tagsPayload, auditsPayload, authorsPayload] =
-          await Promise.all([
-            adminApi.getArticles(session),
-            adminApi.getArticleCategories(session),
-            adminApi.getArticleTags(session),
-            adminApi.getContentAudits(session),
-            adminApi.getAuthors(session),
-          ])
+        const [categoriesPayload, tagsPayload, auditsPayload, authorsPayload] = await Promise.all([
+          adminApi.getArticleCategories(session),
+          adminApi.getArticleTags(session),
+          adminApi.getContentAudits(session),
+          adminApi.getAuthors(session),
+        ])
 
         if (!active) return
 
-        const articleList = toArray(articlesPayload)
-        setArticles(articleList)
         setCategories(toArray(categoriesPayload))
         setTags(toArray(tagsPayload))
         setAudits(toArray(auditsPayload))
         setAuthors(toArray(authorsPayload))
-        if (articleList.length > 0) {
-          setSelectedArticleId(readText(articleList[0], ['id'], ''))
+      } catch (loadError) {
+        if (!active) return
+        setError(loadError instanceof Error ? loadError.message : 'خطا در بارگذاری داده های مرجع محتوا')
+      }
+    }
+
+    void loadReferenceData()
+    return () => {
+      active = false
+    }
+  }, [session])
+
+  useEffect(() => {
+    let active = true
+
+    async function loadArticles() {
+      setLoading(true)
+      setError(null)
+
+      try {
+        const payload = await adminApi.getArticles(session, {
+          status: statusFilter === 'ALL' ? undefined : statusFilter,
+          authorId: authorFilter === 'ALL' ? undefined : toNumericId(authorFilter),
+          categoryId: categoryFilter === 'ALL' ? undefined : toNumericId(categoryFilter),
+          tagId: tagFilter === 'ALL' ? undefined : toNumericId(tagFilter),
+          page: 1,
+          limit: 100,
+        })
+
+        if (!active) return
+
+        const articleList = toArray(payload)
+        setArticles(articleList)
+        if (articleList.length === 0) {
+          setSelectedArticleId(null)
+          setSelectedArticle(null)
+          return
         }
+
+        const hasSelected = articleList.some((item) => readText(item, ['id'], '') === selectedArticleId)
+        setSelectedArticleId(hasSelected ? selectedArticleId : readText(articleList[0], ['id'], ''))
       } catch (loadError) {
         if (!active) return
         setError(loadError instanceof Error ? loadError.message : 'خطا در بارگذاری کارتابل محتوا')
@@ -143,11 +137,11 @@ export function ContentPage({ session }: { session: AuthSession }) {
       }
     }
 
-    void load()
+    void loadArticles()
     return () => {
       active = false
     }
-  }, [session])
+  }, [authorFilter, categoryFilter, selectedArticleId, session, statusFilter, tagFilter])
 
   useEffect(() => {
     if (!selectedArticleId) {
@@ -156,16 +150,15 @@ export function ContentPage({ session }: { session: AuthSession }) {
       return
     }
 
-    const articleId = selectedArticleId
     let active = true
 
     async function loadDetail() {
       setDetailLoading(true)
       setDetailError(null)
       try {
-        const payload = await adminApi.getArticleDetail(session, articleId)
+        const payload = await adminApi.getArticleDetail(session, selectedArticleId)
         if (!active) return
-        setSelectedArticle((payload as Record<string, unknown>) ?? null)
+        setSelectedArticle(toContentRecord(payload))
       } catch (loadError) {
         if (!active) return
         setDetailError(loadError instanceof Error ? loadError.message : 'خطا در بارگذاری جزئیات مقاله')
@@ -182,29 +175,27 @@ export function ContentPage({ session }: { session: AuthSession }) {
 
   const filteredArticles = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase()
-    return articles.filter((item) => {
-      const matchesStatus = statusFilter === 'ALL' || getArticleStatus(item) === statusFilter
-      if (!matchesStatus) return false
-      if (!normalizedSearch) return true
+    if (!normalizedSearch) return articles
 
+    return articles.filter((item) => {
       const haystack = [
         readText(item, ['id'], ''),
         getArticleTitle(item),
-        getArticleStatus(item),
+        getArticleStatusLabel(item),
         readText(item, ['slug'], ''),
         getArticleAuthor(item),
+        getArticleCategory(item),
+        getArticleTags(item).join(' '),
       ]
         .join(' ')
         .toLowerCase()
 
       return haystack.includes(normalizedSearch)
     })
-  }, [articles, search, statusFilter])
+  }, [articles, search])
 
   useEffect(() => {
-    if (filteredArticles.length === 0) {
-      return
-    }
+    if (filteredArticles.length === 0) return
 
     const hasSelected = filteredArticles.some((item) => readText(item, ['id'], '') === selectedArticleId)
     if (!hasSelected) {
@@ -214,38 +205,40 @@ export function ContentPage({ session }: { session: AuthSession }) {
 
   const articleRows = useMemo(
     () =>
-      makeRows(filteredArticles.slice(0, 20), [
-        { key: 'id', source: ['id'] },
-        { key: 'title', source: ['title'] },
-        { key: 'status', source: ['status'] },
-        { key: 'slug', source: ['slug'] },
-        { key: 'author', source: ['authorName', 'authorId'] },
-      ]),
+      filteredArticles.slice(0, 20).map((item, index) => ({
+        id: readText(item, ['id'], String(index + 1)),
+        title: getArticleTitle(item),
+        status: getArticleStatusLabel(item),
+        author: getArticleAuthor(item),
+        category: getArticleCategory(item),
+        updatedAt: formatJalaliDate(item.updatedAt, true),
+      })),
     [filteredArticles],
   )
 
   const auditRows = useMemo(
     () =>
-      makeRows(audits.slice(0, 10), [
-        { key: 'type', source: ['type', 'title'] },
-        { key: 'count', source: ['count', 'status'] },
-        { key: 'message', source: ['message', 'slug'] },
-        { key: 'target', source: ['category', 'articleId'] },
-      ]),
+      audits.slice(0, 10).map((item, index) => ({
+        id: readText(item, ['type', 'id'], String(index + 1)),
+        type: translateContentAuditType(readText(item, ['type'], 'UNKNOWN')),
+        count: formatPersianNumber(readText(item, ['count'], '0')),
+        message: readText(item, ['message'], '—'),
+        target: readText(item, ['category', 'articleId', 'target'], 'همه محتواها'),
+      })),
     [audits],
   )
 
   const stats = useMemo(
     () => [
       {
-        label: 'مقاله‌ها',
+        label: 'مقاله ها',
         value: formatPersianNumber(articles.length),
-        delta: `${formatPersianNumber(filteredArticles.length)} در view فعلی`,
-        detail: 'کارتابل اصلی مقاله‌ها',
+        delta: `${formatPersianNumber(filteredArticles.length)} در نمای فعلی`,
+        detail: 'کارتابل اصلی مقاله ها',
         tone: 'primary' as const,
       },
       {
-        label: 'نویسنده‌ها',
+        label: 'نویسنده ها',
         value: formatPersianNumber(authors.length),
         delta: 'مالکیت تحریریه',
         detail: 'پروفایل نویسنده و ownership محتوا',
@@ -255,14 +248,14 @@ export function ContentPage({ session }: { session: AuthSession }) {
         label: 'taxonomyها',
         value: formatPersianNumber(categories.length + tags.length),
         delta: `${formatPersianNumber(categories.length)} دسته / ${formatPersianNumber(tags.length)} تگ`,
-        detail: 'ساختار taxonomy و pillar-cluster',
+        detail: 'ساختار دسته بندی و تگ',
         tone: 'warning' as const,
       },
       {
         label: 'auditها',
         value: formatPersianNumber(audits.length),
         delta: 'بهداشت سئو',
-        detail: 'thin taxonomy و بررسی metadataهای ناقص',
+        detail: 'سیگنال های محتوایی و SEO',
         tone: 'danger' as const,
       },
     ],
@@ -272,24 +265,27 @@ export function ContentPage({ session }: { session: AuthSession }) {
   const selectedSummary = selectedArticle
     ? [
         { label: 'عنوان', value: getArticleTitle(selectedArticle) },
-        { label: 'وضعیت', value: getArticleStatus(selectedArticle) },
+        { label: 'وضعیت', value: getArticleStatusLabel(selectedArticle) },
         { label: 'اسلاگ', value: readText(selectedArticle, ['slug'], '—') },
         { label: 'نویسنده', value: getArticleAuthor(selectedArticle) },
-        { label: 'دسته‌بندی', value: getArticleCategory(selectedArticle) },
+        { label: 'دسته بندی', value: getArticleCategory(selectedArticle) },
         {
-          label: 'تگ‌ها',
-          value: getArticleTags(selectedArticle).length > 0 ? getArticleTags(selectedArticle).slice(0, 3).join(' / ') : 'بدون تگ',
+          label: 'تگ ها',
+          value: getArticleTags(selectedArticle).length > 0 ? getArticleTags(selectedArticle).slice(0, 4).join(' / ') : 'بدون تگ',
         },
         {
           label: 'زمان مطالعه',
-          value: readText(selectedArticle, ['readingTimeMinutes'], '—') === '—'
-            ? '—'
-            : `${formatPersianNumber(readText(selectedArticle, ['readingTimeMinutes'], '0'))} دقیقه`,
+          value:
+            readText(selectedArticle, ['readingTimeMinutes'], '') === ''
+              ? '—'
+              : `${formatPersianNumber(readText(selectedArticle, ['readingTimeMinutes'], '0'))} دقیقه`,
         },
-        { label: 'انتشار', value: formatJalaliDate(selectedArticle.publishedAt) },
-        { label: 'آخرین بروزرسانی', value: formatJalaliDate(selectedArticle.updatedAt) },
+        { label: 'انتشار', value: formatJalaliDate(selectedArticle.publishedAt, true) },
+        { label: 'آخرین بروزرسانی', value: formatJalaliDate(selectedArticle.updatedAt, true) },
         { label: 'meta title', value: readText(selectedArticle, ['metaTitle'], '—') },
         { label: 'کلیدواژه کانونی', value: readText(selectedArticle, ['focusKeyword'], '—') },
+        { label: 'robots index', value: typeof selectedArticle.robotsIndex === 'boolean' ? (selectedArticle.robotsIndex ? 'فعال' : 'غیرفعال') : '—' },
+        { label: 'robots follow', value: typeof selectedArticle.robotsFollow === 'boolean' ? (selectedArticle.robotsFollow ? 'فعال' : 'غیرفعال') : '—' },
       ]
     : []
 
@@ -300,16 +296,12 @@ export function ContentPage({ session }: { session: AuthSession }) {
         value: formatPersianNumber(articles.filter((item) => getArticleTags(item).length === 0).length),
       },
       {
-        label: 'بدون focus keyword',
-        value: formatPersianNumber(
-          articles.filter((item) => readText(item, ['focusKeyword'], '') === '').length,
-        ),
+        label: 'بدون کلیدواژه',
+        value: formatPersianNumber(articles.filter((item) => readText(item, ['focusKeyword'], '') === '').length),
       },
       {
         label: 'بدون meta title',
-        value: formatPersianNumber(
-          articles.filter((item) => readText(item, ['metaTitle'], '') === '').length,
-        ),
+        value: formatPersianNumber(articles.filter((item) => readText(item, ['metaTitle'], '') === '').length),
       },
     ],
     [articles],
@@ -319,7 +311,7 @@ export function ContentPage({ session }: { session: AuthSession }) {
     () => ({
       categories: categories
         .slice(0, 4)
-        .map((item) => readText(item, ['title', 'slug'], '—'))
+        .map((item) => `${readText(item, ['title'], '—')} (${formatPersianNumber(countRelatedArticles(item))})`)
         .filter((value) => value !== '—'),
       tags: tags
         .slice(0, 5)
@@ -343,70 +335,140 @@ export function ContentPage({ session }: { session: AuthSession }) {
         </div>
 
         <SectionCard
-          eyebrow="Editorial workspace"
-          title="workspace محتوا و SEO"
-          description="این صفحه حالا فقط یک لیست مقاله نیست؛ search، filter، article selection، detail summary و audit visibility را در یک editorial workspace جمع می‌کند."
-          actions={<Pill tone="primary">SEO-first workspace</Pill>}
+          eyebrow="Content desk"
+          title="کارتابل محتوا و SEO"
+          description="این سطح فقط برای پایش، filter، triage و انتخاب آیتم است. ساخت و ویرایش کامل مقاله در workspace جدا انجام می شود."
+          actions={
+            <div className="content-header-actions">
+              <Pill tone="primary">editorial ops</Pill>
+              <button className="content-primary-action" onClick={onCreateArticle} type="button">
+                مقاله جدید
+              </button>
+            </div>
+          }
         >
-          <div className="content-toolbar">
+          <div className="content-toolbar content-toolbar--dense">
             <div className="fm-field content-search">
               <label htmlFor="content-search">جستجو</label>
               <input
                 id="content-search"
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="شناسه، عنوان، slug، نویسنده یا وضعیت"
+                placeholder="عنوان، اسلاگ، نویسنده، دسته بندی یا تگ"
                 value={search}
               />
             </div>
 
-            <div className="content-filters">
-              {statusOptions(articles).map((status) => (
-                <button
-                  className={`content-filter-chip${status === statusFilter ? ' is-active' : ''}`}
-                  key={status}
-                  onClick={() => setStatusFilter(status)}
-                  type="button"
-                >
-                  {status === 'ALL' ? 'همه' : status}
-                </button>
-              ))}
+            <div className="content-select-grid">
+              <label className="fm-field">
+                <span>وضعیت</span>
+                <select onChange={(event) => setStatusFilter(event.target.value as (typeof statusFilterOptions)[number]['value'])} value={statusFilter}>
+                  {statusFilterOptions.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="fm-field">
+                <span>نویسنده</span>
+                <select onChange={(event) => setAuthorFilter(event.target.value)} value={authorFilter}>
+                  <option value="ALL">همه نویسنده ها</option>
+                  {authors.map((item) => {
+                    const id = readText(item, ['id'], '')
+                    return (
+                      <option key={id} value={id}>
+                        {readText(item, ['name'], '—')}
+                      </option>
+                    )
+                  })}
+                </select>
+              </label>
+
+              <label className="fm-field">
+                <span>دسته بندی</span>
+                <select onChange={(event) => setCategoryFilter(event.target.value)} value={categoryFilter}>
+                  <option value="ALL">همه دسته ها</option>
+                  {categories.map((item) => {
+                    const id = readText(item, ['id'], '')
+                    return (
+                      <option key={id} value={id}>
+                        {readText(item, ['title'], '—')}
+                      </option>
+                    )
+                  })}
+                </select>
+              </label>
+
+              <label className="fm-field">
+                <span>تگ</span>
+                <select onChange={(event) => setTagFilter(event.target.value)} value={tagFilter}>
+                  <option value="ALL">همه تگ ها</option>
+                  {tags.map((item) => {
+                    const id = readText(item, ['id'], '')
+                    return (
+                      <option key={id} value={id}>
+                        {readText(item, ['title'], '—')}
+                      </option>
+                    )
+                  })}
+                </select>
+              </label>
             </div>
           </div>
 
-          <div className="content-layout">
+          <div className="content-layout content-layout--expanded">
             <div className="content-table-card">
               <DataTable columns={articleColumns} rows={articleRows} />
               {filteredArticles.length > 0 ? (
                 <div className="content-selection-list">
                   {filteredArticles.slice(0, 8).map((item) => {
                     const articleId = readText(item, ['id'], '')
+                    const isActive = selectedArticleId === articleId
                     return (
-                      <button
-                        className={`content-selection-item${selectedArticleId === articleId ? ' is-active' : ''}`}
-                        key={articleId}
-                        onClick={() => setSelectedArticleId(articleId)}
-                        type="button"
-                      >
-                        <strong>{getArticleTitle(item)}</strong>
-                        <span>{readText(item, ['slug'], '—')}</span>
+                      <article className={`content-selection-item${isActive ? ' is-active' : ''}`} key={articleId}>
+                        <div className="content-selection-head">
+                          <div>
+                            <strong>{getArticleTitle(item)}</strong>
+                            <span>{readText(item, ['slug'], '—')}</span>
+                          </div>
+                          <Pill tone={getArticleStatus(item) === 'PUBLISHED' ? 'success' : 'warning'}>
+                            {getArticleStatusLabel(item)}
+                          </Pill>
+                        </div>
                         <small>
-                          {getArticleStatus(item)} / {getArticleAuthor(item)}
+                          {getArticleAuthor(item)} / {getArticleCategory(item)}
                         </small>
-                      </button>
+                        <div className="content-selection-meta">
+                          <span>{formatJalaliDate(item.updatedAt, true)}</span>
+                          <button onClick={() => setSelectedArticleId(articleId)} type="button">
+                            مشاهده خلاصه
+                          </button>
+                          <button onClick={() => onEditArticle(articleId)} type="button">
+                            ویرایش کامل
+                          </button>
+                        </div>
+                      </article>
                     )
                   })}
                 </div>
               ) : (
-                <div className="fm-message">با این فیلترها مقاله‌ای پیدا نشد.</div>
+                <div className="fm-message">با این فیلترها مقاله ای پیدا نشد.</div>
               )}
             </div>
 
             <div className="content-detail-column">
               <SectionCard
                 eyebrow="Selected article"
-                title={selectedArticleId ? `جزئیات مقاله #${selectedArticleId}` : 'هیچ مقاله‌ای انتخاب نشده'}
-                description="این بلوک summary detail را از `/content/articles/:id` می‌گیرد و در مرحله بعد به full editorial detail مجهز می‌شود."
-                actions={<Pill tone="success">detail ready</Pill>}
+                title={selectedArticleId ? `خلاصه مقاله #${selectedArticleId}` : 'هیچ مقاله ای انتخاب نشده'}
+                description="این بلوک برای تصمیم سریع است. برای نگارش، SEO و taxonomy باید وارد workspace جدا شوید."
+                actions={
+                  selectedArticleId ? (
+                    <button className="content-secondary-action" onClick={() => onEditArticle(selectedArticleId)} type="button">
+                      باز کردن editor
+                    </button>
+                  ) : null
+                }
               >
                 <div className="content-signal-grid">
                   {editorialSignals.map((item) => (
@@ -427,50 +489,50 @@ export function ContentPage({ session }: { session: AuthSession }) {
                       </article>
                     ))}
                     <article className="content-detail-item content-detail-item--wide">
-                      <span>editorial readiness</span>
+                      <span>گام بعدی روی این مقاله</span>
                       <strong>
-                        در مرحله بعدی، tag assignment، category relation، reading time، TOC و history مقاله به همین detail workspace اضافه می‌شوند.
+                        برای ویرایش متن، SEO، نویسنده، دسته بندی و تگ ها وارد editor workspace شوید تا در surface متمرکز کار کنید.
                       </strong>
                     </article>
                   </div>
                 ) : null}
                 {!detailLoading && !detailError && selectedSummary.length === 0 ? (
-                  <div className="fm-message">برای مشاهده summary یک مقاله را از لیست انتخاب کن.</div>
+                  <div className="fm-message">برای مشاهده خلاصه یک مقاله را از لیست انتخاب کن.</div>
                 ) : null}
               </SectionCard>
 
               <SectionCard
                 eyebrow="Taxonomy & audits"
                 title="taxonomyها و auditهای محتوایی"
-                description="editorial team باید هم‌زمان visibility روی category/tag structure و auditهای SEO داشته باشد."
-                actions={<Pill tone="warning">editorial maturity</Pill>}
+                description="visibility روی دسته بندی، تگ، نویسنده و auditها از همین صفحه حفظ می شود، ولی مدیریت سنگین در editor workspace انجام می شود."
+                actions={<Pill tone="warning">SEO maturity</Pill>}
               >
                 <div className="content-taxonomy-summary">
                   <article>
-                    <span>categoryها</span>
+                    <span>دسته بندی ها</span>
                     <strong>{formatPersianNumber(categories.length)}</strong>
                   </article>
                   <article>
-                    <span>tagها</span>
+                    <span>تگ ها</span>
                     <strong>{formatPersianNumber(tags.length)}</strong>
                   </article>
                   <article>
-                    <span>authorها</span>
+                    <span>نویسنده ها</span>
                     <strong>{formatPersianNumber(authors.length)}</strong>
                   </article>
                 </div>
                 <div className="content-preview-grid">
                   <article className="content-preview-card">
-                    <span>categoryهای شاخص</span>
-                    <strong>{taxonomyPreview.categories.join(' / ') || 'هنوز دسته‌بندی ثبت نشده'}</strong>
+                    <span>دسته های شاخص</span>
+                    <strong>{taxonomyPreview.categories.join(' / ') || 'هنوز دسته بندی ثبت نشده'}</strong>
                   </article>
                   <article className="content-preview-card">
-                    <span>tagهای شاخص</span>
+                    <span>تگ های شاخص</span>
                     <strong>{taxonomyPreview.tags.join(' / ') || 'هنوز تگی ثبت نشده'}</strong>
                   </article>
                   <article className="content-preview-card">
-                    <span>نویسنده‌های فعال</span>
-                    <strong>{taxonomyPreview.authors.join(' / ') || 'هنوز نویسنده‌ای ثبت نشده'}</strong>
+                    <span>نویسنده های فعال</span>
+                    <strong>{taxonomyPreview.authors.join(' / ') || 'هنوز نویسنده ای ثبت نشده'}</strong>
                   </article>
                 </div>
                 <DataTable columns={auditColumns} rows={auditRows} />

@@ -10,6 +10,7 @@ import { adminRouteLabels, type AdminRoute } from './lib/routes'
 import { clearSession, loadSession, saveSession, type AuthSession } from './lib/session'
 import { AlertsPage } from './pages/AlertsPage'
 import { ContentPage } from './pages/ContentPage'
+import { ContentWorkspacePage } from './pages/ContentWorkspacePage'
 import { DashboardPage } from './pages/DashboardPage'
 import { LoginPage } from './pages/LoginPage'
 import { OrdersPage } from './pages/OrdersPage'
@@ -36,7 +37,7 @@ function buildNav(currentRoute: AdminRoute): NavSection[] {
     {
       title: 'رشد و کنترل',
       items: [
-        { key: 'content', label: 'محتوا و سئو', hint: 'مقاله‌ها، taxonomy و auditها', active: currentRoute === 'content' },
+        { key: 'content', label: 'محتوا و سئو', hint: 'مقاله‌ها، taxonomy و auditها', active: currentRoute === 'content' || currentRoute === 'contentWorkspace' },
         { key: 'alerts', label: 'هشدارها و اعلان‌ها', hint: 'هشدارهای عملیاتی و outbox', active: currentRoute === 'alerts' },
       ],
     },
@@ -87,6 +88,12 @@ function getPageMeta(route: AdminRoute) {
         title: 'محتوا، taxonomy و عملیات سئو',
         description: 'سطح اولیه routeهای content بر پایه endpointهای مقاله، category، tag و audit ساخته شده تا بعدا editorial tooling روی آن سوار شود.',
       }
+    case 'contentWorkspace':
+      return {
+        eyebrow: 'editor محتوایی',
+        title: 'workspace متمرکز نگارش، SEO و taxonomy',
+        description: 'ساخت و ویرایش مقاله باید در یک surface بزرگ، متمرکز و production-minded انجام شود؛ نه در کنار table فشرده.',
+      }
     case 'alerts':
       return {
         eyebrow: 'کارتابل هشدارها',
@@ -113,6 +120,11 @@ function renderRoute(
     vendorWorkspaceStore: Record<string, unknown> | null
     onOpenVendorWorkspace: (store: Record<string, unknown>) => void
     onBackToVendors: () => void
+    contentWorkspaceArticleId: string | null
+    contentWorkspaceMode: 'create' | 'edit'
+    onOpenContentWorkspaceForCreate: () => void
+    onOpenContentWorkspaceForEdit: (articleId: string) => void
+    onBackToContent: () => void
   },
 ) {
   switch (route) {
@@ -141,7 +153,22 @@ function renderRoute(
         />
       )
     case 'content':
-      return <ContentPage session={session} />
+      return (
+        <ContentPage
+          onCreateArticle={options.onOpenContentWorkspaceForCreate}
+          onEditArticle={options.onOpenContentWorkspaceForEdit}
+          session={session}
+        />
+      )
+    case 'contentWorkspace':
+      return (
+        <ContentWorkspacePage
+          articleId={options.contentWorkspaceArticleId}
+          mode={options.contentWorkspaceMode}
+          onBack={options.onBackToContent}
+          session={session}
+        />
+      )
     case 'alerts':
       return <AlertsPage session={session} />
     case 'dashboard':
@@ -155,6 +182,8 @@ export default function App() {
   const [route, setRoute] = useState<AdminRoute>(defaultRoute)
   const [supportWorkspaceTicket, setSupportWorkspaceTicket] = useState<Record<string, unknown> | null>(null)
   const [vendorWorkspaceStore, setVendorWorkspaceStore] = useState<Record<string, unknown> | null>(null)
+  const [contentWorkspaceArticleId, setContentWorkspaceArticleId] = useState<string | null>(null)
+  const [contentWorkspaceMode, setContentWorkspaceMode] = useState<'create' | 'edit'>('create')
   const [phoneNumber, setPhoneNumber] = useState('')
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
@@ -286,6 +315,22 @@ export default function App() {
     setRoute('vendors')
   }
 
+  function handleOpenContentWorkspaceForCreate() {
+    setContentWorkspaceMode('create')
+    setContentWorkspaceArticleId(null)
+    setRoute('contentWorkspace')
+  }
+
+  function handleOpenContentWorkspaceForEdit(articleId: string) {
+    setContentWorkspaceMode('edit')
+    setContentWorkspaceArticleId(articleId)
+    setRoute('contentWorkspace')
+  }
+
+  function handleBackToContent() {
+    setRoute('content')
+  }
+
   if (!session) {
     return (
       <LoginPage
@@ -337,6 +382,11 @@ export default function App() {
         vendorWorkspaceStore,
         onOpenVendorWorkspace: handleOpenVendorWorkspace,
         onBackToVendors: handleBackToVendors,
+        contentWorkspaceArticleId,
+        contentWorkspaceMode,
+        onOpenContentWorkspaceForCreate: handleOpenContentWorkspaceForCreate,
+        onOpenContentWorkspaceForEdit: handleOpenContentWorkspaceForEdit,
+        onBackToContent: handleBackToContent,
       })}
     </AppShell>
   )

@@ -1,0 +1,1196 @@
+import { FormatTextarea, Pill, SectionCard } from '@flower-marketplace/frontend-core'
+import { useEffect, useMemo, useState } from 'react'
+import { LoadableState } from '../components/LoadableState'
+import { adminApi } from '../lib/api'
+import {
+  countRelatedArticles,
+  formatBooleanLabel,
+  formatJalaliDate,
+  formatPersianNumber,
+  getArticleAuthor,
+  getArticleCategory,
+  getArticleStatusLabel,
+  getArticleTagIds,
+  getArticleTags,
+  getArticleTitle,
+  normalizeSlug,
+  toContentRecord,
+  translateContentAuditType,
+} from '../lib/content'
+import { readText, toArray } from '../lib/normalize'
+import type { AuthSession } from '../lib/session'
+
+type ContentWorkspacePageProps = {
+  session: AuthSession
+  mode: 'create' | 'edit'
+  articleId: string | null
+  onBack: () => void
+}
+
+type ContentRecord = Record<string, unknown>
+
+type ArticleFormState = {
+  title: string
+  slug: string
+  excerpt: string
+  coverImage: string
+  focusKeyword: string
+  seoNotes: string
+  content: string
+  status: 'DRAFT' | 'PUBLISHED'
+  authorId: string
+  categoryId: string
+  tagIds: string[]
+  metaTitle: string
+  metaDescription: string
+  canonicalUrl: string
+  robotsIndex: boolean
+  robotsFollow: boolean
+  ogTitle: string
+  ogDescription: string
+  ogImage: string
+}
+
+type CategoryFormState = {
+  title: string
+  slug: string
+  description: string
+  introText: string
+  parentId: string
+  coverImage: string
+  metaTitle: string
+  metaDescription: string
+  canonicalUrl: string
+  robotsIndex: boolean
+  robotsFollow: boolean
+  ogTitle: string
+  ogDescription: string
+  ogImage: string
+}
+
+type TagFormState = {
+  title: string
+  slug: string
+  description: string
+  introText: string
+  metaTitle: string
+  metaDescription: string
+  canonicalUrl: string
+  robotsIndex: boolean
+  robotsFollow: boolean
+  ogTitle: string
+  ogDescription: string
+  ogImage: string
+}
+
+type AuthorFormState = {
+  name: string
+  slug: string
+  bio: string
+  seoBio: string
+  avatarImage: string
+  isActive: boolean
+  userId: string
+}
+
+function createEmptyArticleForm(): ArticleFormState {
+  return {
+    title: '',
+    slug: '',
+    excerpt: '',
+    coverImage: '',
+    focusKeyword: '',
+    seoNotes: '',
+    content: '<p></p>',
+    status: 'DRAFT',
+    authorId: '',
+    categoryId: '',
+    tagIds: [],
+    metaTitle: '',
+    metaDescription: '',
+    canonicalUrl: '',
+    robotsIndex: true,
+    robotsFollow: true,
+    ogTitle: '',
+    ogDescription: '',
+    ogImage: '',
+  }
+}
+
+function createEmptyCategoryForm(): CategoryFormState {
+  return {
+    title: '',
+    slug: '',
+    description: '',
+    introText: '',
+    parentId: '',
+    coverImage: '',
+    metaTitle: '',
+    metaDescription: '',
+    canonicalUrl: '',
+    robotsIndex: true,
+    robotsFollow: true,
+    ogTitle: '',
+    ogDescription: '',
+    ogImage: '',
+  }
+}
+
+function createEmptyTagForm(): TagFormState {
+  return {
+    title: '',
+    slug: '',
+    description: '',
+    introText: '',
+    metaTitle: '',
+    metaDescription: '',
+    canonicalUrl: '',
+    robotsIndex: true,
+    robotsFollow: true,
+    ogTitle: '',
+    ogDescription: '',
+    ogImage: '',
+  }
+}
+
+function createEmptyAuthorForm(): AuthorFormState {
+  return {
+    name: '',
+    slug: '',
+    bio: '',
+    seoBio: '',
+    avatarImage: '',
+    isActive: true,
+    userId: '',
+  }
+}
+
+function toOptionalNumber(value: string) {
+  const parsed = Number(value)
+  return Number.isNaN(parsed) || parsed <= 0 ? undefined : parsed
+}
+
+function toOptionalText(value: string) {
+  const normalized = value.trim()
+  return normalized === '' ? undefined : normalized
+}
+
+function stripHtml(html: string) {
+  if (typeof document === 'undefined') {
+    return html.replace(/<[^>]+>/g, ' ')
+  }
+
+  const temp = document.createElement('div')
+  temp.innerHTML = html
+  return temp.textContent || temp.innerText || ''
+}
+
+function countMatches(text: string, pattern: RegExp) {
+  return (text.match(pattern) || []).length
+}
+
+function mapArticleToForm(article: ContentRecord): ArticleFormState {
+  return {
+    title: readText(article, ['title'], ''),
+    slug: readText(article, ['slug'], ''),
+    excerpt: readText(article, ['excerpt'], ''),
+    coverImage: readText(article, ['coverImage'], ''),
+    focusKeyword: readText(article, ['focusKeyword'], ''),
+    seoNotes: readText(article, ['seoNotes'], ''),
+    content: readText(article, ['content'], '<p></p>'),
+    status: readText(article, ['status'], 'DRAFT') === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT',
+    authorId: readText(article, ['authorId'], ''),
+    categoryId: readText(article, ['categoryId'], ''),
+    tagIds: getArticleTagIds(article).map((item) => String(item)),
+    metaTitle: readText(article, ['metaTitle'], ''),
+    metaDescription: readText(article, ['metaDescription'], ''),
+    canonicalUrl: readText(article, ['canonicalUrl'], ''),
+    robotsIndex: typeof article.robotsIndex === 'boolean' ? article.robotsIndex : true,
+    robotsFollow: typeof article.robotsFollow === 'boolean' ? article.robotsFollow : true,
+    ogTitle: readText(article, ['ogTitle'], ''),
+    ogDescription: readText(article, ['ogDescription'], ''),
+    ogImage: readText(article, ['ogImage'], ''),
+  }
+}
+
+function mapCategoryToForm(category: ContentRecord): CategoryFormState {
+  return {
+    title: readText(category, ['title'], ''),
+    slug: readText(category, ['slug'], ''),
+    description: readText(category, ['description'], ''),
+    introText: readText(category, ['introText'], ''),
+    parentId: readText(category, ['parentId'], ''),
+    coverImage: readText(category, ['coverImage'], ''),
+    metaTitle: readText(category, ['metaTitle'], ''),
+    metaDescription: readText(category, ['metaDescription'], ''),
+    canonicalUrl: readText(category, ['canonicalUrl'], ''),
+    robotsIndex: typeof category.robotsIndex === 'boolean' ? category.robotsIndex : true,
+    robotsFollow: typeof category.robotsFollow === 'boolean' ? category.robotsFollow : true,
+    ogTitle: readText(category, ['ogTitle'], ''),
+    ogDescription: readText(category, ['ogDescription'], ''),
+    ogImage: readText(category, ['ogImage'], ''),
+  }
+}
+
+function mapTagToForm(tag: ContentRecord): TagFormState {
+  return {
+    title: readText(tag, ['title'], ''),
+    slug: readText(tag, ['slug'], ''),
+    description: readText(tag, ['description'], ''),
+    introText: readText(tag, ['introText'], ''),
+    metaTitle: readText(tag, ['metaTitle'], ''),
+    metaDescription: readText(tag, ['metaDescription'], ''),
+    canonicalUrl: readText(tag, ['canonicalUrl'], ''),
+    robotsIndex: typeof tag.robotsIndex === 'boolean' ? tag.robotsIndex : true,
+    robotsFollow: typeof tag.robotsFollow === 'boolean' ? tag.robotsFollow : true,
+    ogTitle: readText(tag, ['ogTitle'], ''),
+    ogDescription: readText(tag, ['ogDescription'], ''),
+    ogImage: readText(tag, ['ogImage'], ''),
+  }
+}
+
+function mapAuthorToForm(author: ContentRecord): AuthorFormState {
+  return {
+    name: readText(author, ['name'], ''),
+    slug: readText(author, ['slug'], ''),
+    bio: readText(author, ['bio'], ''),
+    seoBio: readText(author, ['seoBio'], ''),
+    avatarImage: readText(author, ['avatarImage'], ''),
+    isActive: typeof author.isActive === 'boolean' ? author.isActive : true,
+    userId: readText(author, ['userId'], ''),
+  }
+}
+
+export function ContentWorkspacePage({ session, mode, articleId, onBack }: ContentWorkspacePageProps) {
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitMessage, setSubmitMessage] = useState<string | null>(null)
+  const [referenceVersion, setReferenceVersion] = useState(0)
+  const [editorMode, setEditorMode] = useState<'create' | 'edit'>(mode)
+  const [currentArticleId, setCurrentArticleId] = useState<string | null>(articleId)
+  const [articleDetail, setArticleDetail] = useState<ContentRecord | null>(null)
+  const [categories, setCategories] = useState<ContentRecord[]>([])
+  const [tags, setTags] = useState<ContentRecord[]>([])
+  const [authors, setAuthors] = useState<ContentRecord[]>([])
+  const [audits, setAudits] = useState<ContentRecord[]>([])
+  const [articleForm, setArticleForm] = useState<ArticleFormState>(() => createEmptyArticleForm())
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('new')
+  const [categoryForm, setCategoryForm] = useState<CategoryFormState>(() => createEmptyCategoryForm())
+  const [selectedTagId, setSelectedTagId] = useState<string>('new')
+  const [tagForm, setTagForm] = useState<TagFormState>(() => createEmptyTagForm())
+  const [selectedAuthorId, setSelectedAuthorId] = useState<string>('new')
+  const [authorForm, setAuthorForm] = useState<AuthorFormState>(() => createEmptyAuthorForm())
+
+  useEffect(() => {
+    setEditorMode(mode)
+    setCurrentArticleId(articleId)
+    setSubmitMessage(null)
+  }, [articleId, mode])
+
+  useEffect(() => {
+    let active = true
+
+    async function loadWorkspace() {
+      setLoading(true)
+      setError(null)
+
+      try {
+        const [categoriesPayload, tagsPayload, authorsPayload, auditsPayload, articlePayload] = await Promise.all([
+          adminApi.getArticleCategories(session),
+          adminApi.getArticleTags(session),
+          adminApi.getAuthors(session),
+          adminApi.getContentAudits(session),
+          currentArticleId ? adminApi.getArticleDetail(session, currentArticleId) : Promise.resolve(null),
+        ])
+
+        if (!active) return
+
+        const nextCategories = toArray(categoriesPayload)
+        const nextTags = toArray(tagsPayload)
+        const nextAuthors = toArray(authorsPayload)
+
+        setCategories(nextCategories)
+        setTags(nextTags)
+        setAuthors(nextAuthors)
+        setAudits(toArray(auditsPayload))
+
+        if (currentArticleId && articlePayload) {
+          const articleRecord = toContentRecord(articlePayload)
+          setArticleDetail(articleRecord)
+          setArticleForm(mapArticleToForm(articleRecord))
+        } else {
+          setArticleDetail(null)
+          setArticleForm((previous) => {
+            const empty = createEmptyArticleForm()
+            return {
+              ...empty,
+              authorId: previous.authorId || readText(nextAuthors[0] ?? {}, ['id'], ''),
+              categoryId: previous.categoryId || readText(nextCategories[0] ?? {}, ['id'], ''),
+            }
+          })
+        }
+
+        setSelectedCategoryId((previous) => {
+          if (previous !== 'new' && nextCategories.some((item) => readText(item, ['id'], '') === previous)) {
+            return previous
+          }
+          return 'new'
+        })
+
+        setSelectedTagId((previous) => {
+          if (previous !== 'new' && nextTags.some((item) => readText(item, ['id'], '') === previous)) {
+            return previous
+          }
+          return 'new'
+        })
+
+        setSelectedAuthorId((previous) => {
+          if (previous !== 'new' && nextAuthors.some((item) => readText(item, ['id'], '') === previous)) {
+            return previous
+          }
+          return 'new'
+        })
+      } catch (loadError) {
+        if (!active) return
+        setError(loadError instanceof Error ? loadError.message : 'خطا در بارگذاری workspace محتوا')
+      } finally {
+        if (active) setLoading(false)
+      }
+    }
+
+    void loadWorkspace()
+    return () => {
+      active = false
+    }
+  }, [currentArticleId, referenceVersion, session])
+
+  useEffect(() => {
+    if (selectedCategoryId === 'new') {
+      setCategoryForm(createEmptyCategoryForm())
+      return
+    }
+
+    const category = categories.find((item) => readText(item, ['id'], '') === selectedCategoryId)
+    if (category) {
+      setCategoryForm(mapCategoryToForm(category))
+    }
+  }, [categories, selectedCategoryId])
+
+  useEffect(() => {
+    if (selectedTagId === 'new') {
+      setTagForm(createEmptyTagForm())
+      return
+    }
+
+    const tag = tags.find((item) => readText(item, ['id'], '') === selectedTagId)
+    if (tag) {
+      setTagForm(mapTagToForm(tag))
+    }
+  }, [selectedTagId, tags])
+
+  useEffect(() => {
+    if (selectedAuthorId === 'new') {
+      setAuthorForm(createEmptyAuthorForm())
+      return
+    }
+
+    const author = authors.find((item) => readText(item, ['id'], '') === selectedAuthorId)
+    if (author) {
+      setAuthorForm(mapAuthorToForm(author))
+    }
+  }, [authors, selectedAuthorId])
+
+  const selectedCategoryRecord = useMemo(
+    () => categories.find((item) => readText(item, ['id'], '') === selectedCategoryId) ?? null,
+    [categories, selectedCategoryId],
+  )
+
+  const selectedTagRecord = useMemo(
+    () => tags.find((item) => readText(item, ['id'], '') === selectedTagId) ?? null,
+    [selectedTagId, tags],
+  )
+
+  const selectedAuthorRecord = useMemo(
+    () => authors.find((item) => readText(item, ['id'], '') === selectedAuthorId) ?? null,
+    [authors, selectedAuthorId],
+  )
+
+  const contentPlainText = useMemo(() => stripHtml(articleForm.content).replace(/\s+/g, ' ').trim(), [articleForm.content])
+  const wordCount = useMemo(() => (contentPlainText ? contentPlainText.split(' ').filter(Boolean).length : 0), [contentPlainText])
+  const h2Count = useMemo(() => countMatches(articleForm.content, /<h2\b/gi), [articleForm.content])
+  const internalLinkCount = useMemo(() => countMatches(articleForm.content, /href="(\/|https?:\/\/[^\"]*?(blog|products))/gi), [articleForm.content])
+  const editorSignals = useMemo(
+    () => [
+      { label: 'تعداد کلمات', value: formatPersianNumber(wordCount) },
+      { label: 'H2', value: formatPersianNumber(h2Count) },
+      { label: 'لینک داخلی', value: formatPersianNumber(internalLinkCount) },
+      { label: 'تگ های انتخابی', value: formatPersianNumber(articleForm.tagIds.length) },
+    ],
+    [articleForm.tagIds.length, h2Count, internalLinkCount, wordCount],
+  )
+
+  const seoChecklist = useMemo(
+    () => [
+      {
+        label: 'meta title',
+        value: articleForm.metaTitle.trim() ? 'ثبت شده' : 'نیازمند تکمیل',
+      },
+      {
+        label: 'meta description',
+        value: articleForm.metaDescription.trim() ? 'ثبت شده' : 'نیازمند تکمیل',
+      },
+      {
+        label: 'کلیدواژه کانونی',
+        value: articleForm.focusKeyword.trim() ? articleForm.focusKeyword : 'نیازمند تعریف',
+      },
+      {
+        label: 'canonical',
+        value: articleForm.canonicalUrl.trim() ? 'تنظیم شده' : 'پیش فرض backend',
+      },
+    ],
+    [articleForm.canonicalUrl, articleForm.focusKeyword, articleForm.metaDescription, articleForm.metaTitle],
+  )
+
+  const workspaceMeta = useMemo(
+    () => [
+      { label: 'حالت', value: editorMode === 'edit' ? 'ویرایش مقاله' : 'ساخت مقاله جدید' },
+      { label: 'وضعیت', value: articleDetail ? getArticleStatusLabel(articleDetail) : editorMode === 'create' ? 'پیش نویس جدید' : '—' },
+      { label: 'انتشار', value: articleDetail ? formatJalaliDate(articleDetail.publishedAt, true) : 'هنوز منتشر نشده' },
+      { label: 'نویسنده', value: articleDetail ? getArticleAuthor(articleDetail) : 'هنوز انتخاب نشده' },
+      { label: 'دسته بندی', value: articleDetail ? getArticleCategory(articleDetail) : 'هنوز انتخاب نشده' },
+      {
+        label: 'robots',
+        value: `${formatBooleanLabel(articleForm.robotsIndex)} / ${formatBooleanLabel(articleForm.robotsFollow)}`,
+      },
+    ],
+    [articleDetail, articleForm.robotsFollow, articleForm.robotsIndex, editorMode],
+  )
+
+  const auditPreview = useMemo(
+    () =>
+      audits.slice(0, 4).map((item) => ({
+        id: `${readText(item, ['type'], 'audit')}-${readText(item, ['count'], '0')}`,
+        title: translateContentAuditType(readText(item, ['type'], 'UNKNOWN')),
+        detail: readText(item, ['message'], '—'),
+        count: formatPersianNumber(readText(item, ['count'], '0')),
+      })),
+    [audits],
+  )
+
+  function updateArticleForm<Key extends keyof ArticleFormState>(key: Key, value: ArticleFormState[Key]) {
+    setArticleForm((current) => ({ ...current, [key]: value }))
+  }
+
+  function updateCategoryForm<Key extends keyof CategoryFormState>(key: Key, value: CategoryFormState[Key]) {
+    setCategoryForm((current) => ({ ...current, [key]: value }))
+  }
+
+  function updateTagForm<Key extends keyof TagFormState>(key: Key, value: TagFormState[Key]) {
+    setTagForm((current) => ({ ...current, [key]: value }))
+  }
+
+  function updateAuthorForm<Key extends keyof AuthorFormState>(key: Key, value: AuthorFormState[Key]) {
+    setAuthorForm((current) => ({ ...current, [key]: value }))
+  }
+
+  function toggleTag(tagId: string) {
+    setArticleForm((current) => ({
+      ...current,
+      tagIds: current.tagIds.includes(tagId)
+        ? current.tagIds.filter((item) => item !== tagId)
+        : [...current.tagIds, tagId],
+    }))
+  }
+
+  async function handleArticleSubmit(nextStatus?: 'DRAFT' | 'PUBLISHED') {
+    if (!articleForm.title.trim() || !articleForm.slug.trim() || !articleForm.content.trim()) {
+      setError('عنوان، اسلاگ و محتوای مقاله الزامی هستند.')
+      return
+    }
+
+    if (!articleForm.authorId || !articleForm.categoryId) {
+      setError('انتخاب نویسنده و دسته بندی برای مقاله الزامی است.')
+      return
+    }
+
+    setSubmitting(true)
+    setError(null)
+    setSubmitMessage(null)
+
+    const payload = {
+      title: articleForm.title.trim(),
+      slug: articleForm.slug.trim(),
+      excerpt: toOptionalText(articleForm.excerpt),
+      coverImage: toOptionalText(articleForm.coverImage),
+      focusKeyword: toOptionalText(articleForm.focusKeyword),
+      seoNotes: toOptionalText(articleForm.seoNotes),
+      content: articleForm.content,
+      status: nextStatus ?? articleForm.status,
+      authorId: Number(articleForm.authorId),
+      categoryId: Number(articleForm.categoryId),
+      tagIds: articleForm.tagIds.map((item) => Number(item)),
+      metaTitle: toOptionalText(articleForm.metaTitle),
+      metaDescription: toOptionalText(articleForm.metaDescription),
+      canonicalUrl: toOptionalText(articleForm.canonicalUrl),
+      robotsIndex: articleForm.robotsIndex,
+      robotsFollow: articleForm.robotsFollow,
+      ogTitle: toOptionalText(articleForm.ogTitle),
+      ogDescription: toOptionalText(articleForm.ogDescription),
+      ogImage: toOptionalText(articleForm.ogImage),
+    }
+
+    try {
+      const payloadResult =
+        editorMode === 'edit' && currentArticleId
+          ? await adminApi.updateArticle(session, currentArticleId, payload)
+          : await adminApi.createArticle(session, payload)
+
+      const articleRecord = toContentRecord(payloadResult)
+      const nextArticleId = readText(articleRecord, ['id'], currentArticleId ?? '')
+
+      setArticleDetail(articleRecord)
+      setArticleForm(mapArticleToForm(articleRecord))
+      setEditorMode('edit')
+      setCurrentArticleId(nextArticleId || currentArticleId)
+      setSubmitMessage(nextStatus === 'PUBLISHED' ? 'مقاله با وضعیت منتشرشده ذخیره شد.' : 'مقاله با موفقیت ذخیره شد.')
+      setReferenceVersion((current) => current + 1)
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : 'ذخیره مقاله ناموفق بود')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleCategorySubmit() {
+    if (!categoryForm.title.trim() || !categoryForm.slug.trim()) {
+      setError('عنوان و اسلاگ دسته بندی الزامی هستند.')
+      return
+    }
+
+    setSubmitting(true)
+    setError(null)
+    setSubmitMessage(null)
+
+    const payload = {
+      title: categoryForm.title.trim(),
+      slug: categoryForm.slug.trim(),
+      description: toOptionalText(categoryForm.description),
+      introText: toOptionalText(categoryForm.introText),
+      parentId: categoryForm.parentId === '' ? undefined : Number(categoryForm.parentId),
+      coverImage: toOptionalText(categoryForm.coverImage),
+      metaTitle: toOptionalText(categoryForm.metaTitle),
+      metaDescription: toOptionalText(categoryForm.metaDescription),
+      canonicalUrl: toOptionalText(categoryForm.canonicalUrl),
+      robotsIndex: categoryForm.robotsIndex,
+      robotsFollow: categoryForm.robotsFollow,
+      ogTitle: toOptionalText(categoryForm.ogTitle),
+      ogDescription: toOptionalText(categoryForm.ogDescription),
+      ogImage: toOptionalText(categoryForm.ogImage),
+    }
+
+    try {
+      const payloadResult =
+        selectedCategoryId === 'new'
+          ? await adminApi.createArticleCategory(session, payload)
+          : await adminApi.updateArticleCategory(session, selectedCategoryId, payload)
+
+      const categoryRecord = toContentRecord(payloadResult)
+      const nextCategoryId = readText(categoryRecord, ['id'], '')
+      setSelectedCategoryId(nextCategoryId || 'new')
+      setSubmitMessage(selectedCategoryId === 'new' ? 'دسته بندی جدید ثبت شد.' : 'دسته بندی با موفقیت به روز شد.')
+      setReferenceVersion((current) => current + 1)
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : 'ذخیره دسته بندی ناموفق بود')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleTagSubmit() {
+    if (!tagForm.title.trim() || !tagForm.slug.trim()) {
+      setError('عنوان و اسلاگ تگ الزامی هستند.')
+      return
+    }
+
+    setSubmitting(true)
+    setError(null)
+    setSubmitMessage(null)
+
+    const payload = {
+      title: tagForm.title.trim(),
+      slug: tagForm.slug.trim(),
+      description: toOptionalText(tagForm.description),
+      introText: toOptionalText(tagForm.introText),
+      metaTitle: toOptionalText(tagForm.metaTitle),
+      metaDescription: toOptionalText(tagForm.metaDescription),
+      canonicalUrl: toOptionalText(tagForm.canonicalUrl),
+      robotsIndex: tagForm.robotsIndex,
+      robotsFollow: tagForm.robotsFollow,
+      ogTitle: toOptionalText(tagForm.ogTitle),
+      ogDescription: toOptionalText(tagForm.ogDescription),
+      ogImage: toOptionalText(tagForm.ogImage),
+    }
+
+    try {
+      const payloadResult =
+        selectedTagId === 'new'
+          ? await adminApi.createArticleTag(session, payload)
+          : await adminApi.updateArticleTag(session, selectedTagId, payload)
+
+      const tagRecord = toContentRecord(payloadResult)
+      const nextTagId = readText(tagRecord, ['id'], '')
+      setSelectedTagId(nextTagId || 'new')
+      setSubmitMessage(selectedTagId === 'new' ? 'تگ جدید ثبت شد.' : 'تگ با موفقیت به روز شد.')
+      setReferenceVersion((current) => current + 1)
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : 'ذخیره تگ ناموفق بود')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleAuthorSubmit() {
+    if (!authorForm.name.trim() || !authorForm.slug.trim()) {
+      setError('نام و اسلاگ نویسنده الزامی هستند.')
+      return
+    }
+
+    setSubmitting(true)
+    setError(null)
+    setSubmitMessage(null)
+
+    const payload = {
+      name: authorForm.name.trim(),
+      slug: authorForm.slug.trim(),
+      bio: toOptionalText(authorForm.bio),
+      seoBio: toOptionalText(authorForm.seoBio),
+      avatarImage: toOptionalText(authorForm.avatarImage),
+      isActive: authorForm.isActive,
+      userId: toOptionalNumber(authorForm.userId),
+    }
+
+    try {
+      const payloadResult =
+        selectedAuthorId === 'new'
+          ? await adminApi.createAuthor(session, payload)
+          : await adminApi.updateAuthor(session, selectedAuthorId, payload)
+
+      const authorRecord = toContentRecord(payloadResult)
+      const nextAuthorId = readText(authorRecord, ['id'], '')
+      setSelectedAuthorId(nextAuthorId || 'new')
+      setSubmitMessage(selectedAuthorId === 'new' ? 'نویسنده جدید ثبت شد.' : 'نویسنده با موفقیت به روز شد.')
+      setReferenceVersion((current) => current + 1)
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : 'ذخیره نویسنده ناموفق بود')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="fm-stack">
+      <LoadableState error={error} loading={loading}>
+        <SectionCard
+          eyebrow="Focused editor"
+          title={editorMode === 'edit' ? `editor مقاله #${currentArticleId ?? '—'}` : 'ساخت مقاله جدید'}
+          description="این surface برای فرم طولانی، ویرایش محتوا، SEO و مدیریت taxonomy طراحی شده تا کاربر در حالت متمرکز بماند."
+          actions={
+            <div className="content-workspace-topbar-actions">
+              <Pill tone={editorMode === 'edit' ? 'success' : 'warning'}>
+                {editorMode === 'edit' ? 'در حال ویرایش' : 'مقاله جدید'}
+              </Pill>
+              <button className="content-secondary-action" onClick={onBack} type="button">
+                بازگشت به کارتابل
+              </button>
+              <button className="content-secondary-action" onClick={() => handleArticleSubmit('DRAFT')} type="button">
+                ذخیره پیش نویس
+              </button>
+              <button className="content-primary-action" disabled={submitting} onClick={() => handleArticleSubmit('PUBLISHED')} type="button">
+                {submitting ? 'در حال ذخیره...' : 'ذخیره و انتشار'}
+              </button>
+            </div>
+          }
+        >
+          <div className="content-workspace-stack">
+            {submitMessage ? <div className="fm-message fm-message--success">{submitMessage}</div> : null}
+
+            <div className="content-workspace-meta-grid">
+              {workspaceMeta.map((item) => (
+                <article className="content-workspace-meta-item" key={item.label}>
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                </article>
+              ))}
+            </div>
+
+            <div className="content-workspace-form-grid">
+              <SectionCard
+                eyebrow="Article core"
+                title="هویت مقاله و کنترل انتشار"
+                description="عنوان، اسلاگ، نویسنده، دسته بندی و وضعیت انتشار را از اینجا کنترل کن."
+                actions={<Pill tone="primary">article core</Pill>}
+              >
+                <div className="content-editor-grid">
+                  <label className="fm-field content-editor-field--wide">
+                    <span>عنوان مقاله</span>
+                    <input
+                      onChange={(event) => updateArticleForm('title', event.target.value)}
+                      placeholder="مثلا راهنمای نگهداری گل رز در آپارتمان"
+                      value={articleForm.title}
+                    />
+                  </label>
+
+                  <label className="fm-field">
+                    <span>اسلاگ</span>
+                    <div className="content-inline-input">
+                      <input
+                        onChange={(event) => updateArticleForm('slug', event.target.value)}
+                        placeholder="rose-care-guide"
+                        value={articleForm.slug}
+                      />
+                      <button onClick={() => updateArticleForm('slug', normalizeSlug(articleForm.title || articleForm.slug))} type="button">
+                        ساخت خودکار
+                      </button>
+                    </div>
+                  </label>
+
+                  <label className="fm-field">
+                    <span>وضعیت</span>
+                    <select onChange={(event) => updateArticleForm('status', event.target.value === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT')} value={articleForm.status}>
+                      <option value="DRAFT">پیش نویس</option>
+                      <option value="PUBLISHED">منتشرشده</option>
+                    </select>
+                  </label>
+
+                  <label className="fm-field">
+                    <span>نویسنده</span>
+                    <select onChange={(event) => updateArticleForm('authorId', event.target.value)} value={articleForm.authorId}>
+                      <option value="">انتخاب نویسنده</option>
+                      {authors.map((item) => {
+                        const id = readText(item, ['id'], '')
+                        return (
+                          <option key={id} value={id}>
+                            {readText(item, ['name'], '—')}
+                          </option>
+                        )
+                      })}
+                    </select>
+                  </label>
+
+                  <label className="fm-field">
+                    <span>دسته بندی</span>
+                    <select onChange={(event) => updateArticleForm('categoryId', event.target.value)} value={articleForm.categoryId}>
+                      <option value="">انتخاب دسته بندی</option>
+                      {categories.map((item) => {
+                        const id = readText(item, ['id'], '')
+                        const parent = toContentRecord(item.parent)
+                        const parentLabel = readText(parent, ['title'], '')
+                        return (
+                          <option key={id} value={id}>
+                            {parentLabel ? `${parentLabel} / ` : ''}
+                            {readText(item, ['title'], '—')}
+                          </option>
+                        )
+                      })}
+                    </select>
+                  </label>
+
+                  <label className="fm-field content-editor-field--wide">
+                    <span>تصویر کاور</span>
+                    <input
+                      onChange={(event) => updateArticleForm('coverImage', event.target.value)}
+                      placeholder="https://..."
+                      value={articleForm.coverImage}
+                    />
+                  </label>
+
+                  <label className="fm-field content-editor-field--wide">
+                    <span>خلاصه کوتاه</span>
+                    <textarea
+                      onChange={(event) => updateArticleForm('excerpt', event.target.value)}
+                      placeholder="خلاصه ای کوتاه برای listing و meta description"
+                      rows={4}
+                      value={articleForm.excerpt}
+                    />
+                  </label>
+                </div>
+              </SectionCard>
+
+              <SectionCard
+                eyebrow="Content body"
+                title="متن مقاله و structure editor"
+                description="این بلوک برای نگارش focused، preview و ارزیابی ساختار محتوایی است."
+                actions={<Pill tone="success">editor ready</Pill>}
+              >
+                <FormatTextarea
+                  id="article-content"
+                  onChange={(value) => updateArticleForm('content', value)}
+                  placeholder="محتوای کامل مقاله را اینجا بنویس..."
+                  value={articleForm.content}
+                />
+              </SectionCard>
+
+              <SectionCard
+                eyebrow="Taxonomy"
+                title="تگ ها و ارتباط های محتوایی"
+                description="تگ های مقاله را همین جا مدیریت کن تا listing و SEO relation از همان ابتدا درست بماند."
+                actions={<Pill tone="warning">taxonomy linked</Pill>}
+              >
+                <div className="content-tag-grid">
+                  {tags.length ? (
+                    tags.map((item) => {
+                      const id = readText(item, ['id'], '')
+                      const checked = articleForm.tagIds.includes(id)
+                      return (
+                        <label className={`content-tag-toggle${checked ? ' is-active' : ''}`} key={id}>
+                          <input
+                            checked={checked}
+                            onChange={() => toggleTag(id)}
+                            type="checkbox"
+                          />
+                          <span>{readText(item, ['title'], '—')}</span>
+                          <small>{formatPersianNumber(countRelatedArticles(item))} مقاله</small>
+                        </label>
+                      )
+                    })
+                  ) : (
+                    <div className="fm-message">هنوز تگی ثبت نشده است.</div>
+                  )}
+                </div>
+              </SectionCard>
+
+              <SectionCard
+                eyebrow="SEO controls"
+                title="کنترل های SEO و indexability"
+                description="فیلدهای metadata، robots و Open Graph را اینجا تکمیل کن تا تیم محتوا و SEO روی یک surface مشترک کار کنند."
+                actions={<Pill tone="danger">SEO-first</Pill>}
+              >
+                <div className="content-editor-grid">
+                  <label className="fm-field">
+                    <span>کلیدواژه کانونی</span>
+                    <input onChange={(event) => updateArticleForm('focusKeyword', event.target.value)} value={articleForm.focusKeyword} />
+                  </label>
+
+                  <label className="fm-field">
+                    <span>canonical URL</span>
+                    <input onChange={(event) => updateArticleForm('canonicalUrl', event.target.value)} placeholder="https://..." value={articleForm.canonicalUrl} />
+                  </label>
+
+                  <label className="fm-field content-editor-field--wide">
+                    <span>meta title</span>
+                    <input onChange={(event) => updateArticleForm('metaTitle', event.target.value)} value={articleForm.metaTitle} />
+                  </label>
+
+                  <label className="fm-field content-editor-field--wide">
+                    <span>meta description</span>
+                    <textarea onChange={(event) => updateArticleForm('metaDescription', event.target.value)} rows={4} value={articleForm.metaDescription} />
+                  </label>
+
+                  <label className="fm-field content-editor-field--wide">
+                    <span>og title</span>
+                    <input onChange={(event) => updateArticleForm('ogTitle', event.target.value)} value={articleForm.ogTitle} />
+                  </label>
+
+                  <label className="fm-field content-editor-field--wide">
+                    <span>og description</span>
+                    <textarea onChange={(event) => updateArticleForm('ogDescription', event.target.value)} rows={4} value={articleForm.ogDescription} />
+                  </label>
+
+                  <label className="fm-field content-editor-field--wide">
+                    <span>og image</span>
+                    <input onChange={(event) => updateArticleForm('ogImage', event.target.value)} placeholder="https://..." value={articleForm.ogImage} />
+                  </label>
+
+                  <label className="fm-field content-editor-field--wide">
+                    <span>یادداشت SEO</span>
+                    <textarea onChange={(event) => updateArticleForm('seoNotes', event.target.value)} rows={5} value={articleForm.seoNotes} />
+                  </label>
+
+                  <div className="content-toggle-grid content-editor-field--wide">
+                    <label className="content-boolean-toggle">
+                      <input checked={articleForm.robotsIndex} onChange={(event) => updateArticleForm('robotsIndex', event.target.checked)} type="checkbox" />
+                      <span>robots index فعال باشد</span>
+                    </label>
+                    <label className="content-boolean-toggle">
+                      <input checked={articleForm.robotsFollow} onChange={(event) => updateArticleForm('robotsFollow', event.target.checked)} type="checkbox" />
+                      <span>robots follow فعال باشد</span>
+                    </label>
+                  </div>
+                </div>
+              </SectionCard>
+            </div>
+
+            <div className="content-helper-sections">
+              <SectionCard
+                eyebrow="Editorial signals"
+                title="سیگنال های سریع برای نگارش و SEO"
+                description="این helper panelها پایین workspace مانده اند تا ستون اصلی editor تنگ و کشیده نشود."
+              >
+                <div className="content-workspace-signal-grid">
+                  {editorSignals.map((item) => (
+                    <article className="content-workspace-signal-item" key={item.label}>
+                      <span>{item.label}</span>
+                      <strong>{item.value}</strong>
+                    </article>
+                  ))}
+                </div>
+                <div className="content-workspace-checklist-grid">
+                  {seoChecklist.map((item) => (
+                    <article className="content-workspace-check-item" key={item.label}>
+                      <span>{item.label}</span>
+                      <strong>{item.value}</strong>
+                    </article>
+                  ))}
+                </div>
+              </SectionCard>
+
+              <SectionCard
+                eyebrow="Taxonomy manager"
+                title="مدیریت دسته بندی و تگ"
+                description="category و tag manager در همین workspace حاضر هستند تا بدون خروج از flow اصلی، ساختار محتوا را تکمیل کنی."
+              >
+                <div className="content-manager-grid">
+                  <div className="content-manager-card">
+                    <div className="content-manager-head">
+                      <strong>دسته بندی ها</strong>
+                      <div className="content-manager-head-actions">
+                        <button onClick={() => setSelectedCategoryId('new')} type="button">دسته جدید</button>
+                        <select onChange={(event) => setSelectedCategoryId(event.target.value)} value={selectedCategoryId}>
+                          <option value="new">ایجاد دسته جدید</option>
+                          {categories.map((item) => {
+                            const id = readText(item, ['id'], '')
+                            return (
+                              <option key={id} value={id}>
+                                {readText(item, ['title'], '—')}
+                              </option>
+                            )
+                          })}
+                        </select>
+                      </div>
+                    </div>
+                    <div className="content-editor-grid">
+                      <label className="fm-field">
+                        <span>عنوان</span>
+                        <input onChange={(event) => updateCategoryForm('title', event.target.value)} value={categoryForm.title} />
+                      </label>
+                      <label className="fm-field">
+                        <span>اسلاگ</span>
+                        <div className="content-inline-input">
+                          <input onChange={(event) => updateCategoryForm('slug', event.target.value)} value={categoryForm.slug} />
+                          <button onClick={() => updateCategoryForm('slug', normalizeSlug(categoryForm.title || categoryForm.slug))} type="button">ساخت</button>
+                        </div>
+                      </label>
+                      <label className="fm-field">
+                        <span>دسته والد</span>
+                        <select onChange={(event) => updateCategoryForm('parentId', event.target.value)} value={categoryForm.parentId}>
+                          <option value="">بدون والد</option>
+                          {categories
+                            .filter((item) => readText(item, ['id'], '') !== selectedCategoryId)
+                            .map((item) => {
+                              const id = readText(item, ['id'], '')
+                              return (
+                                <option key={id} value={id}>
+                                  {readText(item, ['title'], '—')}
+                                </option>
+                              )
+                            })}
+                        </select>
+                      </label>
+                      <label className="fm-field">
+                        <span>robots</span>
+                        <div className="content-toggle-grid">
+                          <label className="content-boolean-toggle">
+                            <input checked={categoryForm.robotsIndex} onChange={(event) => updateCategoryForm('robotsIndex', event.target.checked)} type="checkbox" />
+                            <span>index</span>
+                          </label>
+                          <label className="content-boolean-toggle">
+                            <input checked={categoryForm.robotsFollow} onChange={(event) => updateCategoryForm('robotsFollow', event.target.checked)} type="checkbox" />
+                            <span>follow</span>
+                          </label>
+                        </div>
+                      </label>
+                      <label className="fm-field content-editor-field--wide">
+                        <span>توضیح</span>
+                        <textarea onChange={(event) => updateCategoryForm('description', event.target.value)} rows={3} value={categoryForm.description} />
+                      </label>
+                      <label className="fm-field content-editor-field--wide">
+                        <span>intro text</span>
+                        <textarea onChange={(event) => updateCategoryForm('introText', event.target.value)} rows={4} value={categoryForm.introText} />
+                      </label>
+                    </div>
+                    <div className="content-manager-footer">
+                      <button className="content-primary-action" disabled={submitting} onClick={handleCategorySubmit} type="button">
+                        {selectedCategoryId === 'new' ? 'ثبت دسته بندی' : 'به روزرسانی دسته بندی'}
+                      </button>
+                      {selectedCategoryRecord ? (
+                        <small>
+                          {formatPersianNumber(countRelatedArticles(selectedCategoryRecord))} مقاله / والد: {readText(toContentRecord(selectedCategoryRecord.parent), ['title'], 'ندارد')}
+                        </small>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="content-manager-card">
+                    <div className="content-manager-head">
+                      <strong>تگ ها</strong>
+                      <div className="content-manager-head-actions">
+                        <button onClick={() => setSelectedTagId('new')} type="button">تگ جدید</button>
+                        <select onChange={(event) => setSelectedTagId(event.target.value)} value={selectedTagId}>
+                          <option value="new">ایجاد تگ جدید</option>
+                          {tags.map((item) => {
+                            const id = readText(item, ['id'], '')
+                            return (
+                              <option key={id} value={id}>
+                                {readText(item, ['title'], '—')}
+                              </option>
+                            )
+                          })}
+                        </select>
+                      </div>
+                    </div>
+                    <div className="content-editor-grid">
+                      <label className="fm-field">
+                        <span>عنوان</span>
+                        <input onChange={(event) => updateTagForm('title', event.target.value)} value={tagForm.title} />
+                      </label>
+                      <label className="fm-field">
+                        <span>اسلاگ</span>
+                        <div className="content-inline-input">
+                          <input onChange={(event) => updateTagForm('slug', event.target.value)} value={tagForm.slug} />
+                          <button onClick={() => updateTagForm('slug', normalizeSlug(tagForm.title || tagForm.slug))} type="button">ساخت</button>
+                        </div>
+                      </label>
+                      <label className="fm-field">
+                        <span>robots</span>
+                        <div className="content-toggle-grid">
+                          <label className="content-boolean-toggle">
+                            <input checked={tagForm.robotsIndex} onChange={(event) => updateTagForm('robotsIndex', event.target.checked)} type="checkbox" />
+                            <span>index</span>
+                          </label>
+                          <label className="content-boolean-toggle">
+                            <input checked={tagForm.robotsFollow} onChange={(event) => updateTagForm('robotsFollow', event.target.checked)} type="checkbox" />
+                            <span>follow</span>
+                          </label>
+                        </div>
+                      </label>
+                      <label className="fm-field content-editor-field--wide">
+                        <span>توضیح</span>
+                        <textarea onChange={(event) => updateTagForm('description', event.target.value)} rows={3} value={tagForm.description} />
+                      </label>
+                      <label className="fm-field content-editor-field--wide">
+                        <span>intro text</span>
+                        <textarea onChange={(event) => updateTagForm('introText', event.target.value)} rows={4} value={tagForm.introText} />
+                      </label>
+                    </div>
+                    <div className="content-manager-footer">
+                      <button className="content-primary-action" disabled={submitting} onClick={handleTagSubmit} type="button">
+                        {selectedTagId === 'new' ? 'ثبت تگ' : 'به روزرسانی تگ'}
+                      </button>
+                      {selectedTagRecord ? <small>{formatPersianNumber(countRelatedArticles(selectedTagRecord))} مقاله متصل</small> : null}
+                    </div>
+                  </div>
+                </div>
+              </SectionCard>
+
+              <SectionCard
+                eyebrow="Author manager"
+                title="مدیریت نویسنده ها"
+                description="ownership محتوایی و profile نویسنده را بدون خروج از workspace حفظ کن."
+              >
+                <div className="content-manager-card">
+                  <div className="content-manager-head">
+                    <strong>نویسنده</strong>
+                    <div className="content-manager-head-actions">
+                      <button onClick={() => setSelectedAuthorId('new')} type="button">نویسنده جدید</button>
+                      <select onChange={(event) => setSelectedAuthorId(event.target.value)} value={selectedAuthorId}>
+                        <option value="new">ایجاد نویسنده جدید</option>
+                        {authors.map((item) => {
+                          const id = readText(item, ['id'], '')
+                          return (
+                            <option key={id} value={id}>
+                              {readText(item, ['name'], '—')}
+                            </option>
+                          )
+                        })}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="content-editor-grid">
+                    <label className="fm-field">
+                      <span>نام</span>
+                      <input onChange={(event) => updateAuthorForm('name', event.target.value)} value={authorForm.name} />
+                    </label>
+                    <label className="fm-field">
+                      <span>اسلاگ</span>
+                      <div className="content-inline-input">
+                        <input onChange={(event) => updateAuthorForm('slug', event.target.value)} value={authorForm.slug} />
+                        <button onClick={() => updateAuthorForm('slug', normalizeSlug(authorForm.name || authorForm.slug))} type="button">ساخت</button>
+                      </div>
+                    </label>
+                    <label className="fm-field">
+                      <span>شناسه کاربر</span>
+                      <input onChange={(event) => updateAuthorForm('userId', event.target.value)} placeholder="اختیاری" value={authorForm.userId} />
+                    </label>
+                    <label className="content-boolean-toggle content-boolean-toggle--panel">
+                      <input checked={authorForm.isActive} onChange={(event) => updateAuthorForm('isActive', event.target.checked)} type="checkbox" />
+                      <span>نویسنده فعال باشد</span>
+                    </label>
+                    <label className="fm-field content-editor-field--wide">
+                      <span>bio</span>
+                      <textarea onChange={(event) => updateAuthorForm('bio', event.target.value)} rows={4} value={authorForm.bio} />
+                    </label>
+                    <label className="fm-field content-editor-field--wide">
+                      <span>seo bio</span>
+                      <textarea onChange={(event) => updateAuthorForm('seoBio', event.target.value)} rows={4} value={authorForm.seoBio} />
+                    </label>
+                    <label className="fm-field content-editor-field--wide">
+                      <span>آواتار</span>
+                      <input onChange={(event) => updateAuthorForm('avatarImage', event.target.value)} placeholder="https://..." value={authorForm.avatarImage} />
+                    </label>
+                  </div>
+                  <div className="content-manager-footer">
+                    <button className="content-primary-action" disabled={submitting} onClick={handleAuthorSubmit} type="button">
+                      {selectedAuthorId === 'new' ? 'ثبت نویسنده' : 'به روزرسانی نویسنده'}
+                    </button>
+                    {selectedAuthorRecord ? (
+                      <small>
+                        {formatPersianNumber(countRelatedArticles(selectedAuthorRecord))} مقاله / وضعیت: {authorForm.isActive ? 'فعال' : 'غیرفعال'}
+                      </small>
+                    ) : null}
+                  </div>
+                </div>
+              </SectionCard>
+
+              <SectionCard
+                eyebrow="Audit feed"
+                title="auditهای محتوایی فعال"
+                description="نمای خلاصه auditها همیشه کنار editor باقی می ماند تا تصمیم های محتوایی از بافت SEO جدا نشوند."
+              >
+                <div className="content-audit-preview-grid">
+                  {auditPreview.length ? (
+                    auditPreview.map((item) => (
+                      <article className="content-audit-preview-item" key={item.id}>
+                        <span>{item.title}</span>
+                        <strong>{item.count}</strong>
+                        <small>{item.detail}</small>
+                      </article>
+                    ))
+                  ) : (
+                    <div className="fm-message">فعلا audit فعالی دیده نمی شود.</div>
+                  )}
+                </div>
+                {articleDetail ? (
+                  <div className="content-workspace-summary-note">
+                    مقاله فعلی با عنوان «{getArticleTitle(articleDetail)}» در وضعیت {getArticleStatusLabel(articleDetail)} است و در دسته «{getArticleCategory(articleDetail)}» قرار دارد.
+                    {getArticleTags(articleDetail).length > 0 ? ` تگ های متصل: ${getArticleTags(articleDetail).join(' / ')}` : ' هنوز تگی به آن متصل نشده است.'}
+                  </div>
+                ) : null}
+              </SectionCard>
+            </div>
+          </div>
+        </SectionCard>
+      </LoadableState>
+    </div>
+  )
+}

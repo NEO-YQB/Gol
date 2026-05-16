@@ -244,20 +244,94 @@ export const adminApi = {
       session.accessToken,
     )
   },
-  getArticles(session: AuthSession) {
-    return request<unknown>('/content/articles', {}, session.accessToken)
+  getArticles(
+    session: AuthSession,
+    query?: {
+      status?: string
+      authorId?: number
+      categoryId?: number
+      tagId?: number
+      page?: number
+      limit?: number
+    },
+  ) {
+    const params = new URLSearchParams()
+
+    if (query?.status) params.set('status', query.status)
+    if (query?.authorId) params.set('authorId', String(query.authorId))
+    if (query?.categoryId) params.set('categoryId', String(query.categoryId))
+    if (query?.tagId) params.set('tagId', String(query.tagId))
+    if (query?.page) params.set('page', String(query.page))
+    if (query?.limit) params.set('limit', String(query.limit))
+
+    const search = params.toString()
+    return request<unknown>(`/content/articles${search ? `?${search}` : ''}`, {}, session.accessToken)
   },
   getArticleDetail(session: AuthSession, articleId: string) {
     return request<unknown>(`/content/articles/${articleId}`, {}, session.accessToken)
   },
+  createArticle(session: AuthSession, body: Record<string, unknown>) {
+    return request<unknown>('/content/articles', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  updateArticle(session: AuthSession, articleId: string, body: Record<string, unknown>) {
+    return request<unknown>(`/content/articles/${articleId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
   getArticleCategories(session: AuthSession) {
     return request<unknown[]>('/content/article-categories', {}, session.accessToken)
+  },
+  getArticleCategoryDetail(session: AuthSession, categoryId: string) {
+    return request<unknown>(`/content/article-categories/${categoryId}`, {}, session.accessToken)
+  },
+  createArticleCategory(session: AuthSession, body: Record<string, unknown>) {
+    return request<unknown>('/content/article-categories', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  updateArticleCategory(session: AuthSession, categoryId: string, body: Record<string, unknown>) {
+    return request<unknown>(`/content/article-categories/${categoryId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }, session.accessToken)
   },
   getArticleTags(session: AuthSession) {
     return request<unknown>('/content/article-tags', {}, session.accessToken)
   },
+  createArticleTag(session: AuthSession, body: Record<string, unknown>) {
+    return request<unknown>('/content/article-tags', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  updateArticleTag(session: AuthSession, tagId: string, body: Record<string, unknown>) {
+    return request<unknown>(`/content/article-tags/${tagId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
   getAuthors(session: AuthSession) {
     return request<unknown[]>('/content/authors', {}, session.accessToken)
+  },
+  getAuthorDetail(session: AuthSession, authorId: string) {
+    return request<unknown>(`/content/authors/${authorId}`, {}, session.accessToken)
+  },
+  createAuthor(session: AuthSession, body: Record<string, unknown>) {
+    return request<unknown>('/content/authors', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  updateAuthor(session: AuthSession, authorId: string, body: Record<string, unknown>) {
+    return request<unknown>(`/content/authors/${authorId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }, session.accessToken)
   },
   getContentAudits(session: AuthSession) {
     return request<unknown[]>('/content/articles/audits/list', {}, session.accessToken)

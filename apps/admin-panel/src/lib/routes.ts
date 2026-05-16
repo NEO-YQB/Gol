@@ -7,6 +7,7 @@ export const adminRouteOrder = [
   'vendors',
   'vendorWorkspace',
   'content',
+  'contentWorkspace',
   'alerts',
 ] as const
 
@@ -21,5 +22,6 @@ export const adminRouteLabels: Record<AdminRoute, string> = {
   vendors: 'فروشنده‌ها و ریسک',
   vendorWorkspace: 'workspace فروشنده',
   content: 'محتوا و سئو',
+  contentWorkspace: 'editor محتوایی',
   alerts: 'هشدارها و اعلان‌ها',
 }
