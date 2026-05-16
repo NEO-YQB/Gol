@@ -40,6 +40,14 @@ const initialFormState: DiscountFormState = {
   isActive: true,
 }
 
+const jalaliDateTimeFormatter = new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+})
+
 function getDiscountTitle(record: DiscountRecord) {
   return readText(record, ['title'], '—')
 }
@@ -85,6 +93,19 @@ function buildPayload(form: DiscountFormState): VendorDiscountPayload {
     endAt: form.endAt || undefined,
     isActive: form.isActive,
   }
+}
+
+function formatJalaliDateTime(value: unknown) {
+  if (typeof value !== 'string' || !value.trim()) {
+    return '—'
+  }
+
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) {
+    return value
+  }
+
+  return jalaliDateTimeFormatter.format(parsed)
 }
 
 export function DiscountsPage({ session }: { session: AuthSession }) {
@@ -221,7 +242,7 @@ export function DiscountsPage({ session }: { session: AuthSession }) {
     [filteredDiscounts, selectedDiscountId],
   )
 
-  const selectedSummary = selectedDiscount
+const selectedSummary = selectedDiscount
     ? [
         { label: 'شناسه', value: readText(selectedDiscount, ['id'], '—') },
         { label: 'عنوان', value: getDiscountTitle(selectedDiscount) },
@@ -229,8 +250,8 @@ export function DiscountsPage({ session }: { session: AuthSession }) {
         { label: 'وضعیت', value: getDiscountState(selectedDiscount) },
         { label: 'مقدار', value: getDiscountValue(selectedDiscount) },
         { label: 'اولویت', value: readText(selectedDiscount, ['priority'], '—') },
-        { label: 'شروع', value: readText(selectedDiscount, ['startAt'], '—') },
-        { label: 'پایان', value: readText(selectedDiscount, ['endAt'], '—') },
+        { label: 'شروع', value: formatJalaliDateTime(selectedDiscount.startAt) },
+        { label: 'پایان', value: formatJalaliDateTime(selectedDiscount.endAt) },
       ]
     : []
 
@@ -318,11 +339,14 @@ export function DiscountsPage({ session }: { session: AuthSession }) {
 
       if (editingDiscountId) {
         await vendorApi.updateVendorDiscount(session, Number(editingDiscountId), {
+          productId: payload.productId,
           title: payload.title,
           description: payload.description,
           valueType: payload.valueType,
           value: payload.value,
           priority: payload.priority,
+          startAt: payload.startAt,
+          endAt: payload.endAt,
           isActive: payload.isActive,
         })
         setFormMessage('تخفیف با موفقیت به‌روزرسانی شد.')
