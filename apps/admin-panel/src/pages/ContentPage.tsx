@@ -153,6 +153,7 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
     let active = true
 
     async function loadDetail() {
+      if (!selectedArticleId) return;
       setDetailLoading(true)
       setDetailError(null)
       try {
