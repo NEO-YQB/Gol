@@ -123,7 +123,6 @@ export function VendorsPage({ session }: { session: AuthSession }) {
   const [selectedStoreDetail, setSelectedStoreDetail] = useState<VendorRecord | null>(null)
 
   useEffect(() => {
-    const activeStoreId = storeId
     let active = true
 
     async function load() {
@@ -191,6 +190,7 @@ export function VendorsPage({ session }: { session: AuthSession }) {
       return
     }
 
+    const activeStoreId = storeId
     let active = true
 
     async function loadTimeline() {
