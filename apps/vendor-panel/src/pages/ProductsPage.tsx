@@ -1,4 +1,4 @@
-import { DataTable, FormatTextarea, Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
+import { DataTable, Pill, RichTextEditor, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { vendorApi, type VendorProductPayload } from '../lib/api'
@@ -761,7 +761,7 @@ export function ProductsPage({ session }: { session: AuthSession }) {
 
                 <div className="fm-field vendor-products-field--wide">
                   <label htmlFor="product-short-description">توضیح کوتاه</label>
-                  <FormatTextarea
+                  <RichTextEditor
                     id="product-short-description"
                     onChange={(nextValue) => setForm((current) => ({ ...current, shortDescription: nextValue }))}
                     placeholder="خلاصه کوتاه برای vitrine یا کارت محصول"
@@ -772,7 +772,7 @@ export function ProductsPage({ session }: { session: AuthSession }) {
 
                 <div className="fm-field vendor-products-field--wide">
                   <label htmlFor="product-description">توضیح کامل</label>
-                  <FormatTextarea
+                  <RichTextEditor
                     id="product-description"
                     onChange={(nextValue) => setForm((current) => ({ ...current, description: nextValue }))}
                     placeholder="شرح کامل برای تیم و محتوای محصول"
