@@ -7,7 +7,6 @@ import type { AuthSession } from '../lib/session'
 
 type ProductRecord = Record<string, unknown>
 type CategoryRecord = Record<string, unknown>
-type ProductTypeRecord = Record<string, unknown>
 
 type ProductFormState = {
   name: string
