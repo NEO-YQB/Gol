@@ -31,7 +31,13 @@ function statusOptions(items: TicketRecord[]) {
   return ['ALL', ...unique]
 }
 
-export function SupportPage({ session }: { session: AuthSession }) {
+export function SupportPage({
+  session,
+  onOpenSupportWorkspace,
+}: {
+  session: AuthSession
+  onOpenSupportWorkspace: (ticket: Record<string, unknown>) => void
+}) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [tickets, setTickets] = useState<TicketRecord[]>([])
@@ -229,67 +235,65 @@ export function SupportPage({ session }: { session: AuthSession }) {
             </div>
           </div>
 
-          <div className="support-layout">
-            <div className="support-table-card">
-              <DataTable columns={ticketColumns} rows={ticketRows} />
-              <div className="support-selection-list">
-                {filteredTickets.slice(0, 8).map((item) => {
-                  const ticketId = readText(item, ['id'], '')
-                  return (
-                    <button
-                      className={`support-selection-item${selectedTicketId === ticketId ? ' is-active' : ''}`}
-                      key={ticketId}
-                      onClick={() => setSelectedTicketId(ticketId)}
-                      type="button"
-                    >
-                      <strong>تیکت #{ticketId}</strong>
-                      <span>سفارش #{getTicketOrder(item)}</span>
-                      <small>
-                        {getTicketStatus(item)} / {getTicketReason(item)}
-                      </small>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            <div className="support-detail-column">
-              <SectionCard
-                eyebrow="Selected ticket"
-                title={selectedTicketId ? `جزئیات تیکت #${selectedTicketId}` : 'هیچ تیکتی انتخاب نشده'}
-                description="این بلوک فعلا summary detail را از `/support/tickets/:id` می‌گیرد و بعدا به full ticket workspace با notes و finance actions تبدیل می‌شود."
-                actions={<Pill tone="success">detail ready</Pill>}
-              >
-                {detailLoading ? <div className="fm-message">در حال بارگذاری جزئیات تیکت...</div> : null}
-                {detailError ? <div className="fm-message fm-message--danger">{detailError}</div> : null}
-                {!detailLoading && !detailError && selectedSummary.length > 0 ? (
-                  <div className="support-detail-grid">
-                    {selectedSummary.map((item) => (
-                      <article className="support-detail-item" key={item.label}>
-                        <span>{item.label}</span>
-                        <strong>{item.value}</strong>
-                      </article>
-                    ))}
-                    <article className="support-detail-item support-detail-item--wide">
-                      <span>notes / finance decision readiness</span>
-                      <strong>
-                        در مرحله بعدی، notes، history، status change و finance decision به همین فضای detail اضافه می‌شوند.
-                      </strong>
-                    </article>
-                  </div>
-                ) : null}
-              </SectionCard>
-
-              <SectionCard
-                eyebrow="Follow-up feed"
-                title="فید پیگیری‌های عملیاتی"
-                description="event feed این بخش باید برای escalationها، waiting states و follow-upهای پشتیبانی مرجع اصلی اپراتور باشد."
-                actions={<Pill tone="warning">timeline next</Pill>}
-              >
-                <ActivityFeed items={feed} />
-              </SectionCard>
+          <div className="support-table-card">
+            <DataTable columns={ticketColumns} rows={ticketRows} />
+            <div className="support-selection-list">
+              {filteredTickets.slice(0, 8).map((item) => {
+                const ticketId = readText(item, ['id'], '')
+                return (
+                  <button
+                    className={`support-selection-item${selectedTicketId === ticketId ? ' is-active' : ''}`}
+                    key={ticketId}
+                    onClick={() => setSelectedTicketId(ticketId)}
+                    type="button"
+                  >
+                    <strong>تیکت #{ticketId}</strong>
+                    <span>سفارش #{getTicketOrder(item)}</span>
+                    <small>
+                      {getTicketStatus(item)} / {getTicketReason(item)}
+                    </small>
+                  </button>
+                )
+              })}
             </div>
           </div>
+        </SectionCard>
+
+        <SectionCard
+          eyebrow="selected ticket"
+          title={selectedTicketId ? `جزئیات تیکت #${selectedTicketId}` : 'هیچ تیکتی انتخاب نشده'}
+          description="این صفحه list-first باقی می‌ماند و actionهای واقعی تیکت در workspace جدا انجام می‌شوند."
+          actions={
+            selectedTicket ? (
+              <button className="support-open-workspace" onClick={() => onOpenSupportWorkspace(selectedTicket)} type="button">
+                ورود به workspace پشتیبانی
+              </button>
+            ) : (
+              <Pill tone="neutral">بدون انتخاب</Pill>
+            )
+          }
+        >
+          {detailLoading ? <div className="fm-message">در حال بارگذاری جزئیات تیکت...</div> : null}
+          {detailError ? <div className="fm-message fm-message--danger">{detailError}</div> : null}
+          {!detailLoading && !detailError && selectedSummary.length > 0 ? (
+            <div className="support-detail-grid">
+              {selectedSummary.map((item) => (
+                <article className="support-detail-item" key={item.label}>
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                </article>
+              ))}
+            </div>
+          ) : null}
+        </SectionCard>
+
+        <SectionCard
+          eyebrow="follow-up feed"
+          title="فید پیگیری‌های عملیاتی"
+          description="event feed این بخش باید برای escalationها، waiting states و follow-upهای پشتیبانی مرجع اصلی اپراتور باشد."
+          actions={<Pill tone="warning">timeline</Pill>}
+        >
+          <ActivityFeed items={feed} />
         </SectionCard>
       </LoadableState>
     </div>

@@ -309,14 +309,7 @@
   border-color: var(--fm-brand-primary);
 }
 
-.support-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
-  gap: 18px;
-}
-
-.support-table-card,
-.support-detail-column {
+.support-table-card {
   display: grid;
   gap: 16px;
 }
@@ -375,13 +368,92 @@
   line-height: 1.8;
 }
 
-.support-detail-item--wide {
-  grid-column: 1 / -1;
+.support-open-workspace {
+  min-height: 38px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(31, 106, 82, 0.22);
+  background: rgba(31, 106, 82, 0.1);
+  color: var(--fm-brand-primary);
+  font-weight: 700;
+}
+
+.support-workspace-topbar,
+.support-workspace-lanes,
+.support-brief-grid,
+.support-workspace-form-grid,
+.support-audit-list {
+  display: grid;
+  gap: 16px;
+}
+
+.support-workspace-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.support-workspace-lanes,
+.support-brief-grid,
+.support-workspace-form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.support-workspace-lane-card,
+.support-brief-item,
+.support-audit-item,
+.support-workspace-toggle {
+  border: 1px solid var(--fm-border-soft);
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(255, 253, 248, 0.86);
+}
+
+.support-workspace-lane-card {
+  text-align: right;
+}
+
+.support-workspace-lane-card.is-active {
+  border-color: rgba(31, 106, 82, 0.34);
+  box-shadow: 0 0 0 4px rgba(31, 106, 82, 0.08);
+}
+
+.support-brief-item span,
+.support-audit-item span,
+.support-workspace-lane-card small,
+.support-brief-item small {
+  display: block;
+  margin-top: 8px;
+  color: var(--fm-text-secondary);
+  line-height: 1.8;
+}
+
+.support-brief-item strong,
+.support-audit-item strong,
+.support-workspace-lane-card strong {
+  color: var(--fm-text-primary);
+}
+
+.support-workspace-lane-card p {
+  margin: 10px 0 0;
+  color: var(--fm-text-secondary);
+  line-height: 1.9;
+}
+
+.support-workspace-toggle {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  width: fit-content;
 }
 
 @media (max-width: 980px) {
-  .support-layout,
-  .support-detail-grid {
+  .support-detail-grid,
+  .support-workspace-lanes,
+  .support-brief-grid,
+  .support-workspace-form-grid {
     grid-template-columns: 1fr;
   }
 }

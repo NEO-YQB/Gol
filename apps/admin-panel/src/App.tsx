@@ -15,6 +15,7 @@ import { LoginPage } from './pages/LoginPage'
 import { OrdersPage } from './pages/OrdersPage'
 import { SettlementsPage } from './pages/SettlementsPage'
 import { SupportPage } from './pages/SupportPage'
+import { SupportWorkspacePage } from './pages/SupportWorkspacePage'
 import { VendorsPage } from './pages/VendorsPage'
 import { VendorWorkspacePage } from './pages/VendorWorkspacePage'
 
@@ -62,6 +63,12 @@ function getPageMeta(route: AdminRoute) {
         title: 'تیکت‌ها و پیگیری‌های پشتیبانی',
         description: 'این route برای فهرست، note، تصمیم مالی و timeline پشتیبانی طراحی شده و به endpointهای فعال backend تکیه دارد.',
       }
+    case 'supportWorkspace':
+      return {
+        eyebrow: 'workspace پشتیبانی',
+        title: 'رسیدگی متمرکز به تیکت و تصمیم‌های عملیاتی',
+        description: 'تغییر وضعیت، noteهای داخلی و تصمیم مالی باید در یک route متمرکز و قابل‌ردیابی انجام شوند.',
+      }
     case 'vendors':
       return {
         eyebrow: 'کارتابل فروشنده‌ها',
@@ -100,6 +107,9 @@ function renderRoute(
   route: AdminRoute,
   session: AuthSession,
   options: {
+    supportWorkspaceTicket: Record<string, unknown> | null
+    onOpenSupportWorkspace: (ticket: Record<string, unknown>) => void
+    onBackToSupport: () => void
     vendorWorkspaceStore: Record<string, unknown> | null
     onOpenVendorWorkspace: (store: Record<string, unknown>) => void
     onBackToVendors: () => void
@@ -111,7 +121,15 @@ function renderRoute(
     case 'settlements':
       return <SettlementsPage session={session} />
     case 'support':
-      return <SupportPage session={session} />
+      return <SupportPage onOpenSupportWorkspace={options.onOpenSupportWorkspace} session={session} />
+    case 'supportWorkspace':
+      return (
+        <SupportWorkspacePage
+          onBack={options.onBackToSupport}
+          session={session}
+          ticket={options.supportWorkspaceTicket}
+        />
+      )
     case 'vendors':
       return <VendorsPage onOpenVendorWorkspace={options.onOpenVendorWorkspace} session={session} />
     case 'vendorWorkspace':
@@ -135,6 +153,7 @@ function renderRoute(
 export default function App() {
   const [session, setSession] = useState<AuthSession | null>(null)
   const [route, setRoute] = useState<AdminRoute>(defaultRoute)
+  const [supportWorkspaceTicket, setSupportWorkspaceTicket] = useState<Record<string, unknown> | null>(null)
   const [vendorWorkspaceStore, setVendorWorkspaceStore] = useState<Record<string, unknown> | null>(null)
   const [phoneNumber, setPhoneNumber] = useState('')
   const [code, setCode] = useState('')
@@ -254,6 +273,15 @@ export default function App() {
     setRoute('vendorWorkspace')
   }
 
+  function handleOpenSupportWorkspace(ticket: Record<string, unknown>) {
+    setSupportWorkspaceTicket(ticket)
+    setRoute('supportWorkspace')
+  }
+
+  function handleBackToSupport() {
+    setRoute('support')
+  }
+
   function handleBackToVendors() {
     setRoute('vendors')
   }
@@ -303,6 +331,9 @@ export default function App() {
         </button>
       </div>
       {renderRoute(route, session, {
+        supportWorkspaceTicket,
+        onOpenSupportWorkspace: handleOpenSupportWorkspace,
+        onBackToSupport: handleBackToSupport,
         vendorWorkspaceStore,
         onOpenVendorWorkspace: handleOpenVendorWorkspace,
         onBackToVendors: handleBackToVendors,

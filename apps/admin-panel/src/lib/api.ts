@@ -105,6 +105,50 @@ export const adminApi = {
   getSupportTicketDetail(session: AuthSession, ticketId: string) {
     return request<unknown>(`/support/tickets/${ticketId}`, {}, session.accessToken)
   },
+  addSupportTicketNote(
+    session: AuthSession,
+    ticketId: string,
+    body: {
+      message: string
+      isInternal?: boolean
+    },
+  ) {
+    return request<unknown>(`/support/tickets/${ticketId}/notes`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  updateSupportTicketStatus(
+    session: AuthSession,
+    ticketId: string,
+    body: {
+      status: string
+      note?: string
+      internalNote?: string
+    },
+  ) {
+    return request<unknown>(`/support/admin/tickets/${ticketId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  applySupportFinanceDecision(
+    session: AuthSession,
+    ticketId: string,
+    body: {
+      outcome: string
+      amount?: number
+      extendHoldDays?: number
+      note?: string
+      refundReason?: string
+      refundNote?: string
+    },
+  ) {
+    return request<unknown>(`/support/admin/tickets/${ticketId}/finance-decision`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
   getSupportFollowUps(session: AuthSession) {
     return request<unknown[]>('/admin/operations/support/follow-ups', {}, session.accessToken)
   },
