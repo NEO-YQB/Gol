@@ -69,6 +69,19 @@ function getMetric(record: VendorRecord, key: string) {
   return toObject(record.periodMetrics)[key]
 }
 
+function toDisplayValue(value: unknown): string | number | null | undefined {
+  if (
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    value === null ||
+    value === undefined
+  ) {
+    return value
+  }
+
+  return undefined
+}
+
 function getFinanceNumber(summary: VendorRecord, keys: string[]) {
   let current: unknown = summary
 
@@ -169,7 +182,9 @@ export function VendorsPage({ session }: { session: AuthSession }) {
   }, [page, session, statusFilter])
 
   useEffect(() => {
-    if (!selectedStoreId) {
+    const storeId = selectedStoreId
+
+    if (!storeId) {
       setSelectedStoreDetail(null)
       setTimelineError(null)
       return
@@ -182,7 +197,7 @@ export function VendorsPage({ session }: { session: AuthSession }) {
       setTimelineError(null)
 
       try {
-        const payload = await adminApi.getVendorPolicyTimeline(session, selectedStoreId)
+        const payload = await adminApi.getVendorPolicyTimeline(session, storeId)
         if (!active) return
         setSelectedStoreDetail(toObject(payload))
       } catch (loadError) {
@@ -207,7 +222,7 @@ export function VendorsPage({ session }: { session: AuthSession }) {
         status: getStatusLabel(readText(item, ['vendorHealthStatus'], 'UNKNOWN')),
         score: formatPersianNumber(readText(item, ['vendorHealthScore'], '—')),
         rating: formatPersianNumber(readText(item, ['customerRatingAverage'], '—')),
-        tickets: formatPersianNumber(getMetric(item, 'ticketCount')),
+        tickets: formatPersianNumber(toDisplayValue(getMetric(item, 'ticketCount'))),
       })),
     [riskSummary],
   )
@@ -238,7 +253,7 @@ export function VendorsPage({ session }: { session: AuthSession }) {
         title: readText(item, ['summary', 'aggregateType'], 'policy event'),
         meta: formatJalaliDate(item.createdAt),
         description: readText(item, ['aggregateType'], 'جزئیات policy event'),
-        tone: index % 2 === 0 ? 'warning' : 'success',
+        tone: index % 2 === 0 ? ('warning' as const) : ('success' as const),
       })),
     [timeline],
   )
@@ -315,10 +330,10 @@ export function VendorsPage({ session }: { session: AuthSession }) {
         { label: 'امتیاز مشتری', value: formatPersianNumber(readText(selectedSummaryRecord, ['customerRatingAverage'], '—')) },
         { label: 'تعداد امتیاز', value: formatPersianNumber(readText(selectedSummaryRecord, ['customerRatingCount'], '—')) },
         { label: 'آخرین محاسبه', value: formatJalaliDate(selectedSummaryRecord.vendorHealthCalculatedAt) },
-        { label: 'تیکت‌های بازه', value: formatPersianNumber(getMetric(selectedSummaryRecord, 'ticketCount')) },
-        { label: 'ارجاع مالی', value: formatPersianNumber(getMetric(selectedSummaryRecord, 'escalatedCount')) },
-        { label: 'refund', value: formatPersianNumber(getMetric(selectedSummaryRecord, 'refundCount')) },
-        { label: 'reversal', value: formatPersianNumber(getMetric(selectedSummaryRecord, 'reversalCount')) },
+        { label: 'تیکت‌های بازه', value: formatPersianNumber(toDisplayValue(getMetric(selectedSummaryRecord, 'ticketCount'))) },
+        { label: 'ارجاع مالی', value: formatPersianNumber(toDisplayValue(getMetric(selectedSummaryRecord, 'escalatedCount'))) },
+        { label: 'refund', value: formatPersianNumber(toDisplayValue(getMetric(selectedSummaryRecord, 'refundCount'))) },
+        { label: 'reversal', value: formatPersianNumber(toDisplayValue(getMetric(selectedSummaryRecord, 'reversalCount'))) },
       ]
     : []
 
@@ -401,7 +416,7 @@ export function VendorsPage({ session }: { session: AuthSession }) {
                     >
                       <strong>{readText(item, ['storeName'], '—')}</strong>
                       <span>{`${getStatusLabel(status)} / score ${formatPersianNumber(readText(item, ['vendorHealthScore'], '—'))}`}</span>
-                      <small>{`${formatPersianNumber(getMetric(item, 'ticketCount'))} تیکت / ${formatPersianNumber(getMetric(item, 'escalatedCount'))} ارجاع مالی`}</small>
+                      <small>{`${formatPersianNumber(toDisplayValue(getMetric(item, 'ticketCount')))} تیکت / ${formatPersianNumber(toDisplayValue(getMetric(item, 'escalatedCount')))} ارجاع مالی`}</small>
                     </button>
                   )
                 })}
