@@ -123,6 +123,7 @@ export function VendorsPage({ session }: { session: AuthSession }) {
   const [selectedStoreDetail, setSelectedStoreDetail] = useState<VendorRecord | null>(null)
 
   useEffect(() => {
+    const activeStoreId = storeId
     let active = true
 
     async function load() {
@@ -197,7 +198,7 @@ export function VendorsPage({ session }: { session: AuthSession }) {
       setTimelineError(null)
 
       try {
-        const payload = await adminApi.getVendorPolicyTimeline(session, storeId)
+        const payload = await adminApi.getVendorPolicyTimeline(session, activeStoreId)
         if (!active) return
         setSelectedStoreDetail(toObject(payload))
       } catch (loadError) {
