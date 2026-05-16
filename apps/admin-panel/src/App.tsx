@@ -15,6 +15,7 @@ import { LoginPage } from './pages/LoginPage'
 import { OrdersPage } from './pages/OrdersPage'
 import { SettlementsPage } from './pages/SettlementsPage'
 import { SupportPage } from './pages/SupportPage'
+import { VendorsPage } from './pages/VendorsPage'
 
 const defaultRoute: AdminRoute = 'dashboard'
 
@@ -27,6 +28,7 @@ function buildNav(currentRoute: AdminRoute): NavSection[] {
         { key: 'orders', label: 'سفارش‌ها', hint: 'صف سفارش‌ها و استثناهای عملیاتی', active: currentRoute === 'orders' },
         { key: 'settlements', label: 'تسویه و مالی', hint: 'کیف پول‌ها، گزارش‌ها و استثناهای تسویه', active: currentRoute === 'settlements' },
         { key: 'support', label: 'پشتیبانی', hint: 'تیکت‌ها و پیگیری‌های بعدی', active: currentRoute === 'support' },
+        { key: 'vendors', label: 'فروشنده‌ها و ریسک', hint: 'ریسک، policy timeline و finance reports', active: currentRoute === 'vendors' },
       ],
     },
     {
@@ -59,6 +61,12 @@ function getPageMeta(route: AdminRoute) {
         title: 'تیکت‌ها و پیگیری‌های پشتیبانی',
         description: 'این route برای فهرست، note، تصمیم مالی و timeline پشتیبانی طراحی شده و به endpointهای فعال backend تکیه دارد.',
       }
+    case 'vendors':
+      return {
+        eyebrow: 'کارتابل فروشنده‌ها',
+        title: 'فروشنده‌ها، ریسک و گزارش‌های مالی',
+        description: 'این route فروشنده‌های اولویت‌دار، policy timeline و خلاصه گزارش‌های مالی را برای تصمیم‌گیری سریع ادمین کنار هم قرار می‌دهد.',
+      }
     case 'content':
       return {
         eyebrow: 'کارتابل محتوا',
@@ -89,6 +97,8 @@ function renderRoute(route: AdminRoute, session: AuthSession) {
       return <SettlementsPage session={session} />
     case 'support':
       return <SupportPage session={session} />
+    case 'vendors':
+      return <VendorsPage session={session} />
     case 'content':
       return <ContentPage session={session} />
     case 'alerts':

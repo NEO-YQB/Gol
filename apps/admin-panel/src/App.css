@@ -386,6 +386,130 @@
   }
 }
 
+.vendors-toolbar {
+  display: grid;
+  gap: 16px;
+}
+
+.vendors-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.vendors-filter-chip,
+.vendors-page-button {
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--fm-border-soft);
+  background: rgba(255, 253, 248, 0.82);
+  color: var(--fm-text-secondary);
+}
+
+.vendors-filter-chip.is-active {
+  background: var(--fm-brand-primary);
+  color: var(--fm-text-inverse);
+  border-color: var(--fm-brand-primary);
+}
+
+.vendors-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--fm-text-secondary);
+}
+
+.vendors-page-button:disabled {
+  opacity: 0.45;
+}
+
+.vendors-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(340px, 0.95fr);
+  gap: 18px;
+}
+
+.vendors-table-card,
+.vendors-detail-column,
+.vendors-policy-stack {
+  display: grid;
+  gap: 16px;
+}
+
+.vendors-selection-list {
+  display: grid;
+  gap: 10px;
+}
+
+.vendors-selection-item {
+  border: 1px solid var(--fm-border-soft);
+  background: rgba(255, 253, 248, 0.86);
+  border-radius: 18px;
+  padding: 14px 16px;
+  text-align: right;
+  display: grid;
+  gap: 4px;
+}
+
+.vendors-selection-item strong {
+  color: var(--fm-text-primary);
+}
+
+.vendors-selection-item span,
+.vendors-selection-item small {
+  color: var(--fm-text-secondary);
+}
+
+.vendors-selection-item.is-active {
+  border-color: rgba(31, 106, 82, 0.28);
+  box-shadow: 0 0 0 4px rgba(31, 106, 82, 0.08);
+}
+
+.vendors-finance-grid,
+.vendors-policy-grid,
+.vendors-detail-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.vendors-finance-item,
+.vendors-policy-item,
+.vendors-detail-item {
+  border: 1px solid var(--fm-border-soft);
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(255, 253, 248, 0.86);
+  display: grid;
+  gap: 8px;
+}
+
+.vendors-finance-item span,
+.vendors-policy-item span,
+.vendors-detail-item span {
+  color: var(--fm-text-secondary);
+  font-size: 0.88rem;
+}
+
+.vendors-finance-item strong,
+.vendors-policy-item strong,
+.vendors-detail-item strong {
+  color: var(--fm-text-primary);
+  line-height: 1.8;
+}
+
+@media (max-width: 980px) {
+  .vendors-layout,
+  .vendors-finance-grid,
+  .vendors-policy-grid,
+  .vendors-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .content-toolbar {
   display: grid;
   gap: 16px;

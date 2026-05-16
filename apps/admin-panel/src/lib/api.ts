@@ -108,6 +108,9 @@ export const adminApi = {
   getSupportFollowUps(session: AuthSession) {
     return request<unknown[]>('/admin/operations/support/follow-ups', {}, session.accessToken)
   },
+  getVendorPolicyTimeline(session: AuthSession, storeId: string) {
+    return request<unknown>(`/admin/operations/vendors/${storeId}/policy-timeline`, {}, session.accessToken)
+  },
   getAlerts(session: AuthSession) {
     return request<unknown[]>('/admin/operations/alerts', {}, session.accessToken)
   },
@@ -120,8 +123,26 @@ export const adminApi = {
   getRefundSummary(session: AuthSession) {
     return request<unknown>('/admin-reports/finance/refunds-summary', {}, session.accessToken)
   },
-  getVendorRiskSummary(session: AuthSession) {
-    return request<unknown>('/admin-reports/vendors/risk-summary', {}, session.accessToken)
+  getVendorRiskSummary(
+    session: AuthSession,
+    query?: {
+      page?: number
+      limit?: number
+      status?: string
+    },
+  ) {
+    const params = new URLSearchParams()
+
+    if (query?.page) params.set('page', String(query.page))
+    if (query?.limit) params.set('limit', String(query.limit))
+    if (query?.status) params.set('status', query.status)
+
+    const search = params.toString()
+    return request<unknown>(
+      `/admin-reports/vendors/risk-summary${search ? `?${search}` : ''}`,
+      {},
+      session.accessToken,
+    )
   },
   getArticles(session: AuthSession) {
     return request<unknown>('/content/articles', {}, session.accessToken)
