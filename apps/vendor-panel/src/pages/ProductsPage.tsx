@@ -848,33 +848,33 @@ export function ProductsPage({ session }: { session: AuthSession }) {
                     </div>
                   </article>
                 </div>
-              </section>
 
-              <aside className="vendor-product-editor-sidebar">
-                <article className="vendor-product-editor-sidecard">
-                  <strong>خلاصه سریع</strong>
-                  <div className="vendor-product-editor-sidegrid">
-                    <span>وضعیت</span>
-                    <strong>{form.quantity.trim() ? (Number(form.quantity) <= 0 ? 'ناموجود' : Number(form.quantity) <= 5 ? 'کم‌موجودی' : 'عادی') : 'نامشخص'}</strong>
-                    <span>گالری</span>
-                    <strong>{formatFaNumber(galleryImages.length)}</strong>
-                    <span>دسته</span>
-                    <strong>{categoryOptions.find((item) => item.id === form.categoryId)?.label || '—'}</strong>
-                    <span>نوع</span>
-                    <strong>{productTypeOptions.find((item) => item.id === form.productTypeId)?.label || '—'}</strong>
-                  </div>
-                </article>
+                <div className="vendor-product-editor-footer">
+                  <article className="vendor-product-editor-sidecard">
+                    <strong>خلاصه سریع</strong>
+                    <div className="vendor-product-editor-sidegrid">
+                      <span>وضعیت</span>
+                      <strong>{form.quantity.trim() ? (Number(form.quantity) <= 0 ? 'ناموجود' : Number(form.quantity) <= 5 ? 'کم‌موجودی' : 'عادی') : 'نامشخص'}</strong>
+                      <span>گالری</span>
+                      <strong>{formatFaNumber(galleryImages.length)}</strong>
+                      <span>دسته</span>
+                      <strong>{categoryOptions.find((item) => item.id === form.categoryId)?.label || '—'}</strong>
+                      <span>نوع</span>
+                      <strong>{productTypeOptions.find((item) => item.id === form.productTypeId)?.label || '—'}</strong>
+                    </div>
+                  </article>
 
-                <article className="vendor-product-editor-sidecard">
-                  <strong>راهنمای نظم صفحه</strong>
-                  <p>
-                    لیست و ویرایش از هم جدا شده‌اند تا بعداً همین الگو برای مقالات، دسته‌بندی‌ها، تگ‌ها و typeها هم بدون شلوغی تکرار شود.
-                  </p>
-                </article>
+                  <article className="vendor-product-editor-sidecard">
+                    <strong>راهنمای نظم صفحه</strong>
+                    <p>
+                      لیست و ویرایش از هم جدا شده‌اند تا بعداً همین الگو برای مقالات، دسته‌بندی‌ها، تگ‌ها و typeها هم بدون شلوغی تکرار شود.
+                    </p>
+                  </article>
+                </div>
 
                 {formMessage ? <div className="fm-message fm-message--success">{formMessage}</div> : null}
                 {formError ? <div className="fm-message fm-message--danger">{formError}</div> : null}
-              </aside>
+              </section>
             </div>
           </SectionCard>
         ) : null}

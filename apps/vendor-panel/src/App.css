@@ -428,12 +428,10 @@
 
 .vendor-product-editor-shell {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.8fr);
   gap: 18px;
 }
 
-.vendor-product-editor-main,
-.vendor-product-editor-sidebar {
+.vendor-product-editor-main {
   display: grid;
   gap: 16px;
 }
@@ -441,6 +439,7 @@
 .vendor-product-editor-grid {
   display: grid;
   gap: 16px;
+  align-items: start;
 }
 
 .vendor-product-editor-panel,
@@ -451,6 +450,7 @@
   padding: 18px;
   display: grid;
   gap: 16px;
+  align-content: start;
 }
 
 .vendor-product-editor-panel-head {
@@ -482,6 +482,13 @@
 .vendor-product-editor-stack {
   display: grid;
   gap: 18px;
+}
+
+.vendor-product-editor-footer {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
 }
 
 .vendor-product-editor-sidegrid {
@@ -958,8 +965,8 @@
 @media (max-width: 920px) {
   .vendor-products-workspace-grid,
   .vendor-products-summary-grid,
-  .vendor-product-editor-shell,
   .vendor-product-editor-fields,
+  .vendor-product-editor-footer,
   .vendor-discounts-layout,
   .vendor-discounts-detail-grid,
   .vendor-discounts-form-grid,
