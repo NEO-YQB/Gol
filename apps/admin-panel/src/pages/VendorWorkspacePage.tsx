@@ -326,7 +326,7 @@ export function VendorWorkspacePage({
           eyebrow={activeLaneSummary.eyebrow}
           title={activeLaneSummary.title}
           description={activeLaneSummary.description}
-          actions={<Pill tone="secondary">{activeLaneSummary.statusLabel}</Pill>}
+          actions={<Pill tone="neutral">{activeLaneSummary.statusLabel}</Pill>}
         >
           <div className="vendors-workspace-action-grid">
             {activeLaneSummary.bullets.map((item) => (
