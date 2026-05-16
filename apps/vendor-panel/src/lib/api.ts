@@ -40,6 +40,23 @@ export type VendorDiscountPayload = {
   metadata?: Record<string, unknown>
 }
 
+export type VendorProductPayload = {
+  name: string
+  description?: string
+  shortDescription?: string
+  price: number
+  discountPrice?: number
+  quantity: number
+  mainImage: string
+  images?: string[]
+  videoUrl?: string
+  categoryId: number
+  storeId: number
+  productTypeId: number
+  metaTitle?: string
+  metaDescription?: string
+}
+
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ??
   import.meta.env.VITE_API_URL ??
@@ -114,6 +131,29 @@ export const vendorApi = {
     }
 
     return request<unknown>(`/products?${params.toString()}`, {}, session.accessToken)
+  },
+  getCategories() {
+    return request<unknown>('/categories')
+  },
+  getProductTypes() {
+    return request<unknown>('/product-types')
+  },
+  createProduct(session: AuthSession, payload: VendorProductPayload) {
+    return request<unknown>('/products', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }, session.accessToken)
+  },
+  updateProduct(session: AuthSession, productId: number, payload: Partial<VendorProductPayload>) {
+    return request<unknown>(`/products/${productId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }, session.accessToken)
+  },
+  deleteProduct(session: AuthSession, productId: number) {
+    return request<unknown>(`/products/${productId}`, {
+      method: 'DELETE',
+    }, session.accessToken)
   },
   getVendorDiscounts(
     session: AuthSession,

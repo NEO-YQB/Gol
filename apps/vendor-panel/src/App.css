@@ -360,6 +360,27 @@
   grid-column: 1 / -1;
 }
 
+.vendor-products-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.vendor-products-form-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.vendor-products-field--wide {
+  grid-column: 1 / -1;
+}
+
+.vendor-products-submit-row {
+  display: grid;
+  gap: 12px;
+}
+
 .vendor-discounts-filters {
   display: flex;
   flex-wrap: wrap;
