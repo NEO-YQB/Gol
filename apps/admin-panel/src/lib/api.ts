@@ -111,11 +111,67 @@ export const adminApi = {
   getVendorPolicyTimeline(session: AuthSession, storeId: string) {
     return request<unknown>(`/admin/operations/vendors/${storeId}/policy-timeline`, {}, session.accessToken)
   },
+  getVendorHealthDetail(session: AuthSession, storeId: string) {
+    return request<unknown>(`/stores/admin/${storeId}/vendor-health`, {}, session.accessToken)
+  },
+  recalculateVendorHealth(session: AuthSession, storeId: string) {
+    return request<unknown>(`/stores/admin/${storeId}/vendor-health/recalculate`, {
+      method: 'POST',
+    }, session.accessToken)
+  },
+  updateVendorRiskPolicy(
+    session: AuthSession,
+    storeId: string,
+    body: {
+      autoSettlementHoldEnabled?: boolean
+      settlementHoldDaysOverride?: number
+      manualReviewRequired?: boolean
+      blockNewDiscounts?: boolean
+      note?: string
+      metadata?: Record<string, unknown>
+    },
+  ) {
+    return request<unknown>(`/stores/admin/${storeId}/risk-policy`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
   getAlerts(session: AuthSession) {
     return request<unknown[]>('/admin/operations/alerts', {}, session.accessToken)
   },
   getWallets(session: AuthSession) {
     return request<unknown[]>('/finance/admin/wallets', {}, session.accessToken)
+  },
+  getWalletByStore(session: AuthSession, storeId: string) {
+    return request<unknown>(`/finance/admin/wallets/store/${storeId}`, {}, session.accessToken)
+  },
+  adjustWallet(
+    session: AuthSession,
+    storeId: string,
+    body: {
+      direction: string
+      type?: string
+      amount: number
+      title: string
+      description?: string
+      batchKey?: string
+      metadata?: Record<string, unknown>
+    },
+  ) {
+    return request<unknown>(`/finance/admin/wallets/store/${storeId}/adjustments`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  releaseOrderSettlement(session: AuthSession, orderId: string) {
+    return request<unknown>(`/finance/admin/orders/${orderId}/release-settlement`, {
+      method: 'POST',
+    }, session.accessToken)
+  },
+  releaseDueSettlements(session: AuthSession) {
+    return request<unknown>('/finance/admin/settlements/release-due', {
+      method: 'POST',
+    }, session.accessToken)
   },
   getFinanceSummary(session: AuthSession) {
     return request<unknown>('/admin-reports/finance/wallets-settlements-summary', {}, session.accessToken)

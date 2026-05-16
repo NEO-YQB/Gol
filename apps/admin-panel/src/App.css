@@ -615,11 +615,59 @@
   line-height: 1.8;
 }
 
+.vendors-workspace-form-grid,
+.vendors-workspace-wallet-grid,
+.vendors-workspace-wallet-summary,
+.vendors-transaction-list {
+  display: grid;
+  gap: 16px;
+}
+
+.vendors-workspace-wallet-grid {
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+}
+
+.vendors-workspace-toggle-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.vendors-workspace-toggle {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid var(--fm-border-soft);
+  border-radius: 16px;
+  background: rgba(255, 253, 248, 0.86);
+  color: var(--fm-text-primary);
+}
+
+.vendors-transaction-item {
+  border: 1px solid var(--fm-border-soft);
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(255, 253, 248, 0.86);
+  display: grid;
+  gap: 6px;
+}
+
+.vendors-transaction-item strong {
+  color: var(--fm-text-primary);
+}
+
+.vendors-transaction-item span,
+.vendors-transaction-item small {
+  color: var(--fm-text-secondary);
+}
+
 @media (max-width: 980px) {
   .vendors-finance-grid,
   .vendors-brief-grid,
   .vendors-policy-grid,
   .vendors-detail-grid,
+  .vendors-workspace-wallet-grid,
   .vendors-workspace-lanes,
   .vendors-workspace-action-grid,
   .vendors-workspace-checklist,
