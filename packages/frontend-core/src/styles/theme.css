@@ -1002,7 +1002,8 @@ button {
   .fm-shell,
   .fm-two-column,
   .fm-three-column,
-  .fm-spotlight {
+  .fm-spotlight,
+  .fm-rich-editor-layout {
     grid-template-columns: 1fr;
   }
 

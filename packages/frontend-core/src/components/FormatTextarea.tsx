@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type ClipboardEvent } from 'react'
+import { EditorContent, useEditor } from '@tiptap/react'
+import StarterKit from '@tiptap/starter-kit'
+import Link from '@tiptap/extension-link'
+import Image from '@tiptap/extension-image'
+import Placeholder from '@tiptap/extension-placeholder'
+import TextAlign from '@tiptap/extension-text-align'
+import Underline from '@tiptap/extension-underline'
+import { useEffect, useMemo, useState } from 'react'
 import { cx } from '../cx'
 
 type RichTextEditorProps = {
@@ -26,10 +33,6 @@ function stripHtml(html: string) {
   return temp.textContent || temp.innerText || ''
 }
 
-function normalizeHtml(html: string) {
-  return html.trim() === '<p><br></p>' ? '' : html.trim()
-}
-
 function buildSeoInsights(html: string): SeoInsight[] {
   if (typeof DOMParser === 'undefined') {
     return []
@@ -40,53 +43,25 @@ function buildSeoInsights(html: string): SeoInsight[] {
     .replace(/\s+/g, ' ')
     .trim()
   const words = text ? text.split(' ').filter(Boolean).length : 0
-  const headings2 = doc.querySelectorAll('h2').length
-  const headings3 = doc.querySelectorAll('h3').length
-  const headings1 = doc.querySelectorAll('h1').length
+  const h2 = doc.querySelectorAll('h2').length
+  const h3 = doc.querySelectorAll('h3').length
+  const h1 = doc.querySelectorAll('h1').length
   const links = Array.from(doc.querySelectorAll('a[href]'))
   const internalLinks = links.filter((link) => {
     const href = link.getAttribute('href') || ''
-    return href.startsWith('/') || href.includes(window.location.hostname)
+    return href.startsWith('/') || href.includes('/blog/') || href.includes('/products/')
   }).length
   const images = Array.from(doc.querySelectorAll('img'))
   const imagesWithoutAlt = images.filter((image) => !image.getAttribute('alt')?.trim()).length
 
   return [
-    {
-      label: 'تعداد کلمات',
-      value: `${words}`,
-      tone: words >= 120 ? 'good' : words > 0 ? 'warn' : 'neutral',
-    },
-    {
-      label: 'هدینگ H2',
-      value: `${headings2}`,
-      tone: headings2 >= 1 ? 'good' : 'warn',
-    },
-    {
-      label: 'هدینگ H3',
-      value: `${headings3}`,
-      tone: headings3 >= 1 ? 'good' : 'neutral',
-    },
-    {
-      label: 'لینک داخلی',
-      value: `${internalLinks}`,
-      tone: internalLinks >= 1 ? 'good' : 'warn',
-    },
-    {
-      label: 'کل لینک‌ها',
-      value: `${links.length}`,
-      tone: links.length >= 1 ? 'good' : 'warn',
-    },
-    {
-      label: 'تصویر بدون alt',
-      value: `${imagesWithoutAlt}`,
-      tone: imagesWithoutAlt === 0 ? 'good' : 'warn',
-    },
-    {
-      label: 'H1 داخل متن',
-      value: `${headings1}`,
-      tone: headings1 === 0 ? 'good' : 'warn',
-    },
+    { label: 'تعداد کلمات', value: String(words), tone: words >= 120 ? 'good' : words > 0 ? 'warn' : 'neutral' },
+    { label: 'H2', value: String(h2), tone: h2 >= 1 ? 'good' : 'warn' },
+    { label: 'H3', value: String(h3), tone: h3 >= 1 ? 'good' : 'neutral' },
+    { label: 'لینک داخلی', value: String(internalLinks), tone: internalLinks >= 1 ? 'good' : 'warn' },
+    { label: 'کل لینک‌ها', value: String(links.length), tone: links.length >= 1 ? 'good' : 'warn' },
+    { label: 'تصویر بدون alt', value: String(imagesWithoutAlt), tone: imagesWithoutAlt === 0 ? 'good' : 'warn' },
+    { label: 'H1 داخل متن', value: String(h1), tone: h1 === 0 ? 'good' : 'warn' },
   ]
 }
 
@@ -102,7 +77,7 @@ function buildOutline(html: string) {
   }))
 }
 
-function buttonClass(isActive = false) {
+function toolbarButtonClass(isActive = false) {
   return cx('fm-rich-editor-chip', isActive && 'is-active')
 }
 
@@ -114,145 +89,162 @@ export function RichTextEditor({
   rows = 10,
   className,
 }: RichTextEditorProps) {
-  const editorRef = useRef<HTMLDivElement | null>(null)
   const [mode, setMode] = useState<'visual' | 'preview' | 'html'>('visual')
-  const [selectionVersion, setSelectionVersion] = useState(0)
 
-  const normalizedValue = value || ''
-  const seoInsights = useMemo(() => buildSeoInsights(normalizedValue), [normalizedValue])
-  const outline = useMemo(() => buildOutline(normalizedValue), [normalizedValue])
-  const plainText = useMemo(() => stripHtml(normalizedValue), [normalizedValue])
+  const editor = useEditor({
+    immediatelyRender: false,
+    extensions: [
+      StarterKit.configure({
+        heading: {
+          levels: [2, 3, 4],
+        },
+      }),
+      Link.configure({
+        openOnClick: false,
+        autolink: true,
+        protocols: ['http', 'https', 'mailto', 'tel'],
+      }),
+      Image,
+      Underline,
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+      }),
+      Placeholder.configure({
+        placeholder,
+      }),
+    ],
+    content: value || '',
+    editorProps: {
+      attributes: {
+        id: id ?? '',
+        class: 'fm-rich-editor-surface',
+      },
+    },
+    onUpdate: ({ editor: current }) => {
+      onChange(current.getHTML())
+    },
+  })
 
   useEffect(() => {
-    const element = editorRef.current
-    if (!element) return
+    if (!editor) return
 
-    if (element.innerHTML !== normalizedValue) {
-      element.innerHTML = normalizedValue
+    const currentHtml = editor.getHTML()
+    const nextHtml = value || ''
+    if (currentHtml !== nextHtml) {
+      editor.commands.setContent(nextHtml || '<p></p>', false)
     }
-  }, [normalizedValue, mode])
+  }, [editor, value])
 
-  function emitChange(nextValue: string) {
-    onChange(normalizeHtml(nextValue))
-    setSelectionVersion((current) => current + 1)
-  }
+  const seoInsights = useMemo(() => buildSeoInsights(value || ''), [value])
+  const outline = useMemo(() => buildOutline(value || ''), [value])
+  const plainText = useMemo(() => stripHtml(value || '').trim(), [value])
 
-  function focusEditor() {
-    editorRef.current?.focus()
-  }
+  function toggleLink() {
+    if (!editor) return
 
-  function runCommand(command: string, commandValue?: string) {
-    focusEditor()
-    document.execCommand(command, false, commandValue)
-    emitChange(editorRef.current?.innerHTML ?? '')
-  }
+    const previousUrl = editor.getAttributes('link').href as string | undefined
+    const url = window.prompt('آدرس لینک را وارد کن', previousUrl || 'https://')
 
-  function applyBlock(tag: 'P' | 'H2' | 'H3' | 'BLOCKQUOTE') {
-    focusEditor()
-    document.execCommand('formatBlock', false, tag)
-    emitChange(editorRef.current?.innerHTML ?? '')
-  }
+    if (url === null) return
+    if (url.trim() === '') {
+      editor.chain().focus().extendMarkRange('link').unsetLink().run()
+      return
+    }
 
-  function insertLink() {
-    focusEditor()
-    const url = window.prompt('آدرس لینک را وارد کن', 'https://')
-    if (!url) return
-    document.execCommand('createLink', false, url)
-    emitChange(editorRef.current?.innerHTML ?? '')
+    editor.chain().focus().extendMarkRange('link').setLink({ href: url.trim() }).run()
   }
 
   function insertImage() {
-    focusEditor()
+    if (!editor) return
+
     const src = window.prompt('آدرس تصویر را وارد کن')
     if (!src) return
-    const alt = window.prompt('متن alt تصویر را برای سئو وارد کن', 'توضیح تصویر') || 'تصویر'
-    document.execCommand('insertHTML', false, `<figure><img src="${src}" alt="${alt}" /><figcaption>${alt}</figcaption></figure>`)
-    emitChange(editorRef.current?.innerHTML ?? '')
+
+    const alt = window.prompt('متن alt را برای سئو وارد کن', 'توضیح تصویر') || 'توضیح تصویر'
+    editor.chain().focus().setImage({ src: src.trim(), alt: alt.trim() }).run()
   }
 
-  function handlePaste(event: ClipboardEvent<HTMLDivElement>) {
-    event.preventDefault()
-    const html = event.clipboardData.getData('text/html')
-    const text = event.clipboardData.getData('text/plain')
-
-    if (html) {
-      document.execCommand('insertHTML', false, html)
-    } else {
-      document.execCommand('insertText', false, text)
-    }
-
-    emitChange(editorRef.current?.innerHTML ?? '')
-  }
-
-  function isCommandActive(command: string) {
-    try {
-      return document.queryCommandState(command)
-    } catch {
-      return false
-    }
+  if (!editor) {
+    return <div className={cx('fm-rich-editor', className)} />
   }
 
   return (
-    <div className={cx('fm-rich-editor', className)} data-selection-version={selectionVersion}>
+    <div className={cx('fm-rich-editor', className)}>
       <div className="fm-rich-editor-toolbar">
         <div className="fm-rich-editor-actions">
-          <button className={buttonClass(mode === 'visual')} onClick={() => setMode('visual')} type="button">
+          <button className={toolbarButtonClass(mode === 'visual')} onClick={() => setMode('visual')} type="button">
             نگارش
           </button>
-          <button className={buttonClass(mode === 'preview')} onClick={() => setMode('preview')} type="button">
+          <button className={toolbarButtonClass(mode === 'preview')} onClick={() => setMode('preview')} type="button">
             پیش‌نمایش
           </button>
-          <button className={buttonClass(mode === 'html')} onClick={() => setMode('html')} type="button">
+          <button className={toolbarButtonClass(mode === 'html')} onClick={() => setMode('html')} type="button">
             HTML
           </button>
         </div>
 
         {mode === 'visual' ? (
           <div className="fm-rich-editor-actions">
-            <button className={buttonClass(isCommandActive('bold'))} onClick={() => runCommand('bold')} type="button">Bold</button>
-            <button className={buttonClass(isCommandActive('italic'))} onClick={() => runCommand('italic')} type="button">Italic</button>
-            <button className={buttonClass()} onClick={() => applyBlock('H2')} type="button">H2</button>
-            <button className={buttonClass()} onClick={() => applyBlock('H3')} type="button">H3</button>
-            <button className={buttonClass()} onClick={() => applyBlock('P')} type="button">P</button>
-            <button className={buttonClass()} onClick={() => applyBlock('BLOCKQUOTE')} type="button">Quote</button>
-            <button className={buttonClass()} onClick={() => runCommand('insertUnorderedList')} type="button">Bullet</button>
-            <button className={buttonClass()} onClick={() => runCommand('insertOrderedList')} type="button">Number</button>
-            <button className={buttonClass()} onClick={insertLink} type="button">Link</button>
-            <button className={buttonClass()} onClick={() => runCommand('unlink')} type="button">Unlink</button>
-            <button className={buttonClass()} onClick={insertImage} type="button">Image</button>
-            <button className={buttonClass()} onClick={() => runCommand('removeFormat')} type="button">Clear</button>
+            <button className={toolbarButtonClass(editor.isActive('bold'))} onClick={() => editor.chain().focus().toggleBold().run()} type="button">
+              Bold
+            </button>
+            <button className={toolbarButtonClass(editor.isActive('italic'))} onClick={() => editor.chain().focus().toggleItalic().run()} type="button">
+              Italic
+            </button>
+            <button className={toolbarButtonClass(editor.isActive('underline'))} onClick={() => editor.chain().focus().toggleUnderline().run()} type="button">
+              Underline
+            </button>
+            <button className={toolbarButtonClass(editor.isActive('heading', { level: 2 }))} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} type="button">
+              H2
+            </button>
+            <button className={toolbarButtonClass(editor.isActive('heading', { level: 3 }))} onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} type="button">
+              H3
+            </button>
+            <button className={toolbarButtonClass(editor.isActive('bulletList'))} onClick={() => editor.chain().focus().toggleBulletList().run()} type="button">
+              Bullet
+            </button>
+            <button className={toolbarButtonClass(editor.isActive('orderedList'))} onClick={() => editor.chain().focus().toggleOrderedList().run()} type="button">
+              Number
+            </button>
+            <button className={toolbarButtonClass(editor.isActive('blockquote'))} onClick={() => editor.chain().focus().toggleBlockquote().run()} type="button">
+              Quote
+            </button>
+            <button className={toolbarButtonClass(editor.isActive({ textAlign: 'right' }))} onClick={() => editor.chain().focus().setTextAlign('right').run()} type="button">
+              راست
+            </button>
+            <button className={toolbarButtonClass(editor.isActive({ textAlign: 'center' }))} onClick={() => editor.chain().focus().setTextAlign('center').run()} type="button">
+              وسط
+            </button>
+            <button className={toolbarButtonClass(editor.isActive('link'))} onClick={toggleLink} type="button">
+              Link
+            </button>
+            <button className={toolbarButtonClass()} onClick={() => editor.chain().focus().unsetLink().run()} type="button">
+              Unlink
+            </button>
+            <button className={toolbarButtonClass()} onClick={insertImage} type="button">
+              Image
+            </button>
+            <button className={toolbarButtonClass()} onClick={() => editor.chain().focus().setHorizontalRule().run()} type="button">
+              Divider
+            </button>
+            <button className={toolbarButtonClass()} onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()} type="button">
+              Clear
+            </button>
           </div>
         ) : null}
       </div>
 
       <div className="fm-rich-editor-layout">
         <div className="fm-rich-editor-stage">
-          {mode === 'visual' ? (
-            <div
-              aria-label={placeholder}
-              className="fm-rich-editor-surface"
-              contentEditable
-              data-placeholder={placeholder}
-              id={id}
-              onBlur={() => emitChange(editorRef.current?.innerHTML ?? '')}
-              onInput={() => emitChange(editorRef.current?.innerHTML ?? '')}
-              onPaste={handlePaste}
-              ref={editorRef}
-              suppressContentEditableWarning
-            />
-          ) : null}
-
-          {mode === 'preview' ? (
-            <article className="fm-rich-editor-preview" dangerouslySetInnerHTML={{ __html: normalizedValue || '<p>هنوز محتوایی ثبت نشده است.</p>' }} />
-          ) : null}
-
+          {mode === 'visual' ? <EditorContent editor={editor} /> : null}
+          {mode === 'preview' ? <article className="fm-rich-editor-preview" dangerouslySetInnerHTML={{ __html: value || '<p>هنوز محتوایی ثبت نشده است.</p>' }} /> : null}
           {mode === 'html' ? (
             <textarea
               className="fm-rich-editor-html"
               id={id}
-              onChange={(event) => emitChange(event.target.value)}
+              onChange={(event) => onChange(event.target.value)}
               rows={rows}
-              value={normalizedValue}
+              value={value}
             />
           ) : null}
         </div>
@@ -282,16 +274,14 @@ export function RichTextEditor({
                 ))}
               </div>
             ) : (
-              <p className="fm-rich-editor-note">هنوز heading معناداری داخل متن ساخته نشده است.</p>
+              <p className="fm-rich-editor-note">برای سئوی بهتر حداقل یک H2 و چند بخش معنادار بساز.</p>
             )}
           </section>
 
           <section className="fm-rich-editor-panel">
-            <strong>خلاصه محتوا</strong>
+            <strong>خلاصه متن</strong>
             <p className="fm-rich-editor-note">
-              {plainText.trim()
-                ? `${plainText.trim().slice(0, 220)}${plainText.trim().length > 220 ? '...' : ''}`
-                : 'هنوز متنی وارد نشده است.'}
+              {plainText ? `${plainText.slice(0, 240)}${plainText.length > 240 ? '...' : ''}` : 'هنوز محتوایی ثبت نشده است.'}
             </p>
           </section>
         </aside>

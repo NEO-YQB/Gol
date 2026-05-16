@@ -110,20 +110,23 @@ function flattenCategories(items: CategoryRecord[], depth = 0): ProductOption[] 
     const id = readText(item, ['id'], '')
     const name = readText(item, ['name', 'title'], 'دسته بدون نام')
     const prefix = depth > 0 ? `${'— '.repeat(depth)}` : ''
-    const children = Array.isArray(item.children) ? item.children.map((child) => (typeof child === 'object' && child !== null ? (child as CategoryRecord) : {})) : []
+    const children = Array.isArray(item.children)
+      ? item.children.map((child) => (typeof child === 'object' && child !== null ? (child as CategoryRecord) : {}))
+      : []
 
-    return [
-      { id, label: `${prefix}${name}` },
-      ...flattenCategories(children, depth + 1),
-    ]
+    return [{ id, label: `${prefix}${name}` }, ...flattenCategories(children, depth + 1)]
   })
 }
 
-function buildPayload(form: ProductFormState, storeId: number): VendorProductPayload {
-  const images = form.imagesText
+function getGalleryImages(value: string) {
+  return value
     .split('\n')
     .map((item) => item.trim())
     .filter(Boolean)
+}
+
+function buildPayload(form: ProductFormState, storeId: number): VendorProductPayload {
+  const galleryImages = getGalleryImages(form.imagesText)
 
   return {
     name: form.name.trim(),
@@ -133,7 +136,7 @@ function buildPayload(form: ProductFormState, storeId: number): VendorProductPay
     discountPrice: form.discountPrice.trim() ? Number(form.discountPrice) : undefined,
     quantity: Number(form.quantity),
     mainImage: form.mainImage.trim(),
-    images: images.length > 0 ? images : undefined,
+    images: galleryImages.length ? galleryImages : undefined,
     videoUrl: form.videoUrl.trim() || undefined,
     categoryId: Number(form.categoryId),
     storeId,
@@ -153,16 +156,10 @@ function getImagesText(record: ProductRecord) {
   return record.images.map((item) => String(item)).join('\n')
 }
 
-function getGalleryImages(value: string) {
-  return value
-    .split('\n')
-    .map((item) => item.trim())
-    .filter(Boolean)
-}
-
 export function ProductsPage({ session }: { session: AuthSession }) {
   const mainImageInputRef = useRef<HTMLInputElement | null>(null)
   const galleryInputRef = useRef<HTMLInputElement | null>(null)
+
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploadingMainImage, setUploadingMainImage] = useState(false)
@@ -177,8 +174,10 @@ export function ProductsPage({ session }: { session: AuthSession }) {
   const [inventoryFilter, setInventoryFilter] = useState('ALL')
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
   const [editingProductId, setEditingProductId] = useState<string | null>(null)
+  const [editorOpen, setEditorOpen] = useState(false)
   const [storeId, setStoreId] = useState<number>(0)
   const [form, setForm] = useState<ProductFormState>(initialFormState)
+
   const galleryImages = useMemo(() => getGalleryImages(form.imagesText), [form.imagesText])
 
   async function loadProductData(activeRef = { current: true }) {
@@ -278,21 +277,21 @@ export function ProductsPage({ session }: { session: AuthSession }) {
         label: 'کل محصولات',
         value: formatFaNumber(products.length),
         delta: `${formatFaNumber(filteredProducts.length)} در view فعلی`,
-        detail: 'صف اصلی محصولات فروشگاه',
+        detail: 'فهرست فعلی محصولات فروشگاه',
         tone: 'primary' as const,
       },
       {
         label: 'کم‌موجودی',
         value: formatFaNumber(products.filter((item) => getProductQuantity(item) > 0 && getProductQuantity(item) <= 5).length),
-        delta: 'نیازمند تامین',
-        detail: 'محصول‌هایی که به refill نزدیک شده‌اند',
+        delta: 'نیازمند تامین سریع',
+        detail: 'محصول‌هایی که refill می‌خواهند',
         tone: 'warning' as const,
       },
       {
         label: 'ناموجود',
         value: formatFaNumber(products.filter((item) => getProductQuantity(item) <= 0).length),
         delta: 'خارج از چرخه فروش',
-        detail: 'محصول‌هایی که فعلا موجودی ندارند',
+        detail: 'محصول‌هایی که فعلاً روی vitrine نباید بمانند',
         tone: 'danger' as const,
       },
       {
@@ -313,20 +312,20 @@ export function ProductsPage({ session }: { session: AuthSession }) {
 
   const selectedSummary = selectedProduct
     ? [
-        { label: 'شناسه', value: readText(selectedProduct, ['id'], '—') },
         { label: 'نام محصول', value: getProductName(selectedProduct) },
         { label: 'دسته‌بندی', value: getProductCategory(selectedProduct) },
         { label: 'نوع محصول', value: getProductType(selectedProduct) },
-        { label: 'وضعیت موجودی', value: getInventoryState(selectedProduct) },
         { label: 'قیمت پایه', value: formatPrice(getProductPrice(selectedProduct)) },
         { label: 'قیمت با تخفیف', value: getDiscountPrice(selectedProduct) === null ? 'بدون تخفیف' : formatPrice(getDiscountPrice(selectedProduct)) },
         { label: 'موجودی', value: formatFaNumber(getProductQuantity(selectedProduct)) },
+        { label: 'وضعیت', value: getInventoryState(selectedProduct) },
         { label: 'اسلاگ', value: readText(selectedProduct, ['slug'], '—') },
       ]
     : []
 
-  function resetForm() {
+  function openCreateEditor() {
     setEditingProductId(null)
+    setEditorOpen(true)
     setFormError(null)
     setFormMessage(null)
     setForm({
@@ -336,10 +335,11 @@ export function ProductsPage({ session }: { session: AuthSession }) {
     })
   }
 
-  function handleStartEdit() {
+  function openEditEditor() {
     if (!selectedProduct) return
 
     setEditingProductId(readText(selectedProduct, ['id'], ''))
+    setEditorOpen(true)
     setFormError(null)
     setFormMessage(null)
     setForm({
@@ -359,6 +359,13 @@ export function ProductsPage({ session }: { session: AuthSession }) {
     })
   }
 
+  function closeEditor() {
+    setEditorOpen(false)
+    setEditingProductId(null)
+    setFormError(null)
+    setFormMessage(null)
+  }
+
   async function handleDelete() {
     if (!selectedProduct) return
 
@@ -369,8 +376,8 @@ export function ProductsPage({ session }: { session: AuthSession }) {
     try {
       await vendorApi.deleteProduct(session, Number(readText(selectedProduct, ['id'], '0')))
       setFormMessage('محصول با موفقیت حذف شد.')
-      setEditingProductId(null)
       await loadProductData({ current: true })
+      closeEditor()
     } catch (deleteError) {
       setFormError(deleteError instanceof Error ? deleteError.message : 'حذف محصول ناموفق بود')
     } finally {
@@ -453,7 +460,7 @@ export function ProductsPage({ session }: { session: AuthSession }) {
       }
 
       await loadProductData({ current: true })
-      resetForm()
+      closeEditor()
     } catch (submitError) {
       setFormError(submitError instanceof Error ? submitError.message : 'ذخیره محصول ناموفق بود')
     } finally {
@@ -472,9 +479,16 @@ export function ProductsPage({ session }: { session: AuthSession }) {
 
         <SectionCard
           eyebrow="کارتابل محصولات"
-          title="workspace محصولات فروشگاه"
-          description="این route حالا از visibility ساده عبور کرده و surface اولیه مدیریت محصول، موجودی و آماده‌سازی promotion را باز می‌کند."
-          actions={<Pill tone="primary">محصولات v2</Pill>}
+          title="فهرست محصول‌ها و مسیر مدیریت منظم"
+          description="این صفحه حالا لیست، فیلتر و انتخاب محصول را از workspace ویرایش جدا می‌کند تا برای product / article / taxonomy الگوی تمیزتری داشته باشیم."
+          actions={
+            <div className="vendor-products-actions">
+              <button className="fm-button fm-button--primary" onClick={openCreateEditor} type="button">
+                افزودن محصول جدید
+              </button>
+              <Pill tone="primary">products workspace v3</Pill>
+            </div>
+          }
         >
           <div className="vendor-products-toolbar">
             <div className="fm-field vendor-products-search">
@@ -502,317 +516,368 @@ export function ProductsPage({ session }: { session: AuthSession }) {
           </div>
         </SectionCard>
 
-        <div className="vendor-products-layout">
-          <SectionCard
-            eyebrow="جدول محصولات"
-            title="لیست محصولات قابل اسکن"
-            description="فروشنده باید بتواند سریع ببیند کدام محصول نیاز به تامین، تخفیف یا بازنویسی data دارد."
-            actions={<Pill tone="success">{`${formatFaNumber(filteredProducts.length)} محصول`}</Pill>}
-          >
-            <div className="vendor-products-table-card">
-              <DataTable columns={productColumns} rows={rows} />
-
-              <div className="vendor-products-selection-list">
-                {filteredProducts.slice(0, 8).map((item) => {
-                  const id = readText(item, ['id'], '—')
-                  const isActive = id === selectedProductId
-
-                  return (
-                    <button
-                      className={`vendor-products-selection-item ${isActive ? 'is-active' : ''}`}
-                      key={id}
-                      onClick={() => setSelectedProductId(id)}
-                      type="button"
-                    >
-                      <strong>{getProductName(item)}</strong>
-                      <span>{getProductCategory(item)}</span>
-                      <small>{getInventoryState(item)}</small>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          </SectionCard>
-
-          <div className="vendor-products-detail-column">
+        {!editorOpen ? (
+          <div className="vendor-products-workspace-grid">
             <SectionCard
-              eyebrow="محصول انتخاب‌شده"
-              title={selectedProduct ? getProductName(selectedProduct) : 'محصولی انتخاب نشده'}
-              description="این summary حالا نقطه ورود به actionهای inventory، data hygiene و promotion readiness است."
-              actions={<Pill tone="warning">{selectedProduct ? getInventoryState(selectedProduct) : 'بدون انتخاب'}</Pill>}
+              eyebrow="جدول محصولات"
+              title="لیست محصولات قابل اسکن"
+              description="فروشنده باید بتواند سریع ببیند کدام محصول نیاز به تامین، تخفیف یا بازنویسی محتوایی دارد."
+              actions={<Pill tone="success">{`${formatFaNumber(filteredProducts.length)} محصول`}</Pill>}
             >
-              {selectedSummary.length ? (
-                <div className="vendor-products-detail-grid">
-                  {selectedSummary.map((item) => (
-                    <article className="vendor-products-detail-item" key={item.label}>
-                      <span>{item.label}</span>
-                      <strong>{item.value}</strong>
-                    </article>
-                  ))}
-                  <article className="vendor-products-detail-item vendor-products-detail-item--wide">
-                    <span>یادداشت کارتابل</span>
-                    <strong>
-                      این سطح حالا برای ویرایش inventory، metadata، تصویر اصلی و آماده‌سازی سریع promotion روی هر محصول استفاده می‌شود.
-                    </strong>
-                  </article>
+              <div className="vendor-products-table-card">
+                <DataTable columns={productColumns} rows={rows} />
+
+                <div className="vendor-products-selection-list">
+                  {filteredProducts.slice(0, 8).map((item) => {
+                    const id = readText(item, ['id'], '—')
+                    const isActive = id === selectedProductId
+
+                    return (
+                      <button
+                        className={`vendor-products-selection-item ${isActive ? 'is-active' : ''}`}
+                        key={id}
+                        onClick={() => setSelectedProductId(id)}
+                        type="button"
+                      >
+                        <strong>{getProductName(item)}</strong>
+                        <span>{getProductCategory(item)}</span>
+                        <small>{getInventoryState(item)}</small>
+                      </button>
+                    )
+                  })}
                 </div>
-              ) : (
-                <div className="vendor-note-card">در این فیلتر هنوز محصولی برای نمایش جزئیات وجود ندارد.</div>
-              )}
+              </div>
             </SectionCard>
 
             <SectionCard
-              eyebrow="مدیریت محصول"
-              title={editingProductId ? 'ویرایش محصول انتخاب‌شده' : 'ایجاد محصول جدید'}
-              description="در این مرحله فروشنده می‌تواند محصول جدید بسازد یا اطلاعات محصول موجود را برای موجودی، تصویر و دسته‌بندی کامل‌تر کند."
+              eyebrow="محصول انتخاب‌شده"
+              title={selectedProduct ? getProductName(selectedProduct) : 'محصولی انتخاب نشده'}
+              description="از اینجا فقط quick context و actionهای اصلی را می‌بینی؛ ویرایش کامل در workspace جدا انجام می‌شود."
               actions={
                 <div className="vendor-products-actions">
-                  <button className="fm-button fm-button--ghost" onClick={resetForm} type="button">
-                    محصول جدید
-                  </button>
-                  <button
-                    className="fm-button fm-button--secondary"
-                    disabled={!selectedProduct}
-                    onClick={handleStartEdit}
-                    type="button"
-                  >
-                    ویرایش انتخاب‌شده
-                  </button>
-                  <button
-                    className="fm-button fm-button--secondary"
-                    disabled={!selectedProduct || saving}
-                    onClick={handleDelete}
-                    type="button"
-                  >
-                    حذف انتخاب‌شده
+                  <Pill tone="warning">{selectedProduct ? getInventoryState(selectedProduct) : 'بدون انتخاب'}</Pill>
+                  <button className="fm-button fm-button--secondary" disabled={!selectedProduct} onClick={openEditEditor} type="button">
+                    ویرایش کامل
                   </button>
                 </div>
               }
             >
-              <div className="vendor-products-form-grid">
-                <div className="fm-field">
-                  <label htmlFor="product-name">نام محصول</label>
-                  <input
-                    id="product-name"
-                    onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-                    placeholder="مثلا باکس رز سفید"
-                    value={form.name}
-                  />
+              {selectedSummary.length ? (
+                <div className="vendor-products-summary-grid">
+                  {selectedSummary.map((item) => (
+                    <article className="vendor-products-summary-card" key={item.label}>
+                      <span>{item.label}</span>
+                      <strong>{item.value}</strong>
+                    </article>
+                  ))}
                 </div>
-
-                <div className="fm-field">
-                  <label htmlFor="product-quantity">موجودی</label>
-                  <input
-                    id="product-quantity"
-                    inputMode="numeric"
-                    onChange={(event) => setForm((current) => ({ ...current, quantity: event.target.value }))}
-                    placeholder="مثلا ۱۲"
-                    value={form.quantity}
-                  />
-                </div>
-
-                <div className="fm-field">
-                  <label htmlFor="product-category">دسته‌بندی</label>
-                  <select
-                    id="product-category"
-                    onChange={(event) => setForm((current) => ({ ...current, categoryId: event.target.value }))}
-                    value={form.categoryId}
-                  >
-                    {!categoryOptions.length ? <option value="">دسته‌بندی در دسترس نیست</option> : null}
-                    {categoryOptions.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="fm-field">
-                  <label htmlFor="product-type">نوع محصول</label>
-                  <select
-                    id="product-type"
-                    onChange={(event) => setForm((current) => ({ ...current, productTypeId: event.target.value }))}
-                    value={form.productTypeId}
-                  >
-                    {!productTypeOptions.length ? <option value="">نوع محصول در دسترس نیست</option> : null}
-                    {productTypeOptions.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="fm-field">
-                  <label htmlFor="product-price">قیمت پایه</label>
-                  <input
-                    id="product-price"
-                    inputMode="decimal"
-                    onChange={(event) => setForm((current) => ({ ...current, price: event.target.value }))}
-                    placeholder="مثلا ۵۵۰۰۰۰"
-                    value={form.price}
-                  />
-                </div>
-
-                <div className="fm-field">
-                  <label htmlFor="product-discount-price">قیمت با تخفیف</label>
-                  <input
-                    id="product-discount-price"
-                    inputMode="decimal"
-                    onChange={(event) => setForm((current) => ({ ...current, discountPrice: event.target.value }))}
-                    placeholder="اختیاری"
-                    value={form.discountPrice}
-                  />
-                </div>
-
-                <div className="fm-field vendor-products-field--wide">
-                  <label htmlFor="product-main-image">تصویر اصلی</label>
-                  <div className="vendor-products-upload-card">
-                    <div className="vendor-products-upload-actions">
-                      <button
-                        className="fm-button fm-button--secondary"
-                        disabled={uploadingMainImage}
-                        onClick={() => mainImageInputRef.current?.click()}
-                        type="button"
-                      >
-                        {uploadingMainImage ? 'در حال آپلود...' : 'انتخاب تصویر اصلی'}
-                      </button>
-                      <input
-                        accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
-                        className="vendor-products-file-input"
-                        onChange={(event) => void handleMainImageChoose(event.target.files)}
-                        ref={mainImageInputRef}
-                        type="file"
-                      />
-                      <span className="vendor-products-upload-hint">فایل انتخاب کن تا آپلود شود و لینک خودش داخل فرم بنشیند.</span>
-                    </div>
-
-                    <input
-                      id="product-main-image"
-                      onChange={(event) => setForm((current) => ({ ...current, mainImage: event.target.value }))}
-                      placeholder="https://..."
-                      value={form.mainImage}
-                    />
-
-                    {form.mainImage ? (
-                      <div className="vendor-products-image-preview">
-                        <img alt="پیش‌نمایش تصویر اصلی محصول" src={form.mainImage} />
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-
-                <div className="fm-field vendor-products-field--wide">
-                  <label htmlFor="product-images">تصاویر گالری</label>
-                  <div className="vendor-products-upload-card">
-                    <div className="vendor-products-upload-actions">
-                      <button
-                        className="fm-button fm-button--secondary"
-                        disabled={uploadingGallery}
-                        onClick={() => galleryInputRef.current?.click()}
-                        type="button"
-                      >
-                        {uploadingGallery ? 'در حال آپلود...' : 'انتخاب تصاویر گالری'}
-                      </button>
-                      <input
-                        multiple
-                        accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
-                        className="vendor-products-file-input"
-                        onChange={(event) => void handleGalleryChoose(event.target.files)}
-                        ref={galleryInputRef}
-                        type="file"
-                      />
-                      <span className="vendor-products-upload-hint">می‌توانی چند تصویر را یکجا انتخاب کنی؛ لینک‌ها خودکار وارد فرم می‌شوند.</span>
-                    </div>
-
-                    <textarea
-                      id="product-images"
-                      onChange={(event) => setForm((current) => ({ ...current, imagesText: event.target.value }))}
-                      placeholder="هر URL در یک خط"
-                      rows={4}
-                      value={form.imagesText}
-                    />
-
-                    {galleryImages.length ? (
-                      <div className="vendor-products-gallery-preview">
-                        {galleryImages.map((url) => (
-                          <article className="vendor-products-gallery-item" key={url}>
-                            <img alt="پیش‌نمایش گالری محصول" src={url} />
-                            <span>{url}</span>
-                          </article>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-
-                <div className="fm-field vendor-products-field--wide">
-                  <label htmlFor="product-video">ویدیو</label>
-                  <input
-                    id="product-video"
-                    onChange={(event) => setForm((current) => ({ ...current, videoUrl: event.target.value }))}
-                    placeholder="https://..."
-                    value={form.videoUrl}
-                  />
-                  <small className="vendor-products-upload-hint">
-                    backend فعلاً برای ویدیو فیلد `videoUrl` دارد؛ پس در این مرحله لینک ویدیو وارد می‌شود نه آپلود مستقیم.
-                  </small>
-                </div>
-
-                <div className="fm-field vendor-products-field--wide">
-                  <label htmlFor="product-short-description">توضیح کوتاه</label>
-                  <RichTextEditor
-                    id="product-short-description"
-                    onChange={(nextValue) => setForm((current) => ({ ...current, shortDescription: nextValue }))}
-                    placeholder="خلاصه کوتاه برای vitrine یا کارت محصول"
-                    rows={3}
-                    value={form.shortDescription}
-                  />
-                </div>
-
-                <div className="fm-field vendor-products-field--wide">
-                  <label htmlFor="product-description">توضیح کامل</label>
-                  <RichTextEditor
-                    id="product-description"
-                    onChange={(nextValue) => setForm((current) => ({ ...current, description: nextValue }))}
-                    placeholder="شرح کامل برای تیم و محتوای محصول"
-                    rows={8}
-                    value={form.description}
-                  />
-                </div>
-
-                <div className="fm-field">
-                  <label htmlFor="product-meta-title">meta title</label>
-                  <input
-                    id="product-meta-title"
-                    onChange={(event) => setForm((current) => ({ ...current, metaTitle: event.target.value }))}
-                    placeholder="اختیاری"
-                    value={form.metaTitle}
-                  />
-                </div>
-
-                <div className="fm-field">
-                  <label htmlFor="product-meta-description">meta description</label>
-                  <textarea
-                    id="product-meta-description"
-                    onChange={(event) => setForm((current) => ({ ...current, metaDescription: event.target.value }))}
-                    placeholder="اختیاری"
-                    rows={3}
-                    value={form.metaDescription}
-                  />
-                </div>
-
-                <div className="vendor-products-submit-row vendor-products-field--wide">
-                  <button className="fm-button fm-button--primary" disabled={saving} onClick={handleSubmit} type="button">
-                    {saving ? 'در حال ذخیره...' : editingProductId ? 'ذخیره تغییرات' : 'ایجاد محصول'}
-                  </button>
-                  {formMessage ? <div className="fm-message fm-message--success">{formMessage}</div> : null}
-                  {formError ? <div className="fm-message fm-message--danger">{formError}</div> : null}
-                </div>
-              </div>
+              ) : (
+                <div className="vendor-note-card">هنوز محصولی برای نمایش جزئیات انتخاب نشده است.</div>
+              )}
             </SectionCard>
           </div>
-        </div>
+        ) : null}
+
+        {editorOpen ? (
+          <SectionCard
+            eyebrow={editingProductId ? 'ویرایش محصول' : 'ایجاد محصول'}
+            title={editingProductId ? `ویرایش ${form.name || 'محصول انتخاب‌شده'}` : 'ایجاد محصول جدید'}
+            description="این workspace برای مدیریت کامل اطلاعات، رسانه، توضیحات، سئو و محتوای محصول ساخته شده و عمداً از لیست جدا است تا clutter ایجاد نشود."
+            actions={
+              <div className="vendor-products-actions">
+                <button className="fm-button fm-button--ghost" onClick={closeEditor} type="button">
+                  بازگشت به لیست
+                </button>
+                {editingProductId ? (
+                  <button className="fm-button fm-button--secondary" disabled={saving} onClick={handleDelete} type="button">
+                    حذف محصول
+                  </button>
+                ) : null}
+                <button className="fm-button fm-button--primary" disabled={saving} onClick={handleSubmit} type="button">
+                  {saving ? 'در حال ذخیره...' : editingProductId ? 'ذخیره تغییرات' : 'ایجاد محصول'}
+                </button>
+              </div>
+            }
+          >
+            <div className="vendor-product-editor-shell">
+              <section className="vendor-product-editor-main">
+                <div className="vendor-product-editor-grid">
+                  <article className="vendor-product-editor-panel">
+                    <div className="vendor-product-editor-panel-head">
+                      <strong>اطلاعات پایه</strong>
+                      <span>نام، دسته، نوع و وضعیت موجودی محصول</span>
+                    </div>
+
+                    <div className="vendor-product-editor-fields">
+                      <div className="fm-field">
+                        <label htmlFor="product-name">نام محصول</label>
+                        <input
+                          id="product-name"
+                          onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                          placeholder="مثلا باکس رز سفید"
+                          value={form.name}
+                        />
+                      </div>
+
+                      <div className="fm-field">
+                        <label htmlFor="product-quantity">موجودی</label>
+                        <input
+                          id="product-quantity"
+                          inputMode="numeric"
+                          onChange={(event) => setForm((current) => ({ ...current, quantity: event.target.value }))}
+                          placeholder="مثلا ۱۲"
+                          value={form.quantity}
+                        />
+                      </div>
+
+                      <div className="fm-field">
+                        <label htmlFor="product-category">دسته‌بندی</label>
+                        <select
+                          id="product-category"
+                          onChange={(event) => setForm((current) => ({ ...current, categoryId: event.target.value }))}
+                          value={form.categoryId}
+                        >
+                          {!categoryOptions.length ? <option value="">دسته‌بندی در دسترس نیست</option> : null}
+                          {categoryOptions.map((option) => (
+                            <option key={option.id} value={option.id}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="fm-field">
+                        <label htmlFor="product-type">نوع محصول</label>
+                        <select
+                          id="product-type"
+                          onChange={(event) => setForm((current) => ({ ...current, productTypeId: event.target.value }))}
+                          value={form.productTypeId}
+                        >
+                          {!productTypeOptions.length ? <option value="">نوع محصول در دسترس نیست</option> : null}
+                          {productTypeOptions.map((option) => (
+                            <option key={option.id} value={option.id}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="fm-field">
+                        <label htmlFor="product-price">قیمت پایه</label>
+                        <input
+                          id="product-price"
+                          inputMode="decimal"
+                          onChange={(event) => setForm((current) => ({ ...current, price: event.target.value }))}
+                          placeholder="مثلا ۵۵۰۰۰۰"
+                          value={form.price}
+                        />
+                      </div>
+
+                      <div className="fm-field">
+                        <label htmlFor="product-discount-price">قیمت با تخفیف</label>
+                        <input
+                          id="product-discount-price"
+                          inputMode="decimal"
+                          onChange={(event) => setForm((current) => ({ ...current, discountPrice: event.target.value }))}
+                          placeholder="اختیاری"
+                          value={form.discountPrice}
+                        />
+                      </div>
+                    </div>
+                  </article>
+
+                  <article className="vendor-product-editor-panel">
+                    <div className="vendor-product-editor-panel-head">
+                      <strong>رسانه و assetها</strong>
+                      <span>آپلود مستقیم برای تصویرها و لینک برای ویدیو</span>
+                    </div>
+
+                    <div className="vendor-product-editor-fields">
+                      <div className="fm-field vendor-product-editor-wide">
+                        <label htmlFor="product-main-image">تصویر اصلی</label>
+                        <div className="vendor-products-upload-card">
+                          <div className="vendor-products-upload-actions">
+                            <button
+                              className="fm-button fm-button--secondary"
+                              disabled={uploadingMainImage}
+                              onClick={() => mainImageInputRef.current?.click()}
+                              type="button"
+                            >
+                              {uploadingMainImage ? 'در حال آپلود...' : 'انتخاب تصویر اصلی'}
+                            </button>
+                            <input
+                              accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+                              className="vendor-products-file-input"
+                              onChange={(event) => void handleMainImageChoose(event.target.files)}
+                              ref={mainImageInputRef}
+                              type="file"
+                            />
+                            <span className="vendor-products-upload-hint">تصویر را انتخاب کن تا URL نهایی خودکار در فرم بنشیند.</span>
+                          </div>
+
+                          <input
+                            id="product-main-image"
+                            onChange={(event) => setForm((current) => ({ ...current, mainImage: event.target.value }))}
+                            placeholder="https://..."
+                            value={form.mainImage}
+                          />
+
+                          {form.mainImage ? (
+                            <div className="vendor-products-image-preview">
+                              <img alt="پیش‌نمایش تصویر اصلی محصول" src={form.mainImage} />
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <div className="fm-field vendor-product-editor-wide">
+                        <label htmlFor="product-images">تصاویر گالری</label>
+                        <div className="vendor-products-upload-card">
+                          <div className="vendor-products-upload-actions">
+                            <button
+                              className="fm-button fm-button--secondary"
+                              disabled={uploadingGallery}
+                              onClick={() => galleryInputRef.current?.click()}
+                              type="button"
+                            >
+                              {uploadingGallery ? 'در حال آپلود...' : 'انتخاب تصاویر گالری'}
+                            </button>
+                            <input
+                              multiple
+                              accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+                              className="vendor-products-file-input"
+                              onChange={(event) => void handleGalleryChoose(event.target.files)}
+                              ref={galleryInputRef}
+                              type="file"
+                            />
+                            <span className="vendor-products-upload-hint">چند تصویر را یکجا انتخاب کن تا به گالری این محصول اضافه شوند.</span>
+                          </div>
+
+                          <textarea
+                            id="product-images"
+                            onChange={(event) => setForm((current) => ({ ...current, imagesText: event.target.value }))}
+                            placeholder="هر URL در یک خط"
+                            rows={4}
+                            value={form.imagesText}
+                          />
+
+                          {galleryImages.length ? (
+                            <div className="vendor-products-gallery-preview">
+                              {galleryImages.map((url) => (
+                                <article className="vendor-products-gallery-item" key={url}>
+                                  <img alt="پیش‌نمایش گالری محصول" src={url} />
+                                  <span>{url}</span>
+                                </article>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <div className="fm-field vendor-product-editor-wide">
+                        <label htmlFor="product-video">ویدیو</label>
+                        <input
+                          id="product-video"
+                          onChange={(event) => setForm((current) => ({ ...current, videoUrl: event.target.value }))}
+                          placeholder="https://..."
+                          value={form.videoUrl}
+                        />
+                        <small className="vendor-products-upload-hint">backend فعلاً برای ویدیو فیلد `videoUrl` دارد؛ پس در این مرحله لینک ویدیو وارد می‌شود.</small>
+                      </div>
+                    </div>
+                  </article>
+
+                  <article className="vendor-product-editor-panel vendor-product-editor-panel--full">
+                    <div className="vendor-product-editor-panel-head">
+                      <strong>محتوای کوتاه و توضیح اصلی</strong>
+                      <span>ویرایشگر کامل برای heading، link، image و ساختار سئو</span>
+                    </div>
+
+                    <div className="vendor-product-editor-stack">
+                      <div className="fm-field">
+                        <label htmlFor="product-short-description">توضیح کوتاه</label>
+                        <RichTextEditor
+                          id="product-short-description"
+                          onChange={(nextValue) => setForm((current) => ({ ...current, shortDescription: nextValue }))}
+                          placeholder="خلاصه کوتاه برای vitrine یا کارت محصول"
+                          rows={6}
+                          value={form.shortDescription}
+                        />
+                      </div>
+
+                      <div className="fm-field">
+                        <label htmlFor="product-description">توضیح کامل</label>
+                        <RichTextEditor
+                          id="product-description"
+                          onChange={(nextValue) => setForm((current) => ({ ...current, description: nextValue }))}
+                          placeholder="توضیح کامل، ساختار مقاله‌مانند، لینک‌دهی داخلی و محتوای SEO-friendly را اینجا بساز"
+                          rows={12}
+                          value={form.description}
+                        />
+                      </div>
+                    </div>
+                  </article>
+
+                  <article className="vendor-product-editor-panel vendor-product-editor-panel--full">
+                    <div className="vendor-product-editor-panel-head">
+                      <strong>SEO و metadata</strong>
+                      <span>متای اصلی برای indexability، CTR و preview بهتر</span>
+                    </div>
+
+                    <div className="vendor-product-editor-fields">
+                      <div className="fm-field">
+                        <label htmlFor="product-meta-title">meta title</label>
+                        <input
+                          id="product-meta-title"
+                          onChange={(event) => setForm((current) => ({ ...current, metaTitle: event.target.value }))}
+                          placeholder="اختیاری"
+                          value={form.metaTitle}
+                        />
+                      </div>
+
+                      <div className="fm-field vendor-product-editor-wide">
+                        <label htmlFor="product-meta-description">meta description</label>
+                        <textarea
+                          id="product-meta-description"
+                          onChange={(event) => setForm((current) => ({ ...current, metaDescription: event.target.value }))}
+                          placeholder="اختیاری"
+                          rows={4}
+                          value={form.metaDescription}
+                        />
+                      </div>
+                    </div>
+                  </article>
+                </div>
+              </section>
+
+              <aside className="vendor-product-editor-sidebar">
+                <article className="vendor-product-editor-sidecard">
+                  <strong>خلاصه سریع</strong>
+                  <div className="vendor-product-editor-sidegrid">
+                    <span>وضعیت</span>
+                    <strong>{form.quantity.trim() ? (Number(form.quantity) <= 0 ? 'ناموجود' : Number(form.quantity) <= 5 ? 'کم‌موجودی' : 'عادی') : 'نامشخص'}</strong>
+                    <span>گالری</span>
+                    <strong>{formatFaNumber(galleryImages.length)}</strong>
+                    <span>دسته</span>
+                    <strong>{categoryOptions.find((item) => item.id === form.categoryId)?.label || '—'}</strong>
+                    <span>نوع</span>
+                    <strong>{productTypeOptions.find((item) => item.id === form.productTypeId)?.label || '—'}</strong>
+                  </div>
+                </article>
+
+                <article className="vendor-product-editor-sidecard">
+                  <strong>راهنمای نظم صفحه</strong>
+                  <p>
+                    لیست و ویرایش از هم جدا شده‌اند تا بعداً همین الگو برای مقالات، دسته‌بندی‌ها، تگ‌ها و typeها هم بدون شلوغی تکرار شود.
+                  </p>
+                </article>
+
+                {formMessage ? <div className="fm-message fm-message--success">{formMessage}</div> : null}
+                {formError ? <div className="fm-message fm-message--danger">{formError}</div> : null}
+              </aside>
+            </div>
+          </SectionCard>
+        ) : null}
       </LoadableState>
     </div>
   )
