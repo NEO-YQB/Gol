@@ -261,6 +261,31 @@ button {
   position: relative;
 }
 
+.fm-format-textarea {
+  display: grid;
+  gap: 10px;
+}
+
+.fm-format-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.fm-format-chip {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--fm-border-soft);
+  background: rgba(255, 253, 248, 0.82);
+  color: var(--fm-text-secondary);
+}
+
+.fm-format-chip:hover {
+  border-color: rgba(31, 106, 82, 0.3);
+  color: var(--fm-text-primary);
+}
+
 .fm-jalali-trigger,
 .fm-jalali-time {
   min-height: 48px;

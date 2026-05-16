@@ -1,5 +1,5 @@
-import { DataTable, Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
-import { useEffect, useMemo, useState } from 'react'
+import { DataTable, FormatTextarea, Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { vendorApi, type VendorProductPayload } from '../lib/api'
 import { formatFaNumber, readText, toArray } from '../lib/normalize'
@@ -153,9 +153,20 @@ function getImagesText(record: ProductRecord) {
   return record.images.map((item) => String(item)).join('\n')
 }
 
+function getGalleryImages(value: string) {
+  return value
+    .split('\n')
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
 export function ProductsPage({ session }: { session: AuthSession }) {
+  const mainImageInputRef = useRef<HTMLInputElement | null>(null)
+  const galleryInputRef = useRef<HTMLInputElement | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [uploadingMainImage, setUploadingMainImage] = useState(false)
+  const [uploadingGallery, setUploadingGallery] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [formMessage, setFormMessage] = useState<string | null>(null)
@@ -168,6 +179,7 @@ export function ProductsPage({ session }: { session: AuthSession }) {
   const [editingProductId, setEditingProductId] = useState<string | null>(null)
   const [storeId, setStoreId] = useState<number>(0)
   const [form, setForm] = useState<ProductFormState>(initialFormState)
+  const galleryImages = useMemo(() => getGalleryImages(form.imagesText), [form.imagesText])
 
   async function loadProductData(activeRef = { current: true }) {
     const health = await vendorApi.getHealthSummary(session)
@@ -363,6 +375,54 @@ export function ProductsPage({ session }: { session: AuthSession }) {
       setFormError(deleteError instanceof Error ? deleteError.message : 'حذف محصول ناموفق بود')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleMainImageChoose(fileList: FileList | null) {
+    const file = fileList?.[0]
+    if (!file) return
+
+    setUploadingMainImage(true)
+    setFormError(null)
+    setFormMessage(null)
+
+    try {
+      const uploaded = await vendorApi.uploadProductImage(session, file)
+      setForm((current) => ({ ...current, mainImage: uploaded.url }))
+      setFormMessage('تصویر اصلی آپلود شد و در فرم قرار گرفت.')
+    } catch (uploadError) {
+      setFormError(uploadError instanceof Error ? uploadError.message : 'آپلود تصویر اصلی ناموفق بود')
+    } finally {
+      setUploadingMainImage(false)
+      if (mainImageInputRef.current) {
+        mainImageInputRef.current.value = ''
+      }
+    }
+  }
+
+  async function handleGalleryChoose(fileList: FileList | null) {
+    const files = fileList ? Array.from(fileList) : []
+    if (!files.length) return
+
+    setUploadingGallery(true)
+    setFormError(null)
+    setFormMessage(null)
+
+    try {
+      const uploaded = await vendorApi.uploadGalleryImages(session, files)
+      const nextUrls = uploaded.map((item) => item.url)
+      setForm((current) => {
+        const merged = Array.from(new Set([...getGalleryImages(current.imagesText), ...nextUrls]))
+        return { ...current, imagesText: merged.join('\n') }
+      })
+      setFormMessage('تصاویر گالری آپلود شدند و به فرم اضافه شدند.')
+    } catch (uploadError) {
+      setFormError(uploadError instanceof Error ? uploadError.message : 'آپلود تصاویر گالری ناموفق بود')
+    } finally {
+      setUploadingGallery(false)
+      if (galleryInputRef.current) {
+        galleryInputRef.current.value = ''
+      }
     }
   }
 
@@ -607,23 +667,83 @@ export function ProductsPage({ session }: { session: AuthSession }) {
 
                 <div className="fm-field vendor-products-field--wide">
                   <label htmlFor="product-main-image">تصویر اصلی</label>
-                  <input
-                    id="product-main-image"
-                    onChange={(event) => setForm((current) => ({ ...current, mainImage: event.target.value }))}
-                    placeholder="https://..."
-                    value={form.mainImage}
-                  />
+                  <div className="vendor-products-upload-card">
+                    <div className="vendor-products-upload-actions">
+                      <button
+                        className="fm-button fm-button--secondary"
+                        disabled={uploadingMainImage}
+                        onClick={() => mainImageInputRef.current?.click()}
+                        type="button"
+                      >
+                        {uploadingMainImage ? 'در حال آپلود...' : 'انتخاب تصویر اصلی'}
+                      </button>
+                      <input
+                        accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+                        className="vendor-products-file-input"
+                        onChange={(event) => void handleMainImageChoose(event.target.files)}
+                        ref={mainImageInputRef}
+                        type="file"
+                      />
+                      <span className="vendor-products-upload-hint">فایل انتخاب کن تا آپلود شود و لینک خودش داخل فرم بنشیند.</span>
+                    </div>
+
+                    <input
+                      id="product-main-image"
+                      onChange={(event) => setForm((current) => ({ ...current, mainImage: event.target.value }))}
+                      placeholder="https://..."
+                      value={form.mainImage}
+                    />
+
+                    {form.mainImage ? (
+                      <div className="vendor-products-image-preview">
+                        <img alt="پیش‌نمایش تصویر اصلی محصول" src={form.mainImage} />
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
 
                 <div className="fm-field vendor-products-field--wide">
                   <label htmlFor="product-images">تصاویر گالری</label>
-                  <textarea
-                    id="product-images"
-                    onChange={(event) => setForm((current) => ({ ...current, imagesText: event.target.value }))}
-                    placeholder="هر URL در یک خط"
-                    rows={4}
-                    value={form.imagesText}
-                  />
+                  <div className="vendor-products-upload-card">
+                    <div className="vendor-products-upload-actions">
+                      <button
+                        className="fm-button fm-button--secondary"
+                        disabled={uploadingGallery}
+                        onClick={() => galleryInputRef.current?.click()}
+                        type="button"
+                      >
+                        {uploadingGallery ? 'در حال آپلود...' : 'انتخاب تصاویر گالری'}
+                      </button>
+                      <input
+                        multiple
+                        accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+                        className="vendor-products-file-input"
+                        onChange={(event) => void handleGalleryChoose(event.target.files)}
+                        ref={galleryInputRef}
+                        type="file"
+                      />
+                      <span className="vendor-products-upload-hint">می‌توانی چند تصویر را یکجا انتخاب کنی؛ لینک‌ها خودکار وارد فرم می‌شوند.</span>
+                    </div>
+
+                    <textarea
+                      id="product-images"
+                      onChange={(event) => setForm((current) => ({ ...current, imagesText: event.target.value }))}
+                      placeholder="هر URL در یک خط"
+                      rows={4}
+                      value={form.imagesText}
+                    />
+
+                    {galleryImages.length ? (
+                      <div className="vendor-products-gallery-preview">
+                        {galleryImages.map((url) => (
+                          <article className="vendor-products-gallery-item" key={url}>
+                            <img alt="پیش‌نمایش گالری محصول" src={url} />
+                            <span>{url}</span>
+                          </article>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
 
                 <div className="fm-field vendor-products-field--wide">
@@ -634,13 +754,16 @@ export function ProductsPage({ session }: { session: AuthSession }) {
                     placeholder="https://..."
                     value={form.videoUrl}
                   />
+                  <small className="vendor-products-upload-hint">
+                    backend فعلاً برای ویدیو فیلد `videoUrl` دارد؛ پس در این مرحله لینک ویدیو وارد می‌شود نه آپلود مستقیم.
+                  </small>
                 </div>
 
                 <div className="fm-field vendor-products-field--wide">
                   <label htmlFor="product-short-description">توضیح کوتاه</label>
-                  <textarea
+                  <FormatTextarea
                     id="product-short-description"
-                    onChange={(event) => setForm((current) => ({ ...current, shortDescription: event.target.value }))}
+                    onChange={(nextValue) => setForm((current) => ({ ...current, shortDescription: nextValue }))}
                     placeholder="خلاصه کوتاه برای vitrine یا کارت محصول"
                     rows={3}
                     value={form.shortDescription}
@@ -649,11 +772,11 @@ export function ProductsPage({ session }: { session: AuthSession }) {
 
                 <div className="fm-field vendor-products-field--wide">
                   <label htmlFor="product-description">توضیح کامل</label>
-                  <textarea
+                  <FormatTextarea
                     id="product-description"
-                    onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
+                    onChange={(nextValue) => setForm((current) => ({ ...current, description: nextValue }))}
                     placeholder="شرح کامل برای تیم و محتوای محصول"
-                    rows={5}
+                    rows={8}
                     value={form.description}
                   />
                 </div>
