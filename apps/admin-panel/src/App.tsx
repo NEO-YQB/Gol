@@ -16,6 +16,7 @@ import { OrdersPage } from './pages/OrdersPage'
 import { SettlementsPage } from './pages/SettlementsPage'
 import { SupportPage } from './pages/SupportPage'
 import { VendorsPage } from './pages/VendorsPage'
+import { VendorWorkspacePage } from './pages/VendorWorkspacePage'
 
 const defaultRoute: AdminRoute = 'dashboard'
 
@@ -67,6 +68,12 @@ function getPageMeta(route: AdminRoute) {
         title: 'فروشنده‌ها، ریسک و گزارش‌های مالی',
         description: 'این route فروشنده‌های اولویت‌دار، policy timeline و خلاصه گزارش‌های مالی را برای تصمیم‌گیری سریع ادمین کنار هم قرار می‌دهد.',
       }
+    case 'vendorWorkspace':
+      return {
+        eyebrow: 'workspace فروشنده',
+        title: 'بررسی متمرکز فروشنده و تصمیم‌های بعدی',
+        description: 'اقدام‌های سنگین مثل کنترل کیف پول، بررسی policy و release/hold باید در یک route متمرکز انجام شوند، نه داخل list page.',
+      }
     case 'content':
       return {
         eyebrow: 'کارتابل محتوا',
@@ -89,7 +96,15 @@ function getPageMeta(route: AdminRoute) {
   }
 }
 
-function renderRoute(route: AdminRoute, session: AuthSession) {
+function renderRoute(
+  route: AdminRoute,
+  session: AuthSession,
+  options: {
+    vendorWorkspaceStore: Record<string, unknown> | null
+    onOpenVendorWorkspace: (store: Record<string, unknown>) => void
+    onBackToVendors: () => void
+  },
+) {
   switch (route) {
     case 'orders':
       return <OrdersPage session={session} />
@@ -98,7 +113,15 @@ function renderRoute(route: AdminRoute, session: AuthSession) {
     case 'support':
       return <SupportPage session={session} />
     case 'vendors':
-      return <VendorsPage session={session} />
+      return <VendorsPage onOpenVendorWorkspace={options.onOpenVendorWorkspace} session={session} />
+    case 'vendorWorkspace':
+      return (
+        <VendorWorkspacePage
+          onBack={options.onBackToVendors}
+          session={session}
+          store={options.vendorWorkspaceStore}
+        />
+      )
     case 'content':
       return <ContentPage session={session} />
     case 'alerts':
@@ -112,6 +135,7 @@ function renderRoute(route: AdminRoute, session: AuthSession) {
 export default function App() {
   const [session, setSession] = useState<AuthSession | null>(null)
   const [route, setRoute] = useState<AdminRoute>(defaultRoute)
+  const [vendorWorkspaceStore, setVendorWorkspaceStore] = useState<Record<string, unknown> | null>(null)
   const [phoneNumber, setPhoneNumber] = useState('')
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
@@ -225,6 +249,15 @@ export default function App() {
     setOtpCountdown(null)
   }
 
+  function handleOpenVendorWorkspace(store: Record<string, unknown>) {
+    setVendorWorkspaceStore(store)
+    setRoute('vendorWorkspace')
+  }
+
+  function handleBackToVendors() {
+    setRoute('vendors')
+  }
+
   if (!session) {
     return (
       <LoginPage
@@ -269,7 +302,11 @@ export default function App() {
           خروج از پنل
         </button>
       </div>
-      {renderRoute(route, session)}
+      {renderRoute(route, session, {
+        vendorWorkspaceStore,
+        onOpenVendorWorkspace: handleOpenVendorWorkspace,
+        onBackToVendors: handleBackToVendors,
+      })}
     </AppShell>
   )
 }

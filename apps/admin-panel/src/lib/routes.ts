@@ -4,6 +4,7 @@ export const adminRouteOrder = [
   'settlements',
   'support',
   'vendors',
+  'vendorWorkspace',
   'content',
   'alerts',
 ] as const
@@ -16,6 +17,7 @@ export const adminRouteLabels: Record<AdminRoute, string> = {
   settlements: 'تسویه و مالی',
   support: 'پشتیبانی',
   vendors: 'فروشنده‌ها و ریسک',
+  vendorWorkspace: 'workspace فروشنده',
   content: 'محتوا و سئو',
   alerts: 'هشدارها و اعلان‌ها',
 }

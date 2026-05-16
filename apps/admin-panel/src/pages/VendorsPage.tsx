@@ -107,7 +107,13 @@ function formatPolicy(policy: unknown) {
   return entries.length ? entries.join(' | ') : '—'
 }
 
-export function VendorsPage({ session }: { session: AuthSession }) {
+export function VendorsPage({
+  session,
+  onOpenVendorWorkspace,
+}: {
+  session: AuthSession
+  onOpenVendorWorkspace: (store: Record<string, unknown>) => void
+}) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [riskSummary, setRiskSummary] = useState<VendorRecord[]>([])
@@ -392,121 +398,128 @@ export function VendorsPage({ session }: { session: AuthSession }) {
           </div>
         </SectionCard>
 
-        <div className="vendors-layout">
-          <SectionCard
-            eyebrow="صف فروشنده‌ها"
-            title="فروشنده‌های اولویت‌دار برای triage"
-            description="لیست از endpoint ریسک backend می‌آید و برای score، rating و ticket pressure تصمیم‌گیری سریع می‌دهد."
-            actions={<Pill tone="danger">{`${formatPersianNumber(totalStores)} فروشگاه`}</Pill>}
-          >
-            <div className="vendors-table-card">
-              <DataTable columns={vendorColumns} rows={vendorRows} />
+        <SectionCard
+          eyebrow="صف فروشنده‌ها"
+          title="فروشنده‌های اولویت‌دار برای triage"
+          description="فهرست فروشنده‌ها عمدا تمام‌عرض باقی می‌ماند تا list page فشرده، شلوغ و کش‌آمده نشود."
+          actions={<Pill tone="danger">{`${formatPersianNumber(totalStores)} فروشگاه`}</Pill>}
+        >
+          <div className="vendors-table-card">
+            <DataTable columns={vendorColumns} rows={vendorRows} />
 
-              <div className="vendors-selection-list">
-                {riskSummary.map((item) => {
-                  const storeId = readText(item, ['storeId'], '')
-                  const status = readText(item, ['vendorHealthStatus'], 'UNKNOWN')
-                  const isActive = storeId === selectedStoreId
+            <div className="vendors-selection-list">
+              {riskSummary.map((item) => {
+                const storeId = readText(item, ['storeId'], '')
+                const status = readText(item, ['vendorHealthStatus'], 'UNKNOWN')
+                const isActive = storeId === selectedStoreId
 
-                  return (
-                    <button
-                      className={`vendors-selection-item${isActive ? ' is-active' : ''}`}
-                      key={storeId}
-                      onClick={() => setSelectedStoreId(storeId)}
-                      type="button"
-                    >
-                      <strong>{readText(item, ['storeName'], '—')}</strong>
-                      <span>{`${getStatusLabel(status)} / score ${formatPersianNumber(readText(item, ['vendorHealthScore'], '—'))}`}</span>
-                      <small>{`${formatPersianNumber(toDisplayValue(getMetric(item, 'ticketCount')))} تیکت / ${formatPersianNumber(toDisplayValue(getMetric(item, 'escalatedCount')))} ارجاع مالی`}</small>
-                    </button>
-                  )
-                })}
-              </div>
+                return (
+                  <button
+                    className={`vendors-selection-item${isActive ? ' is-active' : ''}`}
+                    key={storeId}
+                    onClick={() => setSelectedStoreId(storeId)}
+                    type="button"
+                  >
+                    <strong>{readText(item, ['storeName'], '—')}</strong>
+                    <span>{`${getStatusLabel(status)} / score ${formatPersianNumber(readText(item, ['vendorHealthScore'], '—'))}`}</span>
+                    <small>{`${formatPersianNumber(toDisplayValue(getMetric(item, 'ticketCount')))} تیکت / ${formatPersianNumber(toDisplayValue(getMetric(item, 'escalatedCount')))} ارجاع مالی`}</small>
+                  </button>
+                )
+              })}
             </div>
-          </SectionCard>
-
-          <div className="vendors-detail-column">
-            <SectionCard
-              eyebrow="گزارش مالی"
-              title="خلاصه wallets / settlements / transactions"
-              description="این بخش visibility لازم برای finance reports را کنار route فروشنده‌ها نگه می‌دارد تا risk review از context مالی جدا نشود."
-              actions={<Pill tone="success">finance</Pill>}
-            >
-              <div className="vendors-finance-grid">
-                {financeHighlights.map((item) => (
-                  <article className="vendors-finance-item" key={item.label}>
-                    <span>{item.label}</span>
-                    <strong>{item.value}</strong>
-                  </article>
-                ))}
-              </div>
-            </SectionCard>
-
-            <SectionCard
-              eyebrow="فروشنده انتخاب‌شده"
-              title={selectedSummaryRecord ? `جزئیات ${readText(selectedSummaryRecord, ['storeName'], '—')}` : 'فروشنده‌ای انتخاب نشده'}
-              description="summary انتخاب‌شده برای review سریع score، ticket pressure و policy state قبل از ورود به actionهای بعدی."
-              actions={
-                <Pill tone={getStatusTone(readText(selectedSummaryRecord ?? {}, ['vendorHealthStatus'], ''))}>
-                  {selectedSummaryRecord
-                    ? getStatusLabel(readText(selectedSummaryRecord, ['vendorHealthStatus'], '—'))
-                    : 'بدون انتخاب'}
-                </Pill>
-              }
-            >
-              {selectedSummary.length ? (
-                <div className="vendors-detail-grid">
-                  {selectedSummary.map((item) => (
-                    <article className="vendors-detail-item" key={item.label}>
-                      <span>{item.label}</span>
-                      <strong>{item.value}</strong>
-                    </article>
-                  ))}
-                </div>
-              ) : (
-                <div className="fm-message">در این فیلتر هنوز فروشنده‌ای برای نمایش جزئیات وجود ندارد.</div>
-              )}
-            </SectionCard>
-
-            <SectionCard
-              eyebrow="policy timeline"
-              title={selectedStoreId ? `timeline فروشگاه #${selectedStoreId}` : 'timeline فروشنده'}
-              description="این بخش current policy و timeline backend را برای admin review در همان workspace نشان می‌دهد."
-              actions={<Pill tone="warning">{timelineLoading ? 'در حال بارگذاری' : `${formatPersianNumber(timeline.length)} event`}</Pill>}
-            >
-              {timelineError ? <div className="fm-message">{timelineError}</div> : null}
-
-              {!timelineError ? (
-                <div className="vendors-policy-stack">
-                  <div className="vendors-policy-grid">
-                    <article className="vendors-policy-item">
-                      <span>policy خودکار</span>
-                      <strong>{formatPolicy(selectedPolicy.auto)}</strong>
-                    </article>
-                    <article className="vendors-policy-item">
-                      <span>manual override</span>
-                      <strong>{formatPolicy(selectedPolicy.manualOverride)}</strong>
-                    </article>
-                    <article className="vendors-policy-item">
-                      <span>policy موثر</span>
-                      <strong>{formatPolicy(selectedPolicy.effective)}</strong>
-                    </article>
-                    <article className="vendors-policy-item">
-                      <span>فروشگاه</span>
-                      <strong>{readText(selectedStore, ['name'], '—')}</strong>
-                    </article>
-                  </div>
-
-                  {timelineFeed.length ? (
-                    <ActivityFeed items={timelineFeed} />
-                  ) : (
-                    <div className="fm-message">برای این فروشنده هنوز timeline قابل‌نمایشی برنگشته است.</div>
-                  )}
-                </div>
-              ) : null}
-            </SectionCard>
           </div>
-        </div>
+        </SectionCard>
+
+        <SectionCard
+          eyebrow="فروشنده انتخاب‌شده"
+          title={selectedSummaryRecord ? `جزئیات ${readText(selectedSummaryRecord, ['storeName'], '—')}` : 'فروشنده‌ای انتخاب نشده'}
+          description="این بخش فقط summary می‌دهد؛ هر اقدام سنگین باید در route جدا انجام شود تا این صفحه list-first باقی بماند."
+          actions={
+            <div className="vendors-inline-actions">
+              <Pill tone={getStatusTone(readText(selectedSummaryRecord ?? {}, ['vendorHealthStatus'], ''))}>
+                {selectedSummaryRecord
+                  ? getStatusLabel(readText(selectedSummaryRecord, ['vendorHealthStatus'], '—'))
+                  : 'بدون انتخاب'}
+              </Pill>
+              {selectedSummaryRecord ? (
+                <button
+                  className="vendors-open-workspace"
+                  onClick={() => onOpenVendorWorkspace(selectedSummaryRecord)}
+                  type="button"
+                >
+                  ورود به workspace فروشنده
+                </button>
+              ) : null}
+            </div>
+          }
+        >
+          {selectedSummary.length ? (
+            <div className="vendors-detail-grid">
+              {selectedSummary.map((item) => (
+                <article className="vendors-detail-item" key={item.label}>
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="fm-message">در این فیلتر هنوز فروشنده‌ای برای نمایش جزئیات وجود ندارد.</div>
+          )}
+        </SectionCard>
+
+        <SectionCard
+          eyebrow="گزارش مالی"
+          title="خلاصه wallets / settlements / transactions"
+          description="گزارش‌ها می‌توانند چندستونه باشند، اما خود listها تمام‌عرض می‌مانند تا خوانایی route حفظ شود."
+          actions={<Pill tone="success">finance</Pill>}
+        >
+          <div className="vendors-finance-grid">
+            {financeHighlights.map((item) => (
+              <article className="vendors-finance-item" key={item.label}>
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+              </article>
+            ))}
+          </div>
+        </SectionCard>
+
+        <SectionCard
+          eyebrow="policy timeline"
+          title={selectedStoreId ? `timeline فروشگاه #${selectedStoreId}` : 'timeline فروشنده'}
+          description="timeline این صفحه صرفا برای visibility و summary است؛ actionهای واقعی باید در workspace جدا تکمیل شوند."
+          actions={<Pill tone="warning">{timelineLoading ? 'در حال بارگذاری' : `${formatPersianNumber(timeline.length)} event`}</Pill>}
+        >
+          {timelineError ? <div className="fm-message">{timelineError}</div> : null}
+
+          {!timelineError ? (
+            <div className="vendors-policy-stack">
+              <div className="vendors-policy-grid">
+                <article className="vendors-policy-item">
+                  <span>policy خودکار</span>
+                  <strong>{formatPolicy(selectedPolicy.auto)}</strong>
+                </article>
+                <article className="vendors-policy-item">
+                  <span>manual override</span>
+                  <strong>{formatPolicy(selectedPolicy.manualOverride)}</strong>
+                </article>
+                <article className="vendors-policy-item">
+                  <span>policy موثر</span>
+                  <strong>{formatPolicy(selectedPolicy.effective)}</strong>
+                </article>
+                <article className="vendors-policy-item">
+                  <span>فروشگاه</span>
+                  <strong>{readText(selectedStore, ['name'], '—')}</strong>
+                </article>
+              </div>
+
+              {timelineFeed.length ? (
+                <ActivityFeed items={timelineFeed} />
+              ) : (
+                <div className="fm-message">برای این فروشنده هنوز timeline قابل‌نمایشی برنگشته است.</div>
+              )}
+            </div>
+          ) : null}
+        </SectionCard>
       </LoadableState>
     </div>
   )
