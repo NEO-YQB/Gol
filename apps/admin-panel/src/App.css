@@ -480,6 +480,7 @@
 }
 
 .vendors-finance-grid,
+.vendors-brief-grid,
 .vendors-policy-grid,
 .vendors-detail-grid {
   display: grid;
@@ -488,6 +489,7 @@
 }
 
 .vendors-finance-item,
+.vendors-brief-item,
 .vendors-policy-item,
 .vendors-detail-item {
   border: 1px solid var(--fm-border-soft);
@@ -499,6 +501,7 @@
 }
 
 .vendors-finance-item span,
+.vendors-brief-item span,
 .vendors-policy-item span,
 .vendors-detail-item span {
   color: var(--fm-text-secondary);
@@ -506,10 +509,33 @@
 }
 
 .vendors-finance-item strong,
+.vendors-brief-item strong,
 .vendors-policy-item strong,
 .vendors-detail-item strong {
   color: var(--fm-text-primary);
   line-height: 1.8;
+}
+
+.vendors-brief-item small,
+.vendors-preview-item {
+  color: var(--fm-text-secondary);
+  line-height: 1.9;
+}
+
+.vendors-preview-list {
+  display: grid;
+  gap: 12px;
+}
+
+.vendors-preview-item {
+  border: 1px solid var(--fm-border-soft);
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(255, 253, 248, 0.86);
+}
+
+.vendors-preview-item strong {
+  color: var(--fm-text-primary);
 }
 
 .vendors-workspace-topbar,
@@ -586,6 +612,7 @@
 
 @media (max-width: 980px) {
   .vendors-finance-grid,
+  .vendors-brief-grid,
   .vendors-policy-grid,
   .vendors-detail-grid,
   .vendors-workspace-lanes,

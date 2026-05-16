@@ -344,6 +344,34 @@ export function VendorsPage({
       ]
     : []
 
+  const operationalDigest = selectedSummaryRecord
+    ? [
+        {
+          label: 'فشار عملیاتی',
+          value: `${formatPersianNumber(toDisplayValue(getMetric(selectedSummaryRecord, 'ticketCount')))} تیکت`,
+          detail: `${formatPersianNumber(toDisplayValue(getMetric(selectedSummaryRecord, 'escalatedCount')))} ارجاع مالی در همین بازه`,
+        },
+        {
+          label: 'سیگنال مشتری',
+          value: `${formatPersianNumber(readText(selectedSummaryRecord, ['customerRatingAverage'], '—'))} از ۵`,
+          detail: `${formatPersianNumber(readText(selectedSummaryRecord, ['customerRatingCount'], '—'))} رأی ثبت‌شده`,
+        },
+        {
+          label: 'policy موثر',
+          value: formatPolicy(selectedPolicy.effective),
+          detail: `timeline فعلی ${formatPersianNumber(timeline.length)} رخداد دارد`,
+        },
+      ]
+    : []
+
+  const workspacePreview = selectedSummaryRecord
+    ? [
+        'lane مالی و تسویه برای hold/release/review',
+        'lane policy برای manual override و محدودیت‌ها',
+        'lane هماهنگی برای handoff بین مالی، پشتیبانی و عملیات',
+      ]
+    : []
+
   return (
     <div className="fm-stack">
       <LoadableState error={error} loading={loading}>
@@ -468,6 +496,27 @@ export function VendorsPage({
         </SectionCard>
 
         <SectionCard
+          eyebrow="decision brief"
+          title="جمع‌بندی سریع برای تصمیم بعدی"
+          description="این بخش قبل از ورود به workspace متمرکز، تصویر کوتاه و decision-oriented از فروشنده انتخاب‌شده می‌دهد."
+          actions={<Pill tone="neutral">brief</Pill>}
+        >
+          {operationalDigest.length ? (
+            <div className="vendors-brief-grid">
+              {operationalDigest.map((item) => (
+                <article className="vendors-brief-item" key={item.label}>
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                  <small>{item.detail}</small>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="fm-message">برای ساختن decision brief هنوز فروشنده‌ای انتخاب نشده است.</div>
+          )}
+        </SectionCard>
+
+        <SectionCard
           eyebrow="گزارش مالی"
           title="خلاصه wallets / settlements / transactions"
           description="گزارش‌ها می‌توانند چندستونه باشند، اما خود listها تمام‌عرض می‌مانند تا خوانایی route حفظ شود."
@@ -481,6 +530,25 @@ export function VendorsPage({
               </article>
             ))}
           </div>
+        </SectionCard>
+
+        <SectionCard
+          eyebrow="workspace preview"
+          title="چیزی که در route متمرکز ادامه پیدا می‌کند"
+          description="list page فقط triage و visibility می‌دهد؛ ادامه کار در workspace فروشنده با laneهای متمرکز جلو می‌رود."
+          actions={<Pill tone="primary">focused flow</Pill>}
+        >
+          {workspacePreview.length ? (
+            <div className="vendors-preview-list">
+              {workspacePreview.map((item) => (
+                <article className="vendors-preview-item" key={item}>
+                  <strong>{item}</strong>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="fm-message">بعد از انتخاب فروشنده، مسیر workspace متمرکز اینجا نمایش داده می‌شود.</div>
+          )}
         </SectionCard>
 
         <SectionCard
