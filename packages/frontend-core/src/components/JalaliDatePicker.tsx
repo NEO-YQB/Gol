@@ -59,7 +59,7 @@ function jdnToGregorian(jdn: number): GregorianParts {
   const i = div((j % 1461), 4) * 5 + 308
   const gd = div((i % 153), 5) + 1
   const gm = div(i, 153) % 12 + 1
-  const gy = div(j, 1461) - 100100 + div(8 - gm, 6)
+  const gy = div(j, 1461) - 100100 + div(8 - gm, 6) + 1
   return { gy, gm, gd }
 }
 
