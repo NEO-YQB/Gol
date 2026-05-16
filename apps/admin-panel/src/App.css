@@ -538,6 +538,11 @@
   color: var(--fm-text-primary);
 }
 
+.vendors-brief-item small {
+  display: block;
+  margin-top: 10px;
+}
+
 .vendors-workspace-topbar,
 .vendors-workspace-lanes,
 .vendors-workspace-action-grid,

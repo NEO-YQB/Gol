@@ -73,6 +73,12 @@ function formatPolicy(policy: unknown) {
   return entries.length ? entries.join(' | ') : '—'
 }
 
+function collectActiveFlags(policy: unknown) {
+  return Object.entries(toObject(policy))
+    .filter(([, value]) => value === true)
+    .map(([key]) => key)
+}
+
 export function VendorWorkspacePage({
   session,
   store,
@@ -132,6 +138,7 @@ export function VendorWorkspacePage({
   const detailStore = useMemo(() => toObject(detail?.store), [detail])
   const currentPolicy = useMemo(() => toObject(detail?.currentPolicy), [detail])
   const timeline = useMemo(() => toArray(detail?.timeline), [detail])
+  const effectivePolicyFlags = collectActiveFlags(currentPolicy.effective)
 
   const stats = [
     {
@@ -284,6 +291,54 @@ export function VendorWorkspacePage({
     tone: index % 2 === 0 ? ('warning' as const) : ('success' as const),
   }))
 
+  const workflowStages = [
+    {
+      label: '۱. assess',
+      value: `${getStatusLabel(status)} / score ${healthScore}`,
+      note: 'اول وضعیت سلامت، سیگنال مشتری و فشار تیکت باید تثبیت شود.',
+    },
+    {
+      label: '۲. policy',
+      value: effectivePolicyFlags.length ? effectivePolicyFlags.join(' / ') : 'بدون محدودیت فعال',
+      note: 'بعد باید policy موثر و overrideهای احتمالی خوانده شوند.',
+    },
+    {
+      label: '۳. finance',
+      value: `${refundCount} refund / ${reversalCount} reversal`,
+      note: 'فشار مالی و نیاز به hold/release/review در این مرحله سنجیده می‌شود.',
+    },
+    {
+      label: '۴. handoff',
+      value: `${escalatedCount} ارجاع مالی`,
+      note: 'اگر تصمیم بین تیمی شد، handoff باید همین route را مرجع خود نگه دارد.',
+    },
+  ]
+
+  const decisionMatrix = {
+    finance: [
+      'اگر refund/reversal بالا است، اول فشار مالی را بخوان و بعد سراغ release/hold برو.',
+      'اگر ticket pressure بالاست، review مالی باید با context پشتیبانی انجام شود.',
+      'اگر policy محدودیت فعال دارد، finance action نباید جدا از policy review انجام شود.',
+    ],
+    policy: [
+      'اگر فروشنده AT_RISK است، policy lane باید قبل از هر تصمیم مالی دیده شود.',
+      'اگر محدودیت‌های موثر فعال‌اند، override باید با timeline و آخرین snapshot بررسی شود.',
+      'اگر customer signal افت کرده، policy review باید با pressure عملیاتی کنار هم خوانده شود.',
+    ],
+    coordination: [
+      'اگر escalation مالی بالا است، handoff باید روشن و قابل‌ردیابی بماند.',
+      'اگر هم‌زمان ticket pressure و policy flags بالا هستند، coordination lane نقطه شروع بهتری است.',
+      'timeline این route باید مرجع مشترک مالی، پشتیبانی و عملیات باقی بماند.',
+    ],
+  }[activeLane]
+
+  const latestEventDigest = timeline.slice(0, 4).map((item, index) => ({
+    id: readText(item, ['id'], String(index + 1)),
+    title: readText(item, ['summary', 'aggregateType'], 'event'),
+    meta: formatJalaliDate(item.createdAt),
+    actor: readText(item, ['actorUserId'], 'سیستمی/نامشخص'),
+  }))
+
   return (
     <div className="fm-stack">
       <div className="vendors-workspace-topbar">
@@ -339,6 +394,39 @@ export function VendorWorkspacePage({
         </SectionCard>
 
         <SectionCard
+          eyebrow="workflow board"
+          title="برد کامل workflow فروشنده"
+          description="این برد مسیر کامل review را از assess اولیه تا handoff نهایی یکجا نگه می‌دارد تا چیزی از قلم نیفتد."
+          actions={<Pill tone="primary">workflow</Pill>}
+        >
+          <div className="vendors-workspace-checklist">
+            {workflowStages.map((item) => (
+              <article className="vendors-workspace-check-item" key={item.label}>
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+                <p>{item.note}</p>
+              </article>
+            ))}
+          </div>
+        </SectionCard>
+
+        <SectionCard
+          eyebrow="decision matrix"
+          title="ماتریس تصمیم برای lane انتخاب‌شده"
+          description="هر lane باید منطق تصمیم‌گیری خودش را داشته باشد تا route فقط یک صفحه تزئینی نباشد."
+          actions={<Pill tone="neutral">{activeLane}</Pill>}
+        >
+          <div className="vendors-workspace-action-grid">
+            {decisionMatrix.map((item) => (
+              <article className="vendors-workspace-action-card" key={item}>
+                <strong>قاعده تصمیم</strong>
+                <p>{item}</p>
+              </article>
+            ))}
+          </div>
+        </SectionCard>
+
+        <SectionCard
           eyebrow="readiness checklist"
           title="چک‌لیست آمادگی برای actionهای واقعی"
           description="این بلوک route را برای اضافه شدن action surfaceهای واقعی آماده می‌کند، بدون اینکه الان fake flow ایجاد شود."
@@ -369,6 +457,27 @@ export function VendorWorkspacePage({
               </article>
             ))}
           </div>
+        </SectionCard>
+
+        <SectionCard
+          eyebrow="latest events"
+          title="digest رخدادهای آخر"
+          description="چهار رخداد آخر timeline اینجا فشرده دیده می‌شوند تا اپراتور قبل از اسکرول timeline full context را سریع بگیرد."
+          actions={<Pill tone="warning">event digest</Pill>}
+        >
+          {latestEventDigest.length ? (
+            <div className="vendors-brief-grid">
+              {latestEventDigest.map((item) => (
+                <article className="vendors-brief-item" key={item.id}>
+                  <span>{item.title}</span>
+                  <strong>{item.meta}</strong>
+                  <small>{`actor: ${item.actor}`}</small>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="fm-message">هنوز رخداد کافی برای ساخت digest آخر وجود ندارد.</div>
+          )}
         </SectionCard>
 
         <SectionCard

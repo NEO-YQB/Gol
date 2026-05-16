@@ -107,6 +107,16 @@ function formatPolicy(policy: unknown) {
   return entries.length ? entries.join(' | ') : '—'
 }
 
+function summarizePolicyFlags(policy: unknown) {
+  const record = toObject(policy)
+  const activeFlags = Object.entries(record)
+    .filter(([, value]) => value === true)
+    .map(([key]) => key)
+
+  if (!activeFlags.length) return 'محدودیت فعالی دیده نمی‌شود'
+  return activeFlags.join(' / ')
+}
+
 export function VendorsPage({
   session,
   onOpenVendorWorkspace,
@@ -372,6 +382,58 @@ export function VendorsPage({
       ]
     : []
 
+  const healthBoard = [
+    {
+      label: 'عالی',
+      value: formatPersianNumber(statusCounts.EXCELLENT ?? 0),
+      detail: 'فروشگاه‌های پایدار و کم‌ریسک',
+      tone: 'success' as const,
+    },
+    {
+      label: 'پایدار',
+      value: formatPersianNumber(statusCounts.GOOD ?? 0),
+      detail: 'نیازمند مانیتورینگ سبک',
+      tone: 'primary' as const,
+    },
+    {
+      label: 'تحت نظر',
+      value: formatPersianNumber(statusCounts.WATCHLIST ?? 0),
+      detail: 'صف فروشنده‌های نیازمند بازبینی',
+      tone: 'warning' as const,
+    },
+    {
+      label: 'پرریسک',
+      value: formatPersianNumber(statusCounts.AT_RISK ?? 0),
+      detail: 'اولویت‌های فوری برای workflow متمرکز',
+      tone: 'danger' as const,
+    },
+  ]
+
+  const queueSummary = selectedSummaryRecord
+    ? [
+        {
+          label: 'lane مناسب',
+          value:
+            readText(selectedSummaryRecord, ['vendorHealthStatus'], '') === 'AT_RISK'
+              ? 'policy + finance'
+              : readText(selectedSummaryRecord, ['vendorHealthStatus'], '') === 'WATCHLIST'
+                ? 'policy + coordination'
+                : 'finance / monitoring',
+          detail: 'پیشنهاد شروع workflow برای اپراتور',
+        },
+        {
+          label: 'policy flags',
+          value: summarizePolicyFlags(selectedPolicy.effective),
+          detail: 'خلاصه محدودیت‌های موثر روی فروشنده',
+        },
+        {
+          label: 'گام بعدی',
+          value: 'ورود به workspace متمرکز',
+          detail: 'برای review کامل، timeline و تصمیم‌گیری lane-based',
+        },
+      ]
+    : []
+
   return (
     <div className="fm-stack">
       <LoadableState error={error} loading={loading}>
@@ -496,6 +558,23 @@ export function VendorsPage({
         </SectionCard>
 
         <SectionCard
+          eyebrow="health board"
+          title="وضعیت سلامت کل صف فروشنده‌ها"
+          description="این بلوک برای اسکن سریع health mix کل صف است تا اپراتور بداند فشار اصلی روی کدام segment قرار دارد."
+          actions={<Pill tone="neutral">segmentation</Pill>}
+        >
+          <div className="vendors-brief-grid">
+            {healthBoard.map((item) => (
+              <article className="vendors-brief-item" key={item.label}>
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+                <small>{item.detail}</small>
+              </article>
+            ))}
+          </div>
+        </SectionCard>
+
+        <SectionCard
           eyebrow="decision brief"
           title="جمع‌بندی سریع برای تصمیم بعدی"
           description="این بخش قبل از ورود به workspace متمرکز، تصویر کوتاه و decision-oriented از فروشنده انتخاب‌شده می‌دهد."
@@ -513,6 +592,27 @@ export function VendorsPage({
             </div>
           ) : (
             <div className="fm-message">برای ساختن decision brief هنوز فروشنده‌ای انتخاب نشده است.</div>
+          )}
+        </SectionCard>
+
+        <SectionCard
+          eyebrow="queue routing"
+          title="راهنمای عبور از صف به workflow"
+          description="این بخش روشن می‌کند فروشنده انتخاب‌شده باید با چه نوع workflow و از کدام lane وارد workspace متمرکز شود."
+          actions={<Pill tone="primary">routing</Pill>}
+        >
+          {queueSummary.length ? (
+            <div className="vendors-brief-grid">
+              {queueSummary.map((item) => (
+                <article className="vendors-brief-item" key={item.label}>
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                  <small>{item.detail}</small>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="fm-message">بعد از انتخاب فروشنده، مسیر پیشنهادی workflow اینجا نمایش داده می‌شود.</div>
           )}
         </SectionCard>
 
