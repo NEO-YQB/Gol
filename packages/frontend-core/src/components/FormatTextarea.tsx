@@ -131,7 +131,7 @@ export function RichTextEditor({
     const currentHtml = editor.getHTML()
     const nextHtml = value || ''
     if (currentHtml !== nextHtml) {
-      editor.commands.setContent(nextHtml || '<p></p>', false)
+      editor.commands.setContent(nextHtml || '<p></p>', { emitUpdate: false })
     }
   }, [editor, value])
 
