@@ -513,7 +513,10 @@
 }
 
 .vendors-workspace-topbar,
-.vendors-workspace-actions {
+.vendors-workspace-lanes,
+.vendors-workspace-action-grid,
+.vendors-workspace-checklist,
+.vendors-workspace-surface-grid {
   display: grid;
   gap: 16px;
 }
@@ -526,37 +529,70 @@
   justify-content: space-between;
 }
 
-.vendors-workspace-actions,
-.vendors-workspace-policy-grid {
+.vendors-workspace-lanes,
+.vendors-workspace-action-grid,
+.vendors-workspace-checklist,
+.vendors-workspace-policy-grid,
+.vendors-workspace-surface-grid {
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.vendors-workspace-action-card {
+.vendors-workspace-lane-card,
+.vendors-workspace-action-card,
+.vendors-workspace-check-item,
+.vendors-workspace-surface-card {
   border: 1px solid var(--fm-border-soft);
   border-radius: 18px;
   padding: 18px;
   background: rgba(255, 253, 248, 0.86);
 }
 
-.vendors-workspace-action-card strong {
+.vendors-workspace-lane-card {
+  text-align: right;
+}
+
+.vendors-workspace-lane-card.is-active {
+  border-color: rgba(31, 106, 82, 0.34);
+  box-shadow: 0 0 0 4px rgba(31, 106, 82, 0.08);
+}
+
+.vendors-workspace-lane-card strong,
+.vendors-workspace-action-card strong,
+.vendors-workspace-check-item strong,
+.vendors-workspace-surface-card strong {
   display: block;
   color: var(--fm-text-primary);
 }
 
-.vendors-workspace-action-card p {
+.vendors-workspace-lane-card p,
+.vendors-workspace-action-card p,
+.vendors-workspace-check-item p,
+.vendors-workspace-surface-card p {
   margin: 10px 0 0;
   color: var(--fm-text-secondary);
   line-height: 1.9;
+}
+
+.vendors-workspace-lane-card small,
+.vendors-workspace-check-item span {
+  display: block;
+  margin-top: 10px;
+  color: var(--fm-text-secondary);
+  font-size: 0.88rem;
+  line-height: 1.8;
 }
 
 @media (max-width: 980px) {
   .vendors-finance-grid,
   .vendors-policy-grid,
   .vendors-detail-grid,
-  .vendors-workspace-actions,
-  .vendors-workspace-policy-grid {
+  .vendors-workspace-lanes,
+  .vendors-workspace-action-grid,
+  .vendors-workspace-checklist,
+  .vendors-workspace-policy-grid,
+  .vendors-workspace-surface-grid {
     grid-template-columns: 1fr;
   }
 }

@@ -6,6 +6,7 @@ import { readText, toArray } from '../lib/normalize'
 import type { AuthSession } from '../lib/session'
 
 type VendorRecord = Record<string, unknown>
+type WorkspaceLane = 'finance' | 'policy' | 'coordination'
 
 function toObject(value: unknown): VendorRecord {
   return typeof value === 'object' && value !== null ? (value as VendorRecord) : {}
@@ -84,8 +85,17 @@ export function VendorWorkspacePage({
   const [loading, setLoading] = useState(Boolean(store))
   const [error, setError] = useState<string | null>(null)
   const [detail, setDetail] = useState<VendorRecord | null>(null)
+  const [activeLane, setActiveLane] = useState<WorkspaceLane>('finance')
 
   const storeId = readText(store ?? {}, ['storeId'], '')
+  const status = readText(store ?? {}, ['vendorHealthStatus'], 'UNKNOWN')
+  const ratingCount = formatPersianNumber(readText(store ?? {}, ['customerRatingCount'], '—'))
+  const ticketPressure = formatPersianNumber(readText(store ?? {}, ['periodMetrics.ticketCount'], '—'))
+  const escalatedCount = formatPersianNumber(readText(store ?? {}, ['periodMetrics.escalatedCount'], '—'))
+  const refundCount = formatPersianNumber(readText(store ?? {}, ['periodMetrics.refundCount'], '—'))
+  const reversalCount = formatPersianNumber(readText(store ?? {}, ['periodMetrics.reversalCount'], '—'))
+  const customerAverage = formatPersianNumber(readText(store ?? {}, ['customerRatingAverage'], '—'))
+  const healthScore = formatPersianNumber(readText(store ?? {}, ['vendorHealthScore'], '—'))
 
   useEffect(() => {
     if (!storeId) {
@@ -122,7 +132,6 @@ export function VendorWorkspacePage({
   const detailStore = useMemo(() => toObject(detail?.store), [detail])
   const currentPolicy = useMemo(() => toObject(detail?.currentPolicy), [detail])
   const timeline = useMemo(() => toArray(detail?.timeline), [detail])
-  const status = readText(store ?? {}, ['vendorHealthStatus'], 'UNKNOWN')
 
   const stats = [
     {
@@ -135,14 +144,14 @@ export function VendorWorkspacePage({
     {
       label: 'وضعیت سلامت',
       value: getStatusLabel(status),
-      delta: `score ${formatPersianNumber(readText(store ?? {}, ['vendorHealthScore'], '—'))}`,
+      delta: `score ${healthScore}`,
       detail: 'پایه تصمیم‌های review و policy',
       tone: getStatusTone(status),
     },
     {
       label: 'امتیاز مشتری',
-      value: formatPersianNumber(readText(store ?? {}, ['customerRatingAverage'], '—')),
-      delta: `${formatPersianNumber(readText(store ?? {}, ['customerRatingCount'], '—'))} رأی`,
+      value: customerAverage,
+      delta: `${ratingCount} رأی`,
       detail: 'signal سمت مشتری',
       tone: 'success' as const,
     },
@@ -155,21 +164,115 @@ export function VendorWorkspacePage({
     },
   ]
 
-  const actionCards = [
+  const laneCards = [
     {
-      title: 'کنترل کیف پول و تسویه',
-      description:
-        'actionهای release، hold، بررسی موجودی و پیگیری settlement باید از این workspace متمرکز شروع شوند تا list page شلوغ نشود.',
+      key: 'finance' as const,
+      title: 'lane مالی و تسویه',
+      description: 'برای hold/release/review و کنترل فشار مالی فروشنده.',
+      detail: `${ticketPressure} تیکت / ${refundCount} refund / ${reversalCount} reversal`,
     },
     {
-      title: 'بازبینی policy ریسک',
-      description:
-        'manual override، محدودیت تخفیف و کنترل manual review باید در همین surface متمرکز انجام شوند، نه کنار فهرست فروشنده‌ها.',
+      key: 'policy' as const,
+      title: 'lane policy و ریسک',
+      description: 'برای override، محدودیت تخفیف و manual review.',
+      detail: `${getStatusLabel(status)} / score ${healthScore}`,
     },
     {
-      title: 'هماهنگی با تیم مالی/پشتیبانی',
+      key: 'coordination' as const,
+      title: 'lane هماهنگی بین تیمی',
+      description: 'برای sync بین مالی، پشتیبانی و عملیات.',
+      detail: `${escalatedCount} ارجاع مالی / ${ratingCount} رأی مشتری`,
+    },
+  ]
+
+  const laneSummaryMap: Record<
+    WorkspaceLane,
+    {
+      eyebrow: string
+      title: string
+      description: string
+      bullets: string[]
+      statusLabel: string
+    }
+  > = {
+    finance: {
+      eyebrow: 'finance lane',
+      title: 'آماده‌سازی surface مالی و تسویه',
       description:
-        'وقتی فروشنده به refund، reversal یا escalation نیاز دارد، context این تصمیم باید در یک route متمرکز و قابل‌ردیابی بماند.',
+        'این lane برای زمانی است که actionهای release، hold، wallet review و settlement follow-up به همین route اضافه شوند.',
+      bullets: [
+        `فشار ticket در این بازه: ${ticketPressure}`,
+        `refundهای دوره: ${refundCount}`,
+        `reversalهای دوره: ${reversalCount}`,
+        'در این مرحله route برای تصمیم‌گیری و context gathering آماده شده است، نه اجرای fake action.',
+      ],
+      statusLabel: 'finance-ready',
+    },
+    policy: {
+      eyebrow: 'policy lane',
+      title: 'آماده‌سازی surface policy و manual override',
+      description:
+        'این lane برای review محدودیت‌ها، manual override و اثر policy روی فروشنده طراحی شده تا بعدا actionها مستقیم همین‌جا بنشینند.',
+      bullets: [
+        `health status فعلی: ${getStatusLabel(status)}`,
+        `تعداد رأی‌های مشتری: ${ratingCount}`,
+        `ارجاع‌های مالی ثبت‌شده: ${escalatedCount}`,
+        'current policy و timeline پایین صفحه به‌عنوان context اصلی این lane عمل می‌کنند.',
+      ],
+      statusLabel: 'policy-ready',
+    },
+    coordination: {
+      eyebrow: 'coordination lane',
+      title: 'آماده‌سازی surface هماهنگی بین تیمی',
+      description:
+        'وقتی تصمیم یک فروشنده بین مالی، پشتیبانی و عملیات پخش می‌شود، این lane باید workspace واحد برای جمع‌بندی و handoff باشد.',
+      bullets: [
+        `ticket pressure: ${ticketPressure}`,
+        `ارجاع مالی: ${escalatedCount}`,
+        `customer signal: ${customerAverage}`,
+        'timeline رخدادها پایین صفحه زمینه لازم برای handoff و پیگیری بعدی را نگه می‌دارد.',
+      ],
+      statusLabel: 'coordination-ready',
+    },
+  }
+
+  const activeLaneSummary = laneSummaryMap[activeLane]
+
+  const operationalChecklist = [
+    {
+      label: 'health snapshot',
+      value: getStatusLabel(status),
+      note: 'برای شروع review باید وضعیت سلامت و score به‌روز دیده شود.',
+    },
+    {
+      label: 'ticket pressure',
+      value: ticketPressure,
+      note: 'شدت فشار عملیاتی از تعداد تیکت‌های بازه و escalationها فهمیده می‌شود.',
+    },
+    {
+      label: 'finance pressure',
+      value: `${refundCount} / ${reversalCount}`,
+      note: 'refund و reversal باید قبل از هر action جدید دوباره دیده شوند.',
+    },
+    {
+      label: 'policy visibility',
+      value: readText(detailStore, ['name'], '—'),
+      note: 'current policy و timeline همین route مرجع review باقی می‌مانند.',
+    },
+  ]
+
+  const nextSurfaces = [
+    {
+      title: 'finance decision surface',
+      text: 'release/hold wallet، بررسی settlement و actionهای مالی باید در این route به‌صورت focused form یا drawer داخلی اضافه شوند.',
+    },
+    {
+      title: 'policy control surface',
+      text: 'manual override، محدودیت تخفیف، بازگشایی review و decision log باید در همین workspace متمرکز پیاده شوند.',
+    },
+    {
+      title: 'cross-team handoff surface',
+      text: 'وقتی تصمیم نیازمند هماهنگی پشتیبانی/مالی است، note، context و timeline باید همین‌جا کنار هم بمانند.',
     },
   ]
 
@@ -203,11 +306,66 @@ export function VendorWorkspacePage({
           description="این route عمدا از list page جدا شده تا اقدام‌های بعدی و تصمیم‌های عملیاتی در یک surface خلوت، متمرکز و قابل‌گسترش جمع شوند."
           actions={<Pill tone="primary">focused route</Pill>}
         >
-          <div className="vendors-workspace-actions">
-            {actionCards.map((item) => (
-              <article className="vendors-workspace-action-card" key={item.title}>
+          <div className="vendors-workspace-lanes">
+            {laneCards.map((item) => (
+              <button
+                className={`vendors-workspace-lane-card${activeLane === item.key ? ' is-active' : ''}`}
+                key={item.key}
+                onClick={() => setActiveLane(item.key)}
+                type="button"
+              >
                 <strong>{item.title}</strong>
                 <p>{item.description}</p>
+                <small>{item.detail}</small>
+              </button>
+            ))}
+          </div>
+        </SectionCard>
+
+        <SectionCard
+          eyebrow={activeLaneSummary.eyebrow}
+          title={activeLaneSummary.title}
+          description={activeLaneSummary.description}
+          actions={<Pill tone="secondary">{activeLaneSummary.statusLabel}</Pill>}
+        >
+          <div className="vendors-workspace-action-grid">
+            {activeLaneSummary.bullets.map((item) => (
+              <article className="vendors-workspace-action-card" key={item}>
+                <strong>نکته عملیاتی</strong>
+                <p>{item}</p>
+              </article>
+            ))}
+          </div>
+        </SectionCard>
+
+        <SectionCard
+          eyebrow="readiness checklist"
+          title="چک‌لیست آمادگی برای actionهای واقعی"
+          description="این بلوک route را برای اضافه شدن action surfaceهای واقعی آماده می‌کند، بدون اینکه الان fake flow ایجاد شود."
+          actions={<Pill tone="warning">action-ready</Pill>}
+        >
+          <div className="vendors-workspace-checklist">
+            {operationalChecklist.map((item) => (
+              <article className="vendors-workspace-check-item" key={item.label}>
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+                <p>{item.note}</p>
+              </article>
+            ))}
+          </div>
+        </SectionCard>
+
+        <SectionCard
+          eyebrow="next action surfaces"
+          title="سطوحی که بعدا action واقعی روی آن‌ها می‌نشیند"
+          description="به‌جای شلوغ کردن list page، این route از همین حالا جای actionهای آینده را مشخص می‌کند تا توسعه بعدی مستقیم روی همین اسکلت بنشیند."
+          actions={<Pill tone="primary">next steps</Pill>}
+        >
+          <div className="vendors-workspace-surface-grid">
+            {nextSurfaces.map((item) => (
+              <article className="vendors-workspace-surface-card" key={item.title}>
+                <strong>{item.title}</strong>
+                <p>{item.text}</p>
               </article>
             ))}
           </div>
