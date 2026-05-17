@@ -129,7 +129,23 @@ export function SupportPage({ session }: { session: AuthSession }) {
     if (!active.current) return
 
     const payloadRecord = (payload as Record<string, unknown>) ?? {}
-    const ticketList = toArray(payload)
+    const baseTickets = toArray(payload)
+    const enrichedTickets = await Promise.all(
+      baseTickets.map(async (ticket) => {
+        const ticketId = Number(readText(ticket, ['id'], '0'))
+        if (!ticketId) return ticket
+
+        try {
+          const detail = (await vendorApi.getSupportTicket(session, ticketId)) as TicketRecord
+          return { ...ticket, ...detail }
+        } catch {
+          return ticket
+        }
+      }),
+    )
+    if (!active.current) return
+
+    const ticketList = enrichedTickets
     setTickets(ticketList)
     setTotals(((payloadRecord.totals as Record<string, unknown>) ?? {}))
     if (ticketList.length > 0) {
