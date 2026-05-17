@@ -782,6 +782,52 @@
   box-shadow: 0 0 0 4px rgba(31, 106, 82, 0.08);
 }
 
+.vendor-support-issue-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.vendor-support-issue-card,
+.vendor-support-thread-item {
+  border: 1px solid var(--fm-border-soft);
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(255, 253, 248, 0.86);
+  display: grid;
+  gap: 8px;
+}
+
+.vendor-support-issue-card span,
+.vendor-support-thread-item span {
+  color: var(--fm-text-secondary);
+  font-size: 0.88rem;
+}
+
+.vendor-support-issue-card strong,
+.vendor-support-thread-item p {
+  color: var(--fm-text-primary);
+  line-height: 1.9;
+  margin: 0;
+}
+
+.vendor-support-issue-card--wide {
+  grid-column: 1 / -1;
+}
+
+.vendor-support-thread {
+  display: grid;
+  gap: 12px;
+}
+
+.vendor-support-thread-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .vendor-support-detail-grid {
   display: grid;
   gap: 12px;
@@ -1050,6 +1096,7 @@
   .vendor-products-summary-grid,
   .vendor-product-editor-fields,
   .vendor-product-editor-footer,
+  .vendor-support-issue-grid,
   .vendor-discounts-layout,
   .vendor-discounts-detail-grid,
   .vendor-discounts-form-grid,

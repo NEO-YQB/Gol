@@ -80,6 +80,10 @@ export type VendorStorePayload = {
   deliveryWindows?: DeliveryWindowPayload[]
 }
 
+export type SupportTicketNotePayload = {
+  message: string
+}
+
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ??
   import.meta.env.VITE_API_URL ??
@@ -283,6 +287,15 @@ export const vendorApi = {
   },
   getTicketsSummary(session: AuthSession) {
     return request<unknown>('/vendor-dashboard/tickets-summary', {}, session.accessToken)
+  },
+  getSupportTicket(session: AuthSession, ticketId: number) {
+    return request<unknown>(`/support/tickets/${ticketId}`, {}, session.accessToken)
+  },
+  addSupportTicketNote(session: AuthSession, ticketId: number, payload: SupportTicketNotePayload) {
+    return request<unknown>(`/support/tickets/${ticketId}/notes`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }, session.accessToken)
   },
   getHealthSummary(session: AuthSession) {
     return request<unknown>('/vendor-dashboard/health-summary', {}, session.accessToken)

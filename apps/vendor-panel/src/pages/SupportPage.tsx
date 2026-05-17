@@ -1,11 +1,12 @@
-import { DataTable, Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
+import { DataTable, Pill, RichTextEditor, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
 import { useEffect, useMemo, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { vendorApi } from '../lib/api'
-import { formatFaNumber, makeRows, makeStats, readNestedCount, readText, toArray } from '../lib/normalize'
+import { formatFaNumber, readNestedCount, readText, toArray } from '../lib/normalize'
 import type { AuthSession } from '../lib/session'
 
 type TicketRecord = Record<string, unknown>
+type TimelineRecord = Record<string, unknown>
 
 const ticketColumns = [
   { key: 'id', label: 'تیکت' },
@@ -14,6 +15,57 @@ const ticketColumns = [
   { key: 'status', label: 'وضعیت' },
   { key: 'reason', label: 'علت' },
 ]
+
+const statusTranslations: Record<string, string> = {
+  OPEN: 'باز',
+  IN_REVIEW: 'در حال بررسی',
+  WAITING_CUSTOMER: 'منتظر مشتری',
+  WAITING_VENDOR: 'منتظر فروشنده',
+  ESCALATED_TO_FINANCE: 'ارجاع به مالی',
+  RESOLVED: 'حل‌شده',
+  REJECTED: 'ردشده',
+  CANCELLED: 'لغوشده',
+}
+
+const reasonTranslations: Record<string, string> = {
+  QUALITY_ISSUE: 'مشکل کیفیت',
+  DAMAGED_FLOWERS: 'گل آسیب‌دیده',
+  WRONG_ITEM: 'آیتم اشتباه',
+  MISSING_ITEM: 'آیتم ناقص',
+  LATE_DELIVERY: 'تاخیر در تحویل',
+  NOT_DELIVERED: 'عدم تحویل',
+  BILLING_ISSUE: 'مشکل مالی',
+  OTHER: 'سایر',
+}
+
+const actorTranslations: Record<string, string> = {
+  CUSTOMER: 'مشتری',
+  VENDOR: 'فروشنده',
+  ADMIN: 'ادمین',
+  FINANCE: 'مالی',
+  SYSTEM: 'سیستم',
+}
+
+const flagTranslations: Record<string, string> = {
+  FOLLOW_UP_REQUIRED: 'نیازمند پیگیری',
+  FINANCE_REVIEW_PENDING: 'در انتظار بررسی مالی',
+}
+
+function translateStatus(value: string) {
+  return statusTranslations[value] ?? value
+}
+
+function translateReason(value: string) {
+  return reasonTranslations[value] ?? value
+}
+
+function translateActor(value: string) {
+  return actorTranslations[value] ?? value
+}
+
+function translateFlag(value: string) {
+  return flagTranslations[value] ?? value
+}
 
 function getTicketStatus(record: TicketRecord) {
   return readText(record, ['status'], 'UNKNOWN')
@@ -24,14 +76,19 @@ function getTicketReason(record: TicketRecord) {
 }
 
 function getTicketOrder(record: TicketRecord) {
-  return readText(record, ['orderId'], '—')
+  return readText(record, ['orderId'], readText((record.order as TicketRecord) ?? {}, ['id'], '—'))
 }
 
 function getCustomerText(record: TicketRecord) {
+  const customer = typeof record.customer === 'object' && record.customer !== null ? (record.customer as TicketRecord) : null
+  if (customer) {
+    return readText(customer, ['fullName', 'phoneNumber', 'id'], '—')
+  }
+
   return readText(record, ['customerName', 'customer', 'recipientName', 'userId'], '—')
 }
 
-function formatJalaliDate(value: unknown) {
+function formatJalaliDateTime(value: unknown) {
   if (typeof value !== 'string' || !value) return '—'
 
   const parsed = new Date(value)
@@ -41,6 +98,8 @@ function formatJalaliDate(value: unknown) {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   }).format(parsed)
 }
 
@@ -51,42 +110,54 @@ function statusOptions(items: TicketRecord[]) {
 
 export function SupportPage({ session }: { session: AuthSession }) {
   const [loading, setLoading] = useState(true)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [savingReply, setSavingReply] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [detailError, setDetailError] = useState<string | null>(null)
+  const [formError, setFormError] = useState<string | null>(null)
+  const [formMessage, setFormMessage] = useState<string | null>(null)
   const [tickets, setTickets] = useState<TicketRecord[]>([])
   const [totals, setTotals] = useState<Record<string, unknown>>({})
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [search, setSearch] = useState('')
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null)
+  const [editorOpen, setEditorOpen] = useState(false)
+  const [selectedTicket, setSelectedTicket] = useState<TicketRecord | null>(null)
+  const [replyMessage, setReplyMessage] = useState('')
+
+  async function loadTickets(active = { current: true }) {
+    const payload = await vendorApi.getTicketsSummary(session)
+    if (!active.current) return
+
+    const payloadRecord = (payload as Record<string, unknown>) ?? {}
+    const ticketList = toArray(payload)
+    setTickets(ticketList)
+    setTotals(((payloadRecord.totals as Record<string, unknown>) ?? {}))
+    if (ticketList.length > 0) {
+      setSelectedTicketId((current) => current ?? readText(ticketList[0], ['id'], ''))
+    }
+  }
 
   useEffect(() => {
-    let active = true
+    const active = { current: true }
 
     async function load() {
       setLoading(true)
       setError(null)
 
       try {
-        const payload = await vendorApi.getTicketsSummary(session)
-        if (!active) return
-
-        const payloadRecord = (payload as Record<string, unknown>) ?? {}
-        const ticketList = toArray(payload)
-        setTickets(ticketList)
-        setTotals(((payloadRecord.totals as Record<string, unknown>) ?? {}))
-        if (ticketList.length > 0) {
-          setSelectedTicketId(readText(ticketList[0], ['id'], ''))
-        }
+        await loadTickets(active)
       } catch (loadError) {
-        if (!active) return
+        if (!active.current) return
         setError(loadError instanceof Error ? loadError.message : 'خطا در بارگذاری تیکت‌های فروشنده')
       } finally {
-        if (active) setLoading(false)
+        if (active.current) setLoading(false)
       }
     }
 
     void load()
     return () => {
-      active = false
+      active.current = false
     }
   }, [session])
 
@@ -101,8 +172,8 @@ export function SupportPage({ session }: { session: AuthSession }) {
       const haystack = [
         readText(item, ['id'], ''),
         getTicketOrder(item),
-        getTicketStatus(item),
-        getTicketReason(item),
+        translateStatus(getTicketStatus(item)),
+        translateReason(getTicketReason(item)),
         getCustomerText(item),
       ]
         .join(' ')
@@ -124,71 +195,151 @@ export function SupportPage({ session }: { session: AuthSession }) {
     }
   }, [filteredTickets, selectedTicketId])
 
+  useEffect(() => {
+    if (!editorOpen || !selectedTicketId) return
+    let active = true
+
+    async function loadDetail() {
+      setDetailLoading(true)
+      setDetailError(null)
+
+      try {
+        const payload = await vendorApi.getSupportTicket(session, Number(selectedTicketId))
+        if (!active) return
+        setSelectedTicket((payload as TicketRecord) ?? null)
+      } catch (loadError) {
+        if (!active) return
+        setDetailError(loadError instanceof Error ? loadError.message : 'خطا در بارگذاری جزئیات تیکت')
+      } finally {
+        if (active) setDetailLoading(false)
+      }
+    }
+
+    void loadDetail()
+    return () => {
+      active = false
+    }
+  }, [editorOpen, selectedTicketId, session])
+
   const rows = useMemo(
     () =>
-      makeRows(filteredTickets.slice(0, 20), [
-        { key: 'id', source: ['id'] },
-        { key: 'customer', source: ['customerName', 'customer', 'recipientName', 'userId'] },
-        { key: 'orderId', source: ['orderId'] },
-        { key: 'status', source: ['status'] },
-        { key: 'reason', source: ['reason', 'title', 'topic'] },
-      ]),
+      filteredTickets.slice(0, 20).map((item, index) => ({
+        id: readText(item, ['id'], String(index + 1)),
+        customer: getCustomerText(item),
+        orderId: getTicketOrder(item),
+        status: translateStatus(getTicketStatus(item)),
+        reason: translateReason(getTicketReason(item)),
+      })),
     [filteredTickets],
   )
 
   const stats = useMemo(
-    () =>
-      makeStats([
-        {
-          label: 'کل تیکت‌ها',
-          value: formatFaNumber(tickets.length),
-          delta: `${formatFaNumber(filteredTickets.length)} در view فعلی`,
-          detail: 'نمای سریع از صف پشتیبانی فروشگاه',
-          tone: 'primary',
-        },
-        {
-          label: 'تیکت‌های باز',
-          value: formatFaNumber(readNestedCount(totals, ['open'])),
-          delta: 'نیازمند پاسخ',
-          detail: 'درخواست‌هایی که هنوز بسته نشده‌اند',
-          tone: 'warning',
-        },
-        {
-          label: 'در حال بررسی',
-          value: formatFaNumber(readNestedCount(totals, ['inReview'])),
-          delta: `${formatFaNumber(readNestedCount(totals, ['escalatedToFinance']))} ارجاع مالی`,
-          detail: 'تیکت‌هایی که در لایه بعدی بررسی هستند',
-          tone: 'danger',
-        },
-        {
-          label: 'وضعیت‌های فعال',
-          value: formatFaNumber(statusOptions(tickets).length - 1),
-          delta: statusFilter === 'ALL' ? 'همه وضعیت‌ها' : statusFilter,
-          detail: 'پایه viewهای بعدی و filter chipها',
-          tone: 'success',
-        },
-      ]),
+    () => [
+      {
+        label: 'کل تیکت‌ها',
+        value: formatFaNumber(tickets.length),
+        delta: `${formatFaNumber(filteredTickets.length)} در view فعلی`,
+        detail: 'نمای سریع از صف پشتیبانی فروشگاه',
+        tone: 'primary' as const,
+      },
+      {
+        label: 'تیکت‌های باز',
+        value: formatFaNumber(readNestedCount(totals, ['open'])),
+        delta: 'نیازمند پاسخ',
+        detail: 'درخواست‌هایی که هنوز بسته نشده‌اند',
+        tone: 'warning' as const,
+      },
+      {
+        label: 'در حال بررسی',
+        value: formatFaNumber(readNestedCount(totals, ['inReview'])),
+        delta: `${formatFaNumber(readNestedCount(totals, ['escalatedToFinance']))} ارجاع مالی`,
+        detail: 'تیکت‌هایی که در لایه بعدی بررسی هستند',
+        tone: 'danger' as const,
+      },
+      {
+        label: 'وضعیت‌های فعال',
+        value: formatFaNumber(statusOptions(tickets).length - 1),
+        delta: statusFilter === 'ALL' ? 'همه وضعیت‌ها' : translateStatus(statusFilter),
+        detail: 'برای ساخت viewهای پیگیری و پاسخ',
+        tone: 'success' as const,
+      },
+    ],
     [filteredTickets.length, statusFilter, tickets, totals],
   )
 
-  const selectedTicket = useMemo(
+  const selectedSummaryTicket = useMemo(
     () => filteredTickets.find((item) => readText(item, ['id'], '') === selectedTicketId) ?? null,
     [filteredTickets, selectedTicketId],
   )
 
-  const selectedSummary = selectedTicket
+  const selectedSummary = selectedSummaryTicket
     ? [
-        { label: 'شناسه تیکت', value: readText(selectedTicket, ['id'], '—') },
-        { label: 'سفارش', value: getTicketOrder(selectedTicket) },
-        { label: 'مشتری', value: getCustomerText(selectedTicket) },
-        { label: 'وضعیت', value: getTicketStatus(selectedTicket) },
-        { label: 'علت', value: getTicketReason(selectedTicket) },
-        {
-          label: 'تاریخ ثبت',
-          value: formatJalaliDate(selectedTicket.createdAt ?? selectedTicket.updatedAt),
-        },
+        { label: 'شناسه تیکت', value: readText(selectedSummaryTicket, ['id'], '—') },
+        { label: 'سفارش', value: getTicketOrder(selectedSummaryTicket) },
+        { label: 'مشتری', value: getCustomerText(selectedSummaryTicket) },
+        { label: 'وضعیت', value: translateStatus(getTicketStatus(selectedSummaryTicket)) },
+        { label: 'علت', value: translateReason(getTicketReason(selectedSummaryTicket)) },
+        { label: 'تاریخ ثبت', value: formatJalaliDateTime(selectedSummaryTicket.createdAt ?? selectedSummaryTicket.updatedAt) },
       ]
     : []
+
+  const detailTimeline = useMemo(() => {
+    if (!selectedTicket) return []
+    return toArray(selectedTicket.timeline).map((item) => {
+      const actorType = readText(item, ['actorType'], 'SYSTEM')
+      return {
+        id: readText(item, ['id'], Math.random().toString()),
+        actor: translateActor(actorType),
+        actorTone: actorType,
+        message: readText(item, ['message'], '—'),
+        createdAt: formatJalaliDateTime(item.createdAt),
+        isInternal: Boolean(item.isInternal),
+      }
+    })
+  }, [selectedTicket])
+
+  function openTicketWorkspace() {
+    if (!selectedTicketId) return
+    setEditorOpen(true)
+    setReplyMessage('')
+    setFormError(null)
+    setFormMessage(null)
+  }
+
+  function closeTicketWorkspace() {
+    setEditorOpen(false)
+    setSelectedTicket(null)
+    setDetailError(null)
+    setReplyMessage('')
+    setFormError(null)
+    setFormMessage(null)
+  }
+
+  async function handleReplySubmit() {
+    if (!selectedTicketId || !replyMessage.trim()) {
+      setFormError('برای ارسال پاسخ، متن پیام الزامی است.')
+      return
+    }
+
+    setSavingReply(true)
+    setFormError(null)
+    setFormMessage(null)
+
+    try {
+      await vendorApi.addSupportTicketNote(session, Number(selectedTicketId), {
+        message: replyMessage.trim().replace(/<[^>]+>/g, ' ').trim(),
+      })
+      const payload = await vendorApi.getSupportTicket(session, Number(selectedTicketId))
+      setSelectedTicket((payload as TicketRecord) ?? null)
+      setReplyMessage('')
+      setFormMessage('پاسخ فروشنده با موفقیت ثبت شد.')
+      await loadTickets({ current: true })
+    } catch (submitError) {
+      setFormError(submitError instanceof Error ? submitError.message : 'ارسال پاسخ ناموفق بود')
+    } finally {
+      setSavingReply(false)
+    }
+  }
 
   return (
     <div className="fm-stack">
@@ -201,9 +352,9 @@ export function SupportPage({ session }: { session: AuthSession }) {
 
         <SectionCard
           eyebrow="کارتابل پشتیبانی"
-          title="workspace تیکت‌های فروشگاه"
-          description="این view برای فروشنده تیکت‌ها را فقط لیست نمی‌کند؛ بلکه search، filter و summary سریع برای پیگیری بهتر فراهم می‌کند."
-          actions={<Pill tone="warning">پشتیبانی v2</Pill>}
+          title="صف تیکت‌ها و پیگیری‌های فروشگاه"
+          description="در این view فروشنده تیکت‌ها را غربال می‌کند، context سریع می‌گیرد و بعد برای پاسخ یا پیگیری کامل وارد workspace جدا می‌شود."
+          actions={<Pill tone="warning">پشتیبانی v3</Pill>}
         >
           <div className="vendor-support-toolbar">
             <div className="fm-field vendor-support-search">
@@ -224,75 +375,231 @@ export function SupportPage({ session }: { session: AuthSession }) {
                   onClick={() => setStatusFilter(status)}
                   type="button"
                 >
-                  {status === 'ALL' ? 'همه' : status}
+                  {status === 'ALL' ? 'همه' : translateStatus(status)}
                 </button>
               ))}
             </div>
           </div>
         </SectionCard>
 
-        <div className="vendor-support-layout">
-          <SectionCard
-            eyebrow="جدول تیکت‌ها"
-            title="لیست تیکت‌های قابل پیگیری"
-            description="فروشنده باید بتواند تیکت‌ها را اسکن کند و سریع روی مهم‌ترین مورد تمرکز بگیرد."
-            actions={<Pill tone="success">{`${formatFaNumber(filteredTickets.length)} تیکت`}</Pill>}
-          >
-            <div className="vendor-support-table-card">
-              <DataTable columns={ticketColumns} rows={rows} />
+        {!editorOpen ? (
+          <div className="vendor-products-workspace-grid">
+            <SectionCard
+              eyebrow="جدول تیکت‌ها"
+              title="لیست تیکت‌های قابل پیگیری"
+              description="فروشنده باید سریع بفهمد کدام تیکت نیاز به پاسخ، کدام‌یک نیاز به توضیح بیشتر و کدام مورد نیازمند پیگیری مالی است."
+              actions={<Pill tone="success">{`${formatFaNumber(filteredTickets.length)} تیکت`}</Pill>}
+            >
+              <div className="vendor-support-table-card">
+                <DataTable columns={ticketColumns} rows={rows} />
 
-              <div className="vendor-support-selection-list">
-                {filteredTickets.slice(0, 8).map((item) => {
-                  const id = readText(item, ['id'], '—')
-                  const isActive = id === selectedTicketId
+                <div className="vendor-support-selection-list">
+                  {filteredTickets.slice(0, 8).map((item) => {
+                    const id = readText(item, ['id'], '—')
+                    const isActive = id === selectedTicketId
 
-                  return (
-                    <button
-                      className={`vendor-support-selection-item ${isActive ? 'is-active' : ''}`}
-                      key={id}
-                      onClick={() => setSelectedTicketId(id)}
-                      type="button"
-                    >
-                      <strong>تیکت #{id}</strong>
-                      <span>سفارش {getTicketOrder(item)}</span>
-                      <small>
-                        {getTicketStatus(item)} - {getTicketReason(item)}
-                      </small>
-                    </button>
-                  )
-                })}
+                    return (
+                      <button
+                        className={`vendor-support-selection-item ${isActive ? 'is-active' : ''}`}
+                        key={id}
+                        onClick={() => setSelectedTicketId(id)}
+                        type="button"
+                      >
+                        <strong>تیکت #{id}</strong>
+                        <span>سفارش {getTicketOrder(item)}</span>
+                        <small>
+                          {translateStatus(getTicketStatus(item))} - {translateReason(getTicketReason(item))}
+                        </small>
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
-            </div>
-          </SectionCard>
+            </SectionCard>
 
-          <div className="vendor-support-detail-column">
             <SectionCard
               eyebrow="تیکت انتخاب‌شده"
-              title={selectedTicket ? `تیکت #${readText(selectedTicket, ['id'], '—')}` : 'تیکتی انتخاب نشده'}
-              description="این summary پایه detail panel و پاسخ/پیگیری‌های بعدی فروشنده است."
-              actions={<Pill tone="primary">{selectedTicket ? getTicketStatus(selectedTicket) : 'بدون انتخاب'}</Pill>}
+              title={selectedSummaryTicket ? `تیکت #${readText(selectedSummaryTicket, ['id'], '—')}` : 'تیکتی انتخاب نشده'}
+              description="این summary فقط quick context می‌دهد؛ پاسخ، thread و پیگیری کامل در workspace جدا انجام می‌شود."
+              actions={
+                <div className="vendor-products-actions">
+                  <Pill tone="primary">{selectedSummaryTicket ? translateStatus(getTicketStatus(selectedSummaryTicket)) : 'بدون انتخاب'}</Pill>
+                  <button className="fm-button fm-button--secondary" disabled={!selectedSummaryTicket} onClick={openTicketWorkspace} type="button">
+                    باز کردن کارتابل تیکت
+                  </button>
+                </div>
+              }
             >
               {selectedSummary.length ? (
-                <div className="vendor-support-detail-grid">
+                <div className="vendor-products-summary-grid">
                   {selectedSummary.map((item) => (
-                    <article className="vendor-support-detail-item" key={item.label}>
+                    <article className="vendor-products-summary-card" key={item.label}>
                       <span>{item.label}</span>
                       <strong>{item.value}</strong>
                     </article>
                   ))}
-                  <article className="vendor-support-detail-item vendor-support-detail-item--wide">
-                    <span>یادداشت کارتابل</span>
-                    <strong>
-                      مرحله بعدی این صفحه می‌تواند note thread، پاسخ فروشنده و نمایش روشن‌تر outcomeهای مالی را روی همین structure سوار کند.
-                    </strong>
-                  </article>
                 </div>
               ) : (
                 <div className="vendor-note-card">در این فیلتر هنوز تیکتی برای نمایش جزئیات وجود ندارد.</div>
               )}
             </SectionCard>
           </div>
-        </div>
+        ) : null}
+
+        {editorOpen ? (
+          <SectionCard
+            eyebrow="workspace تیکت"
+            title={selectedTicket ? `پیگیری تیکت #${readText(selectedTicket, ['id'], '—')}` : 'در حال بارگذاری تیکت'}
+            description="این workspace برای دیدن timeline، context سفارش، flagهای عملیاتی و ثبت پاسخ فروشنده ساخته شده تا support domain هم مثل products و store profile منظم و focused بماند."
+            actions={
+              <div className="vendor-products-actions">
+                <button className="fm-button fm-button--ghost" onClick={closeTicketWorkspace} type="button">
+                  بازگشت به لیست
+                </button>
+                <Pill tone="warning">{selectedTicket ? translateStatus(readText(selectedTicket, ['status'], 'UNKNOWN')) : 'در حال بارگذاری'}</Pill>
+              </div>
+            }
+          >
+            <LoadableState loading={detailLoading} error={detailError}>
+              {selectedTicket ? (
+                <div className="vendor-product-editor-shell">
+                  <section className="vendor-product-editor-main">
+                    <div className="vendor-product-editor-grid">
+                      <article className="vendor-product-editor-panel">
+                        <div className="vendor-product-editor-panel-head">
+                          <strong>هویت تیکت و سفارش</strong>
+                          <span>شناسه‌ها، طرفین گفتگو و وضعیت جاری برای تصمیم سریع‌تر</span>
+                        </div>
+
+                        <div className="vendor-products-summary-grid">
+                          <article className="vendor-products-summary-card">
+                            <span>شناسه تیکت</span>
+                            <strong>{readText(selectedTicket, ['id'], '—')}</strong>
+                          </article>
+                          <article className="vendor-products-summary-card">
+                            <span>شناسه سفارش</span>
+                            <strong>{getTicketOrder(selectedTicket)}</strong>
+                          </article>
+                          <article className="vendor-products-summary-card">
+                            <span>وضعیت</span>
+                            <strong>{translateStatus(readText(selectedTicket, ['status'], 'UNKNOWN'))}</strong>
+                          </article>
+                          <article className="vendor-products-summary-card">
+                            <span>علت</span>
+                            <strong>{translateReason(readText(selectedTicket, ['reason'], '—'))}</strong>
+                          </article>
+                          <article className="vendor-products-summary-card">
+                            <span>مشتری</span>
+                            <strong>{getCustomerText(selectedTicket)}</strong>
+                          </article>
+                          <article className="vendor-products-summary-card">
+                            <span>ثبت‌شده در</span>
+                            <strong>{formatJalaliDateTime(selectedTicket.createdAt)}</strong>
+                          </article>
+                        </div>
+                      </article>
+
+                      <article className="vendor-product-editor-panel vendor-product-editor-panel--full">
+                        <div className="vendor-product-editor-panel-head">
+                          <strong>شرح تیکت</strong>
+                          <span>عنوان، توضیح مشتری و summary اولیه برای پاسخ دقیق‌تر</span>
+                        </div>
+
+                        <div className="vendor-support-issue-grid">
+                          <article className="vendor-support-issue-card">
+                            <span>عنوان</span>
+                            <strong>{readText(selectedTicket, ['title'], '—')}</strong>
+                          </article>
+                          <article className="vendor-support-issue-card vendor-support-issue-card--wide">
+                            <span>توضیح مشتری</span>
+                            <strong>{readText(selectedTicket, ['description'], '—')}</strong>
+                          </article>
+                        </div>
+                      </article>
+
+                      <article className="vendor-product-editor-panel vendor-product-editor-panel--full">
+                        <div className="vendor-product-editor-panel-head">
+                          <strong>timeline گفتگو و noteها</strong>
+                          <span>همه noteها با ترجمه actor و علامت‌گذاری internal/public</span>
+                        </div>
+
+                        {detailTimeline.length ? (
+                          <div className="vendor-support-thread">
+                            {detailTimeline.map((item) => (
+                              <article className="vendor-support-thread-item" key={item.id}>
+                                <div className="vendor-support-thread-head">
+                                  <div className="vendor-products-actions">
+                                    <Pill tone={item.isInternal ? 'danger' : 'primary'}>{item.isInternal ? 'یادداشت داخلی' : 'پیام قابل‌نمایش'}</Pill>
+                                    <Pill tone="neutral">{item.actor}</Pill>
+                                  </div>
+                                  <span>{item.createdAt}</span>
+                                </div>
+                                <p>{item.message}</p>
+                              </article>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="vendor-note-card">هنوز thread یا note معناداری برای این تیکت ثبت نشده است.</div>
+                        )}
+                      </article>
+
+                      <article className="vendor-product-editor-panel vendor-product-editor-panel--full">
+                        <div className="vendor-product-editor-panel-head">
+                          <strong>پاسخ فروشنده</strong>
+                          <span>پاسخ شفاف، انسانی و قابل‌پیگیری ثبت کن تا تیم بعدی context کامل داشته باشد.</span>
+                        </div>
+
+                        <div className="fm-field">
+                          <label htmlFor="vendor-ticket-reply">متن پاسخ</label>
+                          <RichTextEditor
+                            id="vendor-ticket-reply"
+                            value={replyMessage}
+                            onChange={setReplyMessage}
+                            placeholder="پاسخ فروشنده، توضیح پیگیری انجام‌شده، درخواست اطلاعات بیشتر یا جمع‌بندی وضعیت را اینجا بنویس"
+                            rows={8}
+                          />
+                        </div>
+                      </article>
+                    </div>
+
+                    <div className="vendor-product-editor-footer">
+                      <article className="vendor-product-editor-sidecard">
+                        <strong>پرچم‌های عملیاتی</strong>
+                        {Array.isArray(selectedTicket.latestOperationalFlags) && selectedTicket.latestOperationalFlags.length ? (
+                          <div className="vendor-store-pill-row">
+                            {selectedTicket.latestOperationalFlags.map((flag, index) => (
+                              <Pill key={`${String(flag)}-${index}`} tone="warning">
+                                {translateFlag(String(flag))}
+                              </Pill>
+                            ))}
+                          </div>
+                        ) : (
+                          <p>در حال حاضر flag فعال خاصی روی این تیکت وجود ندارد.</p>
+                        )}
+                      </article>
+
+                      <article className="vendor-product-editor-sidecard">
+                        <strong>راهنمای پاسخ‌دهی</strong>
+                        <p>
+                          از enumهای خام استفاده نکن؛ وضعیت و علت را برای تیم خودت با ترجمه فارسی ببین و در پاسخ هم از متن دقیق، کوتاه و قابل‌پیگیری استفاده کن. اگر موضوع مالی است، صرفاً context کامل بده و outcome را promise نکن.
+                        </p>
+                      </article>
+                    </div>
+
+                    <div className="vendor-products-actions">
+                      <button className="fm-button fm-button--primary" disabled={savingReply} onClick={handleReplySubmit} type="button">
+                        {savingReply ? 'در حال ثبت پاسخ...' : 'ثبت پاسخ فروشنده'}
+                      </button>
+                    </div>
+
+                    {formMessage ? <div className="fm-message fm-message--success">{formMessage}</div> : null}
+                    {formError ? <div className="fm-message fm-message--danger">{formError}</div> : null}
+                  </section>
+                </div>
+              ) : null}
+            </LoadableState>
+          </SectionCard>
+        ) : null}
       </LoadableState>
     </div>
   )
