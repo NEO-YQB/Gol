@@ -1,6 +1,7 @@
 export const vendorRouteOrder = [
   'overview',
   'orders',
+  'store',
   'products',
   'discounts',
   'wallet',
@@ -14,6 +15,7 @@ export type VendorRoute = (typeof vendorRouteOrder)[number]
 export const vendorRouteLabels: Record<VendorRoute, string> = {
   overview: 'نمای کلی',
   orders: 'سفارش‌ها',
+  store: 'پروفایل فروشگاه',
   products: 'محصولات',
   discounts: 'تخفیف‌ها و پروموشن‌ها',
   wallet: 'کیف پول و تسویه',

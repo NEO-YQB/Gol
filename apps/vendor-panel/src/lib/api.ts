@@ -57,6 +57,29 @@ export type VendorProductPayload = {
   metaDescription?: string
 }
 
+export type DeliveryWindowPayload = {
+  key: string
+  label: string
+  startTime: string
+  endTime: string
+}
+
+export type VendorStorePayload = {
+  name: string
+  slug: string
+  description?: string
+  logo?: string
+  address?: string
+  lat?: number
+  lng?: number
+  sameDayDelivery?: boolean
+  hasExpressDelivery?: boolean
+  minDeliveryHours?: number
+  maxDeliveryHours?: number
+  expressDeliveryHours?: number
+  deliveryWindows?: DeliveryWindowPayload[]
+}
+
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ??
   import.meta.env.VITE_API_URL ??
@@ -169,6 +192,21 @@ export const vendorApi = {
     }
 
     return request<unknown>(`/products?${params.toString()}`, {}, session.accessToken)
+  },
+  getStoreBySlug(slug: string) {
+    return request<unknown>(`/stores/${slug}`)
+  },
+  createStore(session: AuthSession, payload: VendorStorePayload) {
+    return request<unknown>('/stores', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }, session.accessToken)
+  },
+  updateStore(session: AuthSession, storeId: number, payload: Partial<VendorStorePayload>) {
+    return request<unknown>(`/stores/${storeId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }, session.accessToken)
   },
   getCategories() {
     return request<unknown>('/categories')
