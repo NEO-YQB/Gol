@@ -6,7 +6,6 @@ import { formatFaNumber, readNestedCount, readText, toArray } from '../lib/norma
 import type { AuthSession } from '../lib/session'
 
 type TicketRecord = Record<string, unknown>
-type TimelineRecord = Record<string, unknown>
 
 const ticketColumns = [
   { key: 'id', label: 'تیکت' },
