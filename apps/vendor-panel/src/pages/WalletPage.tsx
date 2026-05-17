@@ -440,7 +440,7 @@ export function WalletPage({ session }: { session: AuthSession }) {
                               <div className="vendor-products-actions">
                                 <Pill tone={item.direction === 'ورودی' ? 'success' : 'warning'}>{item.direction}</Pill>
                                 <Pill tone="neutral">{item.title}</Pill>
-                                {item.orderId ? <Pill tone="primary">سفارش #{item.orderId}</Pill> : null}
+                                {item.orderId ? <Pill tone="primary">{`سفارش #${item.orderId}`}</Pill> : null}
                               </div>
                               <span>{item.createdAt}</span>
                             </div>
