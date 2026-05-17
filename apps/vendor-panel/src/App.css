@@ -928,6 +928,43 @@
   box-shadow: 0 0 0 4px rgba(31, 106, 82, 0.08);
 }
 
+.vendor-wallet-thread {
+  display: grid;
+  gap: 12px;
+}
+
+.vendor-wallet-thread-item {
+  border: 1px solid var(--fm-border-soft);
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(255, 253, 248, 0.86);
+  display: grid;
+  gap: 8px;
+}
+
+.vendor-wallet-thread-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.vendor-wallet-thread-item span,
+.vendor-wallet-thread-item p {
+  color: var(--fm-text-secondary);
+}
+
+.vendor-wallet-thread-item strong {
+  color: var(--fm-text-primary);
+  font-size: 1rem;
+}
+
+.vendor-wallet-thread-item p {
+  margin: 0;
+  line-height: 1.9;
+}
+
 .vendor-wallet-detail-grid {
   display: grid;
   gap: 12px;

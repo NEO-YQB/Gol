@@ -2,7 +2,7 @@ import { DataTable, Pill, SectionCard, StatCard } from '@flower-marketplace/fron
 import { useEffect, useMemo, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { vendorApi } from '../lib/api'
-import { formatFaNumber, makeRows, makeStats, readText, toArray } from '../lib/normalize'
+import { formatFaNumber, readText, toArray } from '../lib/normalize'
 import type { AuthSession } from '../lib/session'
 
 type WalletRecord = Record<string, unknown>
@@ -19,24 +19,66 @@ const settlementColumns = [
   { key: 'id', label: 'سفارش' },
   { key: 'settlementStatus', label: 'وضعیت تسویه' },
   { key: 'vendorShareAmount', label: 'سهم فروشنده' },
-  { key: 'updatedAt', label: 'بروزرسانی' },
+  { key: 'updatedAt', label: 'آخرین بروزرسانی' },
 ]
+
+const directionTranslations: Record<string, string> = {
+  CREDIT: 'ورودی',
+  DEBIT: 'خروجی',
+}
+
+const transactionTypeTranslations: Record<string, string> = {
+  ORDER_PAYMENT: 'پرداخت سفارش',
+  SETTLEMENT_RELEASE: 'آزادسازی تسویه',
+  SETTLEMENT_REVERSAL: 'برگشت تسویه',
+  REFUND_REVERSAL: 'برگشت بازپرداخت',
+  MANUAL_ADJUSTMENT: 'اصلاح دستی',
+  COMMISSION_DEDUCTION: 'کسر کمیسیون',
+  PENALTY: 'جریمه',
+  BONUS: 'پاداش',
+  UNKNOWN: 'نامشخص',
+}
+
+const settlementStatusTranslations: Record<string, string> = {
+  PENDING: 'در انتظار',
+  ELIGIBLE: 'آماده آزادسازی',
+  PROCESSING: 'در حال پردازش',
+  SETTLED: 'تسویه‌شده',
+  ON_HOLD: 'روی هولد',
+  REVERSED: 'برگشتی',
+}
+
+function translateDirection(value: string) {
+  return directionTranslations[value] ?? value
+}
+
+function translateTransactionType(value: string) {
+  return transactionTypeTranslations[value] ?? value
+}
+
+function translateSettlementStatus(value: string) {
+  return settlementStatusTranslations[value] ?? value
+}
 
 function getTransactionDirection(record: WalletRecord) {
   return readText(record, ['direction'], 'UNKNOWN')
+}
+
+function getTransactionType(record: WalletRecord) {
+  return readText(record, ['type'], 'UNKNOWN')
 }
 
 function getSettlementStatus(record: WalletRecord) {
   return readText(record, ['settlementStatus', 'status'], 'UNKNOWN')
 }
 
-function getSettlementAmount(record: WalletRecord) {
-  const raw = readText(record, ['vendorShareAmount', 'amount'], '0')
-  const numeric = Number(raw)
-  return Number.isNaN(numeric) ? raw : formatFaNumber(numeric)
+function formatAmount(value: unknown) {
+  const numeric = Number(value)
+  if (Number.isNaN(numeric)) return '—'
+  return `${formatFaNumber(numeric)} تومان`
 }
 
-function formatJalaliDate(value: unknown) {
+function formatJalaliDateTime(value: unknown) {
   if (typeof value !== 'string' || !value) return '—'
 
   const parsed = new Date(value)
@@ -46,6 +88,8 @@ function formatJalaliDate(value: unknown) {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   }).format(parsed)
 }
 
@@ -62,13 +106,15 @@ function settlementStatusOptions(items: WalletRecord[]) {
 export function WalletPage({ session }: { session: AuthSession }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [stats, setStats] = useState(() => makeStats([]))
   const [transactions, setTransactions] = useState<WalletRecord[]>([])
   const [settlements, setSettlements] = useState<WalletRecord[]>([])
   const [walletMeta, setWalletMeta] = useState<WalletRecord>({})
+  const [settlementMeta, setSettlementMeta] = useState<WalletRecord>({})
+  const [activityMeta, setActivityMeta] = useState<WalletRecord>({})
   const [transactionDirectionFilter, setTransactionDirectionFilter] = useState('ALL')
   const [settlementStatusFilter, setSettlementStatusFilter] = useState('ALL')
   const [selectedSettlementId, setSelectedSettlementId] = useState<string | null>(null)
+  const [workspaceOpen, setWorkspaceOpen] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -84,58 +130,22 @@ export function WalletPage({ session }: { session: AuthSession }) {
         ])
         if (!active) return
 
-        const walletRecord = wallet as Record<string, unknown>
+        const walletRecord = (wallet as Record<string, unknown>) ?? {}
+        const settlementRecord = (settlementSummary as Record<string, unknown>) ?? {}
         const walletData = (walletRecord.wallet as Record<string, unknown>) ?? {}
         const activity = (walletRecord.activity as Record<string, unknown>) ?? {}
-        const settlementRecord = (settlementSummary as Record<string, unknown>) ?? {}
         const amounts = (settlementRecord.amounts as Record<string, unknown>) ?? {}
-        const transactionList = toArray(walletRecord)
-        const settlementList = toArray(settlementSummary)
+        const counts = (settlementRecord.counts as Record<string, unknown>) ?? {}
+        const transactionList = toArray(walletRecord.recentTransactions)
+        const settlementList = toArray(settlementRecord.recentOrders)
 
-        setStats(
-          makeStats([
-            {
-              label: 'موجودی فعلی',
-              value: formatFaNumber(Number(walletData.currentBalance ?? 0)),
-              delta: `${formatFaNumber(Number(walletData.availableBalance ?? 0))} قابل برداشت`,
-              detail: 'خروجی مستقیم کیف پول فروشگاه',
-              tone: 'primary',
-            },
-            {
-              label: 'تراکنش‌های بازه',
-              value: formatFaNumber(Number(activity.transactionCount ?? 0)),
-              delta: `${formatFaNumber(Number(activity.creditAmount ?? 0))} ورودی`,
-              detail: 'فعالیت کیف پول در خلاصه بازه',
-              tone: 'success',
-            },
-            {
-              label: 'جمع release شده',
-              value: formatFaNumber(Number(amounts.releasedTotal ?? 0)),
-              delta: `${formatFaNumber(Number(amounts.reversedTotal ?? 0))} برگشتی`,
-              detail: 'دریافتی و reversalهای فروشگاه',
-              tone: 'warning',
-            },
-            {
-              label: 'برآورد قابل release',
-              value: formatFaNumber(Number(amounts.releasableEstimate ?? 0)),
-              delta: readText(amounts, ['vendorShareTotal'], '0'),
-              detail: 'تخمین قابل استفاده برای دید مالی سریع',
-              tone: 'danger',
-            },
-          ]),
-        )
-
-        setWalletMeta({
-          availableBalance: walletData.availableBalance,
-          heldBalance: walletData.heldBalance,
-          currentBalance: walletData.currentBalance,
-          creditAmount: activity.creditAmount,
-          debitAmount: activity.debitAmount,
-        })
+        setWalletMeta(walletData)
+        setActivityMeta(activity)
+        setSettlementMeta({ ...amounts, ...counts })
         setTransactions(transactionList)
         setSettlements(settlementList)
         if (settlementList.length > 0) {
-          setSelectedSettlementId(readText(settlementList[0], ['id'], ''))
+          setSelectedSettlementId((current) => current ?? readText(settlementList[0], ['id'], ''))
         }
       } catch (loadError) {
         if (!active) return
@@ -152,18 +162,12 @@ export function WalletPage({ session }: { session: AuthSession }) {
   }, [session])
 
   const filteredTransactions = useMemo(
-    () =>
-      transactions.filter((item) =>
-        transactionDirectionFilter === 'ALL' ? true : getTransactionDirection(item) === transactionDirectionFilter,
-      ),
+    () => transactions.filter((item) => (transactionDirectionFilter === 'ALL' ? true : getTransactionDirection(item) === transactionDirectionFilter)),
     [transactionDirectionFilter, transactions],
   )
 
   const filteredSettlements = useMemo(
-    () =>
-      settlements.filter((item) =>
-        settlementStatusFilter === 'ALL' ? true : getSettlementStatus(item) === settlementStatusFilter,
-      ),
+    () => settlements.filter((item) => (settlementStatusFilter === 'ALL' ? true : getSettlementStatus(item) === settlementStatusFilter)),
     [settlementStatusFilter, settlements],
   )
 
@@ -179,26 +183,60 @@ export function WalletPage({ session }: { session: AuthSession }) {
     }
   }, [filteredSettlements, selectedSettlementId])
 
+  const stats = useMemo(
+    () => [
+      {
+        label: 'موجودی فعلی',
+        value: formatAmount(walletMeta.currentBalance),
+        delta: `${formatAmount(walletMeta.availableBalance)} قابل برداشت`,
+        detail: 'خروجی مستقیم کیف پول فروشگاه',
+        tone: 'primary' as const,
+      },
+      {
+        label: 'موجودی نگه‌داری‌شده',
+        value: formatAmount(walletMeta.heldBalance),
+        delta: `${formatAmount(activityMeta.debitAmount)} خروجی`,
+        detail: 'بخشی از پولی که هنوز آزاد نشده است',
+        tone: 'warning' as const,
+      },
+      {
+        label: 'جمع آزادشده',
+        value: formatAmount(settlementMeta.releasedTotal),
+        delta: `${formatAmount(settlementMeta.reversedTotal)} برگشتی`,
+        detail: 'آزادسازی‌ها و reversalهای ثبت‌شده',
+        tone: 'success' as const,
+      },
+      {
+        label: 'برآورد قابل release',
+        value: formatAmount(settlementMeta.releasableEstimate),
+        delta: `${formatFaNumber(Number(activityMeta.transactionCount ?? 0))} تراکنش در بازه`,
+        detail: 'برآوردی برای دید مالی سریع فروشنده',
+        tone: 'danger' as const,
+      },
+    ],
+    [activityMeta, settlementMeta, walletMeta],
+  )
+
   const transactionRows = useMemo(
     () =>
-      makeRows(filteredTransactions.slice(0, 12), [
-        { key: 'id', source: ['id', 'referenceId'] },
-        { key: 'type', source: ['type'] },
-        { key: 'direction', source: ['direction'] },
-        { key: 'amount', source: ['amount'] },
-        { key: 'createdAt', source: ['createdAt'] },
-      ]),
+      filteredTransactions.slice(0, 12).map((item, index) => ({
+        id: readText(item, ['id', 'referenceId'], String(index + 1)),
+        type: translateTransactionType(getTransactionType(item)),
+        direction: translateDirection(getTransactionDirection(item)),
+        amount: formatAmount(item.amount),
+        createdAt: formatJalaliDateTime(item.createdAt),
+      })),
     [filteredTransactions],
   )
 
   const settlementRows = useMemo(
     () =>
-      makeRows(filteredSettlements.slice(0, 12), [
-        { key: 'id', source: ['id'] },
-        { key: 'settlementStatus', source: ['settlementStatus', 'status'] },
-        { key: 'vendorShareAmount', source: ['vendorShareAmount', 'amount'] },
-        { key: 'updatedAt', source: ['updatedAt', 'createdAt'] },
-      ]),
+      filteredSettlements.slice(0, 12).map((item, index) => ({
+        id: readText(item, ['id'], String(index + 1)),
+        settlementStatus: translateSettlementStatus(getSettlementStatus(item)),
+        vendorShareAmount: formatAmount(item.vendorShareAmount),
+        updatedAt: formatJalaliDateTime(item.updatedAt ?? item.createdAt),
+      })),
     [filteredSettlements],
   )
 
@@ -209,18 +247,50 @@ export function WalletPage({ session }: { session: AuthSession }) {
 
   const selectedSettlementSummary = selectedSettlement
     ? [
-        { label: 'سفارش', value: readText(selectedSettlement, ['id'], '—') },
-        { label: 'وضعیت تسویه', value: getSettlementStatus(selectedSettlement) },
-        { label: 'سهم فروشنده', value: getSettlementAmount(selectedSettlement) },
-        { label: 'آخرین بروزرسانی', value: formatJalaliDate(selectedSettlement.updatedAt ?? selectedSettlement.createdAt) },
-        { label: 'نوع علت', value: readText(selectedSettlement, ['reason', 'type', 'message'], '—') },
-        { label: 'وضعیت پرداخت', value: readText(selectedSettlement, ['paymentStatus'], '—') },
+        { label: 'شناسه سفارش', value: readText(selectedSettlement, ['id'], '—') },
+        { label: 'وضعیت تسویه', value: translateSettlementStatus(getSettlementStatus(selectedSettlement)) },
+        { label: 'سهم فروشنده', value: formatAmount(selectedSettlement.vendorShareAmount) },
+        { label: 'مبلغ آزادشده', value: formatAmount(selectedSettlement.settlementReleasedAmount) },
+        { label: 'مبلغ برگشتی', value: formatAmount(selectedSettlement.settlementReversedAmount) },
+        { label: 'زمان واجد شرایط شدن', value: formatJalaliDateTime(selectedSettlement.settlementEligibleAt) },
+        { label: 'آخرین بروزرسانی', value: formatJalaliDateTime(selectedSettlement.updatedAt) },
       ]
     : []
 
-  const financeNote = `${formatFaNumber(Number(walletMeta.availableBalance ?? 0))} قابل برداشت، ${formatFaNumber(
-    Number(walletMeta.heldBalance ?? 0),
-  )} نگه‌داری شده و ${formatFaNumber(Number(walletMeta.debitAmount ?? 0))} خروجی در خلاصه فعلی ثبت شده است.`
+  const financeThread = useMemo(
+    () =>
+      filteredTransactions.map((item) => ({
+        id: readText(item, ['id'], ''),
+        title: translateTransactionType(getTransactionType(item)),
+        direction: translateDirection(getTransactionDirection(item)),
+        amount: formatAmount(item.amount),
+        createdAt: formatJalaliDateTime(item.createdAt),
+        description: readText(item, ['description', 'title'], 'بدون توضیح تکمیلی'),
+        orderId: readText(item, ['orderId'], ''),
+      })),
+    [filteredTransactions],
+  )
+
+  const settlementSummaryCards = useMemo(
+    () => [
+      { label: 'در انتظار', value: formatFaNumber(Number(settlementMeta.pending ?? 0)) },
+      { label: 'آماده آزادسازی', value: formatFaNumber(Number(settlementMeta.eligible ?? 0)) },
+      { label: 'در پردازش', value: formatFaNumber(Number(settlementMeta.processing ?? 0)) },
+      { label: 'روی هولد', value: formatFaNumber(Number(settlementMeta.onHold ?? 0)) },
+      { label: 'تسویه‌شده', value: formatFaNumber(Number(settlementMeta.settled ?? 0)) },
+      { label: 'برگشتی', value: formatFaNumber(Number(settlementMeta.reversed ?? 0)) },
+    ],
+    [settlementMeta],
+  )
+
+  function openWorkspace() {
+    if (!selectedSettlementId) return
+    setWorkspaceOpen(true)
+  }
+
+  function closeWorkspace() {
+    setWorkspaceOpen(false)
+  }
 
   return (
     <div className="fm-stack">
@@ -233,44 +303,53 @@ export function WalletPage({ session }: { session: AuthSession }) {
 
         <SectionCard
           eyebrow="کارتابل مالی"
-          title="workspace مالی و تسویه فروشگاه"
-          description="این view حالا به فروشنده کمک می‌کند هم جریان پول را اسکن کند و هم وضعیت releaseها را سریع‌تر بفهمد."
-          actions={<Pill tone="success">مالی v2</Pill>}
+          title="کیف پول، تسویه و drill-down مالی فروشگاه"
+          description="این صفحه حالا لیست و snapshot مالی را از workspace detail جدا می‌کند تا فروشنده بدون شلوغی، هم وضعیت پول را اسکن کند و هم برای هر سفارش context عمیق‌تر بگیرد."
+          actions={<Pill tone="success">مالی v3</Pill>}
         >
-          <div className="vendor-wallet-note">{financeNote}</div>
+          <div className="vendor-wallet-note">
+            {formatAmount(walletMeta.availableBalance)} قابل برداشت، {formatAmount(walletMeta.heldBalance)} نگه‌داری‌شده و {formatAmount(activityMeta.creditAmount)} ورودی در بازه فعلی ثبت شده است.
+          </div>
         </SectionCard>
 
-        <div className="vendor-wallet-layout">
-          <SectionCard
-            eyebrow="فعالیت کیف پول"
-            title="تراکنش‌های اخیر کیف پول"
-            description="جهت و نوع تراکنش‌ها باید سریع قابل اسکن باشند تا فروشنده منشاء ورود و خروج پول را بفهمد."
-            actions={<Pill tone="primary">{`${formatFaNumber(filteredTransactions.length)} تراکنش`}</Pill>}
-          >
-            <div className="vendor-wallet-table-card">
-              <div className="vendor-wallet-filters">
-                {directionOptions(transactions).map((direction) => (
-                  <button
-                    className={`vendor-wallet-filter-chip ${direction === transactionDirectionFilter ? 'is-active' : ''}`}
-                    key={direction}
-                    onClick={() => setTransactionDirectionFilter(direction)}
-                    type="button"
-                  >
-                    {direction === 'ALL' ? 'همه جهت‌ها' : direction}
-                  </button>
-                ))}
-              </div>
-
-              <DataTable columns={transactionColumns} rows={transactionRows} />
-            </div>
-          </SectionCard>
-
-          <div className="vendor-wallet-detail-column">
+        {!workspaceOpen ? (
+          <div className="vendor-products-workspace-grid">
             <SectionCard
-              eyebrow="خلاصه تسویه"
-              title="صف تسویه‌های قابل پیگیری"
-              description="این بخش پایه detail flow و توضیح وضعیت releaseهای فروشگاه است."
-              actions={<Pill tone="warning">{`${formatFaNumber(filteredSettlements.length)} تسویه`}</Pill>}
+              eyebrow="فعالیت کیف پول"
+              title="تراکنش‌های اخیر کیف پول"
+              description="نوع و جهت هر تراکنش باید برای فروشنده کاملاً ترجمه‌شده و قابل اسکن باشد تا سریع منشاء پول را بفهمد."
+              actions={<Pill tone="primary">{`${formatFaNumber(filteredTransactions.length)} تراکنش`}</Pill>}
+            >
+              <div className="vendor-wallet-table-card">
+                <div className="vendor-wallet-filters">
+                  {directionOptions(transactions).map((direction) => (
+                    <button
+                      className={`vendor-wallet-filter-chip ${direction === transactionDirectionFilter ? 'is-active' : ''}`}
+                      key={direction}
+                      onClick={() => setTransactionDirectionFilter(direction)}
+                      type="button"
+                    >
+                      {direction === 'ALL' ? 'همه جهت‌ها' : translateDirection(direction)}
+                    </button>
+                  ))}
+                </div>
+
+                <DataTable columns={transactionColumns} rows={transactionRows} />
+              </div>
+            </SectionCard>
+
+            <SectionCard
+              eyebrow="صف تسویه‌ها"
+              title="تسویه‌های قابل پیگیری"
+              description="این view فقط صف تسویه و context کوتاه می‌دهد؛ detail-first workspace پایین‌تر برای drill-down مالی استفاده می‌شود."
+              actions={
+                <div className="vendor-products-actions">
+                  <Pill tone="warning">{`${formatFaNumber(filteredSettlements.length)} تسویه`}</Pill>
+                  <button className="fm-button fm-button--secondary" disabled={!selectedSettlement} onClick={openWorkspace} type="button">
+                    باز کردن کارتابل مالی
+                  </button>
+                </div>
+              }
             >
               <div className="vendor-wallet-filters">
                 {settlementStatusOptions(settlements).map((status) => (
@@ -280,7 +359,7 @@ export function WalletPage({ session }: { session: AuthSession }) {
                     onClick={() => setSettlementStatusFilter(status)}
                     type="button"
                   >
-                    {status === 'ALL' ? 'همه وضعیت‌ها' : status}
+                    {status === 'ALL' ? 'همه وضعیت‌ها' : translateSettlementStatus(status)}
                   </button>
                 ))}
               </div>
@@ -300,41 +379,106 @@ export function WalletPage({ session }: { session: AuthSession }) {
                       type="button"
                     >
                       <strong>سفارش #{id}</strong>
-                      <span>{getSettlementStatus(item)}</span>
-                      <small>{getSettlementAmount(item)} سهم فروشنده</small>
+                      <span>{translateSettlementStatus(getSettlementStatus(item))}</span>
+                      <small>{formatAmount(item.vendorShareAmount)} سهم فروشنده</small>
                     </button>
                   )
                 })}
               </div>
             </SectionCard>
+          </div>
+        ) : null}
 
-            <SectionCard
-              eyebrow="تسویه انتخاب‌شده"
-              title={selectedSettlement ? `جمع‌بندی سفارش #${readText(selectedSettlement, ['id'], '—')}` : 'تسویه‌ای انتخاب نشده'}
-              description="این summary برای توضیح سریع وضعیت مالی همان سفارش و آماده‌سازی detail drawer بعدی است."
-              actions={<Pill tone="danger">{selectedSettlement ? getSettlementStatus(selectedSettlement) : 'بدون انتخاب'}</Pill>}
-            >
-              {selectedSettlementSummary.length ? (
-                <div className="vendor-wallet-detail-grid">
-                  {selectedSettlementSummary.map((item) => (
-                    <article className="vendor-wallet-detail-item" key={item.label}>
-                      <span>{item.label}</span>
-                      <strong>{item.value}</strong>
-                    </article>
-                  ))}
-                  <article className="vendor-wallet-detail-item vendor-wallet-detail-item--wide">
-                    <span>یادداشت کارتابل</span>
-                    <strong>
-                      مرحله بعدی این صفحه می‌تواند ledger itemها، دلیل hold، timeline release و توضیح reversal را روی همین ساختار سوار کند.
-                    </strong>
+        {workspaceOpen ? (
+          <SectionCard
+            eyebrow="workspace مالی"
+            title={selectedSettlement ? `جمع‌بندی سفارش #${readText(selectedSettlement, ['id'], '—')}` : 'کارتابل مالی'}
+            description="این workspace برای توضیح وضعیت تسویه، ledger context و thread مالی سفارش انتخاب‌شده ساخته شده تا domain مالی هم detail-first و translation-first باشد."
+            actions={
+              <div className="vendor-products-actions">
+                <button className="fm-button fm-button--ghost" onClick={closeWorkspace} type="button">
+                  بازگشت به لیست
+                </button>
+                <Pill tone="danger">{selectedSettlement ? translateSettlementStatus(getSettlementStatus(selectedSettlement)) : 'بدون انتخاب'}</Pill>
+              </div>
+            }
+          >
+            <div className="vendor-product-editor-shell">
+              <section className="vendor-product-editor-main">
+                <div className="vendor-product-editor-grid">
+                  <article className="vendor-product-editor-panel">
+                    <div className="vendor-product-editor-panel-head">
+                      <strong>خلاصه سفارش و تسویه</strong>
+                      <span>وضعیت تسویه، مبلغ‌ها و eligibility برای تصمیم سریع‌تر</span>
+                    </div>
+
+                    {selectedSettlementSummary.length ? (
+                      <div className="vendor-products-summary-grid">
+                        {selectedSettlementSummary.map((item) => (
+                          <article className="vendor-products-summary-card" key={item.label}>
+                            <span>{item.label}</span>
+                            <strong>{item.value}</strong>
+                          </article>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="vendor-note-card">در این فیلتر هنوز تسویه‌ای برای نمایش جزئیات وجود ندارد.</div>
+                    )}
+                  </article>
+
+                  <article className="vendor-product-editor-panel vendor-product-editor-panel--full">
+                    <div className="vendor-product-editor-panel-head">
+                      <strong>ledger و thread مالی</strong>
+                      <span>تراکنش‌ها به‌صورت ترجمه‌شده، با جهت روشن و context زمانی دیده می‌شوند.</span>
+                    </div>
+
+                    {financeThread.length ? (
+                      <div className="vendor-wallet-thread">
+                        {financeThread.map((item) => (
+                          <article className="vendor-wallet-thread-item" key={item.id}>
+                            <div className="vendor-wallet-thread-head">
+                              <div className="vendor-products-actions">
+                                <Pill tone={item.direction === 'ورودی' ? 'success' : 'warning'}>{item.direction}</Pill>
+                                <Pill tone="neutral">{item.title}</Pill>
+                                {item.orderId ? <Pill tone="primary">سفارش #{item.orderId}</Pill> : null}
+                              </div>
+                              <span>{item.createdAt}</span>
+                            </div>
+                            <strong>{item.amount}</strong>
+                            <p>{item.description}</p>
+                          </article>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="vendor-note-card">در این بازه هنوز تراکنش معناداری برای نمایش thread مالی وجود ندارد.</div>
+                    )}
                   </article>
                 </div>
-              ) : (
-                <div className="vendor-note-card">در این فیلتر هنوز تسویه‌ای برای نمایش جزئیات وجود ندارد.</div>
-              )}
-            </SectionCard>
-          </div>
-        </div>
+
+                <div className="vendor-product-editor-footer">
+                  <article className="vendor-product-editor-sidecard">
+                    <strong>وضعیت‌های صف تسویه</strong>
+                    <div className="vendor-products-summary-grid">
+                      {settlementSummaryCards.map((item) => (
+                        <article className="vendor-products-summary-card" key={item.label}>
+                          <span>{item.label}</span>
+                          <strong>{item.value}</strong>
+                        </article>
+                      ))}
+                    </div>
+                  </article>
+
+                  <article className="vendor-product-editor-sidecard">
+                    <strong>راهنمای فهم وضعیت‌ها</strong>
+                    <p>
+                      `آماده آزادسازی` یعنی سفارش از نظر زمانی به release نزدیک شده، `روی هولد` یعنی هنوز به دلیل عملیاتی یا پشتیبانی بلوکه است و `برگشتی` یعنی بخشی از سهم فروشنده reverse شده است. همه enumها در این صفحه ترجمه شده‌اند تا تصمیم‌گیری مالی واضح‌تر باشد.
+                    </p>
+                  </article>
+                </div>
+              </section>
+            </div>
+          </SectionCard>
+        ) : null}
       </LoadableState>
     </div>
   )
