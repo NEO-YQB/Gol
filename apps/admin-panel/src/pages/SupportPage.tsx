@@ -1,6 +1,7 @@
 import { ActivityFeed, DataTable, Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
 import { useEffect, useMemo, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
+import { useNoticeEffect } from '../components/NoticeCenter'
 import { adminApi } from '../lib/api'
 import { makeFeed, makeRows, readText, toArray } from '../lib/normalize'
 import type { AuthSession } from '../lib/session'
@@ -95,6 +96,7 @@ export function SupportPage({
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailError, setDetailError] = useState<string | null>(null)
   const [selectedTicket, setSelectedTicket] = useState<TicketRecord | null>(null)
+  useNoticeEffect(detailError, 'error')
 
   useEffect(() => {
     let active = true
@@ -358,7 +360,6 @@ export function SupportPage({
           }
         >
           {detailLoading ? <div className="fm-message">در حال بارگذاری جزئیات تیکت...</div> : null}
-          {detailError ? <div className="fm-message fm-message--danger">{detailError}</div> : null}
           {!detailLoading && !detailError && selectedSummary.length > 0 ? (
             <div className="support-detail-grid">
               {selectedSummary.map((item) => (

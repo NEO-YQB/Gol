@@ -1,6 +1,7 @@
 import { ActivityFeed, Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
+import { useNoticeEffect } from '../components/NoticeCenter'
 import { adminApi } from '../lib/api'
 import { readText, toArray } from '../lib/normalize'
 import type { AuthSession } from '../lib/session'
@@ -143,6 +144,8 @@ export function SupportWorkspacePage({
   const [actionBusy, setActionBusy] = useState<string | null>(null)
   const [actionMessage, setActionMessage] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  useNoticeEffect(actionMessage, 'success')
+  useNoticeEffect(actionError, 'error')
   const [notesPage, setNotesPage] = useState(1)
   const [auditPage, setAuditPage] = useState(1)
   const [statusForm, setStatusForm] = useState({ status: 'IN_REVIEW', note: '', internalNote: '' })
@@ -344,9 +347,6 @@ export function SupportWorkspacePage({
         </button>
         <Pill tone={getStatusTone(status)}>{getSupportStatusLabel(status)}</Pill>
       </div>
-
-      {actionMessage ? <div className="fm-message">{actionMessage}</div> : null}
-      {actionError ? <div className="fm-message">{actionError}</div> : null}
 
       <LoadableState error={error} loading={loading}>
         <div className="fm-grid">

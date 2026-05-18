@@ -4,8 +4,6 @@ type LoginPageProps = {
   phoneNumber: string
   code: string
   loading: boolean
-  message: string | null
-  error: string | null
   otpCountdown: string | null
   onPhoneChange: (value: string) => void
   onCodeChange: (value: string) => void
@@ -17,8 +15,6 @@ export function LoginPage({
   phoneNumber,
   code,
   loading,
-  message,
-  error,
   otpCountdown,
   onPhoneChange,
   onCodeChange,
@@ -81,8 +77,6 @@ export function LoginPage({
               ورود به پنل
             </button>
 
-            {message ? <div className="fm-message fm-message--success">{message}</div> : null}
-            {error ? <div className="fm-message fm-message--danger">{error}</div> : null}
           </div>
         </div>
       </div>

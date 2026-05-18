@@ -1,6 +1,7 @@
 import { ActivityFeed, Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
+import { useNoticeEffect } from '../components/NoticeCenter'
 import { adminApi } from '../lib/api'
 import { readText, toArray } from '../lib/normalize'
 import type { AuthSession } from '../lib/session'
@@ -130,6 +131,8 @@ export function VendorWorkspacePage({
   const [actionBusy, setActionBusy] = useState<string | null>(null)
   const [actionMessage, setActionMessage] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  useNoticeEffect(actionMessage, 'success')
+  useNoticeEffect(actionError, 'error')
   const [policyForm, setPolicyForm] = useState({
     autoSettlementHoldEnabled: false,
     settlementHoldDaysOverride: '',
@@ -485,9 +488,6 @@ export function VendorWorkspacePage({
         </button>
         <Pill tone={getStatusTone(status)}>{getStatusLabel(status)}</Pill>
       </div>
-
-      {actionMessage ? <div className="fm-message">{actionMessage}</div> : null}
-      {actionError ? <div className="fm-message">{actionError}</div> : null}
 
       <LoadableState error={error} loading={loading}>
         <div className="fm-grid">

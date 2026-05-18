@@ -8,6 +8,7 @@ import './App.css'
 import { adminApi } from './lib/api'
 import { adminRouteLabels, type AdminRoute } from './lib/routes'
 import { clearSession, loadSession, saveSession, type AuthSession } from './lib/session'
+import { useNoticeEffect } from './components/NoticeCenter'
 import { AlertsPage } from './pages/AlertsPage'
 import { ContentPage } from './pages/ContentPage'
 import { ContentWorkspacePage } from './pages/ContentWorkspacePage'
@@ -254,6 +255,9 @@ export default function App() {
 
   const pageMeta = useMemo(() => getPageMeta(route), [route])
 
+  useNoticeEffect(message, 'success')
+  useNoticeEffect(error, 'error')
+
   async function handleSendOtp() {
     if (!phoneNumber.trim()) {
       setError('شماره موبایل را وارد کن.')
@@ -363,9 +367,7 @@ export default function App() {
     return (
       <LoginPage
         code={code}
-        error={error}
         loading={loading}
-        message={message}
         otpCountdown={otpCountdown}
         onCodeChange={setCode}
         onPhoneChange={setPhoneNumber}

@@ -1,6 +1,7 @@
 import { ActivityFeed, DataTable, Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
 import { useEffect, useMemo, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
+import { useNoticeEffect } from '../components/NoticeCenter'
 import { adminApi } from '../lib/api'
 import { readText, toArray } from '../lib/normalize'
 import type { AuthSession } from '../lib/session'
@@ -143,6 +144,7 @@ export function VendorsPage({
   const [timelineLoading, setTimelineLoading] = useState(false)
   const [timelineError, setTimelineError] = useState<string | null>(null)
   const [selectedStoreDetail, setSelectedStoreDetail] = useState<VendorRecord | null>(null)
+  useNoticeEffect(timelineError, 'error')
 
   useEffect(() => {
     let active = true
@@ -671,8 +673,6 @@ export function VendorsPage({
           hint="اگر نمی‌دانی چرا این فروشنده در این وضعیت قرار گرفته، از همین رخدادها شروع کن."
           actions={<Pill tone="warning">{timelineLoading ? 'در حال بارگذاری' : `${formatPersianNumber(timeline.length)} رخداد`}</Pill>}
         >
-          {timelineError ? <div className="fm-message">{timelineError}</div> : null}
-
           {!timelineError ? (
             <div className="vendors-policy-stack">
               <div className="vendors-policy-grid">

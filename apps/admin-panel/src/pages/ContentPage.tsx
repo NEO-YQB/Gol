@@ -1,6 +1,7 @@
 import { DataTable, Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
 import { useEffect, useMemo, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
+import { useNoticeEffect } from '../components/NoticeCenter'
 import { adminApi } from '../lib/api'
 import {
   countRelatedArticles,
@@ -74,6 +75,7 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailError, setDetailError] = useState<string | null>(null)
   const [selectedArticle, setSelectedArticle] = useState<ContentRecord | null>(null)
+  useNoticeEffect(detailError, 'error')
 
   useEffect(() => {
     let active = true
@@ -573,7 +575,6 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
                   ))}
                 </div>
                 {detailLoading ? <div className="fm-message">در حال بارگذاری جزئیات مقاله...</div> : null}
-                {detailError ? <div className="fm-message fm-message--danger">{detailError}</div> : null}
                 {!detailLoading && !detailError && selectedSummary.length > 0 ? (
                   <div className="content-detail-grid">
                     {selectedSummary.map((item) => (

@@ -30,6 +30,20 @@ const API_BASE_URL =
   import.meta.env.VITE_API_URL ??
   'http://localhost:3000/v1'
 
+function translateApiMessage(message: string) {
+  const normalized = message.trim().toLowerCase()
+
+  if (normalized === 'execution refund only supported for online order') {
+    return 'بازگشت وجه فقط برای سفارش‌های آنلاین پشتیبانی می‌شود.'
+  }
+
+  if (normalized === 'failed to fetch') {
+    return 'ارتباط با سامانه برقرار نشد. اتصال اینترنت یا آدرس سرویس را بررسی کن.'
+  }
+
+  return message
+}
+
 async function readJson(response: Response) {
   const text = await response.text()
   if (!text) return null
@@ -60,8 +74,8 @@ async function request<T>(path: string, init: RequestInit = {}, token?: string):
     const message =
       typeof payload === 'object' && payload && 'message' in payload
         ? Array.isArray(payload.message)
-          ? payload.message.join(' / ')
-          : String(payload.message)
+          ? payload.message.map((item) => translateApiMessage(String(item))).join(' / ')
+          : translateApiMessage(String(payload.message))
         : 'درخواست به backend با خطا مواجه شد'
 
     throw new ApiError(message, response.status)

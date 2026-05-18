@@ -1,6 +1,7 @@
 import { FormatTextarea, Pill, SectionCard } from '@flower-marketplace/frontend-core'
 import { useEffect, useMemo, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
+import { useNoticeEffect } from '../components/NoticeCenter'
 import { adminApi } from '../lib/api'
 import {
   countRelatedArticles,
@@ -293,6 +294,7 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitMessage, setSubmitMessage] = useState<string | null>(null)
+  useNoticeEffect(submitMessage, 'success')
   const [referenceVersion, setReferenceVersion] = useState(0)
   const [editorMode, setEditorMode] = useState<'create' | 'edit'>(mode)
   const [currentArticleId, setCurrentArticleId] = useState<string | null>(articleId)
@@ -822,8 +824,6 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
           }
         >
           <div className="content-workspace-stack">
-            {submitMessage ? <div className="fm-message fm-message--success">{submitMessage}</div> : null}
-
             <div className="content-workspace-meta-grid">
               {workspaceMeta.map((item) => (
                 <article className="content-workspace-meta-item" key={item.label}>

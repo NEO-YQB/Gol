@@ -1,6 +1,7 @@
 import { ActivityFeed, Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
+import { useNoticeEffect } from '../components/NoticeCenter'
 import { adminApi } from '../lib/api'
 import { readText, toArray } from '../lib/normalize'
 import type { AuthSession } from '../lib/session'
@@ -237,6 +238,8 @@ export function OrdersWorkspacePage({
   const [actionBusy, setActionBusy] = useState<string | null>(null)
   const [actionMessage, setActionMessage] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  useNoticeEffect(actionMessage, 'success')
+  useNoticeEffect(actionError, 'error')
   const [progressNote, setProgressNote] = useState('')
   const [cancelForm, setCancelForm] = useState({ reason: '', note: '' })
   const [vendorCancelForm, setVendorCancelForm] = useState({ reason: '', note: '' })
@@ -1178,8 +1181,6 @@ export function OrdersWorkspacePage({
                   </>
                 ) : null}
 
-                {actionMessage ? <div className="fm-message fm-message--success">{actionMessage}</div> : null}
-                {actionError ? <div className="fm-message fm-message--danger">{actionError}</div> : null}
               </div>
 
               <div className="orders-workspace-side">
