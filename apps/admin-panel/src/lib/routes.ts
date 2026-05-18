@@ -1,6 +1,7 @@
 export const adminRouteOrder = [
   'dashboard',
   'orders',
+  'ordersWorkspace',
   'settlements',
   'support',
   'supportWorkspace',
@@ -16,6 +17,7 @@ export type AdminRoute = (typeof adminRouteOrder)[number]
 export const adminRouteLabels: Record<AdminRoute, string> = {
   dashboard: 'داشبورد',
   orders: 'سفارش‌ها',
+  ordersWorkspace: 'میزکار سفارش',
   settlements: 'تسویه و مالی',
   support: 'پشتیبانی',
   supportWorkspace: 'workspace پشتیبانی',

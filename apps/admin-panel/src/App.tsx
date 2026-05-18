@@ -14,6 +14,7 @@ import { ContentWorkspacePage } from './pages/ContentWorkspacePage'
 import { DashboardPage } from './pages/DashboardPage'
 import { LoginPage } from './pages/LoginPage'
 import { OrdersPage } from './pages/OrdersPage'
+import { OrdersWorkspacePage } from './pages/OrdersWorkspacePage'
 import { SettlementsPage } from './pages/SettlementsPage'
 import { SupportPage } from './pages/SupportPage'
 import { SupportWorkspacePage } from './pages/SupportWorkspacePage'
@@ -28,7 +29,7 @@ function buildNav(currentRoute: AdminRoute): NavSection[] {
       title: 'عملیات اصلی',
       items: [
         { key: 'dashboard', label: 'داشبورد', hint: 'وضعیت کلی عملیات', active: currentRoute === 'dashboard' },
-        { key: 'orders', label: 'سفارش‌ها', hint: 'صف سفارش‌ها و استثناهای عملیاتی', active: currentRoute === 'orders' },
+        { key: 'orders', label: 'سفارش‌ها', hint: 'صف سفارش‌ها و استثناهای عملیاتی', active: currentRoute === 'orders' || currentRoute === 'ordersWorkspace' },
         { key: 'settlements', label: 'تسویه و مالی', hint: 'کیف پول‌ها، گزارش‌ها و استثناهای تسویه', active: currentRoute === 'settlements' },
         { key: 'support', label: 'پشتیبانی', hint: 'تیکت‌ها و پیگیری‌های بعدی', active: currentRoute === 'support' },
         { key: 'vendors', label: 'فروشنده‌ها و ریسک', hint: 'ریسک، policy timeline و finance reports', active: currentRoute === 'vendors' },
@@ -50,13 +51,19 @@ function getPageMeta(route: AdminRoute) {
       return {
         eyebrow: 'کارتابل سفارش‌ها',
         title: 'سفارش‌ها و صف استثناهای عملیاتی',
-        description: 'این صفحه پایه table-first برای فهرست سفارش‌ها، صف موارد مسئله‌دار و detail workspace بعدی را از endpointهای واقعی backend می‌گیرد.',
+        description: 'این صفحه پایه table-first برای فهرست سفارش‌ها، صف موارد مسئله‌دار و ورود به میزکار جزئیات را از endpointهای واقعی backend می‌گیرد.',
       }
     case 'settlements':
       return {
         eyebrow: 'کارتابل مالی',
         title: 'تسویه، کیف پول و دید مالی',
         description: 'دید کیف پول، استثناهای تسویه و summaryهای گزارش از همین‌جا به صفحه‌های عملیاتی کامل‌تر تبدیل می‌شوند.',
+      }
+    case 'ordersWorkspace':
+      return {
+        eyebrow: 'میزکار سفارش',
+        title: 'رسیدگی متمرکز به سفارش، پرداخت و استثناهای عملیاتی',
+        description: 'جریان عملیاتی سفارش از list page جدا شده تا پذیرش، ارسال، تحویل، پرداخت و آزادسازی تسویه در یک surface متمرکز انجام شوند.',
       }
     case 'support':
       return {
@@ -114,6 +121,9 @@ function renderRoute(
   route: AdminRoute,
   session: AuthSession,
   options: {
+    ordersWorkspaceOrder: Record<string, unknown> | null
+    onOpenOrdersWorkspace: (order: Record<string, unknown>) => void
+    onBackToOrders: () => void
     supportWorkspaceTicket: Record<string, unknown> | null
     onOpenSupportWorkspace: (ticket: Record<string, unknown>) => void
     onBackToSupport: () => void
@@ -129,7 +139,15 @@ function renderRoute(
 ) {
   switch (route) {
     case 'orders':
-      return <OrdersPage session={session} />
+      return <OrdersPage onOpenOrdersWorkspace={options.onOpenOrdersWorkspace} session={session} />
+    case 'ordersWorkspace':
+      return (
+        <OrdersWorkspacePage
+          onBack={options.onBackToOrders}
+          order={options.ordersWorkspaceOrder}
+          session={session}
+        />
+      )
     case 'settlements':
       return <SettlementsPage session={session} />
     case 'support':
@@ -180,6 +198,7 @@ function renderRoute(
 export default function App() {
   const [session, setSession] = useState<AuthSession | null>(null)
   const [route, setRoute] = useState<AdminRoute>(defaultRoute)
+  const [ordersWorkspaceOrder, setOrdersWorkspaceOrder] = useState<Record<string, unknown> | null>(null)
   const [supportWorkspaceTicket, setSupportWorkspaceTicket] = useState<Record<string, unknown> | null>(null)
   const [vendorWorkspaceStore, setVendorWorkspaceStore] = useState<Record<string, unknown> | null>(null)
   const [contentWorkspaceArticleId, setContentWorkspaceArticleId] = useState<string | null>(null)
@@ -297,6 +316,15 @@ export default function App() {
     setOtpCountdown(null)
   }
 
+  function handleOpenOrdersWorkspace(order: Record<string, unknown>) {
+    setOrdersWorkspaceOrder(order)
+    setRoute('ordersWorkspace')
+  }
+
+  function handleBackToOrders() {
+    setRoute('orders')
+  }
+
   function handleOpenVendorWorkspace(store: Record<string, unknown>) {
     setVendorWorkspaceStore(store)
     setRoute('vendorWorkspace')
@@ -376,6 +404,9 @@ export default function App() {
         </button>
       </div>
       {renderRoute(route, session, {
+        ordersWorkspaceOrder,
+        onOpenOrdersWorkspace: handleOpenOrdersWorkspace,
+        onBackToOrders: handleBackToOrders,
         supportWorkspaceTicket,
         onOpenSupportWorkspace: handleOpenSupportWorkspace,
         onBackToSupport: handleBackToSupport,

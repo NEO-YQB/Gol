@@ -93,8 +93,116 @@ export const adminApi = {
   getOrderDetail(session: AuthSession, orderId: string) {
     return request<unknown>(`/orders/${orderId}`, {}, session.accessToken)
   },
+  acceptOrder(
+    session: AuthSession,
+    orderId: string,
+    body: {
+      note?: string
+    },
+  ) {
+    return request<unknown>(`/orders/${orderId}/accept`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  shipOrder(
+    session: AuthSession,
+    orderId: string,
+    body: {
+      note?: string
+    },
+  ) {
+    return request<unknown>(`/orders/${orderId}/ship`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  deliverOrder(
+    session: AuthSession,
+    orderId: string,
+    body: {
+      note?: string
+    },
+  ) {
+    return request<unknown>(`/orders/${orderId}/deliver`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  cancelOrder(
+    session: AuthSession,
+    orderId: string,
+    body: {
+      reason?: string
+      note?: string
+    },
+  ) {
+    return request<unknown>(`/orders/${orderId}/cancel`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  vendorCancelOrder(
+    session: AuthSession,
+    orderId: string,
+    body: {
+      reason: string
+      note?: string
+    },
+  ) {
+    return request<unknown>(`/orders/${orderId}/vendor-cancel`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
   getOrderExceptions(session: AuthSession) {
     return request<unknown[]>('/admin/operations/orders/exceptions', {}, session.accessToken)
+  },
+  getPaymentExceptions(session: AuthSession) {
+    return request<unknown[]>('/admin/operations/payments/exceptions', {}, session.accessToken)
+  },
+  getPaymentDetail(session: AuthSession, paymentId: string) {
+    return request<unknown>(`/payments/${paymentId}`, {}, session.accessToken)
+  },
+  initiatePayment(
+    session: AuthSession,
+    body: {
+      orderId: number
+      gatewayConfigId?: number
+      gatewayKey?: string
+    },
+  ) {
+    return request<unknown>('/payments/initiate', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  updatePaymentReview(
+    session: AuthSession,
+    paymentId: string,
+    body: {
+      reviewStatus: string
+      reviewReason?: string
+      reviewNote?: string
+    },
+  ) {
+    return request<unknown>(`/payments/admin/${paymentId}/review`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  manualRefundPayment(
+    session: AuthSession,
+    paymentId: string,
+    body: {
+      reason: string
+      note?: string
+    },
+  ) {
+    return request<unknown>(`/payments/admin/${paymentId}/manual-refund`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, session.accessToken)
   },
   getSettlementExceptions(session: AuthSession) {
     return request<unknown[]>('/admin/operations/settlements/exceptions', {}, session.accessToken)
