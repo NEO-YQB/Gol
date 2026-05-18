@@ -10,7 +10,7 @@ export function LoadableState({
   children: ReactNode
 }) {
   if (loading) {
-    return <div className="fm-message">در حال دریافت داده از backend...</div>
+    return <div className="fm-message">در حال دریافت داده از سامانه...</div>
   }
 
   if (error) {

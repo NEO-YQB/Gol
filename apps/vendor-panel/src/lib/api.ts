@@ -1,4 +1,5 @@
 import type { AuthSession } from './session'
+import { getApiErrorMessage } from './apiMessages'
 
 export class ApiError extends Error {
   status: number
@@ -118,12 +119,7 @@ async function request<T>(path: string, init: RequestInit = {}, token?: string):
   const payload = await readJson(response)
 
   if (!response.ok) {
-    const message =
-      typeof payload === 'object' && payload && 'message' in payload
-        ? Array.isArray(payload.message)
-          ? payload.message.join(' / ')
-          : String(payload.message)
-        : 'درخواست به backend با خطا مواجه شد'
+    const message = getApiErrorMessage(payload, response.status)
 
     throw new ApiError(message, response.status)
   }
@@ -147,12 +143,7 @@ async function uploadRequest<T>(path: string, formData: FormData, token?: string
   const payload = await readJson(response)
 
   if (!response.ok) {
-    const message =
-      typeof payload === 'object' && payload && 'message' in payload
-        ? Array.isArray(payload.message)
-          ? payload.message.join(' / ')
-          : String(payload.message)
-        : 'آپلود فایل با خطا مواجه شد'
+    const message = getApiErrorMessage(payload, response.status)
 
     throw new ApiError(message, response.status)
   }
