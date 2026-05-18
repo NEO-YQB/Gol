@@ -30,8 +30,8 @@ const articleColumns = [
   { key: 'title', label: 'مقاله' },
   { key: 'status', label: 'وضعیت' },
   { key: 'author', label: 'نویسنده' },
-  { key: 'category', label: 'دسته بندی' },
-  { key: 'updatedAt', label: 'آخرین بروزرسانی' },
+  { key: 'category', label: 'دسته‌بندی' },
+  { key: 'updatedAt', label: 'آخرین به‌روزرسانی' },
 ]
 
 const auditColumns = [
@@ -42,10 +42,13 @@ const auditColumns = [
 ]
 
 const statusFilterOptions = [
-  { value: 'ALL', label: 'همه وضعیت ها' },
-  { value: 'DRAFT', label: 'پیش نویس' },
+  { value: 'ALL', label: 'همه وضعیت‌ها' },
+  { value: 'DRAFT', label: 'پیش‌نویس' },
   { value: 'PUBLISHED', label: 'منتشرشده' },
 ] as const
+
+const articleSelectionPageSize = 8
+const auditPageSize = 10
 
 function toNumericId(value: string) {
   const parsed = Number(value)
@@ -66,6 +69,8 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
   const [tagFilter, setTagFilter] = useState('ALL')
   const [search, setSearch] = useState('')
   const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null)
+  const [articleSelectionPage, setArticleSelectionPage] = useState(1)
+  const [auditPage, setAuditPage] = useState(1)
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailError, setDetailError] = useState<string | null>(null)
   const [selectedArticle, setSelectedArticle] = useState<ContentRecord | null>(null)
@@ -196,6 +201,14 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
   }, [articles, search])
 
   useEffect(() => {
+    setArticleSelectionPage(1)
+  }, [search, statusFilter, authorFilter, categoryFilter, tagFilter, articles.length])
+
+  useEffect(() => {
+    setAuditPage(1)
+  }, [audits.length])
+
+  useEffect(() => {
     if (filteredArticles.length === 0) return
 
     const hasSelected = filteredArticles.some((item) => readText(item, ['id'], '') === selectedArticleId)
@@ -219,44 +232,48 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
 
   const auditRows = useMemo(
     () =>
-      audits.slice(0, 10).map((item, index) => ({
+      audits.slice((auditPage - 1) * auditPageSize, auditPage * auditPageSize).map((item, index) => ({
         id: readText(item, ['type', 'id'], String(index + 1)),
         type: translateContentAuditType(readText(item, ['type'], 'UNKNOWN')),
         count: formatPersianNumber(readText(item, ['count'], '0')),
         message: readText(item, ['message'], '—'),
         target: readText(item, ['category', 'articleId', 'target'], 'همه محتواها'),
       })),
-    [audits],
+    [auditPage, audits],
   )
 
   const stats = useMemo(
     () => [
       {
-        label: 'مقاله ها',
+        label: 'مقاله‌ها',
         value: formatPersianNumber(articles.length),
         delta: `${formatPersianNumber(filteredArticles.length)} در نمای فعلی`,
-        detail: 'کارتابل اصلی مقاله ها',
+        detail: 'کارتابل اصلی مقاله‌ها',
+        hint: 'این عدد نشان می‌دهد چند مقاله در کل داری و چند مورد با فیلترهای فعلی دیده می‌شوند.',
         tone: 'primary' as const,
       },
       {
-        label: 'نویسنده ها',
+        label: 'نویسنده‌ها',
         value: formatPersianNumber(authors.length),
         delta: 'مالکیت تحریریه',
         detail: 'پروفایل نویسنده و مالکیت محتوا',
+        hint: 'اگر نویسنده‌ها درست تعریف نشده باشند، مدیریت مقاله‌ها در ادامه سخت‌تر می‌شود.',
         tone: 'success' as const,
       },
       {
         label: 'تاکسونومی',
         value: formatPersianNumber(categories.length + tags.length),
         delta: `${formatPersianNumber(categories.length)} دسته / ${formatPersianNumber(tags.length)} تگ`,
-        detail: 'ساختار دسته بندی و تگ',
+        detail: 'ساختار دسته‌بندی و تگ',
+        hint: 'دسته و تگ خوب باعث می‌شود جستجو، صفحه‌بندی و پیدا کردن مقاله‌ها ساده‌تر شود.',
         tone: 'warning' as const,
       },
       {
-        label: 'auditها',
+        label: 'پایش‌ها',
         value: formatPersianNumber(audits.length),
         delta: 'بهداشت سئو',
         detail: 'سیگنال های محتوایی و سئو',
+        hint: 'این عدد برای پیدا کردن مشکل‌های محتوایی و سئویی قبل از انتشار مهم است.',
         tone: 'danger' as const,
       },
     ],
@@ -269,9 +286,9 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
         { label: 'وضعیت', value: getArticleStatusLabel(selectedArticle) },
         { label: 'اسلاگ', value: readText(selectedArticle, ['slug'], '—') },
         { label: 'نویسنده', value: getArticleAuthor(selectedArticle) },
-        { label: 'دسته بندی', value: getArticleCategory(selectedArticle) },
+        { label: 'دسته‌بندی', value: getArticleCategory(selectedArticle) },
         {
-          label: 'تگ ها',
+          label: 'برچسب‌ها',
           value: getArticleTags(selectedArticle).length > 0 ? getArticleTags(selectedArticle).slice(0, 4).join(' / ') : 'بدون تگ',
         },
         {
@@ -282,12 +299,12 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
               : `${formatPersianNumber(readText(selectedArticle, ['readingTimeMinutes'], '0'))} دقیقه`,
         },
         { label: 'انتشار', value: formatJalaliDate(selectedArticle.publishedAt, true) },
-        { label: 'آخرین بروزرسانی', value: formatJalaliDate(selectedArticle.updatedAt, true) },
+        { label: 'آخرین به‌روزرسانی', value: formatJalaliDate(selectedArticle.updatedAt, true) },
         { label: 'عنوان متا', value: readText(selectedArticle, ['metaTitle'], '—') },
         { label: 'توضیح متا', value: readText(selectedArticle, ['metaDescription'], '—') },
         { label: 'کلیدواژه کانونی', value: readText(selectedArticle, ['focusKeyword'], '—') },
-        { label: 'robots index', value: typeof selectedArticle.robotsIndex === 'boolean' ? (selectedArticle.robotsIndex ? 'فعال' : 'غیرفعال') : '—' },
-        { label: 'robots follow', value: typeof selectedArticle.robotsFollow === 'boolean' ? (selectedArticle.robotsFollow ? 'فعال' : 'غیرفعال') : '—' },
+        { label: 'اجازه دیده‌شدن در جستجو', value: typeof selectedArticle.robotsIndex === 'boolean' ? (selectedArticle.robotsIndex ? 'فعال' : 'غیرفعال') : '—' },
+        { label: 'اجازه دنبال‌کردن پیوندها', value: typeof selectedArticle.robotsFollow === 'boolean' ? (selectedArticle.robotsFollow ? 'فعال' : 'غیرفعال') : '—' },
       ]
     : []
 
@@ -316,11 +333,11 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
         value: formatPersianNumber(articles.filter((item) => getArticleStatus(item) === 'PUBLISHED').length),
       },
       {
-        label: 'پیش نویس',
+        label: 'پیش‌نویس',
         value: formatPersianNumber(articles.filter((item) => getArticleStatus(item) !== 'PUBLISHED').length),
       },
       {
-        label: 'نیازمند تکمیل SEO',
+        label: 'نیازمند تکمیل سئو',
         value: formatPersianNumber(
           articles.filter(
             (item) =>
@@ -352,6 +369,13 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
     [authors, categories, tags],
   )
 
+  const articleSelectionPageCount = Math.max(1, Math.ceil(filteredArticles.length / articleSelectionPageSize))
+  const articleSelectionItems = filteredArticles.slice(
+    (articleSelectionPage - 1) * articleSelectionPageSize,
+    articleSelectionPage * articleSelectionPageSize,
+  )
+  const auditPageCount = Math.max(1, Math.ceil(audits.length / auditPageSize))
+
   return (
     <div className="fm-stack">
       <LoadableState error={error} loading={loading}>
@@ -362,9 +386,10 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
         </div>
 
         <SectionCard
-          eyebrow="دسک محتوا"
-          title="کارتابل محتوا و سئو"
-          description="این سطح فقط برای پایش، فیلتر، تریاژ و انتخاب آیتم است. ساخت و ویرایش کامل مقاله در workspace جدا انجام می شود."
+          eyebrow="کارتابل محتوا"
+          title="صف محتوا و سئو"
+          description="این سطح فقط برای پایش، فیلتر، مرتب‌سازی ذهنی و انتخاب آیتم است. ساخت و ویرایش کامل مقاله در میزکار جدا انجام می‌شود."
+          hint="اول مقاله را با فیلترها پیدا کن، بعد خلاصه‌اش را ببین و فقط اگر نیاز به ویرایش داشتی وارد میزکار جدا شو."
           actions={
             <div className="content-header-actions">
               <Pill tone="primary">عملیات تحریریه</Pill>
@@ -389,7 +414,7 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
               <input
                 id="content-search"
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="عنوان، اسلاگ، نویسنده، دسته بندی یا تگ"
+                placeholder="عنوان، اسلاگ، نویسنده، دسته‌بندی یا تگ"
                 value={search}
               />
             </div>
@@ -409,7 +434,7 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
               <label className="fm-field">
                 <span>نویسنده</span>
                 <select onChange={(event) => setAuthorFilter(event.target.value)} value={authorFilter}>
-                  <option value="ALL">همه نویسنده ها</option>
+                  <option value="ALL">همه نویسنده‌ها</option>
                   {authors.map((item) => {
                     const id = readText(item, ['id'], '')
                     return (
@@ -422,9 +447,9 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
               </label>
 
               <label className="fm-field">
-                <span>دسته بندی</span>
+                <span>دسته‌بندی</span>
                 <select onChange={(event) => setCategoryFilter(event.target.value)} value={categoryFilter}>
-                  <option value="ALL">همه دسته ها</option>
+                  <option value="ALL">همه دسته‌ها</option>
                   {categories.map((item) => {
                     const id = readText(item, ['id'], '')
                     return (
@@ -439,7 +464,7 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
               <label className="fm-field">
                 <span>تگ</span>
                 <select onChange={(event) => setTagFilter(event.target.value)} value={tagFilter}>
-                  <option value="ALL">همه تگ ها</option>
+                  <option value="ALL">همه برچسب‌ها</option>
                   {tags.map((item) => {
                     const id = readText(item, ['id'], '')
                     return (
@@ -463,50 +488,74 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
                 </span>
               </div>
               {filteredArticles.length > 0 ? (
-                <div className="content-selection-list">
-                  {filteredArticles.slice(0, 8).map((item) => {
-                    const articleId = readText(item, ['id'], '')
-                    const isActive = selectedArticleId === articleId
-                    return (
-                      <article className={`content-selection-item${isActive ? ' is-active' : ''}`} key={articleId}>
-                        <div className="content-selection-head">
-                          <div>
-                            <strong>{getArticleTitle(item)}</strong>
-                            <span>{readText(item, ['slug'], '—')}</span>
+                <>
+                  <div className="content-selection-list">
+                    {articleSelectionItems.map((item) => {
+                      const articleId = readText(item, ['id'], '')
+                      const isActive = selectedArticleId === articleId
+                      return (
+                        <article className={`content-selection-item${isActive ? ' is-active' : ''}`} key={articleId}>
+                          <div className="content-selection-head">
+                            <div>
+                              <strong>{getArticleTitle(item)}</strong>
+                              <span>{readText(item, ['slug'], '—')}</span>
+                            </div>
+                            <Pill tone={getArticleStatus(item) === 'PUBLISHED' ? 'success' : 'warning'}>
+                              {getArticleStatusLabel(item)}
+                            </Pill>
                           </div>
-                          <Pill tone={getArticleStatus(item) === 'PUBLISHED' ? 'success' : 'warning'}>
-                            {getArticleStatusLabel(item)}
-                          </Pill>
-                        </div>
-                        <small>
-                          {getArticleAuthor(item)} / {getArticleCategory(item)}
-                        </small>
-                        <p className="content-selection-excerpt">
-                          {readText(item, ['excerpt'], '').trim() || 'هنوز خلاصه کوتاهی برای این مقاله ثبت نشده است.'}
-                        </p>
-                        <div className="content-selection-meta">
-                          <span>{formatJalaliDate(item.updatedAt, true)}</span>
-                          <button onClick={() => setSelectedArticleId(articleId)} type="button">
-                            مشاهده خلاصه
-                          </button>
-                          <button onClick={() => onEditArticle(articleId)} type="button">
-                            ویرایش کامل
-                          </button>
-                        </div>
-                      </article>
-                    )
-                  })}
-                </div>
+                          <small>
+                            {getArticleAuthor(item)} / {getArticleCategory(item)}
+                          </small>
+                          <p className="content-selection-excerpt">
+                            {readText(item, ['excerpt'], '').trim() || 'هنوز خلاصه کوتاهی برای این مقاله ثبت نشده است.'}
+                          </p>
+                          <div className="content-selection-meta">
+                            <span>{formatJalaliDate(item.updatedAt, true)}</span>
+                            <button onClick={() => setSelectedArticleId(articleId)} type="button">
+                              مشاهده خلاصه
+                            </button>
+                            <button onClick={() => onEditArticle(articleId)} type="button">
+                              ویرایش کامل
+                            </button>
+                          </div>
+                        </article>
+                      )
+                    })}
+                  </div>
+                  {filteredArticles.length > articleSelectionPageSize ? (
+                    <div className="vendors-pagination">
+                      <button
+                        className="vendors-page-button"
+                        disabled={articleSelectionPage <= 1}
+                        onClick={() => setArticleSelectionPage((current) => Math.max(1, current - 1))}
+                        type="button"
+                      >
+                        مقاله‌های قبل
+                      </button>
+                      <span>{`صفحه ${formatPersianNumber(articleSelectionPage)} از ${formatPersianNumber(articleSelectionPageCount)}`}</span>
+                      <button
+                        className="vendors-page-button"
+                        disabled={articleSelectionPage >= articleSelectionPageCount}
+                        onClick={() => setArticleSelectionPage((current) => Math.min(articleSelectionPageCount, current + 1))}
+                        type="button"
+                      >
+                        مقاله‌های بعد
+                      </button>
+                    </div>
+                  ) : null}
+                </>
               ) : (
-                <div className="fm-message">با این فیلترها مقاله ای پیدا نشد.</div>
+                <div className="fm-message">با این فیلترها مقاله‌ای پیدا نشد.</div>
               )}
             </div>
 
             <div className="content-detail-column">
               <SectionCard
                 eyebrow="مقاله انتخاب‌شده"
-                title={selectedArticleId ? `خلاصه مقاله #${selectedArticleId}` : 'هیچ مقاله ای انتخاب نشده'}
-                description="این بلوک برای تصمیم سریع است. برای نگارش، سئو و تاکسونومی باید وارد workspace جدا شوید."
+                title={selectedArticleId ? `خلاصه مقاله #${selectedArticleId}` : 'هیچ مقاله‌ای انتخاب نشده'}
+                description="این بلوک برای تصمیم سریع است. برای نگارش، سئو و دسته‌بندی دقیق باید وارد میزکار جدا شوی."
+                hint="این خلاصه برای تصمیم سریع است؛ اگر لازم بود متن، سئو یا دسته‌ها را تغییر دهی، وارد میزکار شو."
                 actions={
                   selectedArticleId ? (
                     <button className="content-secondary-action" onClick={() => onEditArticle(selectedArticleId)} type="button">
@@ -540,7 +589,7 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
                     <article className="content-detail-item content-detail-item--wide">
                       <span>گام بعدی روی این مقاله</span>
                       <strong>
-                        برای ویرایش متن، سئو، نویسنده، دسته بندی و تگ ها وارد workspace متمرکز شوید تا فرم سنگین از کارتابل اصلی جدا بماند.
+                        برای ویرایش متن، سئو، نویسنده، دسته‌بندی و برچسب‌ها وارد میزکار متمرکز شو تا فرم سنگین از کارتابل اصلی جدا بماند.
                       </strong>
                     </article>
                   </div>
@@ -552,39 +601,61 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
 
               <SectionCard
                 eyebrow="تاکسونومی و پایش"
-                title="تاکسونومی و پایش‌های محتوایی"
-                description="دید روی دسته بندی، تگ، نویسنده و auditها از همین صفحه حفظ می شود، ولی مدیریت سنگین در editor workspace انجام می شود."
+                title="دسته‌بندی و پایش محتوایی"
+                description="دید روی دسته‌بندی، برچسب، نویسنده و پایش‌ها از همین صفحه حفظ می‌شود، ولی مدیریت سنگین در میزکار ویرایش انجام می‌شود."
+                hint="اگر تعداد پایش‌ها زیاد شد، آن‌ها را صفحه‌به‌صفحه بخوان تا بخش خلاصه بیش از حد کشیده نشود."
                 actions={<Pill tone="warning">بلوغ سئو</Pill>}
               >
                 <div className="content-taxonomy-summary">
                   <article>
-                    <span>دسته بندی ها</span>
+                    <span>دسته‌بندی‌ها</span>
                     <strong>{formatPersianNumber(categories.length)}</strong>
                   </article>
                   <article>
-                    <span>تگ ها</span>
+                    <span>برچسب‌ها</span>
                     <strong>{formatPersianNumber(tags.length)}</strong>
                   </article>
                   <article>
-                    <span>نویسنده ها</span>
+                    <span>نویسنده‌ها</span>
                     <strong>{formatPersianNumber(authors.length)}</strong>
                   </article>
                 </div>
                 <div className="content-preview-grid">
                   <article className="content-preview-card">
-                    <span>دسته های شاخص</span>
-                    <strong>{taxonomyPreview.categories.join(' / ') || 'هنوز دسته بندی ثبت نشده'}</strong>
+                    <span>دسته‌های شاخص</span>
+                    <strong>{taxonomyPreview.categories.join(' / ') || 'هنوز دسته‌بندی ثبت نشده'}</strong>
                   </article>
                   <article className="content-preview-card">
-                    <span>تگ های شاخص</span>
+                    <span>برچسب‌های شاخص</span>
                     <strong>{taxonomyPreview.tags.join(' / ') || 'هنوز تگی ثبت نشده'}</strong>
                   </article>
                   <article className="content-preview-card">
-                    <span>نویسنده های فعال</span>
+                    <span>نویسنده‌های فعال</span>
                     <strong>{taxonomyPreview.authors.join(' / ') || 'هنوز نویسنده ای ثبت نشده'}</strong>
                   </article>
                 </div>
                 <DataTable columns={auditColumns} rows={auditRows} />
+                {audits.length > auditPageSize ? (
+                  <div className="vendors-pagination">
+                    <button
+                      className="vendors-page-button"
+                      disabled={auditPage <= 1}
+                      onClick={() => setAuditPage((current) => Math.max(1, current - 1))}
+                      type="button"
+                    >
+                      موردهای قبل
+                    </button>
+                    <span>{`صفحه ${formatPersianNumber(auditPage)} از ${formatPersianNumber(auditPageCount)}`}</span>
+                    <button
+                      className="vendors-page-button"
+                      disabled={auditPage >= auditPageCount}
+                      onClick={() => setAuditPage((current) => Math.min(auditPageCount, current + 1))}
+                      type="button"
+                    >
+                      موردهای بعد
+                    </button>
+                  </div>
+                ) : null}
               </SectionCard>
             </div>
           </div>

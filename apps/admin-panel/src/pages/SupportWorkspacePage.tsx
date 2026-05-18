@@ -8,6 +8,9 @@ import type { AuthSession } from '../lib/session'
 type TicketRecord = Record<string, unknown>
 type WorkspaceLane = 'status' | 'finance' | 'notes'
 
+const notePageSize = 6
+const auditPageSize = 6
+
 const supportStatuses = [
   'OPEN',
   'IN_REVIEW',
@@ -27,6 +30,63 @@ const financeOutcomes = [
   'PARTIAL_REVERSAL',
   'EXTEND_HOLD',
 ] as const
+
+function getSupportStatusLabel(status: string) {
+  switch (status) {
+    case 'OPEN':
+      return 'باز'
+    case 'IN_REVIEW':
+      return 'در حال بررسی'
+    case 'WAITING_CUSTOMER':
+      return 'در انتظار مشتری'
+    case 'WAITING_VENDOR':
+      return 'در انتظار فروشنده'
+    case 'ESCALATED_TO_FINANCE':
+      return 'ارجاع‌شده به مالی'
+    case 'RESOLVED':
+      return 'حل‌شده'
+    case 'REJECTED':
+      return 'ردشده'
+    case 'CANCELLED':
+      return 'لغوشده'
+    default:
+      return status || 'نامشخص'
+  }
+}
+
+function getFinanceOutcomeLabel(outcome: string) {
+  switch (outcome) {
+    case 'NO_ACTION_RELEASE':
+      return 'بدون اقدام و آزادسازی'
+    case 'FULL_REFUND':
+      return 'بازگشت کامل وجه'
+    case 'PARTIAL_REFUND':
+      return 'بازگشت بخشی از وجه'
+    case 'FULL_REVERSAL':
+      return 'برگشت کامل تراکنش'
+    case 'PARTIAL_REVERSAL':
+      return 'برگشت بخشی از تراکنش'
+    case 'EXTEND_HOLD':
+      return 'تمدید نگه‌داری'
+    default:
+      return outcome || 'نامشخص'
+  }
+}
+
+function getActorLabel(value: string) {
+  switch (value) {
+    case 'ADMIN':
+      return 'مدیر'
+    case 'SYSTEM':
+      return 'سامانه'
+    case 'CUSTOMER':
+      return 'مشتری'
+    case 'VENDOR':
+      return 'فروشنده'
+    default:
+      return value || 'نامشخص'
+  }
+}
 
 function toObject(value: unknown): TicketRecord {
   return typeof value === 'object' && value !== null ? (value as TicketRecord) : {}
@@ -83,6 +143,8 @@ export function SupportWorkspacePage({
   const [actionBusy, setActionBusy] = useState<string | null>(null)
   const [actionMessage, setActionMessage] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [notesPage, setNotesPage] = useState(1)
+  const [auditPage, setAuditPage] = useState(1)
   const [statusForm, setStatusForm] = useState({ status: 'IN_REVIEW', note: '', internalNote: '' })
   const [noteForm, setNoteForm] = useState({ message: '', isInternal: true })
   const [financeForm, setFinanceForm] = useState({
@@ -100,7 +162,7 @@ export function SupportWorkspacePage({
     if (!ticketId) {
       setLoading(false)
       setDetail(null)
-      setError('برای ورود به workspace پشتیبانی، ابتدا یک تیکت را از کارتابل انتخاب کن.')
+      setError('برای ورود به میزکار پشتیبانی، ابتدا یک تیکت را از کارتابل انتخاب کن.')
       return
     }
 
@@ -116,7 +178,7 @@ export function SupportWorkspacePage({
         internalNote: readText(next, ['internalNote'], current.internalNote),
       }))
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'خطا در بارگذاری workspace پشتیبانی')
+      setError(loadError instanceof Error ? loadError.message : 'خطا در بارگذاری میزکار پشتیبانی')
     } finally {
       setLoading(false)
     }
@@ -140,34 +202,45 @@ export function SupportWorkspacePage({
   const store = useMemo(() => toObject(detail?.store), [detail])
   const status = readText(detail ?? ticket ?? {}, ['status'], 'UNKNOWN')
   const financeOutcome = readText(detail ?? ticket ?? {}, ['financeOutcome'], '—')
+  const notesPageCount = Math.max(1, Math.ceil(notes.length / notePageSize))
+  const auditPageCount = Math.max(1, Math.ceil(auditTrail.length / auditPageSize))
+
+  useEffect(() => {
+    setNotesPage(1)
+    setAuditPage(1)
+  }, [ticketId])
 
   const stats = [
     {
       label: 'وضعیت تیکت',
-      value: status,
+      value: getSupportStatusLabel(status),
       delta: readText(detail ?? ticket ?? {}, ['reason'], '—'),
-      detail: 'state فعلی این تیکت',
+      detail: 'جایگاه فعلی این تیکت در روند رسیدگی',
+      hint: 'اگر وضعیت با واقعیت هماهنگ نیست، از بخش تغییر وضعیت آن را اصلاح کن.',
       tone: getStatusTone(status),
     },
     {
       label: 'سفارش',
       value: readText(order, ['id'], '—'),
       delta: readText(order, ['paymentStatus'], '—'),
-      detail: 'context سفارش و payment',
+      detail: 'خلاصه سفارش و وضعیت پرداخت مرتبط',
+      hint: 'قبل از هر تصمیم مالی، این بخش را با وضعیت واقعی سفارش تطبیق بده.',
       tone: 'primary' as const,
     },
     {
       label: 'خروجی مالی',
-      value: financeOutcome,
+      value: getFinanceOutcomeLabel(financeOutcome),
       delta: formatPersianNumber(readText(detail ?? {}, ['financeAmount'], '—')),
-      detail: 'آخرین تصمیم مالی ثبت‌شده',
+      detail: 'آخرین نتیجه مالی ثبت‌شده برای این تیکت',
+      hint: 'اگر هنوز تصمیمی ثبت نشده باشد، این بخش خالی یا بدون نتیجه می‌ماند.',
       tone: getFinanceTone(financeOutcome),
     },
     {
-      label: 'noteها',
+      label: 'یادداشت‌ها',
       value: formatPersianNumber(notes.length),
-      delta: `${formatPersianNumber(auditTrail.length)} رخداد audit`,
-      detail: 'context این تیکت در workspace',
+      delta: `${formatPersianNumber(auditTrail.length)} رخداد ثبت‌شده`,
+      detail: 'حجم ردپای عملیاتی این تیکت',
+      hint: 'هرچه این عدد بیشتر باشد، برای تصمیم نهایی بهتر است یادداشت‌ها و رخدادها را مرور کنی.',
       tone: 'warning' as const,
     },
   ]
@@ -175,29 +248,31 @@ export function SupportWorkspacePage({
   const laneCards = [
     {
       key: 'status' as const,
-      title: 'lane وضعیت',
-      description: 'برای تغییر status، waiting state و resolve/reject.',
-      detail: status,
+      title: 'مسیر وضعیت',
+      description: 'برای تغییر وضعیت و ثبت توضیح رسیدگی.',
+      detail: getSupportStatusLabel(status),
     },
     {
       key: 'finance' as const,
-      title: 'lane مالی',
-      description: 'برای finance decision و outcomeهای refund/reversal/release.',
-      detail: financeOutcome,
+      title: 'مسیر مالی',
+      description: 'برای ثبت نتیجه مالی و مبلغ مرتبط.',
+      detail: getFinanceOutcomeLabel(financeOutcome),
     },
     {
       key: 'notes' as const,
-      title: 'lane notes',
-      description: 'برای ثبت note داخلی/عمومی و نگه داشتن handoff context.',
-      detail: `${formatPersianNumber(notes.length)} note`,
+      title: 'مسیر یادداشت',
+      description: 'برای ثبت توضیح داخلی یا قابل‌نمایش.',
+      detail: `${formatPersianNumber(notes.length)} یادداشت`,
     },
   ]
 
-  const timelineFeed = notes.slice(0, 10).map((item, index) => ({
+  const timelineFeed = notes
+    .slice((notesPage - 1) * notePageSize, notesPage * notePageSize)
+    .map((item, index) => ({
     id: readText(item, ['id'], String(index + 1)),
-    title: readText(item, ['message'], 'support note'),
-    meta: `${readText(item, ['actorType'], '—')} / ${formatJalaliDate(item.createdAt)}`,
-    description: readText(item, ['isInternal'], '') === 'true' ? 'note داخلی' : 'note قابل‌نمایش',
+    title: readText(item, ['message'], 'یادداشت پشتیبانی'),
+    meta: `${getActorLabel(readText(item, ['actorType'], '—'))} / ${formatJalaliDate(item.createdAt)}`,
+    description: readText(item, ['isInternal'], '') === 'true' ? 'فقط برای همکاران دیده می‌شود' : 'برای نمایش در روند رسیدگی ثبت شده است',
     tone: readText(item, ['isInternal'], '') === 'true' ? ('warning' as const) : ('success' as const),
   }))
 
@@ -239,7 +314,7 @@ export function SupportWorkspacePage({
           message: noteForm.message.trim(),
           isInternal: noteForm.isInternal,
         }),
-      'note تیکت با موفقیت ثبت شد.',
+      'یادداشت تیکت با موفقیت ثبت شد.',
     )
     setNoteForm((current) => ({ ...current, message: '' }))
   }
@@ -267,7 +342,7 @@ export function SupportWorkspacePage({
         <button className="support-open-workspace" onClick={onBack} type="button">
           بازگشت به کارتابل پشتیبانی
         </button>
-        <Pill tone={getStatusTone(status)}>{status}</Pill>
+        <Pill tone={getStatusTone(status)}>{getSupportStatusLabel(status)}</Pill>
       </div>
 
       {actionMessage ? <div className="fm-message">{actionMessage}</div> : null}
@@ -281,10 +356,11 @@ export function SupportWorkspacePage({
         </div>
 
         <SectionCard
-          eyebrow="workspace متمرکز"
+          eyebrow="میزکار متمرکز"
           title={`رسیدگی به تیکت #${ticketId || '—'}`}
-          description="این route تمام actionهای اصلی تیکت را در یک surface متمرکز جمع می‌کند تا list page خلوت بماند."
-          actions={<Pill tone="primary">support live</Pill>}
+          description="همه اقدام‌های اصلی این تیکت در همین صفحه جمع شده‌اند تا کارتابل اصلی فقط برای انتخاب بماند."
+          hint="از سه مسیر بالا شروع کن: اگر فقط باید وضعیت عوض شود مسیر وضعیت، اگر پول درگیر است مسیر مالی و اگر نیاز به توضیح داری مسیر یادداشت را باز کن."
+          actions={<Pill tone="primary">رسیدگی زنده</Pill>}
         >
           <div className="support-workspace-lanes">
             {laneCards.map((item) => (
@@ -303,17 +379,18 @@ export function SupportWorkspacePage({
         </SectionCard>
 
         <SectionCard
-          eyebrow="decision brief"
+          eyebrow="خلاصه تصمیم"
           title="جمع‌بندی سریع این تیکت"
-          description="قبل از اجرای action، وضعیت سفارش، مشتری، فروشگاه و flagهای عملیاتی همین‌جا جمع شده‌اند."
-          actions={<Pill tone="neutral">brief</Pill>}
+          description="قبل از هر اقدام، اطلاعات اصلی سفارش، مشتری، فروشگاه و نشانه‌های حساس را همین‌جا ببین."
+          hint="اگر هنوز دلیل تیکت برایت روشن نیست، اول این چهار کارت را بخوان و بعد سراغ فرم‌ها برو."
+          actions={<Pill tone="neutral">مرور سریع</Pill>}
         >
           <div className="support-brief-grid">
             {[
               { label: 'مشتری', value: readText(customer, ['fullName', 'phoneNumber'], '—'), detail: readText(customer, ['phoneNumber'], '—') },
               { label: 'فروشگاه', value: readText(store, ['name'], '—'), detail: readText(store, ['slug'], '—') },
               { label: 'سفارش', value: readText(order, ['id'], '—'), detail: readText(order, ['status'], '—') },
-              { label: 'flagها', value: flags.length ? flags.join(' / ') : '—', detail: readText(detail ?? {}, ['reason'], '—') },
+              { label: 'نشانه‌ها', value: flags.length ? flags.join(' / ') : '—', detail: readText(detail ?? {}, ['reason'], '—') },
             ].map((item) => (
               <article className="support-brief-item" key={item.label}>
                 <span>{item.label}</span>
@@ -325,14 +402,15 @@ export function SupportWorkspacePage({
         </SectionCard>
 
         <SectionCard
-          eyebrow="status control"
+          eyebrow="کنترل وضعیت"
           title="تغییر وضعیت تیکت"
-          description="تمام transitionهای واقعی status از همین فرم اجرا می‌شوند."
-          actions={<Pill tone="warning">status mutation</Pill>}
+          description="هر تغییر واقعی در وضعیت تیکت باید از همین فرم ثبت شود تا روند رسیدگی دقیق بماند."
+          hint="اگر وضعیت را عوض می‌کنی، بهتر است دلیل کوتاه و یادداشت داخلی را هم کامل کنی تا نفر بعدی سردرگم نشود."
+          actions={<Pill tone="warning">ثبت وضعیت</Pill>}
         >
           <form className="fm-form-grid support-workspace-form-grid" onSubmit={handleStatusSubmit}>
             <div className="fm-field">
-              <label htmlFor="support-status">status</label>
+              <label htmlFor="support-status">وضعیت</label>
               <select
                 id="support-status"
                 onChange={(event) => setStatusForm((current) => ({ ...current, status: event.target.value }))}
@@ -340,13 +418,13 @@ export function SupportWorkspacePage({
               >
                 {supportStatuses.map((item) => (
                   <option key={item} value={item}>
-                    {item}
+                    {getSupportStatusLabel(item)}
                   </option>
                 ))}
               </select>
             </div>
             <div className="fm-field">
-              <label htmlFor="support-status-note">note</label>
+              <label htmlFor="support-status-note">توضیح برای روند رسیدگی</label>
               <textarea
                 id="support-status-note"
                 onChange={(event) => setStatusForm((current) => ({ ...current, note: event.target.value }))}
@@ -355,7 +433,7 @@ export function SupportWorkspacePage({
               />
             </div>
             <div className="fm-field">
-              <label htmlFor="support-internal-note">internal note</label>
+              <label htmlFor="support-internal-note">یادداشت داخلی</label>
               <textarea
                 id="support-internal-note"
                 onChange={(event) => setStatusForm((current) => ({ ...current, internalNote: event.target.value }))}
@@ -370,14 +448,15 @@ export function SupportWorkspacePage({
         </SectionCard>
 
         <SectionCard
-          eyebrow="finance control"
+          eyebrow="کنترل مالی"
           title="ثبت تصمیم مالی واقعی"
-          description="finance decision این تیکت مستقیما به backend واقعی متصل است و outcomeهای refund/reversal/extend-hold را ثبت می‌کند."
-          actions={<Pill tone="danger">finance mutation</Pill>}
+          description="اگر این تیکت به بازگشت وجه، برگشت تراکنش یا نگه‌داری بیشتر نیاز دارد، از همین فرم اقدام کن."
+          hint="فقط وقتی این بخش را ثبت کن که مطمئن باشی نتیجه مالی نهایی روشن شده است؛ چون این تصمیم روی سفارش اثر می‌گذارد."
+          actions={<Pill tone="danger">ثبت مالی</Pill>}
         >
           <form className="fm-form-grid support-workspace-form-grid" onSubmit={handleFinanceSubmit}>
             <div className="fm-field">
-              <label htmlFor="finance-outcome">outcome</label>
+              <label htmlFor="finance-outcome">نتیجه مالی</label>
               <select
                 id="finance-outcome"
                 onChange={(event) => setFinanceForm((current) => ({ ...current, outcome: event.target.value }))}
@@ -385,13 +464,13 @@ export function SupportWorkspacePage({
               >
                 {financeOutcomes.map((item) => (
                   <option key={item} value={item}>
-                    {item}
+                    {getFinanceOutcomeLabel(item)}
                   </option>
                 ))}
               </select>
             </div>
             <div className="fm-field">
-              <label htmlFor="finance-amount">amount</label>
+              <label htmlFor="finance-amount">مبلغ</label>
               <input
                 id="finance-amount"
                 onChange={(event) => setFinanceForm((current) => ({ ...current, amount: event.target.value }))}
@@ -401,7 +480,7 @@ export function SupportWorkspacePage({
               />
             </div>
             <div className="fm-field">
-              <label htmlFor="finance-hold-days">extendHoldDays</label>
+              <label htmlFor="finance-hold-days">تعداد روزهای نگه‌داری بیشتر</label>
               <input
                 id="finance-hold-days"
                 onChange={(event) => setFinanceForm((current) => ({ ...current, extendHoldDays: event.target.value }))}
@@ -410,7 +489,7 @@ export function SupportWorkspacePage({
               />
             </div>
             <div className="fm-field">
-              <label htmlFor="finance-note">note</label>
+              <label htmlFor="finance-note">توضیح تصمیم مالی</label>
               <textarea
                 id="finance-note"
                 onChange={(event) => setFinanceForm((current) => ({ ...current, note: event.target.value }))}
@@ -419,7 +498,7 @@ export function SupportWorkspacePage({
               />
             </div>
             <div className="fm-field">
-              <label htmlFor="finance-refund-reason">refundReason</label>
+              <label htmlFor="finance-refund-reason">دلیل بازگشت وجه</label>
               <input
                 id="finance-refund-reason"
                 onChange={(event) => setFinanceForm((current) => ({ ...current, refundReason: event.target.value }))}
@@ -427,7 +506,7 @@ export function SupportWorkspacePage({
               />
             </div>
             <div className="fm-field">
-              <label htmlFor="finance-refund-note">refundNote</label>
+              <label htmlFor="finance-refund-note">توضیح تکمیلی بازگشت وجه</label>
               <textarea
                 id="finance-refund-note"
                 onChange={(event) => setFinanceForm((current) => ({ ...current, refundNote: event.target.value }))}
@@ -442,14 +521,15 @@ export function SupportWorkspacePage({
         </SectionCard>
 
         <SectionCard
-          eyebrow="note control"
-          title="ثبت note و handoff context"
-          description="noteهای داخلی یا عمومی از همین بخش ثبت می‌شوند تا timeline تیکت کامل بماند."
-          actions={<Pill tone="success">note mutation</Pill>}
+          eyebrow="ثبت یادداشت"
+          title="ثبت توضیح برای ادامه رسیدگی"
+          description="از این بخش برای ثبت توضیح داخلی یا توضیحی که در روند رسیدگی باید بماند استفاده کن."
+          hint="اگر می‌خواهی فقط همکاران داخل پنل یادداشت را ببینند، گزینه یادداشت داخلی را روشن نگه دار."
+          actions={<Pill tone="success">ثبت یادداشت</Pill>}
         >
           <form className="fm-form-grid support-workspace-form-grid" onSubmit={handleNoteSubmit}>
             <div className="fm-field">
-              <label htmlFor="support-note-message">message</label>
+              <label htmlFor="support-note-message">متن یادداشت</label>
               <textarea
                 id="support-note-message"
                 onChange={(event) => setNoteForm((current) => ({ ...current, message: event.target.value }))}
@@ -463,38 +543,84 @@ export function SupportWorkspacePage({
                 onChange={(event) => setNoteForm((current) => ({ ...current, isInternal: event.target.checked }))}
                 type="checkbox"
               />
-              <span>note داخلی</span>
+              <span>یادداشت فقط برای همکاران باشد</span>
             </label>
             <button className="fm-button fm-button--primary" disabled={actionBusy === 'note-submit'} type="submit">
-              {actionBusy === 'note-submit' ? 'در حال ثبت...' : 'ثبت note'}
+              {actionBusy === 'note-submit' ? 'در حال ثبت...' : 'ثبت یادداشت'}
             </button>
           </form>
         </SectionCard>
 
         <SectionCard
-          eyebrow="latest notes"
-          title="فید noteها و timeline پشتیبانی"
-          description="noteها و پیگیری‌های ثبت‌شده در همین route برای اپراتور مرجع اصلی هستند."
-          actions={<Pill tone="warning">{`${formatPersianNumber(notes.length)} note`}</Pill>}
+          eyebrow="یادداشت‌های اخیر"
+          title="فهرست یادداشت‌ها و پیگیری‌های این تیکت"
+          description="یادداشت‌ها و پیگیری‌های ثبت‌شده اینجا به‌ترتیب دیده می‌شوند تا روند رسیدگی گم نشود."
+          hint="اگر یادداشت‌ها زیاد شدند، با جابه‌جایی صفحه‌ها آن‌ها را مرحله‌به‌مرحله مرور کن."
+          actions={<Pill tone="warning">{`${formatPersianNumber(notes.length)} یادداشت`}</Pill>}
         >
-          {timelineFeed.length ? <ActivityFeed items={timelineFeed} /> : <div className="fm-message">هنوز noteای ثبت نشده است.</div>}
+          {timelineFeed.length ? <ActivityFeed items={timelineFeed} /> : <div className="fm-message">هنوز یادداشتی ثبت نشده است.</div>}
+          {notes.length > notePageSize ? (
+            <div className="vendors-pagination">
+              <button
+                className="vendors-page-button"
+                disabled={notesPage <= 1}
+                onClick={() => setNotesPage((current) => Math.max(1, current - 1))}
+                type="button"
+              >
+                موردهای قبل
+              </button>
+              <span>{`صفحه ${notesPage} از ${notesPageCount}`}</span>
+              <button
+                className="vendors-page-button"
+                disabled={notesPage >= notesPageCount}
+                onClick={() => setNotesPage((current) => Math.min(notesPageCount, current + 1))}
+                type="button"
+              >
+                موردهای بعد
+              </button>
+            </div>
+          ) : null}
         </SectionCard>
 
         <SectionCard
-          eyebrow="audit trail"
-          title="رخدادهای audit و history"
-          description="رخدادهای اصلی support ticket اینجا نگه داشته می‌شوند تا تصمیم‌ها قابل‌ردیابی بمانند."
-          actions={<Pill tone="neutral">{`${formatPersianNumber(auditTrail.length)} event`}</Pill>}
+          eyebrow="ردپای رخدادها"
+          title="رخدادهای ثبت‌شده و سابقه تصمیم‌ها"
+          description="این بخش نشان می‌دهد روی این تیکت چه اتفاق‌هایی افتاده تا تصمیم‌ها قابل‌ردیابی بمانند."
+          hint="اگر نتیجه فعلی با سابقه تیکت سازگار نیست، این فهرست بهترین جا برای پیدا کردن علت است."
+          actions={<Pill tone="neutral">{`${formatPersianNumber(auditTrail.length)} رخداد`}</Pill>}
         >
           <div className="support-audit-list">
-            {auditTrail.slice(0, 8).map((item, index) => (
+            {auditTrail
+              .slice((auditPage - 1) * auditPageSize, auditPage * auditPageSize)
+              .map((item, index) => (
               <article className="support-audit-item" key={readText(item, ['id'], String(index + 1))}>
-                <strong>{readText(item, ['summary', 'aggregateType'], 'support event')}</strong>
+                <strong>{readText(item, ['summary', 'aggregateType'], 'رخداد پشتیبانی')}</strong>
                 <span>{formatJalaliDate(item.createdAt)}</span>
                 <small>{readText(item, ['eventType'], '—')}</small>
               </article>
             ))}
           </div>
+          {auditTrail.length > auditPageSize ? (
+            <div className="vendors-pagination">
+              <button
+                className="vendors-page-button"
+                disabled={auditPage <= 1}
+                onClick={() => setAuditPage((current) => Math.max(1, current - 1))}
+                type="button"
+              >
+                موردهای قبل
+              </button>
+              <span>{`صفحه ${auditPage} از ${auditPageCount}`}</span>
+              <button
+                className="vendors-page-button"
+                disabled={auditPage >= auditPageCount}
+                onClick={() => setAuditPage((current) => Math.min(auditPageCount, current + 1))}
+                type="button"
+              >
+                موردهای بعد
+              </button>
+            </div>
+          ) : null}
         </SectionCard>
       </LoadableState>
     </div>

@@ -14,6 +14,52 @@ const ticketColumns = [
   { key: 'reason', label: 'علت' },
 ]
 
+const ticketSelectionPageSize = 8
+
+function getTicketStatusLabel(status: string) {
+  switch (status) {
+    case 'OPEN':
+      return 'باز'
+    case 'IN_REVIEW':
+      return 'در حال بررسی'
+    case 'WAITING_CUSTOMER':
+      return 'در انتظار مشتری'
+    case 'WAITING_VENDOR':
+      return 'در انتظار فروشنده'
+    case 'ESCALATED_TO_FINANCE':
+      return 'ارجاع‌شده به مالی'
+    case 'RESOLVED':
+      return 'حل‌شده'
+    case 'REJECTED':
+      return 'ردشده'
+    case 'CANCELLED':
+      return 'لغوشده'
+    case 'ALL':
+      return 'همه'
+    default:
+      return status || 'نامشخص'
+  }
+}
+
+function getFinanceOutcomeLabel(outcome: string) {
+  switch (outcome) {
+    case 'NO_ACTION_RELEASE':
+      return 'بدون اقدام و آزادسازی'
+    case 'FULL_REFUND':
+      return 'بازگشت کامل وجه'
+    case 'PARTIAL_REFUND':
+      return 'بازگشت بخشی از وجه'
+    case 'FULL_REVERSAL':
+      return 'برگشت کامل تراکنش'
+    case 'PARTIAL_REVERSAL':
+      return 'برگشت بخشی از تراکنش'
+    case 'EXTEND_HOLD':
+      return 'تمدید نگه‌داری'
+    default:
+      return outcome || '—'
+  }
+}
+
 function getTicketStatus(record: TicketRecord) {
   return readText(record, ['status'], 'UNKNOWN')
 }
@@ -45,6 +91,7 @@ export function SupportPage({
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [search, setSearch] = useState('')
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null)
+  const [selectionPage, setSelectionPage] = useState(1)
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailError, setDetailError] = useState<string | null>(null)
   const [selectedTicket, setSelectedTicket] = useState<TicketRecord | null>(null)
@@ -139,6 +186,10 @@ export function SupportPage({
     })
   }, [tickets, search, statusFilter])
 
+  useEffect(() => {
+    setSelectionPage(1)
+  }, [search, statusFilter, tickets.length])
+
   const ticketRows = useMemo(
     () =>
       makeRows(filteredTickets.slice(0, 20), [
@@ -150,6 +201,12 @@ export function SupportPage({
     [filteredTickets],
   )
 
+  const selectionPageCount = Math.max(1, Math.ceil(filteredTickets.length / ticketSelectionPageSize))
+  const pagedSelection = filteredTickets.slice(
+    (selectionPage - 1) * ticketSelectionPageSize,
+    selectionPage * ticketSelectionPageSize,
+  )
+
   const feed = useMemo(() => makeFeed(followUps, 'support follow-up'), [followUps])
 
   const stats = useMemo(
@@ -157,29 +214,33 @@ export function SupportPage({
       {
         label: 'کل تیکت‌ها',
         value: String(tickets.length),
-        delta: `${filteredTickets.length} در view فعلی`,
-        detail: 'پایه اصلی support workspace',
+        delta: `${filteredTickets.length} مورد در نمای فعلی`,
+        detail: 'حجم کل صف پشتیبانی و نتیجه فیلتر فعلی',
+        hint: 'این عدد نشان می‌دهد از کل تیکت‌ها، چند مورد با فیلترهای فعلی دیده می‌شوند.',
         tone: 'primary' as const,
       },
       {
         label: 'تیکت‌های باز',
         value: String(tickets.filter((item) => getTicketStatus(item) === 'OPEN').length),
         delta: 'نیازمند پاسخ اولیه',
-        detail: 'ورودی اصلی برای تیم پشتیبانی',
+        detail: 'صف اصلی برای شروع رسیدگی روزانه',
+        hint: 'اگر این عدد بالا باشد، بهتر است اول از همین بخش شروع شود.',
         tone: 'warning' as const,
       },
       {
         label: 'ارجاع‌های مالی',
         value: String(tickets.filter((item) => getTicketStatus(item) === 'ESCALATED_TO_FINANCE').length),
-        delta: 'finance decision flow',
-        detail: 'تیکت‌هایی که به تصمیم مالی می‌رسند',
+        delta: 'نیازمند تصمیم مالی',
+        detail: 'تیکت‌هایی که از پشتیبانی عادی عبور کرده‌اند',
+        hint: 'این تیکت‌ها معمولا به بازگشت وجه، نگه‌داری مبلغ یا بررسی مالی نیاز دارند.',
         tone: 'danger' as const,
       },
       {
-        label: 'follow-upها',
+        label: 'پیگیری‌ها',
         value: String(followUps.length),
-        delta: 'ops feed',
-        detail: 'فید eventهای قابل پیگیری برای ادمین',
+        delta: 'نکته‌های قابل پیگیری',
+        detail: 'رخدادهایی که به پیگیری بعدی نیاز دارند',
+        hint: 'برای مرور کارهای ناتمام و دنبال‌کردن نتیجه تیکت‌ها از این عدد استفاده می‌شود.',
         tone: 'success' as const,
       },
     ],
@@ -189,9 +250,9 @@ export function SupportPage({
   const selectedSummary = selectedTicket
     ? [
         { label: 'سفارش', value: getTicketOrder(selectedTicket) },
-        { label: 'وضعیت', value: getTicketStatus(selectedTicket) },
+        { label: 'وضعیت', value: getTicketStatusLabel(getTicketStatus(selectedTicket)) },
         { label: 'علت', value: getTicketReason(selectedTicket) },
-        { label: 'خروجی مالی', value: readText(selectedTicket, ['financeOutcome'], '—') },
+        { label: 'خروجی مالی', value: getFinanceOutcomeLabel(readText(selectedTicket, ['financeOutcome'], '—')) },
       ]
     : []
 
@@ -205,10 +266,11 @@ export function SupportPage({
         </div>
 
         <SectionCard
-          eyebrow="Support workspace"
-          title="workspace تیکت‌های پشتیبانی"
-          description="این صفحه حالا لیست، filter، selection، detail summary و feed رخدادهای پشتیبانی را در یک surface واحد جمع می‌کند."
-          actions={<Pill tone="primary">support workspace v1</Pill>}
+          eyebrow="کارتابل پشتیبانی"
+          title="صف انتخاب و مرور تیکت‌های پشتیبانی"
+          description="در این صفحه فقط تیکت را پیدا می‌کنی، خلاصه‌اش را می‌بینی و بعد برای اقدام کامل وارد میزکار جدا می‌شوی."
+          hint="اول فیلتر و جستجو را تنظیم کن، بعد از فهرست کنار جدول تیکت مناسب را انتخاب کن."
+          actions={<Pill tone="primary">انتخاب تیکت</Pill>}
         >
           <div className="support-toolbar">
             <div className="fm-field support-search">
@@ -229,7 +291,7 @@ export function SupportPage({
                   onClick={() => setStatusFilter(status)}
                   type="button"
                 >
-                  {status === 'ALL' ? 'همه' : status}
+                  {getTicketStatusLabel(status)}
                 </button>
               ))}
             </div>
@@ -238,7 +300,7 @@ export function SupportPage({
           <div className="support-table-card">
             <DataTable columns={ticketColumns} rows={ticketRows} />
             <div className="support-selection-list">
-              {filteredTickets.slice(0, 8).map((item) => {
+              {pagedSelection.map((item) => {
                 const ticketId = readText(item, ['id'], '')
                 return (
                   <button
@@ -250,23 +312,45 @@ export function SupportPage({
                     <strong>تیکت #{ticketId}</strong>
                     <span>سفارش #{getTicketOrder(item)}</span>
                     <small>
-                      {getTicketStatus(item)} / {getTicketReason(item)}
+                      {getTicketStatusLabel(getTicketStatus(item))} / {getTicketReason(item)}
                     </small>
                   </button>
                 )
               })}
             </div>
+            {filteredTickets.length > ticketSelectionPageSize ? (
+              <div className="vendors-pagination">
+                <button
+                  className="vendors-page-button"
+                  disabled={selectionPage <= 1}
+                  onClick={() => setSelectionPage((current) => Math.max(1, current - 1))}
+                  type="button"
+                >
+                  موردهای قبل
+                </button>
+                <span>{`صفحه ${selectionPage} از ${selectionPageCount}`}</span>
+                <button
+                  className="vendors-page-button"
+                  disabled={selectionPage >= selectionPageCount}
+                  onClick={() => setSelectionPage((current) => Math.min(selectionPageCount, current + 1))}
+                  type="button"
+                >
+                  موردهای بعد
+                </button>
+              </div>
+            ) : null}
           </div>
         </SectionCard>
 
         <SectionCard
-          eyebrow="selected ticket"
+          eyebrow="تیکت انتخاب‌شده"
           title={selectedTicketId ? `جزئیات تیکت #${selectedTicketId}` : 'هیچ تیکتی انتخاب نشده'}
-          description="این صفحه list-first باقی می‌ماند و actionهای واقعی تیکت در workspace جدا انجام می‌شوند."
+          description="این بخش فقط برای جمع‌بندی سریع است و اقدام‌های اصلی در میزکار جدا انجام می‌شود تا این صفحه شلوغ نشود."
+          hint="اگر این خلاصه برای تصمیم‌گیری کافی نبود، طبیعی است؛ دکمه ورود به میزکار برای همین مرحله بعدی است."
           actions={
             selectedTicket ? (
               <button className="support-open-workspace" onClick={() => onOpenSupportWorkspace(selectedTicket)} type="button">
-                ورود به workspace پشتیبانی
+                ورود به میزکار پشتیبانی
               </button>
             ) : (
               <Pill tone="neutral">بدون انتخاب</Pill>
@@ -288,10 +372,11 @@ export function SupportPage({
         </SectionCard>
 
         <SectionCard
-          eyebrow="follow-up feed"
+          eyebrow="فید پیگیری"
           title="فید پیگیری‌های عملیاتی"
-          description="event feed این بخش باید برای escalationها، waiting states و follow-upهای پشتیبانی مرجع اصلی اپراتور باشد."
-          actions={<Pill tone="warning">timeline</Pill>}
+          description="این فهرست کمک می‌کند پیگیری‌های مهم، انتظارها و ارجاع‌های حساس از قلم نیفتند."
+          hint="اگر تیکتی نیاز به تماس دوباره، پاسخ فروشنده یا بررسی مالی داشته باشد، معمولا رد آن در این فید دیده می‌شود."
+          actions={<Pill tone="warning">پیگیری روزانه</Pill>}
         >
           <ActivityFeed items={feed} />
         </SectionCard>

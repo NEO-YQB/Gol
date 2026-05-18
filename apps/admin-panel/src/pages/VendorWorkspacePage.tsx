@@ -8,6 +8,10 @@ import type { AuthSession } from '../lib/session'
 type VendorRecord = Record<string, unknown>
 type WorkspaceLane = 'finance' | 'policy' | 'coordination'
 
+function getDirectionLabel(direction: string) {
+  return direction === 'DEBIT' ? 'برداشت' : 'افزایش'
+}
+
 function toObject(value: unknown): VendorRecord {
   return typeof value === 'object' && value !== null ? (value as VendorRecord) : {}
 }
@@ -68,9 +72,26 @@ function formatPolicy(policy: unknown) {
   const record = toObject(policy)
   const entries = Object.entries(record)
     .filter(([, value]) => value !== null && value !== undefined && value !== '')
-    .map(([key, value]) => `${key}: ${typeof value === 'boolean' ? (value ? 'بله' : 'خیر') : String(value)}`)
+    .map(([key, value]) => `${translatePolicyKey(key)}: ${typeof value === 'boolean' ? (value ? 'بله' : 'خیر') : String(value)}`)
 
   return entries.length ? entries.join(' | ') : '—'
+}
+
+function translatePolicyKey(key: string) {
+  switch (key) {
+    case 'autoSettlementHoldEnabled':
+      return 'نگه‌داری خودکار تسویه'
+    case 'settlementHoldDaysOverride':
+      return 'تعداد روز نگه‌داری'
+    case 'manualReviewRequired':
+      return 'نیازمند بررسی دستی'
+    case 'blockNewDiscounts':
+      return 'جلوگیری از تخفیف تازه'
+    case 'note':
+      return 'توضیح'
+    default:
+      return key
+  }
 }
 
 function collectActiveFlags(policy: unknown) {
@@ -85,7 +106,7 @@ function parseMetadataInput(value: string) {
 
   const parsed = JSON.parse(trimmed) as unknown
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    throw new Error('metadata باید یک آبجکت JSON معتبر باشد.')
+    throw new Error('جزئیات ساختاریافته باید یک شیء معتبر باشد.')
   }
 
   return parsed as Record<string, unknown>
@@ -136,7 +157,7 @@ export function VendorWorkspacePage({
       setDetail(null)
       setHealthDetail(null)
       setWalletDetail(null)
-      setError('برای ورود به workspace فروشنده، ابتدا یک فروشنده را از کارتابل انتخاب کن.')
+      setError('برای ورود به میزکار فروشنده، ابتدا یک فروشنده را از کارتابل انتخاب کن.')
       return
     }
 
@@ -154,7 +175,7 @@ export function VendorWorkspacePage({
       setHealthDetail(toObject(healthPayload))
       setWalletDetail(toObject(walletPayload))
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'خطا در بارگذاری workspace فروشنده')
+      setError(loadError instanceof Error ? loadError.message : 'خطا در بارگذاری میزکار فروشنده')
     } finally {
       setLoading(false)
     }
@@ -198,28 +219,32 @@ export function VendorWorkspacePage({
       label: 'فروشگاه',
       value: readText(store ?? {}, ['storeName'], '—'),
       delta: readText(store ?? {}, ['storeSlug'], 'بدون slug'),
-      detail: 'context اصلی این workspace',
+      detail: 'هویت اصلی فروشگاهی که در حال رسیدگی به آن هستی',
+      hint: 'همه تصمیم‌های این صفحه مستقیما روی همین فروشگاه اثر می‌گذارند.',
       tone: 'primary' as const,
     },
     {
       label: 'وضعیت سلامت',
       value: getStatusLabel(status),
-      delta: `score ${healthScore}`,
-      detail: 'پایه تصمیم‌های review و policy',
+      delta: `امتیاز ${healthScore}`,
+      detail: 'پایه تصمیم‌های ریسک و محدودیت‌ها',
+      hint: 'اگر وضعیت پرریسک است، بهتر است هم بخش ریسک و هم بخش مالی را مرور کنی.',
       tone: getStatusTone(status),
     },
     {
       label: 'امتیاز مشتری',
       value: customerAverage,
       delta: `${ratingCount} رأی`,
-      detail: 'signal سمت مشتری',
+      detail: 'برداشت مشتری از عملکرد فروشگاه',
+      hint: 'این عدد کنار فشار تیکت کمک می‌کند بفهمی مسئله فقط داخلی است یا روی تجربه مشتری هم اثر گذاشته.',
       tone: 'success' as const,
     },
     {
       label: 'فشار تیکت',
       value: ticketPressure,
-      delta: 'risk metrics',
-      detail: 'نمای سریع فشار عملیاتی vendor',
+      delta: 'فشار عملیاتی',
+      detail: 'نمای سریع فشار رسیدگی روی فروشگاه',
+      hint: 'اگر این عدد بالا باشد، تصمیم‌ها باید با دقت بیشتری ثبت شوند تا دوباره‌کاری کم شود.',
       tone: 'warning' as const,
     },
   ]
@@ -227,21 +252,21 @@ export function VendorWorkspacePage({
   const laneCards = [
     {
       key: 'finance' as const,
-      title: 'lane مالی و تسویه',
-      description: 'برای hold/release/review و کنترل فشار مالی فروشنده.',
-      detail: `${formatPersianNumber(metrics.refundTickets)} refund / ${formatPersianNumber(metrics.reversalTickets)} reversal`,
+      title: 'مسیر مالی و تسویه',
+      description: 'برای رسیدگی به پول، تسویه و فشار مالی فروشنده.',
+      detail: `${formatPersianNumber(metrics.refundTickets)} بازگشت وجه / ${formatPersianNumber(metrics.reversalTickets)} برگشت تراکنش`,
     },
     {
       key: 'policy' as const,
-      title: 'lane policy و ریسک',
-      description: 'برای override، محدودیت تخفیف و manual review.',
-      detail: `${getStatusLabel(status)} / score ${healthScore}`,
+      title: 'مسیر ریسک و محدودیت',
+      description: 'برای ثبت دخالت دستی، محدودیت‌ها و بررسی دقیق‌تر.',
+      detail: `${getStatusLabel(status)} / امتیاز ${healthScore}`,
     },
     {
       key: 'coordination' as const,
-      title: 'lane هماهنگی بین تیمی',
-      description: 'برای sync بین مالی، پشتیبانی و عملیات.',
-      detail: `${formatPersianNumber(metrics.totalTickets)} ticket / ${formatPersianNumber(metrics.resolvedTickets)} resolved`,
+      title: 'مسیر هماهنگی بین تیمی',
+      description: 'برای جمع‌کردن نظر مالی، پشتیبانی و عملیات.',
+      detail: `${formatPersianNumber(metrics.totalTickets)} تیکت / ${formatPersianNumber(metrics.resolvedTickets)} حل‌شده`,
     },
   ]
 
@@ -256,40 +281,40 @@ export function VendorWorkspacePage({
     }
   > = {
     finance: {
-      eyebrow: 'finance lane',
-      title: 'آماده اجرای actionهای مالی',
-      description: 'در این lane حالا می‌توانی wallet adjustment و release settlement واقعی را اجرا کنی.',
+      eyebrow: 'مسیر مالی',
+      title: 'آماده اجرای اقدام‌های مالی',
+      description: 'در این مسیر می‌توانی اصلاح کیف پول و آزادسازی تسویه را انجام دهی.',
       bullets: [
-        `available wallet: ${formatPersianNumber(wallet.availableBalance)}`,
-        `held wallet: ${formatPersianNumber(wallet.heldBalance)}`,
-        `refund tickets: ${formatPersianNumber(metrics.refundTickets)}`,
-        'اگر release لازم است، order id را در فرم پایین ثبت کن.',
+        `موجودی آزاد: ${formatPersianNumber(wallet.availableBalance)}`,
+        `موجودی نگه‌داری‌شده: ${formatPersianNumber(wallet.heldBalance)}`,
+        `تعداد بازگشت وجه: ${formatPersianNumber(metrics.refundTickets)}`,
+        'اگر باید تسویه یک سفارش را آزاد کنی، شناسه سفارش را در فرم پایین ثبت کن.',
       ],
-      statusLabel: 'finance-live',
+      statusLabel: 'اقدام مالی',
     },
     policy: {
-      eyebrow: 'policy lane',
-      title: 'آماده اجرای actionهای policy',
-      description: 'در این lane حالا override واقعی policy و recalculate health از backend واقعی اجرا می‌شوند.',
+      eyebrow: 'مسیر ریسک',
+      title: 'آماده اجرای اقدام‌های ریسک',
+      description: 'در این مسیر می‌توانی محدودیت‌ها را تغییر دهی و وضعیت سلامت را دوباره محاسبه کنی.',
       bullets: [
-        `policy flags: ${effectivePolicyFlags.length ? effectivePolicyFlags.join(' / ') : 'بدون flag فعال'}`,
-        `manual review required: ${riskPolicyView.manualReviewRequired ? 'بله' : 'خیر'}`,
-        `block discounts: ${riskPolicyView.blockNewDiscounts ? 'بله' : 'خیر'}`,
-        'بعد از هر update می‌توانی health را دوباره recalculate کنی.',
+        `محدودیت‌های فعال: ${effectivePolicyFlags.length ? effectivePolicyFlags.join(' / ') : 'بدون محدودیت فعال'}`,
+        `نیازمند بررسی دستی: ${riskPolicyView.manualReviewRequired ? 'بله' : 'خیر'}`,
+        `جلوگیری از تخفیف تازه: ${riskPolicyView.blockNewDiscounts ? 'بله' : 'خیر'}`,
+        'بعد از هر تغییر می‌توانی وضعیت سلامت را دوباره محاسبه کنی.',
       ],
-      statusLabel: 'policy-live',
+      statusLabel: 'اقدام ریسک',
     },
     coordination: {
-      eyebrow: 'coordination lane',
-      title: 'آماده handoff بین تیمی',
-      description: 'در این lane تصمیم بین policy، finance و timeline جمع می‌شود تا context از بین نرود.',
+      eyebrow: 'مسیر هماهنگی',
+      title: 'آماده جمع‌بندی بین تیمی',
+      description: 'در این مسیر تصمیم مالی، محدودیت‌ها و رخدادها کنار هم می‌آیند تا روند کار شفاف بماند.',
       bullets: [
-        `timeline events: ${formatPersianNumber(timeline.length)}`,
-        `customer rating count: ${ratingCount}`,
-        `resolved tickets: ${formatPersianNumber(metrics.resolvedTickets)}`,
-        'digest رخدادها و policy snapshot پایین همین route مرجع handoff می‌مانند.',
+        `تعداد رخدادها: ${formatPersianNumber(timeline.length)}`,
+        `تعداد رأی مشتری: ${ratingCount}`,
+        `تعداد تیکت حل‌شده: ${formatPersianNumber(metrics.resolvedTickets)}`,
+        'جمع‌بندی رخدادها و وضعیت محدودیت‌ها پایین همین صفحه مرجع هماهنگی می‌مانند.',
       ],
-      statusLabel: 'coordination-live',
+      statusLabel: 'هماهنگی زنده',
     },
   }
 
@@ -297,57 +322,57 @@ export function VendorWorkspacePage({
 
   const workflowStages = [
     {
-      label: '۱. assess',
-      value: `${getStatusLabel(status)} / score ${healthScore}`,
-      note: 'اول وضعیت سلامت، سیگنال مشتری و فشار تیکت باید تثبیت شود.',
+      label: '۱. بررسی اولیه',
+      value: `${getStatusLabel(status)} / امتیاز ${healthScore}`,
+      note: 'اول وضعیت سلامت، نظر مشتری و فشار تیکت را جمع‌بندی کن.',
     },
     {
-      label: '۲. policy',
+      label: '۲. محدودیت‌ها',
       value: effectivePolicyFlags.length ? effectivePolicyFlags.join(' / ') : 'بدون محدودیت فعال',
-      note: 'بعد باید policy موثر و overrideهای احتمالی خوانده شوند.',
+      note: 'بعد از آن باید محدودیت‌های فعال و دخالت‌های دستی خوانده شوند.',
     },
     {
-      label: '۳. finance',
-      value: `${formatPersianNumber(metrics.refundTickets)} refund / ${formatPersianNumber(metrics.reversalTickets)} reversal`,
-      note: 'فشار مالی و نیاز به hold/release/review در این مرحله سنجیده می‌شود.',
+      label: '۳. مالی',
+      value: `${formatPersianNumber(metrics.refundTickets)} بازگشت وجه / ${formatPersianNumber(metrics.reversalTickets)} برگشت تراکنش`,
+      note: 'در این مرحله نیاز به نگه‌داری، آزادسازی یا اصلاح مالی سنجیده می‌شود.',
     },
     {
-      label: '۴. handoff',
+      label: '۴. هماهنگی',
       value: formatPersianNumber(timeline.length),
-      note: 'اگر تصمیم بین تیمی شد، handoff باید همین route را مرجع خود نگه دارد.',
+      note: 'اگر تصمیم بین چند تیم تقسیم شد، همین صفحه باید مرجع نهایی بماند.',
     },
   ]
 
   const decisionMatrix = {
     finance: [
-      'اول wallet را نگاه کن، بعد adjustment یا release settlement را اجرا کن.',
-      'اگر held balance پایین است، قبل از release باید context order بررسی شود.',
-      'بعد از هر action مالی، digest رخدادها و wallet transactions را دوباره بخوان.',
+      'اول کیف پول را ببین، بعد اصلاح یا آزادسازی تسویه را انجام بده.',
+      'اگر موجودی نگه‌داری‌شده کم است، پیش از آزادسازی باید وضعیت سفارش را بررسی کنی.',
+      'بعد از هر اقدام مالی، رخدادهای آخر و گردش کیف پول را دوباره بخوان.',
     ],
     policy: [
-      'اول override را ثبت کن، بعد در صورت نیاز health را recalculate بزن.',
-      'اگر فروشنده AT_RISK است، update policy باید با note شفاف ثبت شود.',
-      'اگر discount block فعال می‌شود، timeline باید دلیل این تصمیم را منعکس کند.',
+      'اول تغییر محدودیت را ثبت کن و بعد در صورت نیاز دوباره وضعیت سلامت را محاسبه کن.',
+      'اگر فروشنده پرریسک است، دلیل تغییر باید شفاف و مکتوب ثبت شود.',
+      'اگر جلوگیری از تخفیف تازه را فعال می‌کنی، دلیل آن باید در رخدادها دیده شود.',
     ],
     coordination: [
-      'وقتی policy و finance هر دو درگیرند، context را از timeline و metrics هم‌زمان بخوان.',
-      'route باید مرجع handoff بین مالی، پشتیبانی و عملیات بماند.',
-      'بعد از actionهای واقعی، latest events باید برای جمع‌بندی نهایی مرور شوند.',
+      'وقتی هم ریسک و هم مالی درگیرند، رخدادها و شاخص‌ها را کنار هم بخوان.',
+      'این صفحه باید مرجع هماهنگی بین مالی، پشتیبانی و عملیات بماند.',
+      'بعد از اقدام‌های واقعی، رخدادهای آخر را برای جمع‌بندی نهایی مرور کن.',
     ],
   }[activeLane]
 
   const latestEventDigest = timeline.slice(0, 4).map((item, index) => ({
     id: readText(item, ['id'], String(index + 1)),
-    title: readText(item, ['summary', 'aggregateType'], 'event'),
+    title: readText(item, ['summary', 'aggregateType'], 'رخداد'),
     meta: formatJalaliDate(item.createdAt),
-    actor: readText(item, ['actorUserId'], 'سیستمی/نامشخص'),
+    actor: readText(item, ['actorUserId'], 'سامانه یا نامشخص'),
   }))
 
   const timelineFeed = timeline.slice(0, 10).map((item, index) => ({
     id: readText(item, ['id'], String(index + 1)),
-    title: readText(item, ['summary', 'aggregateType'], 'policy event'),
+    title: readText(item, ['summary', 'aggregateType'], 'رخداد ریسک'),
     meta: formatJalaliDate(item.createdAt),
-    description: readText(item, ['aggregateType'], 'جزئیات event'),
+    description: readText(item, ['aggregateType'], 'جزئیات رخداد'),
     tone: index % 2 === 0 ? ('warning' as const) : ('success' as const),
   }))
 
@@ -374,7 +399,7 @@ export function VendorWorkspacePage({
     try {
       metadata = parseMetadataInput(policyForm.metadata)
     } catch (parseError) {
-      setActionError(parseError instanceof Error ? parseError.message : 'metadata policy نامعتبر است')
+      setActionError(parseError instanceof Error ? parseError.message : 'جزئیات ساختاریافته بخش ریسک معتبر نیست')
       setActionMessage(null)
       return
     }
@@ -394,7 +419,7 @@ export function VendorWorkspacePage({
     await runAction(
       'policy-submit',
       () => adminApi.updateVendorRiskPolicy(session, storeId, body),
-      'policy فروشنده با موفقیت به‌روزرسانی شد.',
+      'تنظیمات ریسک فروشنده با موفقیت به‌روزرسانی شد.',
     )
   }
 
@@ -402,7 +427,7 @@ export function VendorWorkspacePage({
     await runAction(
       'health-recalculate',
       () => adminApi.recalculateVendorHealth(session, storeId),
-      'health فروشنده دوباره محاسبه شد.',
+      'وضعیت سلامت فروشنده دوباره محاسبه شد.',
     )
   }
 
@@ -413,7 +438,7 @@ export function VendorWorkspacePage({
     try {
       metadata = parseMetadataInput(walletForm.metadata)
     } catch (parseError) {
-      setActionError(parseError instanceof Error ? parseError.message : 'metadata wallet نامعتبر است')
+      setActionError(parseError instanceof Error ? parseError.message : 'جزئیات ساختاریافته کیف پول معتبر نیست')
       setActionMessage(null)
       return
     }
@@ -430,7 +455,7 @@ export function VendorWorkspacePage({
           batchKey: walletForm.batchKey.trim() || undefined,
           metadata,
         }),
-      'adjustment کیف پول با موفقیت ثبت شد.',
+      'اصلاح کیف پول با موفقیت ثبت شد.',
     )
   }
 
@@ -440,7 +465,7 @@ export function VendorWorkspacePage({
     await runAction(
       'settlement-release',
       () => adminApi.releaseOrderSettlement(session, releaseOrderId.trim()),
-      'release settlement با موفقیت انجام شد.',
+      'آزادسازی تسویه با موفقیت انجام شد.',
     )
   }
 
@@ -448,7 +473,7 @@ export function VendorWorkspacePage({
     await runAction(
       'settlement-release-due',
       () => adminApi.releaseDueSettlements(session),
-      'release due settlements با موفقیت اجرا شد.',
+      'آزادسازی تسویه‌های آماده با موفقیت انجام شد.',
     )
   }
 
@@ -472,10 +497,11 @@ export function VendorWorkspacePage({
         </div>
 
         <SectionCard
-          eyebrow="workspace متمرکز"
+          eyebrow="میزکار متمرکز"
           title={`بررسی فروشنده ${readText(store ?? {}, ['storeName'], '—')}`}
-          description="این route عمدا از list page جدا شده تا اقدام‌های بعدی و تصمیم‌های عملیاتی در یک surface خلوت، متمرکز و قابل‌گسترش جمع شوند."
-          actions={<Pill tone="primary">focused route</Pill>}
+          description="این صفحه جدا شده تا اقدام‌های اصلی، تصمیم‌های حساس و جمع‌بندی بین تیمی در یک جای خلوت و روشن انجام شود."
+          hint="اول یکی از سه مسیر بالا را انتخاب کن تا بدانی تمرکز این رسیدگی روی مالی است، روی محدودیت‌هاست یا روی هماهنگی بین تیم‌ها."
+          actions={<Pill tone="primary">رسیدگی متمرکز</Pill>}
         >
           <div className="vendors-workspace-lanes">
             {laneCards.map((item) => (
@@ -497,12 +523,13 @@ export function VendorWorkspacePage({
           eyebrow={activeLaneSummary.eyebrow}
           title={activeLaneSummary.title}
           description={activeLaneSummary.description}
+          hint="این بخش فقط روی همان مسیری تمرکز می‌کند که بالا انتخاب کرده‌ای تا ذهنت بین چند کار پخش نشود."
           actions={<Pill tone="neutral">{activeLaneSummary.statusLabel}</Pill>}
         >
           <div className="vendors-workspace-action-grid">
             {activeLaneSummary.bullets.map((item) => (
               <article className="vendors-workspace-action-card" key={item}>
-                <strong>نکته عملیاتی</strong>
+                <strong>نکته کاربردی</strong>
                 <p>{item}</p>
               </article>
             ))}
@@ -510,10 +537,11 @@ export function VendorWorkspacePage({
         </SectionCard>
 
         <SectionCard
-          eyebrow="workflow board"
-          title="برد کامل workflow فروشنده"
-          description="این برد مسیر کامل review را از assess اولیه تا handoff نهایی یکجا نگه می‌دارد تا چیزی از قلم نیفتد."
-          actions={<Pill tone="primary">workflow</Pill>}
+          eyebrow="روند رسیدگی"
+          title="مسیر کامل رسیدگی به فروشنده"
+          description="این بخش قدم‌های اصلی را از بررسی اولیه تا جمع‌بندی نهایی نشان می‌دهد تا چیزی از قلم نیفتد."
+          hint="اگر نمی‌دانی از کجا شروع کنی، این چهار گام را به‌ترتیب بخوان."
+          actions={<Pill tone="primary">چهار گام اصلی</Pill>}
         >
           <div className="vendors-workspace-checklist">
             {workflowStages.map((item) => (
@@ -527,15 +555,16 @@ export function VendorWorkspacePage({
         </SectionCard>
 
         <SectionCard
-          eyebrow="decision matrix"
-          title="ماتریس تصمیم برای lane انتخاب‌شده"
-          description="هر lane باید منطق تصمیم‌گیری خودش را داشته باشد تا route فقط یک صفحه تزئینی نباشد."
-          actions={<Pill tone="neutral">{activeLane}</Pill>}
+          eyebrow="راهنمای تصمیم"
+          title="منطق تصمیم برای مسیر انتخاب‌شده"
+          description="هر مسیر منطق خودش را دارد تا رسیدگی فقط نمایشی نباشد و تصمیم روشن و مرحله‌ای جلو برود."
+          hint="این قواعد کوتاه، خلاصه همان تصمیم‌هایی هستند که معمولا همکار پنل باید به‌ترتیب در ذهن نگه دارد."
+          actions={<Pill tone="neutral">{activeLane === 'finance' ? 'مالی' : activeLane === 'policy' ? 'ریسک' : 'هماهنگی'}</Pill>}
         >
           <div className="vendors-workspace-action-grid">
             {decisionMatrix.map((item) => (
               <article className="vendors-workspace-action-card" key={item}>
-                <strong>قاعده تصمیم</strong>
+                <strong>قاعده رسیدگی</strong>
                 <p>{item}</p>
               </article>
             ))}
@@ -543,45 +572,47 @@ export function VendorWorkspacePage({
         </SectionCard>
 
         <SectionCard
-          eyebrow="actions"
-          title="actionهای واقعی vendor workflow"
-          description="این بخش حالا مستقیم به backend واقعی وصل است و actionهای اصلی این domain را از همین route اجرا می‌کند."
-          actions={<Pill tone="success">live actions</Pill>}
+          eyebrow="اقدام‌های اصلی"
+          title="اقدام‌های واقعی رسیدگی به فروشنده"
+          description="این بخش مستقیم به سامانه متصل است و اقدام‌های اصلی این حوزه را از همین صفحه اجرا می‌کند."
+          hint="اگر هنوز از نتیجه مطمئن نیستی، اول بخش‌های بالاتر را مرور کن و بعد این دکمه‌ها را بزن."
+          actions={<Pill tone="success">اقدام زنده</Pill>}
         >
           <div className="vendors-workspace-surface-grid">
             <article className="vendors-workspace-surface-card">
-              <strong>health control</strong>
-              <p>اگر نیاز به بازبینی فوری score و snapshot داری، health را دوباره محاسبه کن.</p>
+              <strong>محاسبه دوباره سلامت</strong>
+              <p>اگر لازم است امتیاز و تصویر فعلی فروشگاه دوباره به‌روز شود، از این دکمه استفاده کن.</p>
               <button
                 className="fm-button fm-button--primary"
                 disabled={actionBusy === 'health-recalculate'}
                 onClick={handleRecalculateHealth}
                 type="button"
               >
-                {actionBusy === 'health-recalculate' ? 'در حال اجرا...' : 'محاسبه مجدد health'}
+                {actionBusy === 'health-recalculate' ? 'در حال اجرا...' : 'محاسبه دوباره وضعیت سلامت'}
               </button>
             </article>
 
             <article className="vendors-workspace-surface-card">
-              <strong>settlement due sweep</strong>
-              <p>برای آزادسازی batch settlementهای due از action سراسری backend استفاده کن.</p>
+              <strong>آزادسازی تسویه‌های آماده</strong>
+              <p>برای آزادسازی گروهی تسویه‌هایی که زمانشان رسیده است از این دکمه استفاده کن.</p>
               <button
                 className="fm-button fm-button--secondary"
                 disabled={actionBusy === 'settlement-release-due'}
                 onClick={handleReleaseDueSettlements}
                 type="button"
               >
-                {actionBusy === 'settlement-release-due' ? 'در حال اجرا...' : 'release due settlements'}
+                {actionBusy === 'settlement-release-due' ? 'در حال اجرا...' : 'آزادسازی تسویه‌های آماده'}
               </button>
             </article>
           </div>
         </SectionCard>
 
         <SectionCard
-          eyebrow="policy control"
-          title="ویرایش policy و manual override"
-          description="overrideهای واقعی policy ریسک همین‌جا ثبت می‌شوند و بعد از submit دوباره snapshot بارگذاری می‌شود."
-          actions={<Pill tone="warning">policy mutation</Pill>}
+          eyebrow="کنترل ریسک"
+          title="ویرایش محدودیت‌ها و دخالت دستی"
+          description="تغییرهای واقعی محدودیت‌ها از همین بخش ثبت می‌شوند و بعد از ثبت، تصویر تازه دوباره بارگذاری می‌شود."
+          hint="اگر قرار است محدودیتی را عوض کنی، دلیل آن را هم در توضیح بنویس تا برای بقیه روشن بماند."
+          actions={<Pill tone="warning">ثبت تغییر ریسک</Pill>}
         >
           <form className="fm-form-grid vendors-workspace-form-grid" onSubmit={handlePolicySubmit}>
             <div className="vendors-workspace-toggle-grid">
@@ -593,7 +624,7 @@ export function VendorWorkspacePage({
                   }
                   type="checkbox"
                 />
-                <span>auto settlement hold</span>
+                <span>نگه‌داری خودکار تسویه فعال باشد</span>
               </label>
               <label className="vendors-workspace-toggle">
                 <input
@@ -603,7 +634,7 @@ export function VendorWorkspacePage({
                   }
                   type="checkbox"
                 />
-                <span>manual review required</span>
+                <span>بررسی دستی لازم باشد</span>
               </label>
               <label className="vendors-workspace-toggle">
                 <input
@@ -613,12 +644,12 @@ export function VendorWorkspacePage({
                   }
                   type="checkbox"
                 />
-                <span>block new discounts</span>
+                <span>ثبت تخفیف تازه متوقف شود</span>
               </label>
             </div>
 
             <div className="fm-field">
-              <label htmlFor="policy-hold-days">settlementHoldDaysOverride</label>
+              <label htmlFor="policy-hold-days">تعداد روز نگه‌داری تسویه</label>
               <input
                 id="policy-hold-days"
                 min="1"
@@ -632,18 +663,18 @@ export function VendorWorkspacePage({
             </div>
 
             <div className="fm-field">
-              <label htmlFor="policy-note">note</label>
+              <label htmlFor="policy-note">توضیح تصمیم</label>
               <textarea
                 id="policy-note"
                 onChange={(event) => setPolicyForm((current) => ({ ...current, note: event.target.value }))}
-                placeholder="دلیل override یا تصمیم policy را بنویس"
+                placeholder="دلیل این تغییر یا تصمیم ریسک را بنویس"
                 rows={4}
                 value={policyForm.note}
               />
             </div>
 
             <div className="fm-field">
-              <label htmlFor="policy-metadata">metadata JSON</label>
+              <label htmlFor="policy-metadata">جزئیات ساختاریافته</label>
               <textarea
                 id="policy-metadata"
                 onChange={(event) => setPolicyForm((current) => ({ ...current, metadata: event.target.value }))}
@@ -654,25 +685,26 @@ export function VendorWorkspacePage({
             </div>
 
             <button className="fm-button fm-button--primary" disabled={actionBusy === 'policy-submit'} type="submit">
-              {actionBusy === 'policy-submit' ? 'در حال ذخیره...' : 'ثبت policy override'}
+              {actionBusy === 'policy-submit' ? 'در حال ذخیره...' : 'ثبت تغییر محدودیت'}
             </button>
           </form>
         </SectionCard>
 
         <SectionCard
-          eyebrow="wallet control"
+          eyebrow="کنترل کیف پول"
           title="کنترل واقعی کیف پول فروشنده"
-          description="جزئیات wallet و adjustment دستی همین‌جا اجرا می‌شود و recent transactions هم برای review کنار آن دیده می‌شود."
-          actions={<Pill tone="success">wallet mutation</Pill>}
+          description="خلاصه کیف پول، گردش‌های اخیر و اصلاح دستی مبلغ همگی در همین بخش دیده و ثبت می‌شوند."
+          hint="اگر قرار است مبلغی را کم یا زیاد کنی، عنوان و توضیح شفاف وارد کن تا دلیل تغییر بعدا مشخص باشد."
+          actions={<Pill tone="success">ثبت مالی دستی</Pill>}
         >
           <div className="vendors-workspace-wallet-grid">
             <div className="vendors-workspace-wallet-summary">
               <div className="vendors-brief-grid">
                 {[
-                  { label: 'current balance', value: formatPersianNumber(wallet.currentBalance) },
-                  { label: 'available balance', value: formatPersianNumber(wallet.availableBalance) },
-                  { label: 'held balance', value: formatPersianNumber(wallet.heldBalance) },
-                  { label: 'transactions', value: formatPersianNumber(walletTransactions.length) },
+                  { label: 'موجودی کل', value: formatPersianNumber(wallet.currentBalance) },
+                  { label: 'موجودی آزاد', value: formatPersianNumber(wallet.availableBalance) },
+                  { label: 'موجودی نگه‌داری‌شده', value: formatPersianNumber(wallet.heldBalance) },
+                  { label: 'تعداد گردش‌ها', value: formatPersianNumber(walletTransactions.length) },
                 ].map((item) => (
                   <article className="vendors-brief-item" key={item.label}>
                     <span>{item.label}</span>
@@ -684,8 +716,8 @@ export function VendorWorkspacePage({
               <div className="vendors-transaction-list">
                 {walletTransactions.slice(0, 6).map((item) => (
                   <article className="vendors-transaction-item" key={readText(item, ['id'], Math.random().toString())}>
-                    <strong>{readText(item, ['title'], 'transaction')}</strong>
-                    <span>{readText(item, ['direction'], '—')}</span>
+                    <strong>{readText(item, ['title'], 'گردش مالی')}</strong>
+                    <span>{getDirectionLabel(readText(item, ['direction'], '—'))}</span>
                     <small>{`${formatPersianNumber(readText(item, ['amount'], '—'))} / ${formatJalaliDate(item.createdAt)}`}</small>
                   </article>
                 ))}
@@ -694,29 +726,29 @@ export function VendorWorkspacePage({
 
             <form className="fm-form-grid vendors-workspace-form-grid" onSubmit={handleWalletSubmit}>
               <div className="fm-field">
-                <label htmlFor="wallet-direction">direction</label>
+                <label htmlFor="wallet-direction">نوع تغییر</label>
                 <select
                   id="wallet-direction"
                   onChange={(event) => setWalletForm((current) => ({ ...current, direction: event.target.value }))}
                   value={walletForm.direction}
                 >
-                  <option value="CREDIT">CREDIT</option>
-                  <option value="DEBIT">DEBIT</option>
+                  <option value="CREDIT">افزایش</option>
+                  <option value="DEBIT">برداشت</option>
                 </select>
               </div>
 
               <div className="fm-field">
-                <label htmlFor="wallet-type">type</label>
+                <label htmlFor="wallet-type">دسته تغییر</label>
                 <input
                   id="wallet-type"
                   onChange={(event) => setWalletForm((current) => ({ ...current, type: event.target.value }))}
-                  placeholder="اختیاری؛ مثلا MANUAL_CREDIT"
+                  placeholder="اختیاری؛ مثلا افزایش دستی"
                   value={walletForm.type}
                 />
               </div>
 
               <div className="fm-field">
-                <label htmlFor="wallet-amount">amount</label>
+                <label htmlFor="wallet-amount">مبلغ</label>
                 <input
                   id="wallet-amount"
                   min="0.01"
@@ -729,7 +761,7 @@ export function VendorWorkspacePage({
               </div>
 
               <div className="fm-field">
-                <label htmlFor="wallet-title">title</label>
+                <label htmlFor="wallet-title">عنوان</label>
                 <input
                   id="wallet-title"
                   onChange={(event) => setWalletForm((current) => ({ ...current, title: event.target.value }))}
@@ -739,53 +771,54 @@ export function VendorWorkspacePage({
               </div>
 
               <div className="fm-field">
-                <label htmlFor="wallet-description">description</label>
+                <label htmlFor="wallet-description">توضیح</label>
                 <textarea
                   id="wallet-description"
                   onChange={(event) => setWalletForm((current) => ({ ...current, description: event.target.value }))}
-                  placeholder="توضیح این adjustment"
+                  placeholder="توضیح این تغییر مالی"
                   rows={3}
                   value={walletForm.description}
                 />
               </div>
 
               <div className="fm-field">
-                <label htmlFor="wallet-batch">batchKey</label>
+                <label htmlFor="wallet-batch">شناسه گروهی</label>
                 <input
                   id="wallet-batch"
                   onChange={(event) => setWalletForm((current) => ({ ...current, batchKey: event.target.value }))}
-                  placeholder="batch-may-01"
+                  placeholder="گروه-اردیبهشت-۱"
                   value={walletForm.batchKey}
                 />
               </div>
 
               <div className="fm-field">
-                <label htmlFor="wallet-metadata">metadata JSON</label>
+                <label htmlFor="wallet-metadata">جزئیات ساختاریافته</label>
                 <textarea
                   id="wallet-metadata"
                   onChange={(event) => setWalletForm((current) => ({ ...current, metadata: event.target.value }))}
-                  placeholder='{"source":"admin-panel"}'
+                  placeholder='{"source":"panel"}'
                   rows={4}
                   value={walletForm.metadata}
                 />
               </div>
 
               <button className="fm-button fm-button--primary" disabled={actionBusy === 'wallet-submit'} type="submit">
-                {actionBusy === 'wallet-submit' ? 'در حال ثبت...' : 'ثبت wallet adjustment'}
+                {actionBusy === 'wallet-submit' ? 'در حال ثبت...' : 'ثبت تغییر کیف پول'}
               </button>
             </form>
           </div>
         </SectionCard>
 
         <SectionCard
-          eyebrow="settlement release"
-          title="آزادسازی settlement بر اساس order"
-          description="اگر order مشخصی باید دستی release شود، این فرم مستقیم به endpoint واقعی finance وصل است."
-          actions={<Pill tone="danger">release mutation</Pill>}
+          eyebrow="آزادسازی تسویه"
+          title="آزادسازی تسویه بر اساس سفارش"
+          description="اگر یک سفارش مشخص باید دستی آزاد شود، از همین فرم استفاده کن."
+          hint="این فرم فقط برای وقتی است که شناسه سفارش مشخص را از قبل می‌دانی."
+          actions={<Pill tone="danger">آزادسازی دستی</Pill>}
         >
           <form className="fm-form-grid vendors-workspace-form-grid" onSubmit={handleReleaseSettlement}>
             <div className="fm-field">
-              <label htmlFor="release-order-id">order id</label>
+              <label htmlFor="release-order-id">شناسه سفارش</label>
               <input
                 id="release-order-id"
                 onChange={(event) => setReleaseOrderId(event.target.value)}
@@ -795,16 +828,17 @@ export function VendorWorkspacePage({
             </div>
 
             <button className="fm-button fm-button--primary" disabled={actionBusy === 'settlement-release'} type="submit">
-              {actionBusy === 'settlement-release' ? 'در حال آزادسازی...' : 'release settlement'}
+              {actionBusy === 'settlement-release' ? 'در حال آزادسازی...' : 'آزادسازی تسویه'}
             </button>
           </form>
         </SectionCard>
 
         <SectionCard
-          eyebrow="latest events"
-          title="digest رخدادهای آخر"
-          description="چهار رخداد آخر timeline اینجا فشرده دیده می‌شوند تا اپراتور قبل از اسکرول timeline full context را سریع بگیرد."
-          actions={<Pill tone="warning">event digest</Pill>}
+          eyebrow="رخدادهای آخر"
+          title="جمع‌بندی کوتاه از رخدادهای اخیر"
+          description="چهار رخداد آخر اینجا فشرده دیده می‌شوند تا پیش از خواندن کل فهرست، تصویر سریع بگیری."
+          hint="اگر آخرین تصمیم‌ها برایت مهم‌تر از سابقه قدیمی هستند، اول این بخش را بخوان."
+          actions={<Pill tone="warning">مرور سریع رخدادها</Pill>}
         >
           {latestEventDigest.length ? (
             <div className="vendors-brief-grid">
@@ -812,51 +846,53 @@ export function VendorWorkspacePage({
                 <article className="vendors-brief-item" key={item.id}>
                   <span>{item.title}</span>
                   <strong>{item.meta}</strong>
-                  <small>{`actor: ${item.actor}`}</small>
+                  <small>{`ثبت‌کننده: ${item.actor}`}</small>
                 </article>
               ))}
             </div>
           ) : (
-            <div className="fm-message">هنوز رخداد کافی برای ساخت digest آخر وجود ندارد.</div>
+            <div className="fm-message">هنوز رخداد کافی برای ساخت جمع‌بندی کوتاه وجود ندارد.</div>
           )}
         </SectionCard>
 
         <SectionCard
-          eyebrow="policy snapshot"
-          title="وضعیت policy و snapshot فعلی"
-          description="این بخش برای متمرکز نگه داشتن review state، policy override و تصمیم‌های بعدی در یک route جداست."
-          actions={<Pill tone="warning">policy state</Pill>}
+          eyebrow="وضعیت فعلی ریسک"
+          title="خلاصه قانون‌ها و تصویر فعلی فروشگاه"
+          description="این بخش کمک می‌کند قانون‌های خودکار، دخالت‌های دستی و نتیجه نهایی را یک‌جا ببینی."
+          hint="اگر بین چند تصمیم مردد هستی، از مقایسه این چهار کارت شروع کن."
+          actions={<Pill tone="warning">مرور محدودیت‌ها</Pill>}
         >
           <div className="vendors-workspace-policy-grid">
             <article className="vendors-policy-item">
-              <span>policy خودکار</span>
+              <span>قانون خودکار</span>
               <strong>{formatPolicy(currentPolicy.auto)}</strong>
             </article>
             <article className="vendors-policy-item">
-              <span>manual override</span>
+              <span>دخالت دستی</span>
               <strong>{formatPolicy(currentPolicy.manualOverride)}</strong>
             </article>
             <article className="vendors-policy-item">
-              <span>policy موثر</span>
+              <span>قانون نهایی موثر</span>
               <strong>{formatPolicy(currentPolicy.effective)}</strong>
             </article>
             <article className="vendors-policy-item">
-              <span>آخرین health snapshot</span>
+              <span>آخرین به‌روزرسانی سلامت</span>
               <strong>{formatJalaliDate(detailStore.vendorHealthCalculatedAt)}</strong>
             </article>
           </div>
         </SectionCard>
 
         <SectionCard
-          eyebrow="policy timeline"
-          title="timeline سیاست‌ها و رخدادهای فروشنده"
-          description="timeline در workspace جدا مانده تا actionهای واقعی، notes و state transitionها همین‌جا trace شوند."
-          actions={<Pill tone="success">{`${new Intl.NumberFormat('fa-IR').format(timeline.length)} event`}</Pill>}
+          eyebrow="فهرست رخدادها"
+          title="رخدادهای ریسک و تصمیم‌های فروشنده"
+          description="این فهرست برای ردگیری تغییرها، تصمیم‌ها و پیامدهای آن‌ها در همین صفحه نگه داشته شده است."
+          hint="اگر می‌خواهی دلیل وضعیت فعلی فروشگاه را بفهمی، رخدادها را از جدید به قدیم مرور کن."
+          actions={<Pill tone="success">{`${new Intl.NumberFormat('fa-IR').format(timeline.length)} رخداد`}</Pill>}
         >
           {timelineFeed.length ? (
             <ActivityFeed items={timelineFeed} />
           ) : (
-            <div className="fm-message">برای این فروشنده هنوز timeline قابل‌نمایشی وجود ندارد.</div>
+            <div className="fm-message">برای این فروشنده هنوز رخداد قابل‌نمایشی وجود ندارد.</div>
           )}
         </SectionCard>
       </LoadableState>

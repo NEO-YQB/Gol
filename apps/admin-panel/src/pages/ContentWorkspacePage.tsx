@@ -391,7 +391,7 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
         })
       } catch (loadError) {
         if (!active) return
-        setError(loadError instanceof Error ? loadError.message : 'خطا در بارگذاری workspace محتوا')
+        setError(loadError instanceof Error ? loadError.message : 'خطا در بارگذاری میزکار محتوا')
       } finally {
         if (active) setLoading(false)
       }
@@ -463,7 +463,7 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
       { label: 'تعداد کلمات', value: formatPersianNumber(wordCount) },
       { label: 'H2', value: formatPersianNumber(h2Count) },
       { label: 'لینک داخلی', value: formatPersianNumber(internalLinkCount) },
-      { label: 'تگ های انتخابی', value: formatPersianNumber(articleForm.tagIds.length) },
+      { label: 'برچسب‌های انتخابی', value: formatPersianNumber(articleForm.tagIds.length) },
     ],
     [articleForm.tagIds.length, h2Count, internalLinkCount, wordCount],
   )
@@ -483,8 +483,8 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
         value: articleForm.focusKeyword.trim() ? articleForm.focusKeyword : 'نیازمند تعریف',
       },
       {
-        label: 'canonical',
-        value: articleForm.canonicalUrl.trim() ? 'تنظیم شده' : 'پیش فرض backend',
+        label: 'نشانی یکتا',
+        value: articleForm.canonicalUrl.trim() ? 'تنظیم شده' : 'پیش‌فرض سامانه',
       },
     ],
     [articleForm.canonicalUrl, articleForm.focusKeyword, articleForm.metaDescription, articleForm.metaTitle],
@@ -556,10 +556,10 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
   const workspaceMeta = useMemo(
     () => [
       { label: 'حالت', value: editorMode === 'edit' ? 'ویرایش مقاله' : 'ساخت مقاله جدید' },
-      { label: 'وضعیت', value: articleDetail ? getArticleStatusLabel(articleDetail) : editorMode === 'create' ? 'پیش نویس جدید' : '—' },
+      { label: 'وضعیت', value: articleDetail ? getArticleStatusLabel(articleDetail) : editorMode === 'create' ? 'پیش‌نویس جدید' : '—' },
       { label: 'انتشار', value: articleDetail ? formatJalaliDate(articleDetail.publishedAt, true) : 'هنوز منتشر نشده' },
       { label: 'نویسنده', value: articleDetail ? getArticleAuthor(articleDetail) : 'هنوز انتخاب نشده' },
-      { label: 'دسته بندی', value: articleDetail ? getArticleCategory(articleDetail) : 'هنوز انتخاب نشده' },
+      { label: 'دسته‌بندی', value: articleDetail ? getArticleCategory(articleDetail) : 'هنوز انتخاب نشده' },
       {
         label: 'ربات‌ها',
         value: `${formatBooleanLabel(articleForm.robotsIndex)} / ${formatBooleanLabel(articleForm.robotsFollow)}`,
@@ -618,7 +618,7 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
     }
 
     if (!articleForm.authorId || !articleForm.categoryId) {
-      setError('انتخاب نویسنده و دسته بندی برای مقاله الزامی است.')
+      setError('انتخاب نویسنده و دسته‌بندی برای مقاله الزامی است.')
       return
     }
 
@@ -672,7 +672,7 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
 
   async function handleCategorySubmit() {
     if (!categoryForm.title.trim() || !categoryForm.slug.trim()) {
-      setError('عنوان و اسلاگ دسته بندی الزامی هستند.')
+      setError('عنوان و اسلاگ دسته‌بندی الزامی هستند.')
       return
     }
 
@@ -706,10 +706,10 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
       const categoryRecord = toContentRecord(payloadResult)
       const nextCategoryId = readText(categoryRecord, ['id'], '')
       setSelectedCategoryId(nextCategoryId || 'new')
-      setSubmitMessage(selectedCategoryId === 'new' ? 'دسته بندی جدید ثبت شد.' : 'دسته بندی با موفقیت به روز شد.')
+      setSubmitMessage(selectedCategoryId === 'new' ? 'دسته‌بندی جدید ثبت شد.' : 'دسته‌بندی با موفقیت به روز شد.')
       setReferenceVersion((current) => current + 1)
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : 'ذخیره دسته بندی ناموفق بود')
+      setError(submitError instanceof Error ? submitError.message : 'ذخیره دسته‌بندی ناموفق بود')
     } finally {
       setSubmitting(false)
     }
@@ -800,9 +800,10 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
     <div className="fm-stack">
       <LoadableState error={error} loading={loading}>
         <SectionCard
-          eyebrow="نگارش متمرکز"
+          eyebrow="میزکار نگارش"
           title={editorMode === 'edit' ? `ویرایشگر مقاله #${currentArticleId ?? '—'}` : 'ساخت مقاله جدید'}
-          description="این سطح برای فرم طولانی، ویرایش محتوا، سئو و مدیریت تاکسونومی طراحی شده تا کاربر در حالت متمرکز بماند."
+          description="این صفحه برای نوشتن، ویرایش، سئو و مدیریت دسته‌ها و برچسب‌ها طراحی شده تا کاربر در یک مسیر متمرکز بماند."
+          hint="از بالا به پایین حرکت کن: اول هویت مقاله، بعد متن، بعد سئو و در پایان دسته‌ها، برچسب‌ها و نویسنده را بررسی کن."
           actions={
             <div className="content-workspace-topbar-actions">
               <Pill tone={editorMode === 'edit' ? 'success' : 'warning'}>
@@ -836,7 +837,8 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
               <SectionCard
                 eyebrow="هسته مقاله"
                 title="هویت مقاله و کنترل انتشار"
-                description="عنوان، اسلاگ، نویسنده، دسته بندی و وضعیت انتشار را از اینجا کنترل کن."
+                description="عنوان، اسلاگ، نویسنده، دسته‌بندی و وضعیت انتشار را از اینجا کنترل کن."
+                hint="اگر این بخش درست پر شود، بقیه کار بسیار ساده‌تر پیش می‌رود."
                 actions={<Pill tone="primary">هسته نگارش</Pill>}
               >
                 <div className="content-editor-grid">
@@ -866,7 +868,7 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                   <label className="fm-field">
                     <span>وضعیت</span>
                     <select onChange={(event) => updateArticleForm('status', event.target.value === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT')} value={articleForm.status}>
-                      <option value="DRAFT">پیش نویس</option>
+                      <option value="DRAFT">پیش‌نویس</option>
                       <option value="PUBLISHED">منتشرشده</option>
                     </select>
                   </label>
@@ -887,9 +889,9 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                   </label>
 
                   <label className="fm-field">
-                    <span>دسته بندی</span>
+                    <span>دسته‌بندی</span>
                     <select onChange={(event) => updateArticleForm('categoryId', event.target.value)} value={articleForm.categoryId}>
-                      <option value="">انتخاب دسته بندی</option>
+                      <option value="">انتخاب دسته‌بندی</option>
                       {categories.map((item) => {
                         const id = readText(item, ['id'], '')
                         const parent = toContentRecord(item.parent)
@@ -917,7 +919,7 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                     <span>خلاصه کوتاه</span>
                     <textarea
                       onChange={(event) => updateArticleForm('excerpt', event.target.value)}
-                      placeholder="خلاصه ای کوتاه برای listing و meta description"
+                      placeholder="خلاصه‌ای کوتاه برای نمایش مقاله و توضیح جستجو"
                       rows={4}
                       value={articleForm.excerpt}
                     />
@@ -929,6 +931,7 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                 eyebrow="بدنه محتوا"
                 title="متن مقاله و ویرایشگر ساختار"
                 description="این بلوک برای نگارش متمرکز، پیش‌نمایش و ارزیابی ساختار محتوایی است."
+                hint="متن اصلی را اینجا کامل کن و بعد با بخش سیگنال‌ها کیفیت ساختار را بسنج."
                 actions={<Pill tone="success">آماده نگارش</Pill>}
               >
                 <FormatTextarea
@@ -941,8 +944,9 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
 
               <SectionCard
                 eyebrow="تاکسونومی"
-                title="تگ ها و ارتباط های محتوایی"
-                description="تگ های مقاله را همین جا مدیریت کن تا listing و SEO relation از همان ابتدا درست بماند."
+                title="برچسب‌ها و ارتباط‌های محتوایی"
+                description="برچسب‌های مقاله را همین‌جا مدیریت کن تا ارتباط مقاله با بقیه محتوا از همان ابتدا روشن باشد."
+                hint="اگر مقاله به سختی پیدا می‌شود یا به مطالب دیگر وصل نیست، معمولا مشکل از همین بخش است."
                 actions={
                   <div className="content-accordion-actions">
                     <Pill tone="warning">ارتباط محتوایی</Pill>
@@ -980,14 +984,15 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                     )}
                   </div>
                 ) : (
-                  <div className="content-collapsed-note">برای مدیریت ارتباط‌های محتوایی و تگ‌های مقاله این بخش را باز کن.</div>
+                  <div className="content-collapsed-note">برای مدیریت ارتباط‌های محتوایی و برچسب‌های مقاله این بخش را باز کن.</div>
                 )}
               </SectionCard>
 
               <SectionCard
                 eyebrow="کنترل سئو"
-                title="کنترل های سئو و indexability"
-                description="فیلدهای metadata، robots و Open Graph را اینجا تکمیل کن تا تیم محتوا و سئو روی یک سطح مشترک کار کنند."
+                title="کنترل‌های سئو و دیده‌شدن"
+                description="فیلدهای توضیح جستجو، وضعیت دیده‌شدن و پیش‌نمایش شبکه‌های اجتماعی را اینجا کامل کن."
+                hint="اگر می‌خواهی صفحه در جستجو و اشتراک‌گذاری ظاهر درستی داشته باشد، این بخش را با دقت پر کن."
                 actions={
                   <div className="content-accordion-actions">
                     <Pill tone="danger">سئو محور</Pill>
@@ -1010,7 +1015,7 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                   </label>
 
                   <label className="fm-field">
-                    <span>آدرس canonical</span>
+                    <span>نشانی یکتا</span>
                     <input onChange={(event) => updateArticleForm('canonicalUrl', event.target.value)} placeholder="https://..." value={articleForm.canonicalUrl} />
                   </label>
 
@@ -1025,17 +1030,17 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                   </label>
 
                   <label className="fm-field content-editor-field--wide">
-                    <span>عنوان Open Graph</span>
+                    <span>عنوان پیش‌نمایش شبکه‌های اجتماعی</span>
                     <input onChange={(event) => updateArticleForm('ogTitle', event.target.value)} value={articleForm.ogTitle} />
                   </label>
 
                   <label className="fm-field content-editor-field--wide">
-                    <span>توضیح Open Graph</span>
+                    <span>توضیح پیش‌نمایش شبکه‌های اجتماعی</span>
                     <textarea onChange={(event) => updateArticleForm('ogDescription', event.target.value)} rows={4} value={articleForm.ogDescription} />
                   </label>
 
                   <label className="fm-field content-editor-field--wide">
-                    <span>تصویر Open Graph</span>
+                    <span>تصویر پیش‌نمایش</span>
                     <input onChange={(event) => updateArticleForm('ogImage', event.target.value)} placeholder="https://..." value={articleForm.ogImage} />
                   </label>
 
@@ -1047,16 +1052,16 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                   <div className="content-toggle-grid content-editor-field--wide">
                     <label className="content-boolean-toggle">
                       <input checked={articleForm.robotsIndex} onChange={(event) => updateArticleForm('robotsIndex', event.target.checked)} type="checkbox" />
-                      <span>robots index فعال باشد</span>
+                      <span>صفحه اجازه دیده‌شدن در جستجو داشته باشد</span>
                     </label>
                     <label className="content-boolean-toggle">
                       <input checked={articleForm.robotsFollow} onChange={(event) => updateArticleForm('robotsFollow', event.target.checked)} type="checkbox" />
-                      <span>robots follow فعال باشد</span>
+                      <span>پیوندهای صفحه قابل دنبال‌کردن باشند</span>
                     </label>
                   </div>
                 </div>
                 ) : (
-                  <div className="content-collapsed-note">برای تکمیل metadata، robots و Open Graph این بخش را باز کن.</div>
+                  <div className="content-collapsed-note">برای تکمیل سئو، دیده‌شدن و پیش‌نمایش اشتراک‌گذاری این بخش را باز کن.</div>
                 )}
               </SectionCard>
 
@@ -1064,6 +1069,7 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                 eyebrow="پیش‌نمایش سئو"
                 title="اسنیپت زنده و آمادگی انتشار"
                 description="قبل از انتشار، خروجی تقریبی عنوان، توضیح و مسیر صفحه را در همین‌جا مرور کن."
+                hint="این بخش کمک می‌کند قبل از انتشار بفهمی مقاله در نتیجه جستجو تقریبا چه شکلی دیده می‌شود."
                 actions={
                   <div className="content-accordion-actions">
                     <Pill tone="primary">پیش‌نمایش جستجو</Pill>
@@ -1096,17 +1102,17 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                         </strong>
                       </article>
                       <article className="content-workspace-check-item">
-                        <span>وضعیت robots</span>
-                        <strong>{articleForm.robotsIndex ? 'index' : 'noindex'} / {articleForm.robotsFollow ? 'follow' : 'nofollow'}</strong>
+                        <span>وضعیت دیده‌شدن</span>
+                        <strong>{articleForm.robotsIndex ? 'قابل دیده‌شدن' : 'پنهان از جستجو'} / {articleForm.robotsFollow ? 'پیوندها قابل دنبال‌کردن' : 'پیوندها غیرقابل دنبال‌کردن'}</strong>
                       </article>
                       <article className="content-workspace-check-item">
-                        <span>تصویر Open Graph</span>
+                        <span>تصویر پیش‌نمایش</span>
                         <strong>{articleForm.ogImage.trim() ? 'ثبت شده' : 'هنوز ثبت نشده'}</strong>
                       </article>
                     </div>
                   </>
                 ) : (
-                  <div className="content-collapsed-note">برای دیدن اسنیپت نهایی صفحه و readiness انتشار این بخش را باز کن.</div>
+                  <div className="content-collapsed-note">برای دیدن پیش‌نمایش نهایی صفحه و آمادگی انتشار این بخش را باز کن.</div>
                 )}
               </SectionCard>
             </div>
@@ -1114,8 +1120,9 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
             <div className="content-helper-sections">
               <SectionCard
                 eyebrow="سیگنال تحریریه"
-                title="سیگنال های سریع برای نگارش و سئو"
-                description="این helper panelها پایین workspace مانده اند تا ستون اصلی editor تنگ و کشیده نشود."
+                title="سیگنال‌های سریع برای نگارش و سئو"
+                description="این بخش‌های کمکی پایین صفحه مانده‌اند تا ستون اصلی نگارش تنگ و کشیده نشود."
+                hint="اگر نمی‌خواهی مدام بالا و پایین بروی، این بخش یک جمع‌بندی کوتاه از کیفیت متن و سئو به تو می‌دهد."
                 actions={
                   <button
                     aria-expanded={openSections.signals}
@@ -1153,8 +1160,9 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
 
               <SectionCard
                 eyebrow="مدیریت تاکسونومی"
-                title="مدیریت دسته بندی و تگ"
-                description="مدیریت دسته و تگ در همین workspace حاضر است تا بدون خروج از flow اصلی، ساختار محتوا را تکمیل کنی."
+                title="مدیریت دسته‌بندی و برچسب"
+                description="مدیریت دسته و برچسب در همین صفحه حاضر است تا بدون خروج از روند اصلی، ساختار محتوا را کامل کنی."
+                hint="اگر هنگام نگارش متوجه شدی دسته یا برچسب کم است، لازم نیست از این صفحه خارج شوی."
                 actions={
                   <button
                     aria-expanded={openSections.manager}
@@ -1171,7 +1179,7 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                   <div className="content-manager-card">
                     <div className="content-manager-head">
                       <div>
-                        <strong>دسته بندی ها</strong>
+                        <strong>دسته‌بندی ها</strong>
                       </div>
                       <button
                         aria-expanded={openSections.categoryManager}
@@ -1230,15 +1238,15 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                         </select>
                       </label>
                       <label className="fm-field">
-                        <span>robots</span>
+                        <span>دیده‌شدن</span>
                         <div className="content-toggle-grid">
                           <label className="content-boolean-toggle">
                             <input checked={categoryForm.robotsIndex} onChange={(event) => updateCategoryForm('robotsIndex', event.target.checked)} type="checkbox" />
-                            <span>index</span>
+                            <span>در جستجو دیده شود</span>
                           </label>
                           <label className="content-boolean-toggle">
                             <input checked={categoryForm.robotsFollow} onChange={(event) => updateCategoryForm('robotsFollow', event.target.checked)} type="checkbox" />
-                            <span>follow</span>
+                            <span>پیوندها دنبال شوند</span>
                           </label>
                         </div>
                       </label>
@@ -1267,7 +1275,7 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                         <textarea onChange={(event) => updateCategoryForm('metaDescription', event.target.value)} rows={3} value={categoryForm.metaDescription} />
                       </label>
                       <label className="fm-field content-editor-field--wide">
-                        <span>آدرس canonical</span>
+                        <span>نشانی یکتا</span>
                         <input
                           onChange={(event) => updateCategoryForm('canonicalUrl', event.target.value)}
                           placeholder="https://..."
@@ -1275,15 +1283,15 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                         />
                       </label>
                       <label className="fm-field content-editor-field--wide">
-                        <span>عنوان Open Graph</span>
+                        <span>عنوان پیش‌نمایش شبکه‌های اجتماعی</span>
                         <input onChange={(event) => updateCategoryForm('ogTitle', event.target.value)} value={categoryForm.ogTitle} />
                       </label>
                       <label className="fm-field content-editor-field--wide">
-                        <span>توضیح Open Graph</span>
+                        <span>توضیح پیش‌نمایش شبکه‌های اجتماعی</span>
                         <textarea onChange={(event) => updateCategoryForm('ogDescription', event.target.value)} rows={3} value={categoryForm.ogDescription} />
                       </label>
                       <label className="fm-field content-editor-field--wide">
-                        <span>تصویر Open Graph</span>
+                        <span>تصویر پیش‌نمایش</span>
                         <input
                           onChange={(event) => updateCategoryForm('ogImage', event.target.value)}
                           placeholder="https://..."
@@ -1301,7 +1309,7 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                     </div>
                     <div className="content-manager-footer">
                       <button className="content-primary-action" disabled={submitting} onClick={handleCategorySubmit} type="button">
-                        {selectedCategoryId === 'new' ? 'ثبت دسته بندی' : 'به روزرسانی دسته بندی'}
+                        {selectedCategoryId === 'new' ? 'ثبت دسته‌بندی' : 'به‌روزرسانی دسته‌بندی'}
                       </button>
                       {selectedCategoryRecord ? (
                         <small>
@@ -1311,14 +1319,14 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                     </div>
                     </>
                     ) : (
-                      <div className="content-collapsed-note">برای ایجاد یا ویرایش دسته بندی، این زیر بخش را باز کن.</div>
+                      <div className="content-collapsed-note">برای ایجاد یا ویرایش دسته‌بندی، این زیر بخش را باز کن.</div>
                     )}
                   </div>
 
                   <div className="content-manager-card">
                     <div className="content-manager-head">
                       <div>
-                        <strong>تگ ها</strong>
+                        <strong>برچسب‌ها</strong>
                       </div>
                       <button
                         aria-expanded={openSections.tagManager}
@@ -1361,15 +1369,15 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                         </div>
                       </label>
                       <label className="fm-field">
-                        <span>robots</span>
+                        <span>دیده‌شدن</span>
                         <div className="content-toggle-grid">
                           <label className="content-boolean-toggle">
                             <input checked={tagForm.robotsIndex} onChange={(event) => updateTagForm('robotsIndex', event.target.checked)} type="checkbox" />
-                            <span>index</span>
+                            <span>در جستجو دیده شود</span>
                           </label>
                           <label className="content-boolean-toggle">
                             <input checked={tagForm.robotsFollow} onChange={(event) => updateTagForm('robotsFollow', event.target.checked)} type="checkbox" />
-                            <span>follow</span>
+                            <span>پیوندها دنبال شوند</span>
                           </label>
                         </div>
                       </label>
@@ -1390,7 +1398,7 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                         <textarea onChange={(event) => updateTagForm('metaDescription', event.target.value)} rows={3} value={tagForm.metaDescription} />
                       </label>
                       <label className="fm-field content-editor-field--wide">
-                        <span>آدرس canonical</span>
+                        <span>نشانی یکتا</span>
                         <input
                           onChange={(event) => updateTagForm('canonicalUrl', event.target.value)}
                           placeholder="https://..."
@@ -1398,15 +1406,15 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                         />
                       </label>
                       <label className="fm-field content-editor-field--wide">
-                        <span>عنوان Open Graph</span>
+                        <span>عنوان پیش‌نمایش شبکه‌های اجتماعی</span>
                         <input onChange={(event) => updateTagForm('ogTitle', event.target.value)} value={tagForm.ogTitle} />
                       </label>
                       <label className="fm-field content-editor-field--wide">
-                        <span>توضیح Open Graph</span>
+                        <span>توضیح پیش‌نمایش شبکه‌های اجتماعی</span>
                         <textarea onChange={(event) => updateTagForm('ogDescription', event.target.value)} rows={3} value={tagForm.ogDescription} />
                       </label>
                       <label className="fm-field content-editor-field--wide">
-                        <span>تصویر Open Graph</span>
+                        <span>تصویر پیش‌نمایش</span>
                         <input
                           onChange={(event) => updateTagForm('ogImage', event.target.value)}
                           placeholder="https://..."
@@ -1424,7 +1432,7 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                     </div>
                     <div className="content-manager-footer">
                       <button className="content-primary-action" disabled={submitting} onClick={handleTagSubmit} type="button">
-                        {selectedTagId === 'new' ? 'ثبت تگ' : 'به روزرسانی تگ'}
+                        {selectedTagId === 'new' ? 'ثبت تگ' : 'به‌روزرسانی تگ'}
                       </button>
                       {selectedTagRecord ? <small>{formatPersianNumber(countRelatedArticles(selectedTagRecord))} مقاله متصل</small> : null}
                     </div>
@@ -1435,14 +1443,15 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                   </div>
                 </div>
                 ) : (
-                  <div className="content-collapsed-note">برای مدیریت دسته بندی‌ها و تگ‌ها این بخش را باز کن.</div>
+                  <div className="content-collapsed-note">برای مدیریت دسته‌بندی‌ها و تگ‌ها این بخش را باز کن.</div>
                 )}
               </SectionCard>
 
               <SectionCard
                 eyebrow="مدیریت نویسنده"
-                title="مدیریت نویسنده ها"
-                description="مالکیت محتوایی و پروفایل نویسنده را بدون خروج از workspace حفظ کن."
+                title="مدیریت نویسنده‌ها"
+                description="مالکیت محتوایی و پروفایل نویسنده را بدون خروج از این صفحه مدیریت کن."
+                hint="اگر نویسنده درست انتخاب یا تعریف نشود، گزارش‌ها و نسبت‌دادن محتوا هم اشتباه می‌شود."
                 actions={
                   <button
                     aria-expanded={openSections.author}
@@ -1501,7 +1510,7 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                       <textarea onChange={(event) => updateAuthorForm('bio', event.target.value)} rows={4} value={authorForm.bio} />
                     </label>
                     <label className="fm-field content-editor-field--wide">
-                      <span>بیوی سئو</span>
+                      <span>معرفی سئویی</span>
                       <textarea onChange={(event) => updateAuthorForm('seoBio', event.target.value)} rows={4} value={authorForm.seoBio} />
                     </label>
                     <label className="fm-field content-editor-field--wide">
@@ -1519,7 +1528,7 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                   </div>
                   <div className="content-manager-footer">
                     <button className="content-primary-action" disabled={submitting} onClick={handleAuthorSubmit} type="button">
-                      {selectedAuthorId === 'new' ? 'ثبت نویسنده' : 'به روزرسانی نویسنده'}
+                      {selectedAuthorId === 'new' ? 'ثبت نویسنده' : 'به‌روزرسانی نویسنده'}
                     </button>
                     {selectedAuthorRecord ? (
                       <small>
@@ -1535,8 +1544,9 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
 
               <SectionCard
                 eyebrow="فید پایش"
-                title="auditهای محتوایی فعال"
-                description="نمای خلاصه auditها همیشه کنار editor باقی می ماند تا تصمیم های محتوایی از بافت سئو جدا نشوند."
+                title="پایش‌های محتوایی فعال"
+                description="نمای خلاصه پایش‌ها همیشه کنار ویرایشگر می‌ماند تا تصمیم‌های محتوایی از سئو جدا نشوند."
+                hint="اگر مطمئن نیستی مقاله آماده انتشار هست یا نه، این بخش معمولا سریع‌ترین هشدارها را نشان می‌دهد."
                 actions={
                   <button
                     aria-expanded={openSections.audits}
@@ -1560,18 +1570,18 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                           </article>
                         ))
                       ) : (
-                        <div className="fm-message">فعلا audit فعالی دیده نمی شود.</div>
+                        <div className="fm-message">فعلا پایش فعالی دیده نمی‌شود.</div>
                       )}
                     </div>
                     {articleDetail ? (
                       <div className="content-workspace-summary-note">
                         مقاله فعلی با عنوان «{getArticleTitle(articleDetail)}» در وضعیت {getArticleStatusLabel(articleDetail)} است و در دسته «{getArticleCategory(articleDetail)}» قرار دارد.
-                        {getArticleTags(articleDetail).length > 0 ? ` تگ های متصل: ${getArticleTags(articleDetail).join(' / ')}` : ' هنوز تگی به آن متصل نشده است.'}
+                        {getArticleTags(articleDetail).length > 0 ? ` برچسب‌های متصل: ${getArticleTags(articleDetail).join(' / ')}` : ' هنوز تگی به آن متصل نشده است.'}
                       </div>
                     ) : null}
                   </>
                 ) : (
-                  <div className="content-collapsed-note">برای مرور auditهای محتوایی و وضعیت مقاله فعلی این بخش را باز کن.</div>
+                  <div className="content-collapsed-note">برای مرور پایش‌های محتوایی و وضعیت مقاله فعلی این بخش را باز کن.</div>
                 )}
               </SectionCard>
             </div>
