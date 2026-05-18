@@ -51,6 +51,7 @@ function NoticeToast({ item, onClose }: { item: NoticeItem; onClose: () => void 
         aria-hidden="true"
         className="notice-toast__ring"
         style={{ ['--notice-duration' as keyof CSSProperties]: `${item.durationMs}ms` } as CSSProperties}
+        preserveAspectRatio="none"
         viewBox="0 0 100 100"
       >
         <rect x="2" y="2" width="96" height="96" rx="18" ry="18" pathLength="100" />

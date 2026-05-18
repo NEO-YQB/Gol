@@ -37,6 +37,16 @@ function translateApiMessage(message: string) {
     return 'بازگشت وجه فقط برای سفارش‌های آنلاین پشتیبانی می‌شود.'
   }
 
+  if (
+    normalized === 'فقط تیکت escalate شده به مالی قابل تصمیم مالی است' ||
+    normalized === 'only escalated ticket can receive finance decision' ||
+    normalized === 'only escalated tickets can receive finance decision' ||
+    normalized === 'only escalated to finance ticket can receive finance decision' ||
+    normalized === 'only escalated to finance tickets can receive finance decision'
+  ) {
+    return 'فقط تیکت‌هایی که به بخش مالی ارجاع شده‌اند، امکان ثبت تصمیم مالی دارند.'
+  }
+
   if (normalized === 'failed to fetch') {
     return 'ارتباط با سامانه برقرار نشد. اتصال اینترنت یا آدرس سرویس را بررسی کن.'
   }
