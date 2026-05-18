@@ -1,5 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import type { CSSProperties } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 
 type NoticeTone = 'success' | 'error' | 'warning' | 'info'
 
@@ -46,16 +45,11 @@ function NoticeToast({ item, onClose }: { item: NoticeItem; onClose: () => void 
   }, [item.durationMs, onClose])
 
   return (
-    <div className={`notice-toast notice-toast--${item.tone ?? 'info'}`} role="status">
-      <svg
-        aria-hidden="true"
-        className="notice-toast__ring"
-        style={{ ['--notice-duration' as keyof CSSProperties]: `${item.durationMs}ms` } as CSSProperties}
-        preserveAspectRatio="none"
-        viewBox="0 0 100 100"
-      >
-        <rect x="2" y="2" width="96" height="96" rx="18" ry="18" pathLength="100" />
-      </svg>
+    <div
+      className={`notice-toast notice-toast--${item.tone ?? 'info'}`}
+      role="status"
+      style={{ ['--notice-duration' as keyof CSSProperties]: `${item.durationMs}ms` } as CSSProperties}
+    >
       <div className="notice-toast__content">
         <strong>{getNoticeTitle(item.tone ?? 'info')}</strong>
         <p>{item.message}</p>
