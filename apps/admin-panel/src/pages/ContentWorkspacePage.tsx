@@ -93,6 +93,17 @@ type AuthorFormState = {
   userId: string
 }
 
+type ContentAccordionKey =
+  | 'taxonomy'
+  | 'seo'
+  | 'preview'
+  | 'signals'
+  | 'manager'
+  | 'author'
+  | 'audits'
+  | 'categoryManager'
+  | 'tagManager'
+
 function createEmptyArticleForm(): ArticleFormState {
   return {
     title: '',
@@ -297,6 +308,17 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
   const [tagForm, setTagForm] = useState<TagFormState>(() => createEmptyTagForm())
   const [selectedAuthorId, setSelectedAuthorId] = useState<string>('new')
   const [authorForm, setAuthorForm] = useState<AuthorFormState>(() => createEmptyAuthorForm())
+  const [openSections, setOpenSections] = useState<Record<ContentAccordionKey, boolean>>({
+    taxonomy: false,
+    seo: false,
+    preview: false,
+    signals: false,
+    manager: false,
+    author: false,
+    audits: false,
+    categoryManager: false,
+    tagManager: false,
+  })
 
   useEffect(() => {
     setEditorMode(mode)
@@ -579,6 +601,13 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
       tagIds: current.tagIds.includes(tagId)
         ? current.tagIds.filter((item) => item !== tagId)
         : [...current.tagIds, tagId],
+    }))
+  }
+
+  function toggleSection(section: ContentAccordionKey) {
+    setOpenSections((current) => ({
+      ...current,
+      [section]: !current[section],
     }))
   }
 
@@ -914,37 +943,66 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                 eyebrow="تاکسونومی"
                 title="تگ ها و ارتباط های محتوایی"
                 description="تگ های مقاله را همین جا مدیریت کن تا listing و SEO relation از همان ابتدا درست بماند."
-                actions={<Pill tone="warning">ارتباط محتوایی</Pill>}
+                actions={
+                  <div className="content-accordion-actions">
+                    <Pill tone="warning">ارتباط محتوایی</Pill>
+                    <button
+                      aria-expanded={openSections.taxonomy}
+                      className={`content-accordion-trigger${openSections.taxonomy ? ' is-open' : ''}`}
+                      onClick={() => toggleSection('taxonomy')}
+                      type="button"
+                    >
+                      {openSections.taxonomy ? 'بستن' : 'باز کردن'}
+                    </button>
+                  </div>
+                }
               >
-                <div className="content-tag-grid">
-                  {tags.length ? (
-                    tags.map((item) => {
-                      const id = readText(item, ['id'], '')
-                      const checked = articleForm.tagIds.includes(id)
-                      return (
-                        <label className={`content-tag-toggle${checked ? ' is-active' : ''}`} key={id}>
-                          <input
-                            checked={checked}
-                            onChange={() => toggleTag(id)}
-                            type="checkbox"
-                          />
-                          <span>{readText(item, ['title'], '—')}</span>
-                          <small>{formatPersianNumber(countRelatedArticles(item))} مقاله</small>
-                        </label>
-                      )
-                    })
-                  ) : (
-                    <div className="fm-message">هنوز تگی ثبت نشده است.</div>
-                  )}
-                </div>
+                {openSections.taxonomy ? (
+                  <div className="content-tag-grid">
+                    {tags.length ? (
+                      tags.map((item) => {
+                        const id = readText(item, ['id'], '')
+                        const checked = articleForm.tagIds.includes(id)
+                        return (
+                          <label className={`content-tag-toggle${checked ? ' is-active' : ''}`} key={id}>
+                            <input
+                              checked={checked}
+                              onChange={() => toggleTag(id)}
+                              type="checkbox"
+                            />
+                            <span>{readText(item, ['title'], '—')}</span>
+                            <small>{formatPersianNumber(countRelatedArticles(item))} مقاله</small>
+                          </label>
+                        )
+                      })
+                    ) : (
+                      <div className="fm-message">هنوز تگی ثبت نشده است.</div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="content-collapsed-note">برای مدیریت ارتباط‌های محتوایی و تگ‌های مقاله این بخش را باز کن.</div>
+                )}
               </SectionCard>
 
               <SectionCard
                 eyebrow="کنترل سئو"
                 title="کنترل های سئو و indexability"
                 description="فیلدهای metadata، robots و Open Graph را اینجا تکمیل کن تا تیم محتوا و سئو روی یک سطح مشترک کار کنند."
-                actions={<Pill tone="danger">سئو محور</Pill>}
+                actions={
+                  <div className="content-accordion-actions">
+                    <Pill tone="danger">سئو محور</Pill>
+                    <button
+                      aria-expanded={openSections.seo}
+                      className={`content-accordion-trigger${openSections.seo ? ' is-open' : ''}`}
+                      onClick={() => toggleSection('seo')}
+                      type="button"
+                    >
+                      {openSections.seo ? 'بستن' : 'باز کردن'}
+                    </button>
+                  </div>
+                }
               >
+                {openSections.seo ? (
                 <div className="content-editor-grid">
                   <label className="fm-field">
                     <span>کلیدواژه کانونی</span>
@@ -997,38 +1055,59 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                     </label>
                   </div>
                 </div>
+                ) : (
+                  <div className="content-collapsed-note">برای تکمیل metadata، robots و Open Graph این بخش را باز کن.</div>
+                )}
               </SectionCard>
 
               <SectionCard
                 eyebrow="پیش‌نمایش سئو"
                 title="اسنیپت زنده و آمادگی انتشار"
                 description="قبل از انتشار، خروجی تقریبی عنوان، توضیح و مسیر صفحه را در همین‌جا مرور کن."
-                actions={<Pill tone="primary">پیش‌نمایش جستجو</Pill>}
+                actions={
+                  <div className="content-accordion-actions">
+                    <Pill tone="primary">پیش‌نمایش جستجو</Pill>
+                    <button
+                      aria-expanded={openSections.preview}
+                      className={`content-accordion-trigger${openSections.preview ? ' is-open' : ''}`}
+                      onClick={() => toggleSection('preview')}
+                      type="button"
+                    >
+                      {openSections.preview ? 'بستن' : 'باز کردن'}
+                    </button>
+                  </div>
+                }
               >
-                <div className="content-snippet-card">
-                  <small>{`/blog/${searchPreview.slug}`}</small>
-                  <strong>{searchPreview.title}</strong>
-                  <p>{searchPreview.description}</p>
-                </div>
+                {openSections.preview ? (
+                  <>
+                    <div className="content-snippet-card">
+                      <small>{`/blog/${searchPreview.slug}`}</small>
+                      <strong>{searchPreview.title}</strong>
+                      <p>{searchPreview.description}</p>
+                    </div>
 
-                <div className="content-workspace-checklist-grid">
-                  <article className="content-workspace-check-item">
-                    <span>خلاصه کوتاه</span>
-                    <strong>
-                      {articleForm.excerpt.trim()
-                        ? `${formatPersianNumber(articleForm.excerpt.trim().length)} کاراکتر`
-                        : 'نیازمند تکمیل'}
-                    </strong>
-                  </article>
-                  <article className="content-workspace-check-item">
-                    <span>وضعیت robots</span>
-                    <strong>{articleForm.robotsIndex ? 'index' : 'noindex'} / {articleForm.robotsFollow ? 'follow' : 'nofollow'}</strong>
-                  </article>
-                  <article className="content-workspace-check-item">
-                    <span>تصویر Open Graph</span>
-                    <strong>{articleForm.ogImage.trim() ? 'ثبت شده' : 'هنوز ثبت نشده'}</strong>
-                  </article>
-                </div>
+                    <div className="content-workspace-checklist-grid">
+                      <article className="content-workspace-check-item">
+                        <span>خلاصه کوتاه</span>
+                        <strong>
+                          {articleForm.excerpt.trim()
+                            ? `${formatPersianNumber(articleForm.excerpt.trim().length)} کاراکتر`
+                            : 'نیازمند تکمیل'}
+                        </strong>
+                      </article>
+                      <article className="content-workspace-check-item">
+                        <span>وضعیت robots</span>
+                        <strong>{articleForm.robotsIndex ? 'index' : 'noindex'} / {articleForm.robotsFollow ? 'follow' : 'nofollow'}</strong>
+                      </article>
+                      <article className="content-workspace-check-item">
+                        <span>تصویر Open Graph</span>
+                        <strong>{articleForm.ogImage.trim() ? 'ثبت شده' : 'هنوز ثبت نشده'}</strong>
+                      </article>
+                    </div>
+                  </>
+                ) : (
+                  <div className="content-collapsed-note">برای دیدن اسنیپت نهایی صفحه و readiness انتشار این بخش را باز کن.</div>
+                )}
               </SectionCard>
             </div>
 
@@ -1037,36 +1116,78 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                 eyebrow="سیگنال تحریریه"
                 title="سیگنال های سریع برای نگارش و سئو"
                 description="این helper panelها پایین workspace مانده اند تا ستون اصلی editor تنگ و کشیده نشود."
+                actions={
+                  <button
+                    aria-expanded={openSections.signals}
+                    className={`content-accordion-trigger${openSections.signals ? ' is-open' : ''}`}
+                    onClick={() => toggleSection('signals')}
+                    type="button"
+                  >
+                    {openSections.signals ? 'بستن' : 'باز کردن'}
+                  </button>
+                }
               >
-                <div className="content-workspace-signal-grid">
-                  {editorSignals.map((item) => (
-                    <article className="content-workspace-signal-item" key={item.label}>
-                      <span>{item.label}</span>
-                      <strong>{item.value}</strong>
-                    </article>
-                  ))}
-                </div>
-                <div className="content-workspace-checklist-grid">
-                  {seoChecklist.map((item) => (
-                    <article className="content-workspace-check-item" key={item.label}>
-                      <span>{item.label}</span>
-                      <strong>{item.value}</strong>
-                    </article>
-                  ))}
-                </div>
+                {openSections.signals ? (
+                  <>
+                    <div className="content-workspace-signal-grid">
+                      {editorSignals.map((item) => (
+                        <article className="content-workspace-signal-item" key={item.label}>
+                          <span>{item.label}</span>
+                          <strong>{item.value}</strong>
+                        </article>
+                      ))}
+                    </div>
+                    <div className="content-workspace-checklist-grid">
+                      {seoChecklist.map((item) => (
+                        <article className="content-workspace-check-item" key={item.label}>
+                          <span>{item.label}</span>
+                          <strong>{item.value}</strong>
+                        </article>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="content-collapsed-note">برای مشاهده سیگنال‌های سریع نگارش و سئو این بخش را باز کن.</div>
+                )}
               </SectionCard>
 
               <SectionCard
                 eyebrow="مدیریت تاکسونومی"
                 title="مدیریت دسته بندی و تگ"
                 description="مدیریت دسته و تگ در همین workspace حاضر است تا بدون خروج از flow اصلی، ساختار محتوا را تکمیل کنی."
+                actions={
+                  <button
+                    aria-expanded={openSections.manager}
+                    className={`content-accordion-trigger${openSections.manager ? ' is-open' : ''}`}
+                    onClick={() => toggleSection('manager')}
+                    type="button"
+                  >
+                    {openSections.manager ? 'بستن' : 'باز کردن'}
+                  </button>
+                }
               >
-                <div className="content-manager-grid">
+                {openSections.manager ? (
+                  <div className="content-manager-grid">
                   <div className="content-manager-card">
                     <div className="content-manager-head">
-                      <strong>دسته بندی ها</strong>
-                      <div className="content-manager-head-actions">
-                        <button onClick={() => setSelectedCategoryId('new')} type="button">دسته جدید</button>
+                      <div>
+                        <strong>دسته بندی ها</strong>
+                      </div>
+                      <button
+                        aria-expanded={openSections.categoryManager}
+                        className={`content-accordion-trigger content-accordion-trigger--sub${openSections.categoryManager ? ' is-open' : ''}`}
+                        onClick={() => toggleSection('categoryManager')}
+                        type="button"
+                      >
+                        {openSections.categoryManager ? 'بستن' : 'باز کردن'}
+                      </button>
+                    </div>
+                    {openSections.categoryManager ? (
+                    <>
+                    <div className="content-manager-head-actions content-manager-head-actions--stacked">
+                      <button onClick={() => setSelectedCategoryId('new')} type="button">دسته جدید</button>
+                      <label className="fm-field content-select-field">
+                        <span>انتخاب دسته</span>
                         <select onChange={(event) => setSelectedCategoryId(event.target.value)} value={selectedCategoryId}>
                           <option value="new">ایجاد دسته جدید</option>
                           {categories.map((item) => {
@@ -1078,7 +1199,7 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                             )
                           })}
                         </select>
-                      </div>
+                      </label>
                     </div>
                     <div className="content-editor-grid">
                       <label className="fm-field">
@@ -1188,13 +1309,32 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                         </small>
                       ) : null}
                     </div>
+                    </>
+                    ) : (
+                      <div className="content-collapsed-note">برای ایجاد یا ویرایش دسته بندی، این زیر بخش را باز کن.</div>
+                    )}
                   </div>
 
                   <div className="content-manager-card">
                     <div className="content-manager-head">
-                      <strong>تگ ها</strong>
-                      <div className="content-manager-head-actions">
-                        <button onClick={() => setSelectedTagId('new')} type="button">تگ جدید</button>
+                      <div>
+                        <strong>تگ ها</strong>
+                      </div>
+                      <button
+                        aria-expanded={openSections.tagManager}
+                        className={`content-accordion-trigger content-accordion-trigger--sub${openSections.tagManager ? ' is-open' : ''}`}
+                        onClick={() => toggleSection('tagManager')}
+                        type="button"
+                      >
+                        {openSections.tagManager ? 'بستن' : 'باز کردن'}
+                      </button>
+                    </div>
+                    {openSections.tagManager ? (
+                    <>
+                    <div className="content-manager-head-actions content-manager-head-actions--stacked">
+                      <button onClick={() => setSelectedTagId('new')} type="button">تگ جدید</button>
+                      <label className="fm-field content-select-field">
+                        <span>انتخاب تگ</span>
                         <select onChange={(event) => setSelectedTagId(event.target.value)} value={selectedTagId}>
                           <option value="new">ایجاد تگ جدید</option>
                           {tags.map((item) => {
@@ -1206,7 +1346,7 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                             )
                           })}
                         </select>
-                      </div>
+                      </label>
                     </div>
                     <div className="content-editor-grid">
                       <label className="fm-field">
@@ -1288,33 +1428,54 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                       </button>
                       {selectedTagRecord ? <small>{formatPersianNumber(countRelatedArticles(selectedTagRecord))} مقاله متصل</small> : null}
                     </div>
+                    </>
+                    ) : (
+                      <div className="content-collapsed-note">برای ایجاد یا ویرایش تگ، این زیر بخش را باز کن.</div>
+                    )}
                   </div>
                 </div>
+                ) : (
+                  <div className="content-collapsed-note">برای مدیریت دسته بندی‌ها و تگ‌ها این بخش را باز کن.</div>
+                )}
               </SectionCard>
 
               <SectionCard
                 eyebrow="مدیریت نویسنده"
                 title="مدیریت نویسنده ها"
                 description="مالکیت محتوایی و پروفایل نویسنده را بدون خروج از workspace حفظ کن."
+                actions={
+                  <button
+                    aria-expanded={openSections.author}
+                    className={`content-accordion-trigger${openSections.author ? ' is-open' : ''}`}
+                    onClick={() => toggleSection('author')}
+                    type="button"
+                  >
+                    {openSections.author ? 'بستن' : 'باز کردن'}
+                  </button>
+                }
               >
-                <div className="content-manager-card">
+                {openSections.author ? (
+                  <div className="content-manager-card">
                   <div className="content-manager-head">
                     <strong>نویسنده</strong>
-                    <div className="content-manager-head-actions">
-                      <button onClick={() => setSelectedAuthorId('new')} type="button">نویسنده جدید</button>
-                      <select onChange={(event) => setSelectedAuthorId(event.target.value)} value={selectedAuthorId}>
-                        <option value="new">ایجاد نویسنده جدید</option>
-                        {authors.map((item) => {
-                          const id = readText(item, ['id'], '')
-                          return (
-                            <option key={id} value={id}>
-                              {readText(item, ['name'], '—')}
-                            </option>
-                          )
-                        })}
-                      </select>
-                    </div>
                   </div>
+                    <div className="content-manager-head-actions content-manager-head-actions--stacked">
+                      <button onClick={() => setSelectedAuthorId('new')} type="button">نویسنده جدید</button>
+                      <label className="fm-field content-select-field">
+                        <span>انتخاب نویسنده</span>
+                        <select onChange={(event) => setSelectedAuthorId(event.target.value)} value={selectedAuthorId}>
+                          <option value="new">ایجاد نویسنده جدید</option>
+                          {authors.map((item) => {
+                            const id = readText(item, ['id'], '')
+                            return (
+                              <option key={id} value={id}>
+                                {readText(item, ['name'], '—')}
+                              </option>
+                            )
+                          })}
+                        </select>
+                      </label>
+                    </div>
                   <div className="content-editor-grid">
                     <label className="fm-field">
                       <span>نام</span>
@@ -1367,32 +1528,51 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                     ) : null}
                   </div>
                 </div>
+                ) : (
+                  <div className="content-collapsed-note">برای مدیریت پروفایل نویسنده و اتصال کاربری این بخش را باز کن.</div>
+                )}
               </SectionCard>
 
               <SectionCard
                 eyebrow="فید پایش"
                 title="auditهای محتوایی فعال"
                 description="نمای خلاصه auditها همیشه کنار editor باقی می ماند تا تصمیم های محتوایی از بافت سئو جدا نشوند."
+                actions={
+                  <button
+                    aria-expanded={openSections.audits}
+                    className={`content-accordion-trigger${openSections.audits ? ' is-open' : ''}`}
+                    onClick={() => toggleSection('audits')}
+                    type="button"
+                  >
+                    {openSections.audits ? 'بستن' : 'باز کردن'}
+                  </button>
+                }
               >
-                <div className="content-audit-preview-grid">
-                  {auditPreview.length ? (
-                    auditPreview.map((item) => (
-                      <article className="content-audit-preview-item" key={item.id}>
-                        <span>{item.title}</span>
-                        <strong>{item.count}</strong>
-                        <small>{item.detail}</small>
-                      </article>
-                    ))
-                  ) : (
-                    <div className="fm-message">فعلا audit فعالی دیده نمی شود.</div>
-                  )}
-                </div>
-                {articleDetail ? (
-                  <div className="content-workspace-summary-note">
-                    مقاله فعلی با عنوان «{getArticleTitle(articleDetail)}» در وضعیت {getArticleStatusLabel(articleDetail)} است و در دسته «{getArticleCategory(articleDetail)}» قرار دارد.
-                    {getArticleTags(articleDetail).length > 0 ? ` تگ های متصل: ${getArticleTags(articleDetail).join(' / ')}` : ' هنوز تگی به آن متصل نشده است.'}
-                  </div>
-                ) : null}
+                {openSections.audits ? (
+                  <>
+                    <div className="content-audit-preview-grid">
+                      {auditPreview.length ? (
+                        auditPreview.map((item) => (
+                          <article className="content-audit-preview-item" key={item.id}>
+                            <span>{item.title}</span>
+                            <strong>{item.count}</strong>
+                            <small>{item.detail}</small>
+                          </article>
+                        ))
+                      ) : (
+                        <div className="fm-message">فعلا audit فعالی دیده نمی شود.</div>
+                      )}
+                    </div>
+                    {articleDetail ? (
+                      <div className="content-workspace-summary-note">
+                        مقاله فعلی با عنوان «{getArticleTitle(articleDetail)}» در وضعیت {getArticleStatusLabel(articleDetail)} است و در دسته «{getArticleCategory(articleDetail)}» قرار دارد.
+                        {getArticleTags(articleDetail).length > 0 ? ` تگ های متصل: ${getArticleTags(articleDetail).join(' / ')}` : ' هنوز تگی به آن متصل نشده است.'}
+                      </div>
+                    ) : null}
+                  </>
+                ) : (
+                  <div className="content-collapsed-note">برای مرور auditهای محتوایی و وضعیت مقاله فعلی این بخش را باز کن.</div>
+                )}
               </SectionCard>
             </div>
           </div>

@@ -771,6 +771,7 @@
 .content-workspace-topbar-actions,
 .content-selection-head,
 .content-selection-meta,
+.content-accordion-actions,
 .content-manager-head,
 .content-manager-head-actions,
 .content-manager-footer,
@@ -783,7 +784,8 @@
 
 .content-header-actions,
 .content-workspace-topbar-actions,
-.content-manager-footer {
+.content-manager-footer,
+.content-accordion-actions {
   flex-wrap: wrap;
 }
 
@@ -1115,6 +1117,43 @@
   gap: 20px;
 }
 
+.content-accordion-actions {
+  justify-content: flex-end;
+}
+
+.content-accordion-trigger {
+  min-height: 40px;
+  border-radius: 999px;
+  border: 1px solid var(--fm-border-soft);
+  background: rgba(255, 253, 248, 0.92);
+  color: var(--fm-text-primary);
+  padding: 0 14px;
+  font-weight: 700;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.content-accordion-trigger:hover {
+  transform: translateY(-1px);
+}
+
+.content-accordion-trigger.is-open {
+  border-color: rgba(31, 106, 82, 0.28);
+  background: rgba(31, 106, 82, 0.08);
+}
+
+.content-accordion-trigger--sub {
+  min-width: 104px;
+}
+
+.content-collapsed-note {
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px dashed rgba(31, 106, 82, 0.22);
+  background: rgba(255, 253, 248, 0.74);
+  color: var(--fm-text-secondary);
+  line-height: 1.9;
+}
+
 .content-workspace-meta-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -1220,7 +1259,7 @@
 .content-manager-grid {
   display: grid;
   gap: 16px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
 }
 
 .content-manager-card {
@@ -1247,8 +1286,35 @@
   justify-content: flex-end;
 }
 
+.content-manager-head-actions--stacked {
+  display: grid;
+  gap: 14px;
+  justify-content: stretch;
+}
+
 .content-manager-head-actions select {
   min-width: 190px;
+}
+
+.content-select-field {
+  width: 100%;
+}
+
+.content-select-field select,
+.content-editor-grid select,
+.content-manager-head-actions select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-inline: 16px 44px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, rgba(31, 106, 82, 0.75) 50%),
+    linear-gradient(135deg, rgba(31, 106, 82, 0.75) 50%, transparent 50%);
+  background-position:
+    calc(16px) calc(50% - 3px),
+    calc(10px) calc(50% - 3px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
 }
 
 .content-boolean-toggle {
