@@ -85,13 +85,13 @@ function getPageMeta(route: AdminRoute) {
     case 'content':
       return {
         eyebrow: 'کارتابل محتوا',
-        title: 'محتوا، taxonomy و عملیات سئو',
-        description: 'سطح اولیه routeهای content بر پایه endpointهای مقاله، category، tag و audit ساخته شده تا بعدا editorial tooling روی آن سوار شود.',
+        title: 'محتوا، تاکسونومی و عملیات سئو',
+        description: 'سطح اولیه routeهای content بر پایه endpointهای مقاله، category، tag و audit ساخته شده تا بعدا ابزارهای تحریریه روی آن سوار شوند.',
       }
     case 'contentWorkspace':
       return {
-        eyebrow: 'editor محتوایی',
-        title: 'workspace متمرکز نگارش، SEO و taxonomy',
+        eyebrow: 'ویرایشگر محتوایی',
+        title: 'workspace متمرکز نگارش، سئو و تاکسونومی',
         description: 'ساخت و ویرایش مقاله باید در یک surface بزرگ، متمرکز و production-minded انجام شود؛ نه در کنار table فشرده.',
       }
     case 'alerts':

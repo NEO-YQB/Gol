@@ -35,7 +35,7 @@ const articleColumns = [
 ]
 
 const auditColumns = [
-  { key: 'type', label: 'نوع audit' },
+  { key: 'type', label: 'نوع پایش' },
   { key: 'count', label: 'تعداد' },
   { key: 'message', label: 'جزئیات' },
   { key: 'target', label: 'هدف' },
@@ -153,7 +153,7 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
     let active = true
 
     async function loadDetail() {
-      if (!selectedArticleId) return;
+      if (!selectedArticleId) return
       setDetailLoading(true)
       setDetailError(null)
       try {
@@ -242,11 +242,11 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
         label: 'نویسنده ها',
         value: formatPersianNumber(authors.length),
         delta: 'مالکیت تحریریه',
-        detail: 'پروفایل نویسنده و ownership محتوا',
+        detail: 'پروفایل نویسنده و مالکیت محتوا',
         tone: 'success' as const,
       },
       {
-        label: 'taxonomyها',
+        label: 'تاکسونومی',
         value: formatPersianNumber(categories.length + tags.length),
         delta: `${formatPersianNumber(categories.length)} دسته / ${formatPersianNumber(tags.length)} تگ`,
         detail: 'ساختار دسته بندی و تگ',
@@ -256,7 +256,7 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
         label: 'auditها',
         value: formatPersianNumber(audits.length),
         delta: 'بهداشت سئو',
-        detail: 'سیگنال های محتوایی و SEO',
+        detail: 'سیگنال های محتوایی و سئو',
         tone: 'danger' as const,
       },
     ],
@@ -283,7 +283,8 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
         },
         { label: 'انتشار', value: formatJalaliDate(selectedArticle.publishedAt, true) },
         { label: 'آخرین بروزرسانی', value: formatJalaliDate(selectedArticle.updatedAt, true) },
-        { label: 'meta title', value: readText(selectedArticle, ['metaTitle'], '—') },
+        { label: 'عنوان متا', value: readText(selectedArticle, ['metaTitle'], '—') },
+        { label: 'توضیح متا', value: readText(selectedArticle, ['metaDescription'], '—') },
         { label: 'کلیدواژه کانونی', value: readText(selectedArticle, ['focusKeyword'], '—') },
         { label: 'robots index', value: typeof selectedArticle.robotsIndex === 'boolean' ? (selectedArticle.robotsIndex ? 'فعال' : 'غیرفعال') : '—' },
         { label: 'robots follow', value: typeof selectedArticle.robotsFollow === 'boolean' ? (selectedArticle.robotsFollow ? 'فعال' : 'غیرفعال') : '—' },
@@ -301,8 +302,33 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
         value: formatPersianNumber(articles.filter((item) => readText(item, ['focusKeyword'], '') === '').length),
       },
       {
-        label: 'بدون meta title',
+        label: 'بدون عنوان متا',
         value: formatPersianNumber(articles.filter((item) => readText(item, ['metaTitle'], '') === '').length),
+      },
+    ],
+    [articles],
+  )
+
+  const queueSummary = useMemo(
+    () => [
+      {
+        label: 'منتشرشده',
+        value: formatPersianNumber(articles.filter((item) => getArticleStatus(item) === 'PUBLISHED').length),
+      },
+      {
+        label: 'پیش نویس',
+        value: formatPersianNumber(articles.filter((item) => getArticleStatus(item) !== 'PUBLISHED').length),
+      },
+      {
+        label: 'نیازمند تکمیل SEO',
+        value: formatPersianNumber(
+          articles.filter(
+            (item) =>
+              readText(item, ['metaTitle'], '') === '' ||
+              readText(item, ['metaDescription'], '') === '' ||
+              readText(item, ['focusKeyword'], '') === '',
+          ).length,
+        ),
       },
     ],
     [articles],
@@ -336,12 +362,12 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
         </div>
 
         <SectionCard
-          eyebrow="Content desk"
-          title="کارتابل محتوا و SEO"
-          description="این سطح فقط برای پایش، filter، triage و انتخاب آیتم است. ساخت و ویرایش کامل مقاله در workspace جدا انجام می شود."
+          eyebrow="دسک محتوا"
+          title="کارتابل محتوا و سئو"
+          description="این سطح فقط برای پایش، فیلتر، تریاژ و انتخاب آیتم است. ساخت و ویرایش کامل مقاله در workspace جدا انجام می شود."
           actions={
             <div className="content-header-actions">
-              <Pill tone="primary">editorial ops</Pill>
+              <Pill tone="primary">عملیات تحریریه</Pill>
               <button className="content-primary-action" onClick={onCreateArticle} type="button">
                 مقاله جدید
               </button>
@@ -349,6 +375,15 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
           }
         >
           <div className="content-toolbar content-toolbar--dense">
+            <div className="content-queue-grid">
+              {queueSummary.map((item) => (
+                <article className="content-queue-item" key={item.label}>
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                </article>
+              ))}
+            </div>
+
             <div className="fm-field content-search">
               <label htmlFor="content-search">جستجو</label>
               <input
@@ -421,6 +456,12 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
           <div className="content-layout content-layout--expanded">
             <div className="content-table-card">
               <DataTable columns={articleColumns} rows={articleRows} />
+              <div className="content-results-head">
+                <strong>فهرست انتخاب سریع مقاله‌ها</strong>
+                <span>
+                  {formatPersianNumber(filteredArticles.length)} نتیجه از {formatPersianNumber(articles.length)} مقاله
+                </span>
+              </div>
               {filteredArticles.length > 0 ? (
                 <div className="content-selection-list">
                   {filteredArticles.slice(0, 8).map((item) => {
@@ -440,6 +481,9 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
                         <small>
                           {getArticleAuthor(item)} / {getArticleCategory(item)}
                         </small>
+                        <p className="content-selection-excerpt">
+                          {readText(item, ['excerpt'], '').trim() || 'هنوز خلاصه کوتاهی برای این مقاله ثبت نشده است.'}
+                        </p>
                         <div className="content-selection-meta">
                           <span>{formatJalaliDate(item.updatedAt, true)}</span>
                           <button onClick={() => setSelectedArticleId(articleId)} type="button">
@@ -460,13 +504,13 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
 
             <div className="content-detail-column">
               <SectionCard
-                eyebrow="Selected article"
+                eyebrow="مقاله انتخاب‌شده"
                 title={selectedArticleId ? `خلاصه مقاله #${selectedArticleId}` : 'هیچ مقاله ای انتخاب نشده'}
-                description="این بلوک برای تصمیم سریع است. برای نگارش، SEO و taxonomy باید وارد workspace جدا شوید."
+                description="این بلوک برای تصمیم سریع است. برای نگارش، سئو و تاکسونومی باید وارد workspace جدا شوید."
                 actions={
                   selectedArticleId ? (
                     <button className="content-secondary-action" onClick={() => onEditArticle(selectedArticleId)} type="button">
-                      باز کردن editor
+                      باز کردن ویرایشگر
                     </button>
                   ) : null
                 }
@@ -490,9 +534,13 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
                       </article>
                     ))}
                     <article className="content-detail-item content-detail-item--wide">
+                      <span>خلاصه کوتاه</span>
+                      <strong>{readText(selectedArticle ?? {}, ['excerpt'], 'هنوز خلاصه کوتاه ثبت نشده است.')}</strong>
+                    </article>
+                    <article className="content-detail-item content-detail-item--wide">
                       <span>گام بعدی روی این مقاله</span>
                       <strong>
-                        برای ویرایش متن، SEO، نویسنده، دسته بندی و تگ ها وارد editor workspace شوید تا در surface متمرکز کار کنید.
+                        برای ویرایش متن، سئو، نویسنده، دسته بندی و تگ ها وارد workspace متمرکز شوید تا فرم سنگین از کارتابل اصلی جدا بماند.
                       </strong>
                     </article>
                   </div>
@@ -503,10 +551,10 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
               </SectionCard>
 
               <SectionCard
-                eyebrow="Taxonomy & audits"
-                title="taxonomyها و auditهای محتوایی"
-                description="visibility روی دسته بندی، تگ، نویسنده و auditها از همین صفحه حفظ می شود، ولی مدیریت سنگین در editor workspace انجام می شود."
-                actions={<Pill tone="warning">SEO maturity</Pill>}
+                eyebrow="تاکسونومی و پایش"
+                title="تاکسونومی و پایش‌های محتوایی"
+                description="دید روی دسته بندی، تگ، نویسنده و auditها از همین صفحه حفظ می شود، ولی مدیریت سنگین در editor workspace انجام می شود."
+                actions={<Pill tone="warning">بلوغ سئو</Pill>}
               >
                 <div className="content-taxonomy-summary">
                   <article>

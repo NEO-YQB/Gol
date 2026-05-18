@@ -179,20 +179,20 @@ export function RichTextEditor({
             پیش‌نمایش
           </button>
           <button className={toolbarButtonClass(mode === 'html')} onClick={() => setMode('html')} type="button">
-            HTML
+            کد HTML
           </button>
         </div>
 
         {mode === 'visual' ? (
           <div className="fm-rich-editor-actions">
             <button className={toolbarButtonClass(editor.isActive('bold'))} onClick={() => editor.chain().focus().toggleBold().run()} type="button">
-              Bold
+              ضخیم
             </button>
             <button className={toolbarButtonClass(editor.isActive('italic'))} onClick={() => editor.chain().focus().toggleItalic().run()} type="button">
-              Italic
+              ایتالیک
             </button>
             <button className={toolbarButtonClass(editor.isActive('underline'))} onClick={() => editor.chain().focus().toggleUnderline().run()} type="button">
-              Underline
+              زیرخط
             </button>
             <button className={toolbarButtonClass(editor.isActive('heading', { level: 2 }))} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} type="button">
               H2
@@ -201,13 +201,13 @@ export function RichTextEditor({
               H3
             </button>
             <button className={toolbarButtonClass(editor.isActive('bulletList'))} onClick={() => editor.chain().focus().toggleBulletList().run()} type="button">
-              Bullet
+              لیست
             </button>
             <button className={toolbarButtonClass(editor.isActive('orderedList'))} onClick={() => editor.chain().focus().toggleOrderedList().run()} type="button">
-              Number
+              شماره‌دار
             </button>
             <button className={toolbarButtonClass(editor.isActive('blockquote'))} onClick={() => editor.chain().focus().toggleBlockquote().run()} type="button">
-              Quote
+              نقل‌قول
             </button>
             <button className={toolbarButtonClass(editor.isActive({ textAlign: 'right' }))} onClick={() => editor.chain().focus().setTextAlign('right').run()} type="button">
               راست
@@ -216,19 +216,19 @@ export function RichTextEditor({
               وسط
             </button>
             <button className={toolbarButtonClass(editor.isActive('link'))} onClick={toggleLink} type="button">
-              Link
+              لینک
             </button>
             <button className={toolbarButtonClass()} onClick={() => editor.chain().focus().unsetLink().run()} type="button">
-              Unlink
+              حذف لینک
             </button>
             <button className={toolbarButtonClass()} onClick={insertImage} type="button">
-              Image
+              تصویر
             </button>
             <button className={toolbarButtonClass()} onClick={() => editor.chain().focus().setHorizontalRule().run()} type="button">
-              Divider
+              جداکننده
             </button>
             <button className={toolbarButtonClass()} onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()} type="button">
-              Clear
+              پاک‌سازی
             </button>
           </div>
         ) : null}
@@ -251,7 +251,7 @@ export function RichTextEditor({
 
         <aside className="fm-rich-editor-sidebar">
           <section className="fm-rich-editor-panel">
-            <strong>SEO check</strong>
+            <strong>پایش سئو</strong>
             <div className="fm-rich-editor-metrics">
               {seoInsights.map((item) => (
                 <article className={cx('fm-rich-editor-metric', `is-${item.tone}`)} key={item.label}>
