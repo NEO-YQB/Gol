@@ -25,6 +25,7 @@ export type StatItem = {
   value: string
   delta: string
   detail: string
+  hint?: string
   tone?: StatTone
 }
 

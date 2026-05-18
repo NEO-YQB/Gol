@@ -206,12 +206,18 @@
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
   gap: 18px;
+  align-items: start;
 }
 
 .orders-table-card,
 .orders-detail-column {
   display: grid;
   gap: 16px;
+  align-content: start;
+}
+
+.orders-detail-column .fm-section-card {
+  align-self: start;
 }
 
 .orders-selection-list {
@@ -1672,6 +1678,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1.22fr) minmax(320px, 0.78fr);
   gap: 18px;
+  align-items: start;
 }
 
 .orders-workspace-main,
@@ -1686,6 +1693,15 @@
 .orders-exceptions-list {
   display: grid;
   gap: 16px;
+}
+
+.orders-workspace-side {
+  align-content: start;
+}
+
+.orders-workspace-side .fm-section-card,
+.orders-workspace-main .fm-section-card {
+  align-self: start;
 }
 
 .orders-actions-grid {
@@ -1712,6 +1728,37 @@
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.orders-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border-radius: 18px;
+  border: 1px solid var(--fm-border-soft);
+  background: rgba(255, 253, 248, 0.78);
+}
+
+.orders-pagination span {
+  color: var(--fm-text-secondary);
+}
+
+.orders-pagination-button {
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--fm-border-soft);
+  background: rgba(255, 253, 248, 0.95);
+  color: var(--fm-text-primary);
+  font-weight: 700;
+}
+
+.orders-pagination-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .orders-primary-button,

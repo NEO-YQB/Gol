@@ -707,6 +707,66 @@ button {
   gap: 12px;
 }
 
+.fm-stat-label,
+.fm-section-title-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.fm-hint {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+}
+
+.fm-hint__mark {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(31, 106, 82, 0.2);
+  background: rgba(31, 106, 82, 0.08);
+  color: var(--fm-brand-primary);
+  font-size: 0.8rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.fm-hint__bubble {
+  position: absolute;
+  inset-inline-end: 0;
+  top: calc(100% + 10px);
+  min-width: 220px;
+  max-width: min(320px, 70vw);
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--fm-border-soft);
+  background: rgba(28, 52, 41, 0.96);
+  color: var(--fm-text-inverse);
+  box-shadow: var(--fm-shadow-lifted);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: opacity 160ms ease, transform 160ms ease, visibility 160ms ease;
+  line-height: 1.9;
+  font-size: 0.88rem;
+  z-index: 12;
+}
+
+.fm-hint:hover .fm-hint__bubble,
+.fm-hint:focus-within .fm-hint__bubble,
+.fm-hint:focus .fm-hint__bubble {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
 .fm-stat-row p,
 .fm-stat-row span,
 .fm-spotlight-metric span,

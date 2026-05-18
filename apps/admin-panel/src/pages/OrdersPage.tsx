@@ -6,6 +6,8 @@ import { readText, toArray } from '../lib/normalize'
 import type { AuthSession } from '../lib/session'
 
 type OrderRecord = Record<string, unknown>
+const ordersPerPage = 10
+const exceptionsPerPage = 5
 
 const orderColumns = [
   { key: 'id', label: 'شناسه' },
@@ -137,6 +139,8 @@ export function OrdersPage({
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [search, setSearch] = useState('')
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
+  const [ordersPage, setOrdersPage] = useState(1)
+  const [exceptionsPage, setExceptionsPage] = useState(1)
 
   useEffect(() => {
     let active = true
@@ -199,6 +203,14 @@ export function OrdersPage({
   }, [orders, search, statusFilter])
 
   useEffect(() => {
+    setOrdersPage(1)
+  }, [search, statusFilter])
+
+  useEffect(() => {
+    setExceptionsPage(1)
+  }, [selectedOrderId])
+
+  useEffect(() => {
     if (filteredOrders.length === 0) {
       setSelectedOrderId(null)
       return
@@ -210,28 +222,48 @@ export function OrdersPage({
     }
   }, [filteredOrders, selectedOrderId])
 
+  const ordersPageCount = Math.max(1, Math.ceil(filteredOrders.length / ordersPerPage))
+  const currentOrders = useMemo(() => {
+    const start = (ordersPage - 1) * ordersPerPage
+    return filteredOrders.slice(start, start + ordersPerPage)
+  }, [filteredOrders, ordersPage])
+
+  useEffect(() => {
+    setOrdersPage((current) => Math.min(current, ordersPageCount))
+  }, [ordersPageCount])
+
   const orderRows = useMemo(
     () =>
-      filteredOrders.slice(0, 20).map((item, index) => ({
+      currentOrders.map((item, index) => ({
         id: readText(item, ['id'], String(index + 1)),
         customer: getCustomerText(item),
         status: getOrderStatusLabel(getOrderStatus(item)),
         payment: getPaymentStatusLabel(getPaymentStatus(item)),
         settlement: getSettlementStatusLabel(getSettlementStatus(item)),
       })),
-    [filteredOrders],
+    [currentOrders],
   )
+
+  const exceptionsPageCount = Math.max(1, Math.ceil(exceptions.length / exceptionsPerPage))
+  const currentExceptions = useMemo(() => {
+    const start = (exceptionsPage - 1) * exceptionsPerPage
+    return exceptions.slice(start, start + exceptionsPerPage)
+  }, [exceptions, exceptionsPage])
+
+  useEffect(() => {
+    setExceptionsPage((current) => Math.min(current, exceptionsPageCount))
+  }, [exceptionsPageCount])
 
   const exceptionRows = useMemo(
     () =>
-      exceptions.slice(0, 10).map((item, index) => ({
+      currentExceptions.map((item, index) => ({
         id: readText(item, ['id'], String(index + 1)),
         status: getOrderStatusLabel(getOrderStatus(item)),
         payment: getPaymentStatusLabel(getPaymentStatus(item)),
         settlement: getSettlementStatusLabel(getSettlementStatus(item)),
         reason: getExceptionSummary(item),
       })),
-    [exceptions],
+    [currentExceptions],
   )
 
   const selectedOrder =
@@ -260,15 +292,17 @@ export function OrdersPage({
       value: String(orders.length),
       delta: `${filteredOrders.length} مورد در نمای فعلی`,
       detail: 'پایه جدول و ورود به میزکار',
+      hint: 'این کارت نشان می‌دهد چند سفارش در کل داریم و چند سفارش با فیلترهای فعلی دیده می‌شوند.',
       tone: 'primary' as const,
     },
     {
-      label: 'سفارش‌های نیازمند action',
+      label: 'سفارش‌های نیازمند اقدام',
       value: String(
         orders.filter((item) => ['PENDING', 'PAID', 'ACCEPTED', 'SHIPPED'].includes(getOrderStatus(item))).length,
       ),
       delta: 'جریان‌های باز',
       detail: 'کاندیدهای اصلی برای میزکار متمرکز',
+      hint: 'این عدد کمک می‌کند سریع بفهمی چند سفارش هنوز به تصمیم یا اقدام عملیاتی نیاز دارند.',
       tone: 'warning' as const,
     },
     {
@@ -276,13 +310,15 @@ export function OrdersPage({
       value: String(exceptions.length),
       delta: 'صف سفارش و مالی',
       detail: 'موارد نیازمند رسیدگی فوری',
+      hint: 'این بخش سفارش‌هایی را می‌شمارد که از نظر پرداخت یا تسویه به رسیدگی فوری نیاز دارند.',
       tone: 'danger' as const,
     },
     {
       label: 'فیلترهای فعال',
       value: String(statusOptions(orders).length - 1),
-      delta: statusFilter === 'ALL' ? 'همه وضعیت‌ها' : statusFilter,
+      delta: statusFilter === 'ALL' ? 'همه وضعیت‌ها' : getOrderStatusLabel(statusFilter),
       detail: 'آماده برای نماهای ذخیره شده بعدی',
+      hint: 'از اینجا می‌توانی بفهمی چند وضعیت مختلف در فهرست فعلی حضور دارند.',
       tone: 'success' as const,
     },
   ]
@@ -299,7 +335,8 @@ export function OrdersPage({
         <SectionCard
           eyebrow="کارتابل سفارش"
           title="فهرست سفارش‌ها و صف ورود به میزکار"
-          description="این route عمدا فقط نقش کارتابل، فیلتر، جدول و handoff به جریان متمرکز را دارد؛ actionهای سنگین از این سطح جدا شده‌اند."
+          description="این صفحه فقط برای پیدا کردن سفارش، دیدن وضعیت کلی و ورود به میزکار رسیدگی است. همه کارهای سنگین در میزکار انجام می‌شوند تا صفحه شلوغ نشود."
+          hint="ابتدا سفارش را پیدا کن، بعد خلاصه کوتاه آن را ببین و سپس وارد میزکار شو تا ادامه رسیدگی را آنجا انجام دهی."
           actions={<Pill tone="primary">کارتابل فهرست</Pill>}
         >
           <div className="orders-toolbar">
@@ -308,7 +345,7 @@ export function OrdersPage({
               <input
                 id="orders-search"
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="شناسه سفارش، مشتری، فروشگاه، پرداخت یا تسویه"
+                placeholder="شناسه سفارش، نام مشتری، فروشگاه، وضعیت پرداخت یا وضعیت تسویه"
                 value={search}
               />
             </div>
@@ -331,8 +368,30 @@ export function OrdersPage({
             <div className="orders-table-card">
               <DataTable columns={orderColumns} rows={orderRows} />
 
+              {ordersPageCount > 1 ? (
+                <div className="orders-pagination">
+                  <button
+                    className="orders-pagination-button"
+                    disabled={ordersPage === 1}
+                    onClick={() => setOrdersPage((current) => Math.max(1, current - 1))}
+                    type="button"
+                  >
+                    صفحه قبل
+                  </button>
+                  <span>{`صفحه ${ordersPage} از ${ordersPageCount}`}</span>
+                  <button
+                    className="orders-pagination-button"
+                    disabled={ordersPage === ordersPageCount}
+                    onClick={() => setOrdersPage((current) => Math.min(ordersPageCount, current + 1))}
+                    type="button"
+                  >
+                    صفحه بعد
+                  </button>
+                </div>
+              ) : null}
+
               <div className="orders-selection-list">
-                {filteredOrders.slice(0, 8).map((item) => {
+                {currentOrders.map((item) => {
                   const orderId = readText(item, ['id'], '')
                   const isActive = selectedOrderId === orderId
 
@@ -356,8 +415,9 @@ export function OrdersPage({
               <SectionCard
                 eyebrow="سفارش انتخاب شده"
                 title={selectedOrder ? `آماده ورود به میزکار سفارش #${readText(selectedOrder, ['id'], '—')}` : 'سفارشی انتخاب نشده'}
-                description="این summary کوتاه نگه داشته شده تا اپراتور بعد از انتخاب، وارد سطح متمرکز سفارش شود."
-                actions={<Pill tone="warning">{selectedOrder ? getOrderStatus(selectedOrder) : 'بدون انتخاب'}</Pill>}
+                description="این خلاصه کوتاه است تا فقط تصمیم ورود به میزکار را آسان کند. جزئیات اصلی و کارهای عملیاتی در میزکار نمایش داده می‌شوند."
+                hint="اگر اطلاعات این بخش کافی نبود، طبیعی است. اینجا فقط برای انتخاب است و ادامه کار در میزکار انجام می‌شود."
+                actions={<Pill tone="warning">{selectedOrder ? getOrderStatusLabel(getOrderStatus(selectedOrder)) : 'بدون انتخاب'}</Pill>}
               >
                 {selectedSummary.length ? (
                   <div className="orders-detail-grid">
@@ -374,8 +434,8 @@ export function OrdersPage({
 
                 <div className="orders-workspace-entry">
                   <p>
-                    actionهای عملیاتی سنگین مثل تایید، ارسال، تحویل، بررسی پرداخت، بازگشت وجه و آزادسازی تسویه از این
-                    صفحه جدا شده‌اند.
+                    کارهای اصلی مثل تایید سفارش، ثبت ارسال، ثبت تحویل، رسیدگی به پرداخت، بازگشت وجه و آزادسازی تسویه
+                    از این صفحه جدا شده‌اند تا روند کار ساده و روشن بماند.
                   </p>
                   <button
                     className="orders-primary-button"
@@ -390,11 +450,34 @@ export function OrdersPage({
 
               <SectionCard
                 eyebrow="صف استثناها"
-                title="مواردی که باید زودتر triage شوند"
-                description="اگر سفارش انتخاب‌شده جزو exceptionها باشد، از همین‌جا به میزکار آن وارد شو تا رسیدگی کامل را انجام بدهی."
+                title="مواردی که باید زودتر بررسی شوند"
+                description="این فهرست برای سفارش‌هایی است که از نظر پرداخت یا تسویه نیاز به توجه بیشتری دارند."
+                hint="اگر سفارشی در این بخش دیده می‌شود، بهتر است زودتر وارد میزکار همان سفارش شوی و دلیل مشکل را بررسی کنی."
                 actions={<Pill tone="danger">{`${exceptions.length} استثنا`}</Pill>}
               >
                 <DataTable columns={exceptionColumns} rows={exceptionRows} />
+
+                {exceptionsPageCount > 1 ? (
+                  <div className="orders-pagination">
+                    <button
+                      className="orders-pagination-button"
+                      disabled={exceptionsPage === 1}
+                      onClick={() => setExceptionsPage((current) => Math.max(1, current - 1))}
+                      type="button"
+                    >
+                      صفحه قبل
+                    </button>
+                    <span>{`صفحه ${exceptionsPage} از ${exceptionsPageCount}`}</span>
+                    <button
+                      className="orders-pagination-button"
+                      disabled={exceptionsPage === exceptionsPageCount}
+                      onClick={() => setExceptionsPage((current) => Math.min(exceptionsPageCount, current + 1))}
+                      type="button"
+                    >
+                      صفحه بعد
+                    </button>
+                  </div>
+                ) : null}
 
                 <div className="orders-exception-list">
                   {selectedExceptions.length ? (
