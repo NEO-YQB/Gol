@@ -98,7 +98,9 @@ export function AccessControlWorkspacePage({ session, onBack }: AccessControlWor
     async function loadUser() {
       setDetailLoading(true)
       try {
-        const payload = await adminApi.getAccessControlUserDetail(session, selectedUserId)
+        const nextUserId = selectedUserId
+        if (!nextUserId) return
+        const payload = await adminApi.getAccessControlUserDetail(session, nextUserId)
         if (!active) return
         setSelectedUser((payload as Record<string, unknown>) ?? null)
       } catch (requestError) {
@@ -124,7 +126,9 @@ export function AccessControlWorkspacePage({ session, onBack }: AccessControlWor
     async function loadRole() {
       setDetailLoading(true)
       try {
-        const payload = await adminApi.getAccessControlRoleDetail(session, selectedRoleId)
+        const nextRoleId = selectedRoleId
+        if (!nextRoleId) return
+        const payload = await adminApi.getAccessControlRoleDetail(session, nextRoleId)
         if (!active) return
         setSelectedRole((payload as Record<string, unknown>) ?? null)
       } catch (requestError) {
@@ -183,10 +187,10 @@ export function AccessControlWorkspacePage({ session, onBack }: AccessControlWor
           بازگشت به کارتابل دسترسی
         </button>
         <div className="access-workspace-toolbar__actions">
-          <Pill tone={canAssignUserRoles ? 'success' : 'secondary'}>
+          <Pill tone={canAssignUserRoles ? 'success' : 'neutral'}>
             {canAssignUserRoles ? 'assign role فعال' : 'assign role غیرفعال'}
           </Pill>
-          <Pill tone={canAssignRolePermissions ? 'warning' : 'secondary'}>
+          <Pill tone={canAssignRolePermissions ? 'warning' : 'neutral'}>
             {canAssignRolePermissions ? 'assign permission فعال' : 'assign permission غیرفعال'}
           </Pill>
           <Pill>{canCreateRole ? 'ساخت role مجاز' : 'ساخت role محدود'}</Pill>
@@ -282,10 +286,10 @@ export function AccessControlWorkspacePage({ session, onBack }: AccessControlWor
                   <p>{readText(selectedRole, ['description'], 'توضیحی برای این role ثبت نشده است.')}</p>
                 </div>
                 <div className="access-pill-row">
-                  <Pill tone={canCreateRole ? 'warning' : 'secondary'}>
+                  <Pill tone={canCreateRole ? 'warning' : 'neutral'}>
                     {canCreateRole ? 'ویرایش role مجاز' : 'ویرایش role محدود'}
                   </Pill>
-                  <Pill tone={canAssignRolePermissions ? 'success' : 'secondary'}>
+                  <Pill tone={canAssignRolePermissions ? 'success' : 'neutral'}>
                     {canAssignRolePermissions ? 'تغییر permission مجاز' : 'تغییر permission محدود'}
                   </Pill>
                 </div>

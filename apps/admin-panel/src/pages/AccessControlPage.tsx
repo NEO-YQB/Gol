@@ -82,18 +82,21 @@ export function AccessControlPage({ session, onOpenWorkspace }: AccessControlPag
       {
         label: 'کاربران قابل مدیریت',
         value: String(users.length),
+        delta: 'scope live',
         detail: 'نمونه ای از کاربران با role و permission موثر',
         tone: 'primary' as const,
       },
       {
         label: 'نقش های فعال',
         value: String(roles.length),
+        delta: 'matrix ready',
         detail: 'roleهای حاضر در ماتریس دسترسی',
         tone: 'warning' as const,
       },
       {
         label: 'permissionهای نمایشی',
         value: String(permissions.length),
+        delta: 'bootstrap source',
         detail: 'نمای اولیه از permission catalog سیستم',
         tone: 'success' as const,
       },
@@ -172,10 +175,10 @@ export function AccessControlPage({ session, onOpenWorkspace }: AccessControlPag
           description="در این لایه UI، actionها و CTAها بر اساس permissionهای واقعی نشست فعلی نمایش داده می شوند."
         >
           <div className="access-control-capability-list">
-            <Pill tone={canMutateUsers ? 'success' : 'secondary'}>
+            <Pill tone={canMutateUsers ? 'success' : 'neutral'}>
               {canMutateUsers ? 'تغییر کاربر فعال' : 'تغییر کاربر غیرفعال'}
             </Pill>
-            <Pill tone={canMutateRoles ? 'warning' : 'secondary'}>
+            <Pill tone={canMutateRoles ? 'warning' : 'neutral'}>
               {canMutateRoles ? 'ویرایش role فعال' : 'ویرایش role غیرفعال'}
             </Pill>
             <Pill>route guard سراسری</Pill>

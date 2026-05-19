@@ -118,7 +118,7 @@ export function canAccessRoute(session: AuthSession | null, route: AdminRoute) {
   return false
 }
 
-export function getFirstAccessibleRoute(session: AuthSession | null, routes: AdminRoute[]) {
+export function getFirstAccessibleRoute(session: AuthSession | null, routes: readonly AdminRoute[]) {
   return routes.find((route) => canAccessRoute(session, route)) ?? null
 }
 

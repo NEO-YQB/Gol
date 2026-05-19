@@ -80,3 +80,23 @@ export function makeStats(entries: Array<{ label: string; value: unknown; detail
     tone: entry.tone,
   }))
 }
+
+
+export function readBoolean(record: Record<string, unknown>, keys: string[], fallback = false) {
+  for (const key of keys) {
+    const value = record[key]
+    if (typeof value === 'boolean') return value
+  }
+  return fallback
+}
+
+export function readNumber(record: Record<string, unknown>, keys: string[], fallback = 0) {
+  let value: unknown = record
+
+  for (const key of keys) {
+    if (typeof value !== 'object' || value === null) return fallback
+    value = (value as Record<string, unknown>)[key]
+  }
+
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback
+}
