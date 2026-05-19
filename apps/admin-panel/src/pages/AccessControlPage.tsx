@@ -18,15 +18,15 @@ type PermissionRecord = Record<string, unknown>
 
 const userColumns = [
   { key: 'name', label: 'کاربر' },
-  { key: 'roles', label: 'نقش ها' },
+  { key: 'roles', label: 'نقش های اصلی' },
   { key: 'status', label: 'وضعیت' },
   { key: 'scope', label: 'دامنه دسترسی' },
 ]
 
 const roleColumns = [
   { key: 'name', label: 'نقش' },
-  { key: 'permissions', label: 'تعداد permission' },
-  { key: 'users', label: 'کاربران' },
+  { key: 'permissions', label: 'تعداد دسترسی' },
+  { key: 'users', label: 'کاربر متصل' },
 ]
 
 function getUserLabel(user: UserRecord) {
@@ -82,22 +82,22 @@ export function AccessControlPage({ session, onOpenWorkspace }: AccessControlPag
       {
         label: 'کاربران قابل مدیریت',
         value: String(users.length),
-        delta: 'scope live',
-        detail: 'نمونه ای از کاربران با role و permission موثر',
+        delta: 'در نمای فعلی',
+        detail: 'نمونه ای از کاربران همراه با نقش و گستره دسترسی',
         tone: 'primary' as const,
       },
       {
-        label: 'نقش های فعال',
+        label: 'نقش های ثبت شده',
         value: String(roles.length),
-        delta: 'matrix ready',
-        detail: 'roleهای حاضر در ماتریس دسترسی',
+        delta: 'در ماتریس نقش',
+        detail: 'نقش هایی که برای پنل و تیم های عملیاتی فعال اند',
         tone: 'warning' as const,
       },
       {
-        label: 'permissionهای نمایشی',
+        label: 'دسترسی های مرجع',
         value: String(permissions.length),
-        delta: 'bootstrap source',
-        detail: 'نمای اولیه از permission catalog سیستم',
+        delta: 'برای bootstrap پنل',
+        detail: 'کاتالوگ فشرده دسترسی ها برای navigation و actionها',
         tone: 'success' as const,
       },
     ],
@@ -112,8 +112,8 @@ export function AccessControlPage({ session, onOpenWorkspace }: AccessControlPag
         roles: getUserRoles(user).slice(0, 2).join(' / ') || 'بدون نقش',
         status: readBoolean(user, ['isActive'], true) ? 'فعال' : 'غیرفعال',
         scope: toArray(user.effectivePermissions).length
-          ? `${toArray(user.effectivePermissions).length} permission موثر`
-          : 'permission موثری ثبت نشده',
+          ? `${toArray(user.effectivePermissions).length} دسترسی موثر`
+          : 'بدون دسترسی موثر',
       })),
     [users],
   )
@@ -133,66 +133,58 @@ export function AccessControlPage({ session, onOpenWorkspace }: AccessControlPag
   const canMutateUsers = hasPermission(session, 'assignRoles', 'AdminUser') || hasPermission(session, 'updateStatus', 'AdminUser')
 
   return (
-    <div className="fm-stack access-control-page">
+    <div className="fm-stack access-control-page refined-access-page">
       <LoadableState error={error} loading={loading}>
-        <div className="fm-grid">
+        <div className="fm-grid refined-stat-grid">
           {stats.map((item) => (
             <StatCard key={item.label} {...item} />
           ))}
         </div>
       </LoadableState>
 
-      <div className="access-control-overview-grid">
+      <div className="refined-access-overview">
         <SectionCard
-          eyebrow="لایه دسترسی"
-          title="نمای فشرده کاربران، نقش ها و permissionها"
-          description="این route برای دید سریع، وضعیت فعلی دسترسی ها و ورود به workspace کامل مدیریت کاربران ساخته شده است."
+          eyebrow="تصویر کلی"
+          title="کارتابل جمع وجور کاربران، نقش ها و سطح کنترل"
+          description="این صفحه فقط برای اسکن سریع، تشخیص وضعیت و ورود به workspace کامل مدیریت دسترسی ساخته شده است."
           actions={
             <button className="fm-button fm-button--primary" onClick={onOpenWorkspace} type="button">
-              ورود به workspace دسترسی
+              ورود به میزکار کامل دسترسی
             </button>
           }
         >
-          <div className="access-control-summary-list">
-            <div className="access-control-summary-item">
+          <div className="access-compact-summary-grid">
+            <div className="access-compact-summary-card">
               <strong>مدیریت کاربران</strong>
-              <p>{canMutateUsers ? 'فعال برای role فعلی' : 'فقط مشاهده برای role فعلی'}</p>
+              <p>{canMutateUsers ? 'در این نشست، تغییر نقش و وضعیت کاربر ممکن است.' : 'در این نشست، فقط مشاهده کاربران مجاز است.'}</p>
             </div>
-            <div className="access-control-summary-item">
-              <strong>ماتریس role</strong>
-              <p>{canMutateRoles ? 'قابل ویرایش' : 'فقط قابل مشاهده'}</p>
+            <div className="access-compact-summary-card">
+              <strong>مدیریت نقش ها</strong>
+              <p>{canMutateRoles ? 'ساخت یا ویرایش نقش و دسترسی فعال است.' : 'ویرایش نقش و دسترسی در این نشست غیرفعال است.'}</p>
             </div>
-            <div className="access-control-summary-item">
-              <strong>permission catalog</strong>
-              <p>برای bootstrap navigation و route guard فرانت آماده است.</p>
+            <div className="access-compact-summary-card">
+              <strong>خروجی پنل</strong>
+              <p>navigation و actionها مستقیما از همین لایه دسترسی bootstrap می شوند.</p>
             </div>
           </div>
         </SectionCard>
 
-        <SectionCard
-          eyebrow="scope جاری"
-          title="قابلیت های این نشست"
-          description="در این لایه UI، actionها و CTAها بر اساس permissionهای واقعی نشست فعلی نمایش داده می شوند."
-        >
-          <div className="access-control-capability-list">
-            <Pill tone={canMutateUsers ? 'success' : 'neutral'}>
-              {canMutateUsers ? 'تغییر کاربر فعال' : 'تغییر کاربر غیرفعال'}
-            </Pill>
-            <Pill tone={canMutateRoles ? 'warning' : 'neutral'}>
-              {canMutateRoles ? 'ویرایش role فعال' : 'ویرایش role غیرفعال'}
-            </Pill>
-            <Pill>route guard سراسری</Pill>
-            <Pill>navigation هوشمند</Pill>
+        <SectionCard eyebrow="نشست فعلی" title="توان واقعی این حساب" description="در این سطح، هیچ action یا labelی خام و بدون ترجمه از backend نمایش داده نمی شود.">
+          <div className="access-control-capability-list compact-capability-list">
+            <Pill tone={canMutateUsers ? 'success' : 'neutral'}>{canMutateUsers ? 'ویرایش کاربر فعال' : 'ویرایش کاربر محدود'}</Pill>
+            <Pill tone={canMutateRoles ? 'warning' : 'neutral'}>{canMutateRoles ? 'ویرایش نقش فعال' : 'ویرایش نقش محدود'}</Pill>
+            <Pill>منوی دسترسی محور</Pill>
+            <Pill>واژه های فارسی سازی شده</Pill>
           </div>
         </SectionCard>
       </div>
 
-      <div className="access-control-snapshots-grid">
-        <SectionCard eyebrow="کاربران" title="فهرست کوتاه کاربران" description="نمونه ای از کاربرهایی که همین حالا برای مدیریت در دسترس اند.">
+      <div className="refined-access-tables">
+        <SectionCard eyebrow="نمونه کاربران" title="نمای سریع کاربران" description="خلاصه کوتاه از کاربرها برای اینکه قبل از ورود به workspace، وضعیت کلی را ببینی.">
           <DataTable columns={userColumns} rows={userRows} />
         </SectionCard>
 
-        <SectionCard eyebrow="نقش ها" title="نقش های کلیدی سیستم" description="roleها با تعداد permission و تعداد کاربر برای تصمیم گیری سریع دیده می شوند.">
+        <SectionCard eyebrow="نمونه نقش ها" title="نمای سریع نقش ها" description="ماتریس فشرده نقش ها با شمارش کاربر و دسترسی برای تصمیم سریع تر.">
           <DataTable columns={roleColumns} rows={roleRows} />
         </SectionCard>
       </div>

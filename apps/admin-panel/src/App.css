@@ -2175,3 +2175,125 @@
     grid-template-columns: 1fr;
   }
 }
+
+.refined-access-page .fm-grid,
+.refined-stat-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.refined-access-overview,
+.refined-access-tables,
+.access-lane-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  align-items: start;
+}
+
+.access-compact-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.access-compact-summary-card,
+.access-mini-meta-card {
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid var(--fm-border-soft);
+  background: rgba(255, 252, 247, 0.84);
+}
+
+.access-compact-summary-card p,
+.access-mini-meta-card span,
+.access-muted-note {
+  margin: 6px 0 0;
+  color: var(--fm-text-secondary);
+  line-height: 1.8;
+}
+
+.compact-capability-list,
+.compact-filter-row,
+.access-inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: end;
+}
+
+.compact-selection-list {
+  max-height: 360px;
+  overflow: auto;
+  padding-inline-end: 4px;
+}
+
+.compact-selection-item {
+  padding: 12px 14px;
+}
+
+.compact-detail-panel,
+.access-role-editor {
+  gap: 16px;
+}
+
+.compact-detail-section {
+  padding: 14px 16px;
+}
+
+.access-mini-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.access-mini-meta-card strong {
+  display: block;
+  font-size: 1.2rem;
+  color: var(--fm-text-primary);
+}
+
+.access-form-cluster,
+.access-permission-preview {
+  display: grid;
+  gap: 12px;
+}
+
+.compact-form-grid,
+.access-create-role-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.compact-permission-chips {
+  gap: 8px;
+}
+
+.access-permission-chip {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 0.8rem;
+}
+
+.access-workspace-toolbar--compact {
+  justify-content: space-between;
+}
+
+@media (max-width: 1100px) {
+  .refined-access-page .fm-grid,
+  .refined-stat-grid,
+  .access-compact-summary-grid,
+  .access-mini-meta-grid,
+  .compact-form-grid,
+  .access-create-role-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 960px) {
+  .refined-access-overview,
+  .refined-access-tables,
+  .access-lane-grid {
+    grid-template-columns: 1fr;
+  }
+}
