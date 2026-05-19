@@ -210,7 +210,8 @@ export class AbilityFactory {
         { action: ['create', 'read'], subject: 'SupportTicketNote' },
       ],
       ACCESS_MANAGER: [
-        { action: 'read', subject: ['AdminUser', 'AdminRole', 'AdminPermission'] },
+        { action: ['read', 'create'], subject: 'AdminUser' },
+        { action: 'read', subject: ['AdminRole', 'AdminPermission'] },
         { action: 'updateStatus', subject: 'AdminUser' },
         { action: 'assignRoles', subject: 'AdminUser' },
         { action: ['create', 'update'], subject: 'AdminRole' },

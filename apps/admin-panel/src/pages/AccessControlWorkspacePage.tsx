@@ -103,10 +103,16 @@ export function AccessControlWorkspacePage({ session, onBack }: AccessControlWor
   const [rolePermissionSelection, setRolePermissionSelection] = useState<number[]>([])
   const [permissionSearch, setPermissionSearch] = useState('')
   const [permissionSubjectFilter, setPermissionSubjectFilter] = useState('ALL')
+  const [newUserPhoneNumber, setNewUserPhoneNumber] = useState('')
+  const [newUserFullName, setNewUserFullName] = useState('')
+  const [newUserEmail, setNewUserEmail] = useState('')
+  const [newUserIsActive, setNewUserIsActive] = useState(true)
+  const [newUserRoleIds, setNewUserRoleIds] = useState<number[]>([])
 
   useNoticeEffect(error, 'error')
   useNoticeEffect(message, 'success')
 
+  const canCreateUser = hasPermission(session, 'create', 'AdminUser')
   const canAssignUserRoles = hasPermission(session, 'assignRoles', 'AdminUser')
   const canUpdateUserStatus = hasPermission(session, 'updateStatus', 'AdminUser')
   const canAssignRolePermissions = hasPermission(session, 'assignPermissions', 'AdminRole')
@@ -242,6 +248,41 @@ export function AccessControlWorkspacePage({ session, onBack }: AccessControlWor
     }
   }
 
+
+  async function handleCreateUser() {
+    if (!canCreateUser) return
+    if (!newUserPhoneNumber.trim()) {
+      setError('برای ساخت کاربر جدید، شماره موبایل الزامی است.')
+      return
+    }
+
+    setSaving(true)
+    setError(null)
+    setMessage(null)
+    try {
+      const payload = await adminApi.createAccessControlUser(session, {
+        phoneNumber: newUserPhoneNumber.trim(),
+        fullName: newUserFullName.trim() || undefined,
+        email: newUserEmail.trim() || undefined,
+        isActive: newUserIsActive,
+        roleIds: newUserRoleIds,
+      })
+      const createdUser = (payload as Record<string, unknown>) ?? null
+      setSelectedUserId(readText(createdUser ?? {}, ['id'], selectedUserId ?? ''))
+      setNewUserPhoneNumber('')
+      setNewUserFullName('')
+      setNewUserEmail('')
+      setNewUserIsActive(true)
+      setNewUserRoleIds([])
+      await refreshAll()
+      setMessage('کاربر جدید با موفقیت ساخته شد.')
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'ساخت کاربر جدید ناموفق بود')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function handleUserStatusToggle() {
     if (!selectedUserId || !selectedUser || !canUpdateUserStatus) return
     setSaving(true)
@@ -374,10 +415,57 @@ export function AccessControlWorkspacePage({ session, onBack }: AccessControlWor
           بازگشت به کارتابل کاربران و دسترسی
         </button>
         <div className="access-workspace-toolbar__actions">
+          <Pill tone={canCreateUser ? 'primary' : 'neutral'}>{canCreateUser ? 'ساخت کاربر فعال' : 'ساخت کاربر غیرفعال'}</Pill>
           <Pill tone={canAssignUserRoles ? 'success' : 'neutral'}>{canAssignUserRoles ? 'ویرایش نقش کاربر فعال' : 'ویرایش نقش کاربر غیرفعال'}</Pill>
           <Pill tone={canAssignRolePermissions ? 'warning' : 'neutral'}>{canAssignRolePermissions ? 'ویرایش دسترسی نقش فعال' : 'ویرایش دسترسی نقش غیرفعال'}</Pill>
         </div>
       </div>
+
+      <SectionCard eyebrow="ساخت کاربر جدید" title="ایجاد مستقیم کاربر برای پنل" description="مدیر کل یا مدیر دسترسی می تواند از همینجا کاربر جدید بسازد و همان لحظه نقش های اولیه را هم به او بدهد.">
+        <div className="access-form-grid compact-form-grid access-create-role-grid">
+          <label className="fm-field">
+            <span>شماره موبایل</span>
+            <input onChange={(event) => setNewUserPhoneNumber(event.target.value)} placeholder="09121234567" value={newUserPhoneNumber} />
+          </label>
+          <label className="fm-field">
+            <span>نام و نام خانوادگی</span>
+            <input onChange={(event) => setNewUserFullName(event.target.value)} placeholder="مثلا مریم احمدی" value={newUserFullName} />
+          </label>
+        </div>
+        <div className="access-form-grid compact-form-grid access-create-role-grid">
+          <label className="fm-field">
+            <span>ایمیل</span>
+            <input onChange={(event) => setNewUserEmail(event.target.value)} placeholder="مثلا maryam@example.com" value={newUserEmail} />
+          </label>
+          <label className="fm-field">
+            <span>وضعیت حساب</span>
+            <select onChange={(event) => setNewUserIsActive(event.target.value === 'active')} value={newUserIsActive ? 'active' : 'inactive'}>
+              <option value="active">فعال</option>
+              <option value="inactive">غیرفعال</option>
+            </select>
+          </label>
+        </div>
+        <label className="fm-field">
+          <span>نقش های اولیه کاربر</span>
+          <select
+            multiple
+            disabled={!canCreateUser || saving}
+            onChange={(event) => setNewUserRoleIds(Array.from(event.target.selectedOptions).map((option) => Number(option.value)))}
+            value={newUserRoleIds.map(String)}
+          >
+            {roleOptions.map((role) => (
+              <option key={role.id} value={role.id}>
+                {role.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="access-inline-actions">
+          <button className="fm-button fm-button--primary" disabled={!canCreateUser || saving} onClick={handleCreateUser} type="button">
+            ساخت کاربر جدید
+          </button>
+        </div>
+      </SectionCard>
 
       <div className="access-lane-grid">
         <SectionCard eyebrow="انتخاب کاربر" title="کارتابل کوتاه کاربران" description="فقط برای انتخاب سریع کاربر و ورود به جزئیات تصمیم گیری.">

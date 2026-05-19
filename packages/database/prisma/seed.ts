@@ -96,6 +96,7 @@ const permissionCatalog: PermissionSeed[] = [
   { action: 'create', subject: 'Review', conditions: { userId: '{{user.id}}' } },
   { action: 'read', subject: 'Review', conditions: { userId: '{{user.id}}' } },
   { action: 'read', subject: 'AdminUser', conditions: null },
+  { action: 'create', subject: 'AdminUser', conditions: null },
   { action: 'updateStatus', subject: 'AdminUser', conditions: null },
   { action: 'assignRoles', subject: 'AdminUser', conditions: null },
   { action: 'read', subject: 'AdminRole', conditions: null },
@@ -190,7 +191,7 @@ const defaultRolePermissions: Record<string, string[]> = {
     'read:SupportTicket', 'update:SupportTicket', 'create:SupportTicketNote', 'read:SupportTicketNote',
   ],
   ACCESS_MANAGER: [
-    'read:AdminUser', 'updateStatus:AdminUser', 'assignRoles:AdminUser',
+    'read:AdminUser', 'create:AdminUser', 'updateStatus:AdminUser', 'assignRoles:AdminUser',
     'read:AdminRole', 'create:AdminRole', 'update:AdminRole', 'assignPermissions:AdminRole',
     'read:AdminPermission',
   ],

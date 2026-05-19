@@ -94,6 +94,19 @@ export const adminApi = {
   getSessionBootstrap(session: AuthSession) {
     return request<SessionBootstrapResponse>(`/admin/access-control/users/${session.user.id}`, {}, session.accessToken)
   },
+
+  createAccessControlUser(session: AuthSession, body: {
+    phoneNumber: string
+    fullName?: string
+    email?: string
+    isActive?: boolean
+    roleIds?: number[]
+  }) {
+    return request<unknown>('/admin/access-control/users', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
   getAccessControlUsers(
     session: AuthSession,
     query?: {

@@ -22,6 +22,7 @@ const routeRequirements: Partial<Record<AdminRoute, AccessRequirement>> = {
       { action: 'read', subject: 'Order' },
       { action: 'read', subject: 'SupportTicket' },
       { action: 'read', subject: 'AdminUser' },
+      { action: 'create', subject: 'AdminUser' },
       { action: 'read', subject: 'Article' },
     ],
   },
@@ -85,6 +86,7 @@ const routeRequirements: Partial<Record<AdminRoute, AccessRequirement>> = {
     anyOf: [
       { action: 'manage', subject: 'all' },
       { action: 'read', subject: 'AdminUser' },
+      { action: 'create', subject: 'AdminUser' },
       { action: 'read', subject: 'AdminRole' },
       { action: 'read', subject: 'AdminPermission' },
     ],

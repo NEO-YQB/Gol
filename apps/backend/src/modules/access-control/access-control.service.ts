@@ -7,6 +7,7 @@ import {
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateRoleDto } from './dto/create-role.dto';
+import { CreateUserDto } from './dto/create-user.dto';
 import { ListPermissionsQueryDto } from './dto/list-permissions-query.dto';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
@@ -166,6 +167,71 @@ export class AccessControlService {
     }
 
     return this.mapUser(user);
+  }
+
+
+  async createUser(dto: CreateUserDto) {
+    await this.ensurePhoneNumberAvailable(dto.phoneNumber);
+    if (dto.email) {
+      await this.ensureEmailAvailable(dto.email);
+    }
+
+    const uniqueRoleIds = Array.from(new Set(dto.roleIds ?? []));
+    if (uniqueRoleIds.length > 0) {
+      await this.ensureRoleIdsExist(uniqueRoleIds);
+    }
+
+    const createdUser = await this.prisma.user.create({
+      data: {
+        phoneNumber: dto.phoneNumber,
+        fullName: dto.fullName,
+        email: dto.email,
+        isActive: dto.isActive ?? true,
+        roles: uniqueRoleIds.length
+          ? {
+              create: uniqueRoleIds.map((roleId) => ({ roleId })),
+            }
+          : undefined,
+      },
+      include: {
+        roles: {
+          include: {
+            role: {
+              include: {
+                permissions: {
+                  include: {
+                    permission: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        contentAuthor: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+        store: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+        _count: {
+          select: {
+            orders: true,
+            supportTickets: true,
+            reviews: true,
+          },
+        },
+      },
+    });
+
+    return this.mapUser(createdUser);
   }
 
   async updateUserStatus(userId: number, dto: UpdateUserStatusDto, actor: { id: number }) {
@@ -433,6 +499,40 @@ export class AccessControlService {
         lastPage: Math.max(1, Math.ceil(total / limit)),
       },
     };
+  }
+
+
+  private async ensureRoleIdsExist(roleIds: number[]) {
+    const roles = await this.prisma.role.findMany({
+      where: { id: { in: roleIds } },
+      select: { id: true },
+    });
+
+    if (roles.length !== roleIds.length) {
+      throw new NotFoundException('یک یا چند نقش انتخاب شده یافت نشد');
+    }
+  }
+
+  private async ensurePhoneNumberAvailable(phoneNumber: string) {
+    const existing = await this.prisma.user.findUnique({
+      where: { phoneNumber },
+      select: { id: true },
+    });
+
+    if (existing) {
+      throw new ConflictException('این شماره موبایل قبلا ثبت شده است');
+    }
+  }
+
+  private async ensureEmailAvailable(email: string) {
+    const existing = await this.prisma.user.findUnique({
+      where: { email },
+      select: { id: true },
+    });
+
+    if (existing) {
+      throw new ConflictException('این ایمیل قبلا ثبت شده است');
+    }
   }
 
   private async ensureUserExists(userId: number) {

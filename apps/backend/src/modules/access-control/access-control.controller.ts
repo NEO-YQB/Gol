@@ -22,6 +22,7 @@ import { AbilitiesGuard } from '../../common/guards/abilities.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AccessControlService } from './access-control.service';
 import { CreateRoleDto } from './dto/create-role.dto';
+import { CreateUserDto } from './dto/create-user.dto';
 import { ListPermissionsQueryDto } from './dto/list-permissions-query.dto';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
@@ -35,6 +36,15 @@ import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 @Controller('admin/access-control')
 export class AccessControlController {
   constructor(private readonly accessControlService: AccessControlService) {}
+
+
+  @Post('users')
+  @CheckAbilities((ability) => ability.can('manage', 'all') || ability.can('create', 'AdminUser'))
+  @ApiOperation({ summary: 'ایجاد مستقیم کاربر پنل همراه با نقش های اولیه' })
+  @ApiBody({ type: CreateUserDto })
+  createUser(@Body() dto: CreateUserDto) {
+    return this.accessControlService.createUser(dto);
+  }
 
   @Get('users')
   @CheckAbilities((ability) => ability.can('manage', 'all') || ability.can('read', 'AdminUser'))
