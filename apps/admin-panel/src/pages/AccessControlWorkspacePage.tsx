@@ -170,7 +170,9 @@ export function AccessControlWorkspacePage({ session, onBack }: AccessControlWor
     async function loadUser() {
       setDetailLoading(true)
       try {
-        const payload = await adminApi.getAccessControlUserDetail(session, selectedUserId)
+        const userId = selectedUserId
+        if (!userId) return
+        const payload = await adminApi.getAccessControlUserDetail(session, userId)
         if (!active) return
         const nextUser = (payload as Record<string, unknown>) ?? null
         setSelectedUser(nextUser)
@@ -202,7 +204,9 @@ export function AccessControlWorkspacePage({ session, onBack }: AccessControlWor
     async function loadRole() {
       setDetailLoading(true)
       try {
-        const payload = await adminApi.getAccessControlRoleDetail(session, selectedRoleId)
+        const roleId = selectedRoleId
+        if (!roleId) return
+        const payload = await adminApi.getAccessControlRoleDetail(session, roleId)
         if (!active) return
         const nextRole = (payload as Record<string, unknown>) ?? null
         setSelectedRole(nextRole)
