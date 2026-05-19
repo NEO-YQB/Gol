@@ -2058,3 +2058,120 @@
     grid-template-columns: 1fr;
   }
 }
+
+.access-control-page,
+.access-workspace {
+  gap: 24px;
+}
+
+.access-control-overview-grid,
+.access-control-snapshots-grid,
+.access-workspace-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.access-workspace-grid--roles {
+  align-items: start;
+}
+
+.access-control-summary-list,
+.access-capability-note,
+.access-detail-panel,
+.access-role-detail {
+  display: grid;
+  gap: 14px;
+}
+
+.access-control-summary-item,
+.access-detail-section {
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid var(--fm-border-soft);
+  background: rgba(255, 251, 245, 0.74);
+}
+
+.access-control-summary-item strong,
+.access-detail-section strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.access-control-summary-item p,
+.access-detail-section p {
+  margin: 0;
+  line-height: 1.9;
+  color: var(--fm-text-secondary);
+}
+
+.access-control-capability-list,
+.access-pill-row,
+.access-workspace-toolbar,
+.access-workspace-toolbar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.access-selection-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.access-selection-list--roles {
+  margin-top: 0;
+}
+
+.access-selection-item {
+  display: grid;
+  gap: 4px;
+  text-align: right;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid var(--fm-border-soft);
+  background: rgba(255, 253, 249, 0.88);
+  transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+.access-selection-item strong {
+  color: var(--fm-text-primary);
+}
+
+.access-selection-item small {
+  color: var(--fm-text-secondary);
+}
+
+.access-selection-item.is-active {
+  border-color: rgba(31, 106, 82, 0.38);
+  box-shadow: 0 18px 30px rgba(65, 89, 69, 0.12);
+  transform: translateY(-1px);
+}
+
+.access-permission-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.access-permission-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(31, 106, 82, 0.08);
+  color: var(--fm-brand-primary);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+@media (max-width: 960px) {
+  .access-control-overview-grid,
+  .access-control-snapshots-grid,
+  .access-workspace-grid {
+    grid-template-columns: 1fr;
+  }
+}

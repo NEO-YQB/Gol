@@ -1,3 +1,5 @@
+import type { SessionBootstrap } from './permissions'
+
 export type SessionUser = {
   id: number
   phoneNumber: string
@@ -8,6 +10,7 @@ export type SessionUser = {
 export type AuthSession = {
   accessToken: string
   user: SessionUser
+  bootstrap?: SessionBootstrap
 }
 
 const SESSION_KEY = 'flower-marketplace.admin.session'

@@ -26,6 +26,13 @@ export type VerifyOtpResponse = {
   }
 }
 
+export type SessionBootstrapResponse = {
+  effectivePermissions: Array<{
+    action: string
+    subject: string
+  }>
+}
+
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ??
   import.meta.env.VITE_API_URL ??
@@ -82,6 +89,93 @@ export const adminApi = {
       method: 'POST',
       body: JSON.stringify({ phoneNumber, code }),
     })
+  },
+
+  getSessionBootstrap(session: AuthSession) {
+    return request<SessionBootstrapResponse>(`/admin/access-control/users/${session.user.id}`, {}, session.accessToken)
+  },
+  getAccessControlUsers(
+    session: AuthSession,
+    query?: {
+      page?: number
+      limit?: number
+      search?: string
+      status?: string
+      role?: string
+      hasRoles?: boolean
+    },
+  ) {
+    const params = new URLSearchParams()
+
+    if (query?.page) params.set('page', String(query.page))
+    if (query?.limit) params.set('limit', String(query.limit))
+    if (query?.search) params.set('search', query.search)
+    if (query?.status) params.set('status', query.status)
+    if (query?.role) params.set('role', query.role)
+    if (typeof query?.hasRoles === 'boolean') params.set('hasRoles', String(query.hasRoles))
+
+    const search = params.toString()
+    return request<unknown>(`/admin/access-control/users${search ? `?${search}` : ''}`, {}, session.accessToken)
+  },
+  getAccessControlUserDetail(session: AuthSession, userId: string) {
+    return request<unknown>(`/admin/access-control/users/${userId}`, {}, session.accessToken)
+  },
+  updateAccessControlUserStatus(session: AuthSession, userId: string, body: { isActive: boolean }) {
+    return request<unknown>(`/admin/access-control/users/${userId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  updateAccessControlUserRoles(session: AuthSession, userId: string, body: { roleIds: number[] }) {
+    return request<unknown>(`/admin/access-control/users/${userId}/roles`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  getAccessControlRoles(session: AuthSession) {
+    return request<unknown[]>('/admin/access-control/roles', {}, session.accessToken)
+  },
+  getAccessControlRoleDetail(session: AuthSession, roleId: string) {
+    return request<unknown>(`/admin/access-control/roles/${roleId}`, {}, session.accessToken)
+  },
+  createAccessControlRole(session: AuthSession, body: Record<string, unknown>) {
+    return request<unknown>('/admin/access-control/roles', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  updateAccessControlRole(session: AuthSession, roleId: string, body: Record<string, unknown>) {
+    return request<unknown>(`/admin/access-control/roles/${roleId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  updateAccessControlRolePermissions(session: AuthSession, roleId: string, body: { permissionIds: number[] }) {
+    return request<unknown>(`/admin/access-control/roles/${roleId}/permissions`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  getAccessControlPermissions(
+    session: AuthSession,
+    query?: {
+      page?: number
+      limit?: number
+      action?: string
+      subject?: string
+      search?: string
+    },
+  ) {
+    const params = new URLSearchParams()
+
+    if (query?.page) params.set('page', String(query.page))
+    if (query?.limit) params.set('limit', String(query.limit))
+    if (query?.action) params.set('action', query.action)
+    if (query?.subject) params.set('subject', query.subject)
+    if (query?.search) params.set('search', query.search)
+
+    const search = params.toString()
+    return request<unknown>(`/admin/access-control/permissions${search ? `?${search}` : ''}`, {}, session.accessToken)
   },
   getAdminOrders(session: AuthSession) {
     return request<unknown[]>('/orders/admin', {}, session.accessToken)

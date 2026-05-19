@@ -1,14 +1,19 @@
-import {
-  AppShell,
-  Pill,
-  type NavSection,
-} from '@flower-marketplace/frontend-core'
+import { AppShell, Pill, type NavSection } from '@flower-marketplace/frontend-core'
 import { useEffect, useMemo, useState } from 'react'
 import './App.css'
-import { adminApi } from './lib/api'
-import { adminRouteLabels, type AdminRoute } from './lib/routes'
-import { clearSession, loadSession, saveSession, type AuthSession } from './lib/session'
 import { useNoticeEffect } from './components/NoticeCenter'
+import { adminApi, ApiError } from './lib/api'
+import {
+  canAccessRoute,
+  describeScope,
+  getFirstAccessibleRoute,
+  hasPermission,
+  type SessionBootstrap,
+} from './lib/permissions'
+import { adminRouteLabels, adminRouteOrder, type AdminRoute } from './lib/routes'
+import { clearSession, loadSession, saveSession, type AuthSession } from './lib/session'
+import { AccessControlPage } from './pages/AccessControlPage'
+import { AccessControlWorkspacePage } from './pages/AccessControlWorkspacePage'
 import { AlertsPage } from './pages/AlertsPage'
 import { ContentPage } from './pages/ContentPage'
 import { ContentWorkspacePage } from './pages/ContentWorkspacePage'
@@ -24,96 +29,118 @@ import { VendorWorkspacePage } from './pages/VendorWorkspacePage'
 
 const defaultRoute: AdminRoute = 'dashboard'
 
-function buildNav(currentRoute: AdminRoute): NavSection[] {
-  return [
+function buildNav(currentRoute: AdminRoute, session: AuthSession): NavSection[] {
+  const sections: Array<NavSection & { requirements: AdminRoute[] }> = [
     {
       title: 'عملیات اصلی',
+      requirements: ['dashboard', 'orders', 'settlements', 'support', 'vendors'],
       items: [
-        { key: 'dashboard', label: 'داشبورد', hint: 'وضعیت کلی عملیات', active: currentRoute === 'dashboard' },
-        { key: 'orders', label: 'سفارش‌ها', hint: 'صف سفارش‌ها و استثناهای عملیاتی', active: currentRoute === 'orders' || currentRoute === 'ordersWorkspace' },
-        { key: 'settlements', label: 'تسویه و مالی', hint: 'کیف پول‌ها، گزارش‌ها و استثناهای تسویه', active: currentRoute === 'settlements' },
-        { key: 'support', label: 'پشتیبانی', hint: 'تیکت‌ها و پیگیری‌های بعدی', active: currentRoute === 'support' },
-        { key: 'vendors', label: 'فروشنده‌ها و ریسک', hint: 'ریسک، policy timeline و finance reports', active: currentRoute === 'vendors' },
+        { key: 'dashboard', label: 'داشبورد', hint: 'نمای نقش محور از وضعیت کلی', active: currentRoute === 'dashboard' },
+        { key: 'orders', label: 'سفارش ها', hint: 'کارتابل عملیات سفارش و صف استثناها', active: currentRoute === 'orders' || currentRoute === 'ordersWorkspace' },
+        { key: 'settlements', label: 'تسویه و مالی', hint: 'کیف پول، تسویه و summaryهای مالی', active: currentRoute === 'settlements' },
+        { key: 'support', label: 'پشتیبانی', hint: 'تیکت ها، noteها و رسیدگی بعدی', active: currentRoute === 'support' || currentRoute === 'supportWorkspace' },
+        { key: 'vendors', label: 'فروشنده ها و ریسک', hint: 'visibility ریسک، policy و سلامت فروشنده', active: currentRoute === 'vendors' || currentRoute === 'vendorWorkspace' },
       ],
     },
     {
       title: 'رشد و کنترل',
+      requirements: ['content', 'alerts', 'accessControl'],
       items: [
-        { key: 'content', label: 'محتوا و سئو', hint: 'مقاله‌ها، taxonomy و auditها', active: currentRoute === 'content' || currentRoute === 'contentWorkspace' },
-        { key: 'alerts', label: 'هشدارها و اعلان‌ها', hint: 'هشدارهای عملیاتی و outbox', active: currentRoute === 'alerts' },
+        { key: 'content', label: 'محتوا و سئو', hint: 'تحریریه، taxonomy و auditهای محتوا', active: currentRoute === 'content' || currentRoute === 'contentWorkspace' },
+        { key: 'alerts', label: 'هشدارها و اعلان ها', hint: 'outbox و رخدادهای مهم عملیاتی', active: currentRoute === 'alerts' },
+        { key: 'accessControl', label: 'کاربران و دسترسی', hint: 'مدیریت user، role و permission', active: currentRoute === 'accessControl' || currentRoute === 'accessControlWorkspace', badge: hasPermission(session, 'assignPermissions', 'AdminRole') ? 'قابل ویرایش' : 'فقط مشاهده' },
       ],
     },
   ]
+
+  return sections
+    .map((section) => ({
+      title: section.title,
+      items: section.items.filter((item) => canAccessRoute(session, item.key as AdminRoute)),
+    }))
+    .filter((section) => section.items.length > 0)
 }
 
 function getPageMeta(route: AdminRoute) {
   switch (route) {
     case 'orders':
       return {
-        eyebrow: 'کارتابل سفارش‌ها',
-        title: 'سفارش‌ها و صف استثناهای عملیاتی',
-        description: 'این صفحه بر پایه داده‌های واقعی، فهرست سفارش‌ها و صف موارد مسئله‌دار را نشان می‌دهد و راه ورود به میزکار جزئیات است.',
+        eyebrow: 'کارتابل سفارش ها',
+        title: 'سفارش ها و صف استثناهای عملیاتی',
+        description: 'این صفحه بر اساس scope نشست فعلی فقط بخش های مجاز عملیات سفارش را برای کاربر باز می کند.',
       }
     case 'settlements':
       return {
         eyebrow: 'کارتابل مالی',
         title: 'تسویه، کیف پول و دید مالی',
-        description: 'دید کیف پول، استثناهای تسویه و summaryهای گزارش از همین‌جا به صفحه‌های عملیاتی کامل‌تر تبدیل می‌شوند.',
+        description: 'اپراتور مالی یا ادمین از این route تصویر روشن تری از wallet، settlement و exceptionها می گیرد.',
       }
     case 'ordersWorkspace':
       return {
         eyebrow: 'میزکار سفارش',
-        title: 'رسیدگی متمرکز به سفارش، پرداخت و استثناهای عملیاتی',
-        description: 'جریان عملیاتی سفارش از کارتابل جدا شده تا پذیرش، ارسال، تحویل، پرداخت و آزادسازی تسویه در یک فضای متمرکز انجام شوند.',
+        title: 'رسیدگی متمرکز به سفارش و استثناهای آن',
+        description: 'workspace سفارش از list جدا مانده تا تصمیم و actionهای اصلی در فضای focused انجام شوند.',
       }
     case 'support':
       return {
         eyebrow: 'کارتابل پشتیبانی',
-        title: 'تیکت‌ها و پیگیری‌های پشتیبانی',
-        description: 'این route برای فهرست، note، تصمیم مالی و timeline پشتیبانی طراحی شده و به endpointهای فعال backend تکیه دارد.',
+        title: 'تیکت ها و پیگیری های پشتیبانی',
+        description: 'این route برای نقش های عملیاتی مرتبط، نمای سریع تیکت و follow-up فراهم می کند.',
       }
     case 'supportWorkspace':
       return {
-        eyebrow: 'workspace پشتیبانی',
-        title: 'رسیدگی متمرکز به تیکت و تصمیم‌های عملیاتی',
-        description: 'تغییر وضعیت، noteهای داخلی و تصمیم مالی باید در یک route متمرکز و قابل‌ردیابی انجام شوند.',
+        eyebrow: 'میزکار پشتیبانی',
+        title: 'رسیدگی متمرکز به تیکت و تصمیم های بعدی',
+        description: 'تغییر وضعیت، note داخلی و تصمیم مالی باید در یک سطح focused و قابل ردیابی انجام شود.',
       }
     case 'vendors':
       return {
-        eyebrow: 'کارتابل فروشنده‌ها',
-        title: 'فروشنده‌ها، ریسک و گزارش‌های مالی',
-        description: 'این route فروشنده‌های اولویت‌دار، policy timeline و خلاصه گزارش‌های مالی را برای تصمیم‌گیری سریع ادمین کنار هم قرار می‌دهد.',
+        eyebrow: 'کارتابل فروشنده ها',
+        title: 'فروشنده ها، ریسک و گزارش های مالی',
+        description: 'این route برای admin با دید عمیق تر روی policy، health و وضعیت فروشنده طراحی شده است.',
       }
     case 'vendorWorkspace':
       return {
-        eyebrow: 'workspace فروشنده',
-        title: 'بررسی متمرکز فروشنده و تصمیم‌های بعدی',
-        description: 'اقدام‌های سنگین مثل کنترل کیف پول، بررسی policy و release/hold باید در یک route متمرکز انجام شوند، نه داخل list page.',
+        eyebrow: 'میزکار فروشنده',
+        title: 'بررسی متمرکز فروشنده و تصمیم های بعدی',
+        description: 'اقدام های سنگین روی vendor باید در یک workspace مجزا و متمرکز انجام شوند.',
       }
     case 'content':
       return {
         eyebrow: 'کارتابل محتوا',
-        title: 'محتوا، تاکسونومی و عملیات سئو',
-        description: 'سطح اولیه routeهای content بر پایه endpointهای مقاله، category، tag و audit ساخته شده تا بعدا ابزارهای تحریریه روی آن سوار شوند.',
+        title: 'محتوا، taxonomy و عملیات سئو',
+        description: 'این route بر اساس permission نشست فعلی، سطح دسترسی واقعی تیم محتوا و SEO را نشان می دهد.',
       }
     case 'contentWorkspace':
       return {
         eyebrow: 'ویرایشگر محتوایی',
-        title: 'workspace متمرکز نگارش، سئو و تاکسونومی',
-        description: 'ساخت و ویرایش مقاله باید در یک surface بزرگ، متمرکز و production-minded انجام شود؛ نه در کنار table فشرده.',
+        title: 'workspace متمرکز نگارش، سئو و taxonomy',
+        description: 'create و edit محتوا از کارتابل جدا شده تا سطح focused برای فرم های طولانی و actionهای محتوایی حفظ شود.',
       }
     case 'alerts':
       return {
         eyebrow: 'کارتابل هشدارها',
-        title: 'هشدارها، outbox و دید عملیاتی',
-        description: 'alert lifecycle و notification ops باید در پنل ادمین سریع، واضح و drill-down-friendly باشند؛ این route شروع همان مسیر است.',
+        title: 'هشدارها، outbox و رخدادهای عملیاتی',
+        description: 'این route برای visibility بهتر روی alert lifecycle و notification ops طراحی شده است.',
+      }
+    case 'accessControl':
+      return {
+        eyebrow: 'کنترل دسترسی',
+        title: 'کاربران، نقش ها و ماتریس permission',
+        description: 'نمای کارتابلی access control برای اسکن سریع وضعیت دسترسی ها و ورود به workspace تخصصی مدیریت کاربران.',
+      }
+    case 'accessControlWorkspace':
+      return {
+        eyebrow: 'میزکار دسترسی',
+        title: 'workspace متمرکز مدیریت user، role و permission',
+        description: 'این workspace برای بررسی دقیق کاربر، نقش و permission catalog ساخته شده تا actionهای واقعی بعدی روی همین surface سوار شوند.',
       }
     case 'dashboard':
     default:
       return {
-        eyebrow: 'زیربنای ادمین',
-        title: 'داشبورد ادمین روی session و endpointهای واقعی سوار شد',
-        description: 'از اینجا به بعد ساخت فرانت دیگر صرفا visual نیست؛ session، page boundary و data fetching contractهای backend موجود تعریف شده‌اند.',
+        eyebrow: 'shell نقش محور',
+        title: 'داشبورد ادمین حالا بر اساس scope واقعی نشست کار می کند',
+        description: 'navigation، routeها و CTAها دیگر برای همه یکسان نیستند و بر اساس permissionهای واقعی نشست bootstrap می شوند.',
       }
   }
 }
@@ -136,60 +163,35 @@ function renderRoute(
     onOpenContentWorkspaceForCreate: () => void
     onOpenContentWorkspaceForEdit: (articleId: string) => void
     onBackToContent: () => void
+    onOpenAccessControlWorkspace: () => void
+    onBackToAccessControl: () => void
   },
 ) {
   switch (route) {
     case 'orders':
       return <OrdersPage onOpenOrdersWorkspace={options.onOpenOrdersWorkspace} session={session} />
     case 'ordersWorkspace':
-      return (
-        <OrdersWorkspacePage
-          onBack={options.onBackToOrders}
-          order={options.ordersWorkspaceOrder}
-          session={session}
-        />
-      )
+      return <OrdersWorkspacePage onBack={options.onBackToOrders} order={options.ordersWorkspaceOrder} session={session} />
     case 'settlements':
       return <SettlementsPage session={session} />
     case 'support':
       return <SupportPage onOpenSupportWorkspace={options.onOpenSupportWorkspace} session={session} />
     case 'supportWorkspace':
-      return (
-        <SupportWorkspacePage
-          onBack={options.onBackToSupport}
-          session={session}
-          ticket={options.supportWorkspaceTicket}
-        />
-      )
+      return <SupportWorkspacePage onBack={options.onBackToSupport} session={session} ticket={options.supportWorkspaceTicket} />
     case 'vendors':
       return <VendorsPage onOpenVendorWorkspace={options.onOpenVendorWorkspace} session={session} />
     case 'vendorWorkspace':
-      return (
-        <VendorWorkspacePage
-          onBack={options.onBackToVendors}
-          session={session}
-          store={options.vendorWorkspaceStore}
-        />
-      )
+      return <VendorWorkspacePage onBack={options.onBackToVendors} session={session} store={options.vendorWorkspaceStore} />
     case 'content':
-      return (
-        <ContentPage
-          onCreateArticle={options.onOpenContentWorkspaceForCreate}
-          onEditArticle={options.onOpenContentWorkspaceForEdit}
-          session={session}
-        />
-      )
+      return <ContentPage onCreateArticle={options.onOpenContentWorkspaceForCreate} onEditArticle={options.onOpenContentWorkspaceForEdit} session={session} />
     case 'contentWorkspace':
-      return (
-        <ContentWorkspacePage
-          articleId={options.contentWorkspaceArticleId}
-          mode={options.contentWorkspaceMode}
-          onBack={options.onBackToContent}
-          session={session}
-        />
-      )
+      return <ContentWorkspacePage articleId={options.contentWorkspaceArticleId} mode={options.contentWorkspaceMode} onBack={options.onBackToContent} session={session} />
     case 'alerts':
       return <AlertsPage session={session} />
+    case 'accessControl':
+      return <AccessControlPage onOpenWorkspace={options.onOpenAccessControlWorkspace} session={session} />
+    case 'accessControlWorkspace':
+      return <AccessControlWorkspacePage onBack={options.onBackToAccessControl} session={session} />
     case 'dashboard':
     default:
       return <DashboardPage session={session} />
@@ -207,14 +209,82 @@ export default function App() {
   const [phoneNumber, setPhoneNumber] = useState('')
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
+  const [bootstrapping, setBootstrapping] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [otpExpiresAt, setOtpExpiresAt] = useState<string | null>(null)
   const [otpCountdown, setOtpCountdown] = useState<string | null>(null)
 
   useEffect(() => {
-    setSession(loadSession())
+    const storedSession = loadSession()
+    setSession(storedSession)
   }, [])
+
+  useEffect(() => {
+    if (!session) return
+
+    let active = true
+
+    async function bootstrap(currentSession: AuthSession) {
+      setBootstrapping(true)
+      try {
+        const response = await adminApi.getSessionBootstrap(currentSession)
+        if (!active) return
+
+        const nextBootstrap: SessionBootstrap = {
+          effectivePermissions: response.effectivePermissions ?? [],
+        }
+        const nextSession = { ...currentSession, bootstrap: nextBootstrap }
+        saveSession(nextSession)
+        setSession(nextSession)
+
+        const safeRoute = canAccessRoute(nextSession, route)
+          ? route
+          : getFirstAccessibleRoute(nextSession, adminRouteOrder) ?? defaultRoute
+        setRoute(safeRoute)
+      } catch (requestError) {
+        if (!active) return
+        if (requestError instanceof ApiError && requestError.status === 403) {
+          const fallbackBootstrap: SessionBootstrap = { effectivePermissions: [] }
+          const fallbackSession = { ...currentSession, bootstrap: fallbackBootstrap }
+          saveSession(fallbackSession)
+          setSession(fallbackSession)
+          const firstRoute = getFirstAccessibleRoute(fallbackSession, adminRouteOrder)
+          if (firstRoute) {
+            setRoute(firstRoute)
+          } else {
+            clearSession()
+            setSession(null)
+            setError('این حساب هیچ دسترسی معتبری برای پنل ادمین ندارد.')
+          }
+          return
+        }
+
+        setError(requestError instanceof Error ? requestError.message : 'خطا در bootstrap نشست')
+      } finally {
+        if (active) setBootstrapping(false)
+      }
+    }
+
+    if (!session.bootstrap) {
+      void bootstrap(session)
+      return () => {
+        active = false
+      }
+    }
+
+    const safeRoute = canAccessRoute(session, route)
+      ? route
+      : getFirstAccessibleRoute(session, adminRouteOrder) ?? defaultRoute
+
+    if (safeRoute !== route) {
+      setRoute(safeRoute)
+    }
+
+    return () => {
+      active = false
+    }
+  }, [route, session])
 
   useEffect(() => {
     if (!otpExpiresAt) {
@@ -226,7 +296,6 @@ export default function App() {
 
     const updateCountdown = () => {
       const diffMs = new Date(otpExpiresAt).getTime() - Date.now()
-
       if (Number.isNaN(diffMs) || diffMs <= 0) {
         setOtpCountdown(null)
         setOtpExpiresAt(null)
@@ -236,7 +305,6 @@ export default function App() {
       const totalSeconds = Math.ceil(diffMs / 1000)
       const minutes = Math.floor(totalSeconds / 60)
       const seconds = totalSeconds % 60
-
       if (minutes > 0) {
         setOtpCountdown(`${formatter.format(minutes)} دقیقه و ${formatter.format(seconds)} ثانیه`)
         return
@@ -247,16 +315,15 @@ export default function App() {
 
     updateCountdown()
     const intervalId = window.setInterval(updateCountdown, 1000)
-
     return () => {
       window.clearInterval(intervalId)
     }
   }, [otpExpiresAt])
 
-  const pageMeta = useMemo(() => getPageMeta(route), [route])
-
   useNoticeEffect(message, 'success')
   useNoticeEffect(error, 'error')
+
+  const pageMeta = useMemo(() => getPageMeta(route), [route])
 
   async function handleSendOtp() {
     if (!phoneNumber.trim()) {
@@ -298,11 +365,10 @@ export default function App() {
 
       saveSession(nextSession)
       setSession(nextSession)
-      setRoute(defaultRoute)
       setCode('')
       setOtpExpiresAt(null)
       setOtpCountdown(null)
-      setMessage('ورود موفق بود و session ذخیره شد.')
+      setMessage('ورود موفق بود و نشست جدید آغاز شد.')
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'تایید OTP ناموفق بود')
     } finally {
@@ -320,47 +386,63 @@ export default function App() {
     setOtpCountdown(null)
   }
 
+  function handleNavigate(nextRoute: AdminRoute) {
+    if (!session || !canAccessRoute(session, nextRoute)) {
+      setError('این بخش برای نقش فعلی شما در دسترس نیست.')
+      return
+    }
+    setRoute(nextRoute)
+  }
+
   function handleOpenOrdersWorkspace(order: Record<string, unknown>) {
     setOrdersWorkspaceOrder(order)
-    setRoute('ordersWorkspace')
+    handleNavigate('ordersWorkspace')
   }
 
   function handleBackToOrders() {
-    setRoute('orders')
+    handleNavigate('orders')
   }
 
   function handleOpenVendorWorkspace(store: Record<string, unknown>) {
     setVendorWorkspaceStore(store)
-    setRoute('vendorWorkspace')
+    handleNavigate('vendorWorkspace')
   }
 
   function handleOpenSupportWorkspace(ticket: Record<string, unknown>) {
     setSupportWorkspaceTicket(ticket)
-    setRoute('supportWorkspace')
+    handleNavigate('supportWorkspace')
   }
 
   function handleBackToSupport() {
-    setRoute('support')
+    handleNavigate('support')
   }
 
   function handleBackToVendors() {
-    setRoute('vendors')
+    handleNavigate('vendors')
   }
 
   function handleOpenContentWorkspaceForCreate() {
     setContentWorkspaceMode('create')
     setContentWorkspaceArticleId(null)
-    setRoute('contentWorkspace')
+    handleNavigate('contentWorkspace')
   }
 
   function handleOpenContentWorkspaceForEdit(articleId: string) {
     setContentWorkspaceMode('edit')
     setContentWorkspaceArticleId(articleId)
-    setRoute('contentWorkspace')
+    handleNavigate('contentWorkspace')
   }
 
   function handleBackToContent() {
-    setRoute('content')
+    handleNavigate('content')
+  }
+
+  function handleOpenAccessControlWorkspace() {
+    handleNavigate('accessControlWorkspace')
+  }
+
+  function handleBackToAccessControl() {
+    handleNavigate('accessControl')
   }
 
   if (!session) {
@@ -378,6 +460,24 @@ export default function App() {
     )
   }
 
+  if (bootstrapping && !session.bootstrap) {
+    return (
+      <div className="auth-screen" dir="rtl">
+        <div className="auth-shell">
+          <div className="auth-card auth-card--compact">
+            <div className="auth-card__header auth-card__header--compact">
+              <h1>در حال آماده سازی دسترسی ها</h1>
+              <p>نشست شما تایید شده و سطح دسترسی واقعی پنل در حال بارگذاری است.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const navSections = buildNav(route, session)
+  const currentScope = describeScope(session)
+
   return (
     <AppShell
       tone="admin"
@@ -389,18 +489,19 @@ export default function App() {
       pageEyebrow={pageMeta.eyebrow}
       pageTitle={pageMeta.title}
       pageDescription={pageMeta.description}
-      navSections={buildNav(route)}
-      onNavigate={(next) => setRoute(next as AdminRoute)}
+      navSections={navSections}
+      onNavigate={(next) => handleNavigate(next as AdminRoute)}
       actions={[
         { label: adminRouteLabels[route], tone: 'ghost' },
-        { label: 'نشست فعال', tone: 'secondary' },
-        { label: 'متصل به بک‌اند', tone: 'primary' },
+        { label: currentScope, tone: 'secondary' },
+        { label: 'permission-aware', tone: 'primary' },
       ]}
     >
       <div className="admin-toolbar-note">
         <Pill tone="success">OTP + JWT</Pill>
-        <Pill tone="warning">قرارداد routeها فعال</Pill>
+        <Pill tone="warning">Bootstrap دسترسی</Pill>
         <Pill>{session.user.phoneNumber}</Pill>
+        <Pill>{currentScope}</Pill>
         <button className="admin-logout" onClick={handleLogout} type="button">
           خروج از پنل
         </button>
@@ -420,6 +521,8 @@ export default function App() {
         onOpenContentWorkspaceForCreate: handleOpenContentWorkspaceForCreate,
         onOpenContentWorkspaceForEdit: handleOpenContentWorkspaceForEdit,
         onBackToContent: handleBackToContent,
+        onOpenAccessControlWorkspace: handleOpenAccessControlWorkspace,
+        onBackToAccessControl: handleBackToAccessControl,
       })}
     </AppShell>
   )

@@ -10,20 +10,24 @@ export const adminRouteOrder = [
   'content',
   'contentWorkspace',
   'alerts',
+  'accessControl',
+  'accessControlWorkspace',
 ] as const
 
 export type AdminRoute = (typeof adminRouteOrder)[number]
 
 export const adminRouteLabels: Record<AdminRoute, string> = {
   dashboard: 'داشبورد',
-  orders: 'سفارش‌ها',
+  orders: 'سفارش ها',
   ordersWorkspace: 'میزکار سفارش',
   settlements: 'تسویه و مالی',
   support: 'پشتیبانی',
-  supportWorkspace: 'workspace پشتیبانی',
-  vendors: 'فروشنده‌ها و ریسک',
-  vendorWorkspace: 'workspace فروشنده',
+  supportWorkspace: 'میزکار پشتیبانی',
+  vendors: 'فروشنده ها و ریسک',
+  vendorWorkspace: 'میزکار فروشنده',
   content: 'محتوا و سئو',
-  contentWorkspace: 'editor محتوایی',
-  alerts: 'هشدارها و اعلان‌ها',
+  contentWorkspace: 'ویرایشگر محتوایی',
+  alerts: 'هشدارها و اعلان ها',
+  accessControl: 'کاربران و دسترسی',
+  accessControlWorkspace: 'میزکار دسترسی',
 }
