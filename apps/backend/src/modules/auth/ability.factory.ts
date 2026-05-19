@@ -195,6 +195,22 @@ export class AbilityFactory {
         { action: ['create', 'update', 'delete', 'assignTags'], subject: 'Article' },
         { action: ['create', 'update', 'delete'], subject: ['ArticleCategory', 'Author', 'ArticleTag'] },
       ],
+      FINANCE_OPERATOR: [
+        { action: 'read', subject: ['Payment', 'StoreWallet', 'WalletTransaction', 'CommissionRule', 'AdminPermission'] },
+        { action: 'update', subject: 'StoreWallet' },
+        { action: 'create', subject: 'WalletTransaction' },
+      ],
+      SUPPORT_AGENT: [
+        { action: ['read', 'update'], subject: 'SupportTicket' },
+        { action: ['create', 'read'], subject: 'SupportTicketNote' },
+      ],
+      ACCESS_MANAGER: [
+        { action: 'read', subject: ['AdminUser', 'AdminRole', 'AdminPermission'] },
+        { action: 'updateStatus', subject: 'AdminUser' },
+        { action: 'assignRoles', subject: 'AdminUser' },
+        { action: ['create', 'update'], subject: 'AdminRole' },
+        { action: 'assignPermissions', subject: 'AdminRole' },
+      ],
     };
 
     for (const rule of fallbackRules[role] ?? []) {

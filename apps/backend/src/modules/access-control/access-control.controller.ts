@@ -37,7 +37,7 @@ export class AccessControlController {
   constructor(private readonly accessControlService: AccessControlService) {}
 
   @Get('users')
-  @CheckAbilities((ability) => ability.can('manage', 'all'))
+  @CheckAbilities((ability) => ability.can('manage', 'all') || ability.can('read', 'AdminUser'))
   @ApiOperation({ summary: 'لیست کاربران پنل با نقش و permission موثر' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -50,14 +50,14 @@ export class AccessControlController {
   }
 
   @Get('users/:id')
-  @CheckAbilities((ability) => ability.can('manage', 'all'))
+  @CheckAbilities((ability) => ability.can('manage', 'all') || ability.can('read', 'AdminUser'))
   @ApiOperation({ summary: 'جزئیات یک کاربر به همراه roleها و permissionهای موثر' })
   findUser(@Param('id', ParseIntPipe) id: number) {
     return this.accessControlService.findUser(id);
   }
 
   @Patch('users/:id/status')
-  @CheckAbilities((ability) => ability.can('manage', 'all'))
+  @CheckAbilities((ability) => ability.can('manage', 'all') || ability.can('updateStatus', 'AdminUser'))
   @ApiOperation({ summary: 'فعال/غیرفعال کردن حساب کاربری' })
   @ApiBody({ type: UpdateUserStatusDto })
   updateUserStatus(
@@ -69,7 +69,7 @@ export class AccessControlController {
   }
 
   @Patch('users/:id/roles')
-  @CheckAbilities((ability) => ability.can('manage', 'all'))
+  @CheckAbilities((ability) => ability.can('manage', 'all') || ability.can('assignRoles', 'AdminUser'))
   @ApiOperation({ summary: 'جایگزینی کامل roleهای یک کاربر' })
   @ApiBody({ type: UpdateUserRolesDto })
   replaceUserRoles(
@@ -81,21 +81,21 @@ export class AccessControlController {
   }
 
   @Get('roles')
-  @CheckAbilities((ability) => ability.can('manage', 'all'))
+  @CheckAbilities((ability) => ability.can('manage', 'all') || ability.can('read', 'AdminRole'))
   @ApiOperation({ summary: 'لیست roleها با permissionها و تعداد کاربران' })
   listRoles() {
     return this.accessControlService.listRoles();
   }
 
   @Get('roles/:id')
-  @CheckAbilities((ability) => ability.can('manage', 'all'))
+  @CheckAbilities((ability) => ability.can('manage', 'all') || ability.can('read', 'AdminRole'))
   @ApiOperation({ summary: 'جزئیات یک role به همراه permissionها و نمونه کاربران' })
   findRole(@Param('id', ParseIntPipe) id: number) {
     return this.accessControlService.findRole(id);
   }
 
   @Post('roles')
-  @CheckAbilities((ability) => ability.can('manage', 'all'))
+  @CheckAbilities((ability) => ability.can('manage', 'all') || ability.can('create', 'AdminRole'))
   @ApiOperation({ summary: 'ایجاد role جدید برای پنل مدیریتی' })
   @ApiBody({ type: CreateRoleDto })
   createRole(@Body() dto: CreateRoleDto) {
@@ -103,7 +103,7 @@ export class AccessControlController {
   }
 
   @Patch('roles/:id')
-  @CheckAbilities((ability) => ability.can('manage', 'all'))
+  @CheckAbilities((ability) => ability.can('manage', 'all') || ability.can('update', 'AdminRole'))
   @ApiOperation({ summary: 'ویرایش اطلاعات پایه role' })
   @ApiBody({ type: UpdateRoleDto })
   updateRole(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateRoleDto) {
@@ -111,7 +111,7 @@ export class AccessControlController {
   }
 
   @Patch('roles/:id/permissions')
-  @CheckAbilities((ability) => ability.can('manage', 'all'))
+  @CheckAbilities((ability) => ability.can('manage', 'all') || ability.can('assignPermissions', 'AdminRole'))
   @ApiOperation({ summary: 'جایگزینی کامل permissionهای یک role' })
   @ApiBody({ type: UpdateRolePermissionsDto })
   replaceRolePermissions(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateRolePermissionsDto) {
@@ -119,7 +119,7 @@ export class AccessControlController {
   }
 
   @Get('permissions')
-  @CheckAbilities((ability) => ability.can('manage', 'all'))
+  @CheckAbilities((ability) => ability.can('manage', 'all') || ability.can('read', 'AdminPermission'))
   @ApiOperation({ summary: 'لیست permissionها برای ساخت ماتریس دسترسی' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })

@@ -95,6 +95,14 @@ const permissionCatalog: PermissionSeed[] = [
   { action: 'delete', subject: 'UserAddress', conditions: { userId: '{{user.id}}' } },
   { action: 'create', subject: 'Review', conditions: { userId: '{{user.id}}' } },
   { action: 'read', subject: 'Review', conditions: { userId: '{{user.id}}' } },
+  { action: 'read', subject: 'AdminUser', conditions: null },
+  { action: 'updateStatus', subject: 'AdminUser', conditions: null },
+  { action: 'assignRoles', subject: 'AdminUser', conditions: null },
+  { action: 'read', subject: 'AdminRole', conditions: null },
+  { action: 'create', subject: 'AdminRole', conditions: null },
+  { action: 'update', subject: 'AdminRole', conditions: null },
+  { action: 'assignPermissions', subject: 'AdminRole', conditions: null },
+  { action: 'read', subject: 'AdminPermission', conditions: null },
   { action: 'read', subject: 'Article', conditions: null },
   { action: 'create', subject: 'Article', conditions: null },
   { action: 'update', subject: 'Article', conditions: null },
@@ -121,6 +129,9 @@ const roleCatalog = [
   { name: 'CONTENT_WRITER', label: 'نویسنده محتوا', description: 'ساخت و ویرایش draftهای محتوایی مرتبط با پروفایل خودش' },
   { name: 'CONTENT_EDITOR', label: 'ویراستار محتوا', description: 'ویرایش محتوای تیم، مدیریت نویسنده و دسته‌بندی، و انتشار محتوا' },
   { name: 'SEO_MANAGER', label: 'مدیر سئو', description: 'کنترل نهایی انتشار محتوا و تنظیمات SEO تیم محتوا' },
+  { name: 'FINANCE_OPERATOR', label: 'اپراتور مالی', description: 'دسترسی به عملیات مالی، تسویه و گزارش های مالی' },
+  { name: 'SUPPORT_AGENT', label: 'اپراتور پشتیبانی', description: 'دسترسی به تیکت ها، پیگیری ها و عملیات پشتیبانی' },
+  { name: 'ACCESS_MANAGER', label: 'مدیر دسترسی', description: 'مدیریت کاربران، نقش ها و permissionهای پنل' },
 ] as const;
 
 const defaultRolePermissions: Record<string, string[]> = {
@@ -170,6 +181,18 @@ const defaultRolePermissions: Record<string, string[]> = {
     'read:ArticleCategory', 'create:ArticleCategory', 'update:ArticleCategory', 'delete:ArticleCategory',
     'read:Author', 'create:Author', 'update:Author', 'delete:Author',
     'read:ArticleTag', 'create:ArticleTag', 'update:ArticleTag', 'delete:ArticleTag',
+  ],
+  FINANCE_OPERATOR: [
+    'read:Payment', 'read:StoreWallet', 'update:StoreWallet', 'create:WalletTransaction', 'read:WalletTransaction',
+    'read:CommissionRule', 'read:AdminPermission',
+  ],
+  SUPPORT_AGENT: [
+    'read:SupportTicket', 'update:SupportTicket', 'create:SupportTicketNote', 'read:SupportTicketNote',
+  ],
+  ACCESS_MANAGER: [
+    'read:AdminUser', 'updateStatus:AdminUser', 'assignRoles:AdminUser',
+    'read:AdminRole', 'create:AdminRole', 'update:AdminRole', 'assignPermissions:AdminRole',
+    'read:AdminPermission',
   ],
 };
 
