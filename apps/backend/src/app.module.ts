@@ -5,6 +5,7 @@ import { CommonServicesModule } from './common/common-services.module';
 import { AbilitiesGuard } from './common/guards/abilities.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AddressModule } from './modules/address/address.module';
+import { AccessControlModule } from './modules/access-control/access-control.module';
 import { DomainEventsService } from './common/services/domain-events.service';
 import { AdminOperationsModule } from './modules/admin-operations/admin-operations.module';
 import { AdminReportsModule } from './modules/admin-reports/admin-reports.module';
@@ -31,6 +32,7 @@ import { PrismaService } from './prisma/prisma.service';
 @Module({
   imports: [
     AuthModule,
+    AccessControlModule,
     CommonServicesModule,
     AdminOperationsModule,
     AdminReportsModule,
