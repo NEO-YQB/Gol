@@ -1290,6 +1290,40 @@
   word-break: break-all;
 }
 
+.vendor-upload-meta {
+  display: grid;
+  gap: 12px;
+}
+
+.vendor-upload-preview {
+  width: 100%;
+  max-width: 180px;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 18px;
+  border: 1px solid var(--fm-border-soft);
+  box-shadow: var(--fm-shadow-card);
+}
+
+.vendor-upload-gallery-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.vendor-upload-progress {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(closest-side, rgba(255, 253, 248, 0.96) 78%, transparent 80% 100%),
+    conic-gradient(var(--fm-brand-primary) var(--progress), rgba(223, 211, 194, 0.5) 0);
+  color: var(--fm-brand-primary);
+  font-weight: 700;
+}
+
 .vendor-upload-card--wide {
   grid-column: 1 / -1;
 }

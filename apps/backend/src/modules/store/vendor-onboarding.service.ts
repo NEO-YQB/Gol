@@ -26,6 +26,10 @@ type SubmitVendorProductDto = {
   productDescription?: string
   productMainImage?: string
   productGalleryImages?: string[]
+  productCategoryId?: number
+  productTypeId?: number
+  productPrice?: number
+  productQuantity?: number
 }
 
 type ReviewVendorOnboardingDto = {
@@ -122,6 +126,10 @@ export class VendorOnboardingService {
         productName: dto.productName,
         productDescription: dto.productDescription ?? null,
         productMainImage: dto.productMainImage ?? null,
+        productCategoryId: dto.productCategoryId ?? request.productCategoryId,
+        productTypeId: dto.productTypeId ?? request.productTypeId,
+        productPrice: dto.productPrice !== undefined ? new Prisma.Decimal(dto.productPrice) : request.productPrice,
+        productQuantity: dto.productQuantity ?? request.productQuantity,
         documents: this.mergeDocumentsWithGallery(request.documents, dto.productGalleryImages),
         productSubmittedAt: new Date(),
       },

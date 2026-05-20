@@ -8,6 +8,7 @@ type VendorApplicationState = 'draft' | 'submitted' | 'under_review' | 'approved
 type OnboardingStep = 'profile' | 'business' | 'license' | 'product' | 'status'
 
 type DraftDocument = { title: string; url: string }
+type UploadKey = 'license' | 'idFront' | 'idBack' | 'productMain' | 'gallery'
 
 type OnboardingDraft = {
   personalFullName: string
@@ -57,10 +58,22 @@ function stepLabel(step: OnboardingStep) {
   }
 }
 
+function renderUploadPreview(url: string, alt: string) {
+  if (!url) return null
+  return <img className="vendor-upload-preview" src={url} alt={alt} />
+}
+
 export function VendorOnboardingPage({ session }: { session: AuthSession }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [uploading, setUploading] = useState<string | null>(null)
+  const [uploading, setUploading] = useState<UploadKey | null>(null)
+  const [uploadProgress, setUploadProgress] = useState<Record<UploadKey, number>>({
+    license: 0,
+    idFront: 0,
+    idBack: 0,
+    productMain: 0,
+    gallery: 0,
+  })
   const [activeStep, setActiveStep] = useState<OnboardingStep>('profile')
   const [applicationState, setApplicationState] = useState<VendorApplicationState>('draft')
   const [productState, setProductState] = useState<VendorApplicationState>('draft')
@@ -91,15 +104,18 @@ export function VendorOnboardingPage({ session }: { session: AuthSession }) {
         const record = onboarding as Record<string, unknown>
         const userRecord = typeof record.user === 'object' && record.user !== null ? (record.user as Record<string, unknown>) : null
         const docs = Array.isArray(record.documents) ? record.documents : []
-        setDocuments(
-          docs
-            .map((item) => (typeof item === 'object' && item !== null ? (item as Record<string, unknown>) : null))
-            .filter(Boolean)
-            .map((item) => ({
-              title: String(item?.title ?? ''),
-              url: String(item?.url ?? ''),
-            })),
-        )
+        const mappedDocs = docs
+          .map((item) => (typeof item === 'object' && item !== null ? (item as Record<string, unknown>) : null))
+          .filter(Boolean)
+          .map((item) => ({
+            title: String(item?.title ?? ''),
+            url: String(item?.url ?? ''),
+          }))
+        setDocuments(mappedDocs)
+        const frontDoc = mappedDocs.find((item) => item.title === 'کارت ملی روی')
+        const backDoc = mappedDocs.find((item) => item.title === 'کارت ملی پشت')
+        const licenseDoc = mappedDocs.find((item) => item.title === 'جواز کسب')
+        const galleryDocs = mappedDocs.filter((item) => item.title === 'گالری محصول نمونه')
         setDraft((current) => ({
           ...current,
           personalFullName: String(record.personalFullName ?? userRecord?.fullName ?? session.user.fullName ?? ''),
@@ -111,12 +127,14 @@ export function VendorOnboardingPage({ session }: { session: AuthSession }) {
           businessLat: record.businessLat !== null && record.businessLat !== undefined ? String(record.businessLat) : '',
           businessLng: record.businessLng !== null && record.businessLng !== undefined ? String(record.businessLng) : '',
           licenseNumber: String(record.licenseNumber ?? ''),
-          licenseImageUrl: String(record.licenseImageUrl ?? ''),
-          personalNationalIdFrontUrl: String(record.personalNationalIdFrontUrl ?? ''),
-          personalNationalIdBackUrl: String(record.personalNationalIdBackUrl ?? ''),
+          licenseImageUrl: String(record.licenseImageUrl ?? licenseDoc?.url ?? ''),
+          personalNationalIdFrontUrl: String(record.personalNationalIdFrontUrl ?? frontDoc?.url ?? ''),
+          personalNationalIdBackUrl: String(record.personalNationalIdBackUrl ?? backDoc?.url ?? ''),
           productName: String(record.productName ?? ''),
           productMainImage: String(record.productMainImage ?? ''),
-          productGalleryImages: Array.isArray(record.productGalleryImages) ? record.productGalleryImages.map((item) => String(item)) : [],
+          productGalleryImages: Array.isArray(record.productGalleryImages)
+            ? record.productGalleryImages.map((item) => String(item))
+            : galleryDocs.map((item) => item.url),
         }))
         const appState = String(record.applicationStatus ?? 'DRAFT').toLowerCase() as VendorApplicationState
         const prodState = String(record.productStatus ?? 'DRAFT').toLowerCase() as VendorApplicationState
@@ -156,11 +174,13 @@ export function VendorOnboardingPage({ session }: { session: AuthSession }) {
     setDraft((current) => ({ ...current, [key]: value }))
   }
 
-  async function uploadSingleFile(file: File, target: 'license' | 'idFront' | 'idBack' | 'productMain') {
+  async function uploadSingleFile(file: File, target: Exclude<UploadKey, 'gallery'>) {
     setUploading(target)
+    setUploadProgress((current) => ({ ...current, [target]: 20 }))
     setError(null)
     try {
       const result = await vendorApi.uploadOnboardingFile(session, file)
+      setUploadProgress((current) => ({ ...current, [target]: 100 }))
       if (target === 'license') updateDraft('licenseImageUrl', result.url)
       if (target === 'idFront') updateDraft('personalNationalIdFrontUrl', result.url)
       if (target === 'idBack') updateDraft('personalNationalIdBackUrl', result.url)
@@ -169,22 +189,30 @@ export function VendorOnboardingPage({ session }: { session: AuthSession }) {
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : 'بارگذاری فایل ناموفق بود')
     } finally {
-      setUploading(null)
+      window.setTimeout(() => {
+        setUploading(null)
+        setUploadProgress((current) => ({ ...current, [target]: 0 }))
+      }, 400)
     }
   }
 
   async function uploadGalleryFiles(files: FileList | null) {
     if (!files?.length) return
     setUploading('gallery')
+    setUploadProgress((current) => ({ ...current, gallery: 25 }))
     setError(null)
     try {
       const result = await vendorApi.uploadOnboardingGallery(session, Array.from(files))
+      setUploadProgress((current) => ({ ...current, gallery: 100 }))
       updateDraft('productGalleryImages', [...draft.productGalleryImages, ...result.map((item) => item.url)])
       setMessage('گالری محصول با موفقیت بارگذاری شد.')
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : 'بارگذاری گالری ناموفق بود')
     } finally {
-      setUploading(null)
+      window.setTimeout(() => {
+        setUploading(null)
+        setUploadProgress((current) => ({ ...current, gallery: 0 }))
+      }, 400)
     }
   }
 
@@ -196,6 +224,44 @@ export function VendorOnboardingPage({ session }: { session: AuthSession }) {
   function prevStep() {
     const index = stepOrder.indexOf(activeStep)
     if (index > 0) setActiveStep(stepOrder[index - 1])
+  }
+
+  async function handleSubmitApplication() {
+    setSaving(true)
+    setError(null)
+    setMessage(null)
+
+    try {
+      const response = await vendorApi.submitVendorOnboarding(session, {
+        personalFullName: draft.personalFullName.trim(),
+        personalNationalId: draft.personalNationalId.trim(),
+        businessName: draft.businessName.trim(),
+        businessSlug: draft.businessSlug.trim(),
+        businessDescription: draft.businessDescription.trim() || undefined,
+        businessAddress: draft.businessAddress.trim(),
+        businessLat: draft.businessLat.trim() ? Number(draft.businessLat) : undefined,
+        businessLng: draft.businessLng.trim() ? Number(draft.businessLng) : undefined,
+        licenseNumber: draft.licenseNumber.trim(),
+        licenseImageUrl: draft.licenseImageUrl.trim() || undefined,
+        documents: [
+          draft.personalNationalIdFrontUrl ? { title: 'کارت ملی روی', url: draft.personalNationalIdFrontUrl } : null,
+          draft.personalNationalIdBackUrl ? { title: 'کارت ملی پشت', url: draft.personalNationalIdBackUrl } : null,
+          draft.licenseImageUrl ? { title: 'جواز کسب', url: draft.licenseImageUrl } : null,
+        ].filter(Boolean) as DraftDocument[],
+      }) as Record<string, unknown>
+      setApplicationState(String(response.applicationStatus ?? 'submitted').toLowerCase() as VendorApplicationState)
+      setDocuments([
+        ...(draft.personalNationalIdFrontUrl ? [{ title: 'کارت ملی روی', url: draft.personalNationalIdFrontUrl }] : []),
+        ...(draft.personalNationalIdBackUrl ? [{ title: 'کارت ملی پشت', url: draft.personalNationalIdBackUrl }] : []),
+        ...(draft.licenseImageUrl ? [{ title: 'جواز کسب', url: draft.licenseImageUrl }] : []),
+      ])
+      setActiveStep('status')
+      setMessage('درخواست فروشندگی ثبت شد و در انتظار بررسی است.')
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : 'ثبت درخواست ناموفق بود')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleSubmitProduct() {
@@ -251,13 +317,19 @@ export function VendorOnboardingPage({ session }: { session: AuthSession }) {
                 <span>کارت ملی روی</span>
                 <input ref={fileInputRefs.idFront} type="file" accept="image/*" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadSingleFile(file, 'idFront') }} />
                 <button className="fm-button fm-button--ghost" type="button" onClick={() => fileInputRefs.idFront.current?.click()} disabled={Boolean(uploading)}>{uploading === 'idFront' ? 'در حال بارگذاری...' : 'انتخاب فایل و بارگذاری'}</button>
-                {draft.personalNationalIdFrontUrl ? <small>فایل انتخاب‌شده: {draft.personalNationalIdFrontUrl}</small> : null}
+                <div className="vendor-upload-meta">
+                  {uploading === 'idFront' || uploadProgress.idFront > 0 ? <div className="vendor-upload-progress" style={{ ['--progress' as string]: `${uploadProgress.idFront}%` }}><span>{uploadProgress.idFront}%</span></div> : null}
+                  {renderUploadPreview(draft.personalNationalIdFrontUrl, 'پیش‌نمایش کارت ملی روی')}
+                </div>
               </div>
               <div className="vendor-upload-card">
                 <span>کارت ملی پشت</span>
                 <input ref={fileInputRefs.idBack} type="file" accept="image/*" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadSingleFile(file, 'idBack') }} />
                 <button className="fm-button fm-button--ghost" type="button" onClick={() => fileInputRefs.idBack.current?.click()} disabled={Boolean(uploading)}>{uploading === 'idBack' ? 'در حال بارگذاری...' : 'انتخاب فایل و بارگذاری'}</button>
-                {draft.personalNationalIdBackUrl ? <small>فایل انتخاب‌شده: {draft.personalNationalIdBackUrl}</small> : null}
+                <div className="vendor-upload-meta">
+                  {uploading === 'idBack' || uploadProgress.idBack > 0 ? <div className="vendor-upload-progress" style={{ ['--progress' as string]: `${uploadProgress.idBack}%` }}><span>{uploadProgress.idBack}%</span></div> : null}
+                  {renderUploadPreview(draft.personalNationalIdBackUrl, 'پیش‌نمایش کارت ملی پشت')}
+                </div>
               </div>
             </div>
             <div className="vendor-onboarding-actions">
@@ -291,12 +363,15 @@ export function VendorOnboardingPage({ session }: { session: AuthSession }) {
                 <span>تصویر جواز کسب</span>
                 <input ref={fileInputRefs.license} type="file" accept="image/*" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadSingleFile(file, 'license') }} />
                 <button className="fm-button fm-button--primary" type="button" onClick={() => fileInputRefs.license.current?.click()} disabled={Boolean(uploading)}>{uploading === 'license' ? 'در حال بارگذاری...' : 'انتخاب فایل و بارگذاری'}</button>
-                {draft.licenseImageUrl ? <small>فایل انتخاب‌شده: {draft.licenseImageUrl}</small> : null}
+                <div className="vendor-upload-meta">
+                  {uploading === 'license' || uploadProgress.license > 0 ? <div className="vendor-upload-progress" style={{ ['--progress' as string]: `${uploadProgress.license}%` }}><span>{uploadProgress.license}%</span></div> : null}
+                  {renderUploadPreview(draft.licenseImageUrl, 'پیش‌نمایش جواز کسب')}
+                </div>
               </div>
             </div>
             <div className="vendor-onboarding-actions">
               <button className="fm-button fm-button--ghost" type="button" onClick={prevStep}>قبلی</button>
-              <button className="fm-button fm-button--primary" type="button" onClick={nextStep}>ادامه</button>
+              <button className="fm-button fm-button--primary" type="button" disabled={saving} onClick={handleSubmitApplication}>{saving ? 'در حال ارسال...' : 'ارسال برای بررسی'}</button>
             </div>
           </SectionCard>
         ) : null}
@@ -309,13 +384,23 @@ export function VendorOnboardingPage({ session }: { session: AuthSession }) {
                 <span>تصویر اصلی محصول</span>
                 <input ref={fileInputRefs.productMain} type="file" accept="image/*" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadSingleFile(file, 'productMain') }} />
                 <button className="fm-button fm-button--ghost" type="button" onClick={() => fileInputRefs.productMain.current?.click()} disabled={Boolean(uploading)}>{uploading === 'productMain' ? 'در حال بارگذاری...' : 'انتخاب فایل و بارگذاری'}</button>
-                {draft.productMainImage ? <small>فایل انتخاب‌شده: {draft.productMainImage}</small> : null}
+                <div className="vendor-upload-meta">
+                  {uploading === 'productMain' || uploadProgress.productMain > 0 ? <div className="vendor-upload-progress" style={{ ['--progress' as string]: `${uploadProgress.productMain}%` }}><span>{uploadProgress.productMain}%</span></div> : null}
+                  {renderUploadPreview(draft.productMainImage, 'پیش‌نمایش تصویر اصلی محصول')}
+                </div>
               </div>
               <div className="vendor-upload-card vendor-upload-card--wide">
                 <span>گالری محصول</span>
                 <input ref={fileInputRefs.productGallery} type="file" accept="image/*" multiple hidden onChange={(event) => void uploadGalleryFiles(event.target.files)} />
                 <button className="fm-button fm-button--secondary" type="button" onClick={() => fileInputRefs.productGallery.current?.click()} disabled={Boolean(uploading)}>{uploading === 'gallery' ? 'در حال بارگذاری...' : 'انتخاب چند فایل و بارگذاری'}</button>
-                {draft.productGalleryImages.length ? <small>{draft.productGalleryImages.length} تصویر در گالری ثبت شد</small> : null}
+                <div className="vendor-upload-meta">
+                  {uploading === 'gallery' || uploadProgress.gallery > 0 ? <div className="vendor-upload-progress" style={{ ['--progress' as string]: `${uploadProgress.gallery}%` }}><span>{uploadProgress.gallery}%</span></div> : null}
+                  {draft.productGalleryImages.length ? (
+                    <div className="vendor-upload-gallery-grid">
+                      {draft.productGalleryImages.map((url, index) => <img key={`${url}-${index}`} className="vendor-upload-preview" src={url} alt={`گالری محصول ${index + 1}`} />)}
+                    </div>
+                  ) : null}
+                </div>
               </div>
             </div>
             <div className="vendor-onboarding-actions">
