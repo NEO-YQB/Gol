@@ -202,10 +202,11 @@ export class StoreService {
   }
 
   private toUpdateStorePersistenceInput(dto: UpdateStoreDto) {
-    const { deliveryWindows, ...rest } = dto;
+    const { deliveryWindows, isVerified, ...rest } = dto;
 
     return {
       ...rest,
+      ...(typeof isVerified === 'boolean' ? { isVerified } : {}),
       ...(deliveryWindows !== undefined
         ? {
             deliveryWindows:

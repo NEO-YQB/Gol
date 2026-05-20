@@ -90,6 +90,11 @@ export class CreateStoreDto {
   @IsBoolean()
   hasExpressDelivery?: boolean;
 
+  @ApiPropertyOptional({ example: false })
+  @IsOptional()
+  @IsBoolean()
+  isVerified?: boolean;
+
   @ApiPropertyOptional({ example: 4 })
   @IsOptional()
   @IsInt()
