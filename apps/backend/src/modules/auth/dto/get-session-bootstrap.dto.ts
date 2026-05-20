@@ -19,6 +19,20 @@ class SessionBootstrapVendorOnboardingDto {
   storeActivatedAt!: string | null;
 }
 
+class SessionBootstrapStoreDto {
+  @ApiProperty({ example: 17 })
+  id!: number;
+
+  @ApiProperty({ example: true })
+  isVerified!: boolean;
+
+  @ApiProperty({ example: 'گلخانه بهار' })
+  name!: string;
+
+  @ApiProperty({ example: 'bahar-flower-shop' })
+  slug!: string;
+}
+
 export class SessionBootstrapDto {
   @ApiProperty({ type: [String], example: ['SEO_MANAGER'] })
   roles!: string[];
@@ -28,4 +42,7 @@ export class SessionBootstrapDto {
 
   @ApiProperty({ type: SessionBootstrapVendorOnboardingDto, required: false, nullable: true })
   vendorOnboarding?: SessionBootstrapVendorOnboardingDto | null;
+
+  @ApiProperty({ type: SessionBootstrapStoreDto, required: false, nullable: true })
+  store?: SessionBootstrapStoreDto | null;
 }

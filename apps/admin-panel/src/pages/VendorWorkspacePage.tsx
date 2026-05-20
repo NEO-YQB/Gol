@@ -253,11 +253,11 @@ export function VendorWorkspacePage({
     },
     {
       label: 'فعال‌سازی فروشگاه',
-      value: detailStore.isVerified === true ? 'فعال' : 'غیرفعال',
+      value: readText(detailStore, ['isVerified'], 'false') === 'true' ? 'فعال' : 'غیرفعال',
       delta: detailStore.name ? String(detailStore.name) : 'وضعیت دسترسی فروشگاه',
       detail: 'ادمین می‌تواند فروشگاه را فعال یا غیرفعال کند.',
       hint: 'بعد از تکمیل و تایید همه مراحل، از همین‌جا فروشگاه را فعال کن.',
-      tone: detailStore.isVerified === true ? 'success' as const : 'warning' as const,
+      tone: readText(detailStore, ['isVerified'], 'false') === 'true' ? 'success' as const : 'warning' as const,
     },
   ]
 
@@ -607,12 +607,12 @@ export function VendorWorkspacePage({
               <strong>فعال‌سازی فروشگاه</strong>
               <p>بعد از تایید کامل مدارک و محصول اولیه، از اینجا فروشگاه را برای فعالیت باز یا بسته کن.</p>
               <button
-                className={`fm-button ${detailStore.isVerified === true ? 'fm-button--ghost' : 'fm-button--primary'}`}
+                className={`fm-button ${readText(detailStore, ['isVerified'], 'false') === 'true' ? 'fm-button--ghost' : 'fm-button--primary'}`}
                 disabled={storeActiveBusy}
-                onClick={() => void handleToggleStoreActivation(!(detailStore.isVerified === true))}
+                onClick={() => void handleToggleStoreActivation(!(readText(detailStore, ['isVerified'], 'false') === 'true'))}
                 type="button"
               >
-                {storeActiveBusy ? 'در حال بروزرسانی...' : detailStore.isVerified === true ? 'غیرفعال کردن فروشگاه' : 'فعال کردن فروشگاه'}
+                {storeActiveBusy ? 'در حال بروزرسانی...' : readText(detailStore, ['isVerified'], 'false') === 'true' ? 'غیرفعال کردن فروشگاه' : 'فعال کردن فروشگاه'}
               </button>
             </article>
             <article className="vendors-workspace-surface-card">

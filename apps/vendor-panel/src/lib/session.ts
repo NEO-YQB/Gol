@@ -11,6 +11,12 @@ export type VendorBootstrap = {
     action: string
     subject: string
   }>
+  store?: {
+    id: number
+    isVerified: boolean
+    name: string
+    slug: string
+  } | null
   vendorOnboarding?: {
     applicationStatus: string
     productStatus: string
