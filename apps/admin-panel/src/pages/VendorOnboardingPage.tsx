@@ -46,12 +46,6 @@ function statusTone(status: string) {
   return 'primary' as const
 }
 
-function getImageUrl(url: string) {
-  if (!url) return ''
-  if (/^https?:\/\//i.test(url)) return url
-  return `${import.meta.env.VITE_API_BASE_URL?.replace(/\/v1$/, '') ?? 'http://localhost:3000'}${url}`
-}
-
 export function VendorOnboardingPage({
   session,
   onOpenWorkspace,
@@ -66,7 +60,6 @@ export function VendorOnboardingPage({
   const [page, setPage] = useState(1)
   const [lastPage, setLastPage] = useState(1)
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null)
-  const [selectedFilter, setSelectedFilter] = useState<(typeof statusFilters)[number]>('ALL')
 
   useEffect(() => {
     let active = true
@@ -157,7 +150,6 @@ export function VendorOnboardingPage({
               className={`vendor-orders-filter-chip${statusFilter === status ? ' is-active' : ''}`}
               onClick={() => {
                 setStatusFilter(status)
-                setSelectedFilter(status)
                 setPage(1)
               }}
               type="button"
