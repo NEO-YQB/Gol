@@ -1167,3 +1167,110 @@
     font-size: 1.9rem;
   }
 }
+
+.vendor-onboarding-screen {
+  min-height: 100vh;
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.vendor-onboarding-backdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at top right, rgba(31, 106, 82, 0.08), transparent 36%),
+    radial-gradient(circle at bottom left, rgba(217, 111, 93, 0.08), transparent 32%),
+    var(--fm-bg-canvas);
+}
+
+.vendor-onboarding-layout {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 18px;
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.vendor-onboarding-hero {
+  padding: 28px;
+  border-radius: 28px;
+  background: rgba(255, 253, 248, 0.92);
+  border: 1px solid var(--fm-border-soft);
+  box-shadow: var(--fm-shadow-card);
+  display: grid;
+  gap: 12px;
+}
+
+.vendor-onboarding-hero h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1.15;
+}
+
+.vendor-onboarding-hero p {
+  margin: 0;
+  color: var(--fm-text-secondary);
+  line-height: 1.9;
+}
+
+.vendor-onboarding-status-row,
+.vendor-onboarding-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.vendor-onboarding-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.vendor-onboarding-field-wide {
+  grid-column: 1 / -1;
+}
+
+.vendor-onboarding-form-grid textarea {
+  width: 100%;
+  border-radius: 16px;
+  border: 1px solid var(--fm-border-soft);
+  padding: 12px 14px;
+  background: rgba(255, 253, 248, 0.9);
+  color: var(--fm-text-primary);
+}
+
+.vendor-onboarding-summary {
+  display: grid;
+  gap: 12px;
+}
+
+.vendor-onboarding-summary > div {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(255, 253, 248, 0.86);
+  border: 1px solid var(--fm-border-soft);
+}
+
+.vendor-onboarding-summary strong {
+  color: var(--fm-text-primary);
+}
+
+.vendor-onboarding-summary span {
+  color: var(--fm-text-secondary);
+  line-height: 1.8;
+}
+
+.vendor-onboarding-stats {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 980px) {
+  .vendor-onboarding-form-grid,
+  .vendor-onboarding-stats {
+    grid-template-columns: 1fr;
+  }
+}

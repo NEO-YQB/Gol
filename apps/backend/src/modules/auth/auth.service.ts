@@ -109,6 +109,7 @@ export class AuthService {
     const dbUser = await this.prisma.user.findUnique({
       where: { id: user.id },
       include: {
+        vendorOnboardingRequest: true,
         roles: {
           include: {
             role: {
@@ -144,6 +145,13 @@ export class AuthService {
     return {
       roles: effectiveRoles,
       effectivePermissions: Array.from(permissionMap.values()),
+      vendorOnboarding: dbUser?.vendorOnboardingRequest
+        ? {
+            applicationStatus: dbUser.vendorOnboardingRequest.applicationStatus,
+            productStatus: dbUser.vendorOnboardingRequest.productStatus,
+            storeActivatedAt: dbUser.vendorOnboardingRequest.storeActivatedAt,
+          }
+        : null,
     };
   }
 

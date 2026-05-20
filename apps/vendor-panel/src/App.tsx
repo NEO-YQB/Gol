@@ -14,6 +14,9 @@ import { ReviewsPage } from './pages/ReviewsPage'
 import { StoreProfilePage } from './pages/StoreProfilePage'
 import { SupportPage } from './pages/SupportPage'
 import { WalletPage } from './pages/WalletPage'
+import { VendorOnboardingPage } from './pages/VendorOnboardingPage'
+
+type VendorAccessState = 'pending' | 'active'
 
 const defaultRoute: VendorRoute = 'overview'
 
@@ -44,85 +47,45 @@ function buildNav(currentRoute: VendorRoute): NavSection[] {
 function getPageMeta(route: VendorRoute) {
   switch (route) {
     case 'orders':
-      return {
-        eyebrow: 'کارتابل سفارش‌ها',
-        title: 'سفارش‌های فروشگاه',
-        description: 'فروشنده از اینجا باید بتواند سفارش‌های خودش را روی داده واقعی backend ببیند و برای اقدام‌های بعدی آماده باشد.',
-      }
+      return { eyebrow: 'کارتابل سفارش‌ها', title: 'سفارش‌های فروشگاه', description: 'فروشنده از اینجا باید بتواند سفارش‌های خودش را روی داده واقعی backend ببیند و برای اقدام‌های بعدی آماده باشد.' }
     case 'wallet':
-      return {
-        eyebrow: 'کارتابل مالی',
-        title: 'کیف پول، جریان پول و تسویه‌ها',
-        description: 'این route با خلاصه کیف پول و خلاصه تسویه‌ها پر می‌شود تا وضعیت مالی فروشگاه شفاف و قابل‌پیگیری باشد.',
-      }
+      return { eyebrow: 'کارتابل مالی', title: 'کیف پول، جریان پول و تسویه‌ها', description: 'این route با خلاصه کیف پول و خلاصه تسویه‌ها پر می‌شود تا وضعیت مالی فروشگاه شفاف و قابل‌پیگیری باشد.' }
     case 'products':
-      return {
-        eyebrow: 'کارتابل محصولات',
-        title: 'محصول‌ها، موجودی و readiness فروشگاه',
-        description: 'این route برای دید سریع روی موجودی، دسته‌ها و محصول‌های نیازمند تامین یا promotion ساخته شده است.',
-      }
+      return { eyebrow: 'کارتابل محصولات', title: 'محصول‌ها، موجودی و readiness فروشگاه', description: 'این route برای دید سریع روی موجودی، دسته‌ها و محصول‌های نیازمند تامین یا promotion ساخته شده است.' }
     case 'store':
-      return {
-        eyebrow: 'پروفایل فروشگاه',
-        title: 'هویت فروشگاه، تنظیمات ارسال و کیفیت پروفایل',
-        description: 'این route برای مدیریت کامل هویت فروشگاه، تنظیمات delivery و readiness داده‌های profile ساخته شده است.',
-      }
+      return { eyebrow: 'پروفایل فروشگاه', title: 'هویت فروشگاه، تنظیمات ارسال و کیفیت پروفایل', description: 'این route برای مدیریت کامل هویت فروشگاه، تنظیمات delivery و readiness داده‌های profile ساخته شده است.' }
     case 'discounts':
-      return {
-        eyebrow: 'کارتابل تخفیف‌ها',
-        title: 'تخفیف‌ها، وضعیت فعال‌سازی و readiness پروموشن',
-        description: 'این route برای دید سریع روی vendor discountها و محصول‌های دارای تخفیف ساخته شده و پایه domain بعدی promotion است.',
-      }
+      return { eyebrow: 'کارتابل تخفیف‌ها', title: 'تخفیف‌ها، وضعیت فعال‌سازی و readiness پروموشن', description: 'این route برای دید سریع روی vendor discountها و محصول‌های دارای تخفیف ساخته شده و پایه domain بعدی promotion است.' }
     case 'support':
-      return {
-        eyebrow: 'کارتابل پشتیبانی',
-        title: 'تیکت‌ها و پیگیری‌های مرتبط با فروشگاه',
-        description: 'فروشنده باید با کمترین اصطکاک بداند چه تیکتی باز است و چه چیزی نیازمند پاسخ یا اقدام است.',
-      }
+      return { eyebrow: 'کارتابل پشتیبانی', title: 'تیکت‌ها و پیگیری‌های مرتبط با فروشگاه', description: 'فروشنده باید با کمترین اصطکاک بداند چه تیکتی باز است و چه چیزی نیازمند پاسخ یا اقدام است.' }
     case 'reviews':
-      return {
-        eyebrow: 'کارتابل سلامت',
-        title: 'کیفیت فروشگاه، امتیازها و policy موثر',
-        description: 'health score و محدودیت‌های موثر باید برای فروشنده روشن، انسانی و قابل‌اقدام باشند.',
-      }
+      return { eyebrow: 'کارتابل سلامت', title: 'کیفیت فروشگاه، امتیازها و policy موثر', description: 'health score و محدودیت‌های موثر باید برای فروشنده روشن، انسانی و قابل‌اقدام باشند.' }
     case 'notifications':
-      return {
-        eyebrow: 'کارتابل اعلان‌ها',
-        title: 'اعلان‌ها و timeline policy',
-        description: 'این صفحه تاریخچه اعلان‌های فروشنده و timeline رخدادهایی را که روی وضعیت فروشگاه اثر می‌گذارند جمع می‌کند.',
-      }
+      return { eyebrow: 'کارتابل اعلان‌ها', title: 'اعلان‌ها و timeline policy', description: 'این صفحه تاریخچه اعلان‌های فروشنده و timeline رخدادهایی را که روی وضعیت فروشگاه اثر می‌گذارند جمع می‌کند.' }
     case 'overview':
     default:
-      return {
-        eyebrow: 'زیربنای فروشنده',
-        title: 'پنل فروشنده حالا به summaryهای واقعی backend متصل است',
-        description: 'از اینجا به بعد فروشنده یک mock dashboard نمی‌بیند؛ بلکه داده واقعی سفارش، پول، سلامت و policy فروشگاهش را می‌بیند.',
-      }
+      return { eyebrow: 'زیربنای فروشنده', title: 'پنل فروشنده حالا به summaryهای واقعی backend متصل است', description: 'از اینجا به بعد فروشنده یک mock dashboard نمی‌بیند؛ بلکه داده واقعی سفارش، پول، سلامت و policy فروشگاهش را می‌بیند.' }
   }
 }
 
 function renderRoute(route: VendorRoute, session: AuthSession) {
   switch (route) {
-    case 'orders':
-      return <OrdersPage session={session} />
-    case 'products':
-      return <ProductsPage session={session} />
-    case 'store':
-      return <StoreProfilePage session={session} />
-    case 'discounts':
-      return <DiscountsPage session={session} />
-    case 'wallet':
-      return <WalletPage session={session} />
-    case 'support':
-      return <SupportPage session={session} />
-    case 'reviews':
-      return <ReviewsPage session={session} />
-    case 'notifications':
-      return <NotificationsPage session={session} />
+    case 'orders': return <OrdersPage session={session} />
+    case 'products': return <ProductsPage session={session} />
+    case 'store': return <StoreProfilePage session={session} />
+    case 'discounts': return <DiscountsPage session={session} />
+    case 'wallet': return <WalletPage session={session} />
+    case 'support': return <SupportPage session={session} />
+    case 'reviews': return <ReviewsPage session={session} />
+    case 'notifications': return <NotificationsPage session={session} />
     case 'overview':
     default:
       return <OverviewPage session={session} />
   }
+}
+
+function resolveAccessState(session: AuthSession): VendorAccessState {
+  return session.user.roles.includes('VENDOR') ? 'active' : 'pending'
 }
 
 export default function App() {
@@ -135,10 +98,16 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const [otpExpiresAt, setOtpExpiresAt] = useState<string | null>(null)
   const [otpCountdown, setOtpCountdown] = useState<string | null>(null)
+  const [accessState, setAccessState] = useState<VendorAccessState>('pending')
 
   useEffect(() => {
     setSession(loadSession())
   }, [])
+
+  useEffect(() => {
+    if (!session) return
+    setAccessState(resolveAccessState(session))
+  }, [session])
 
   useEffect(() => {
     if (!otpExpiresAt) {
@@ -202,10 +171,7 @@ export default function App() {
     setMessage(null)
     try {
       const response = await vendorApi.verifyOtp(phoneNumber.trim(), code.trim())
-      const nextSession: AuthSession = {
-        accessToken: response.access_token,
-        user: response.user,
-      }
+      const nextSession: AuthSession = { accessToken: response.access_token, user: response.user }
       saveSession(nextSession)
       setSession(nextSession)
       setRoute(defaultRoute)
@@ -228,6 +194,7 @@ export default function App() {
     setError(null)
     setOtpExpiresAt(null)
     setOtpCountdown(null)
+    setAccessState('pending')
   }
 
   if (!session) {
@@ -247,6 +214,10 @@ export default function App() {
     )
   }
 
+  if (accessState === 'pending') {
+    return <VendorOnboardingPage session={session} />
+  }
+
   return (
     <AppShell
       tone="vendor"
@@ -262,7 +233,7 @@ export default function App() {
       onNavigate={(next) => setRoute(next as VendorRoute)}
       actions={[
         { label: vendorRouteLabels[route], tone: 'ghost' },
-        { label: 'نشست فعال', tone: 'secondary' },
+        { label: 'نشست فعال', tone: 'ghost' },
         { label: 'متصل به بک‌اند فروشنده', tone: 'primary' },
       ]}
     >
@@ -270,9 +241,7 @@ export default function App() {
         <Pill tone="success">OTP + JWT</Pill>
         <Pill tone="warning">خلاصه‌های فروشنده فعال</Pill>
         <Pill>{session.user.phoneNumber}</Pill>
-        <button className="vendor-logout" onClick={handleLogout} type="button">
-          خروج از پنل
-        </button>
+        <button className="vendor-logout" onClick={handleLogout} type="button">خروج از پنل</button>
       </div>
       {renderRoute(route, session)}
     </AppShell>

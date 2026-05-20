@@ -42,19 +42,13 @@ export function LoginPage({
 
           <div className="vendor-auth-header">
             <h1>ورود فروشنده</h1>
-            <p>با شماره موبایل وارد شو تا سفارش‌ها، تسویه‌ها و وضعیت فروشگاهت را ببینی.</p>
+            <p>بعد از ورود، اگر تایید نشده باشی مستقیم به wizard ثبت مدارک می‌روی.</p>
           </div>
 
           <div className="fm-form-grid vendor-auth-form-grid">
             <div className="fm-field">
               <label htmlFor="vendorPhoneNumber">شماره موبایل</label>
-              <input
-                id="vendorPhoneNumber"
-                inputMode="numeric"
-                onChange={(event) => onPhoneChange(event.target.value)}
-                placeholder="۰۹۱۲۱۲۳۴۵۶۷"
-                value={phoneNumber}
-              />
+              <input id="vendorPhoneNumber" inputMode="numeric" onChange={(event) => onPhoneChange(event.target.value)} placeholder="۰۹۱۲۱۲۳۴۵۶۷" value={phoneNumber} />
             </div>
 
             <button className="fm-button fm-button--primary vendor-auth-submit" disabled={loading} onClick={onSendOtp} type="button">
@@ -63,22 +57,12 @@ export function LoginPage({
 
             <div className="fm-field">
               <label htmlFor="vendorOtpCode">کد تایید</label>
-              <input
-                id="vendorOtpCode"
-                inputMode="numeric"
-                onChange={(event) => onCodeChange(event.target.value)}
-                placeholder="۱۲۳۴۵ یا ۱۲۳۴۵۶"
-                value={code}
-              />
-              {otpCountdown ? (
-                <p className="vendor-auth-countdown">
-                  زمان باقی‌مانده برای ورود: <strong>{otpCountdown}</strong>
-                </p>
-              ) : null}
+              <input id="vendorOtpCode" inputMode="numeric" onChange={(event) => onCodeChange(event.target.value)} placeholder="۱۲۳۴۵ یا ۱۲۳۴۵۶" value={code} />
+              {otpCountdown ? <p className="vendor-auth-countdown">زمان باقی‌مانده برای ورود: <strong>{otpCountdown}</strong></p> : null}
             </div>
 
             <button className="fm-button fm-button--secondary vendor-auth-submit" disabled={loading} onClick={onVerifyOtp} type="button">
-              ورود به پنل فروشنده
+              ادامه
             </button>
 
             {message ? <div className="fm-message fm-message--success">{message}</div> : null}

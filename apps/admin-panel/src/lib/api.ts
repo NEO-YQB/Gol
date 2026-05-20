@@ -31,6 +31,11 @@ export type SessionBootstrapResponse = {
     action: string
     subject: string
   }>
+  vendorOnboarding?: {
+    applicationStatus: string
+    productStatus: string
+    storeActivatedAt?: string | null
+  } | null
 }
 
 const API_BASE_URL =
@@ -368,6 +373,44 @@ export const adminApi = {
   },
   getVendorHealthDetail(session: AuthSession, storeId: string) {
     return request<unknown>(`/stores/admin/${storeId}/vendor-health`, {}, session.accessToken)
+  },
+  getVendorOnboardingRequests(
+    session: AuthSession,
+    query?: {
+      status?: string
+      page?: number
+      limit?: number
+    },
+  ) {
+    const params = new URLSearchParams()
+    if (query?.status) params.set('status', query.status)
+    if (query?.page) params.set('page', String(query.page))
+    if (query?.limit) params.set('limit', String(query.limit))
+    const search = params.toString()
+    return request<unknown>(`/vendor-onboarding/admin/requests${search ? `?${search}` : ''}`, {}, session.accessToken)
+  },
+  getVendorOnboardingRequestDetail(session: AuthSession, requestId: string) {
+    return request<unknown>(`/vendor-onboarding/admin/requests/${requestId}`, {}, session.accessToken)
+  },
+  reviewVendorOnboardingApplication(
+    session: AuthSession,
+    requestId: string,
+    body: { approved: boolean; reviewNote?: string },
+  ) {
+    return request<unknown>(`/vendor-onboarding/admin/requests/${requestId}/application`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  reviewVendorOnboardingProduct(
+    session: AuthSession,
+    requestId: string,
+    body: { approved: boolean; reviewNote?: string },
+  ) {
+    return request<unknown>(`/vendor-onboarding/admin/requests/${requestId}/product`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }, session.accessToken)
   },
   recalculateVendorHealth(session: AuthSession, storeId: string) {
     return request<unknown>(`/stores/admin/${storeId}/vendor-health/recalculate`, {

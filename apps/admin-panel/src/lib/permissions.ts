@@ -70,10 +70,30 @@ const routeRequirements: Partial<Record<AdminRoute, AccessRequirement>> = {
     ],
   },
   vendors: {
-    roles: ['ADMIN'],
+    anyOf: [
+      { action: 'manage', subject: 'all' },
+      { action: 'read', subject: 'VendorOnboardingRequest' },
+    ],
   },
   vendorWorkspace: {
-    roles: ['ADMIN'],
+    anyOf: [
+      { action: 'manage', subject: 'all' },
+      { action: 'read', subject: 'VendorOnboardingRequest' },
+      { action: 'review', subject: 'VendorOnboardingRequest' },
+    ],
+  },
+  vendorOnboarding: {
+    anyOf: [
+      { action: 'manage', subject: 'all' },
+      { action: 'read', subject: 'VendorOnboardingRequest' },
+    ],
+  },
+  vendorOnboardingWorkspace: {
+    anyOf: [
+      { action: 'manage', subject: 'all' },
+      { action: 'read', subject: 'VendorOnboardingRequest' },
+      { action: 'review', subject: 'VendorOnboardingRequest' },
+    ],
   },
   content: {
     anyOf: [
@@ -137,6 +157,7 @@ export function describeScope(session: AuthSession | null) {
   if (!session) return 'بدون نشست فعال'
   if (hasPermission(session, 'manage', 'all')) return 'دسترسی کامل ادمین'
   if (hasPermission(session, 'read', 'AdminUser')) return 'مدیریت دسترسی و کاربران'
+  if (hasPermission(session, 'read', 'VendorOnboardingRequest')) return 'بررسی درخواست فروشنده'
   if (hasPermission(session, 'read', 'Article')) return 'تحریریه و عملیات محتوا'
   if (hasPermission(session, 'read', 'StoreWallet')) return 'عملیات مالی و تسویه'
   if (hasPermission(session, 'read', 'SupportTicket')) return 'رسیدگی به پشتیبانی'

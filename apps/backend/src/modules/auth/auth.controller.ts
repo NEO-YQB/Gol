@@ -23,6 +23,11 @@ export class AuthController {
           { action: 'read', subject: 'Article' },
           { action: 'update', subject: 'Article' },
         ],
+        vendorOnboarding: {
+          applicationStatus: 'SUBMITTED',
+          productStatus: 'DRAFT',
+          storeActivatedAt: null,
+        },
       },
     },
   })

@@ -300,4 +300,48 @@ export const vendorApi = {
   getNotifications(session: AuthSession) {
     return request<unknown>('/notifications/vendor/me', {}, session.accessToken)
   },
+  getVendorOnboarding(session: AuthSession) {
+    return request<unknown>('/vendor-onboarding/me', {}, session.accessToken)
+  },
+  submitVendorOnboarding(session: AuthSession, payload: VendorOnboardingApplicationPayload) {
+    return request<unknown>('/vendor-onboarding/me/application', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }, session.accessToken)
+  },
+  submitVendorProduct(session: AuthSession, payload: VendorOnboardingProductPayload) {
+    return request<unknown>('/vendor-onboarding/me/product', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }, session.accessToken)
+  },
+}
+
+export type VendorOnboardingDocumentPayload = {
+  title: string
+  url: string
+}
+
+export type VendorOnboardingApplicationPayload = {
+  personalFullName: string
+  personalNationalId: string
+  businessName: string
+  businessSlug: string
+  businessDescription?: string
+  businessAddress: string
+  businessLat?: number
+  businessLng?: number
+  licenseNumber: string
+  licenseImageUrl?: string
+  documents?: VendorOnboardingDocumentPayload[]
+}
+
+export type VendorOnboardingProductPayload = {
+  productName: string
+  productDescription?: string
+  productCategoryId: number
+  productTypeId: number
+  productMainImage?: string
+  productPrice: number
+  productQuantity: number
 }

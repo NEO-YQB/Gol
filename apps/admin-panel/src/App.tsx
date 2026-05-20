@@ -26,6 +26,8 @@ import { OrdersWorkspacePage } from './pages/OrdersWorkspacePage'
 import { SettlementsPage } from './pages/SettlementsPage'
 import { SupportPage } from './pages/SupportPage'
 import { SupportWorkspacePage } from './pages/SupportWorkspacePage'
+import { VendorOnboardingPage } from './pages/VendorOnboardingPage'
+import { VendorOnboardingWorkspacePage } from './pages/VendorOnboardingWorkspacePage'
 import { VendorsPage } from './pages/VendorsPage'
 import { VendorWorkspacePage } from './pages/VendorWorkspacePage'
 
@@ -39,13 +41,14 @@ function buildNav(currentRoute: AdminRoute, session: AuthSession): NavSection[] 
   const sections: Array<NavSection & { requirements: AdminRoute[] }> = [
     {
       title: isFinanceOnly ? 'عملیات مالی' : isSupportOnly ? 'رسیدگی پشتیبانی' : isSeoOnly ? 'تحریریه و سئو' : isAccessOnly ? 'کنترل کاربران و دسترسی' : 'عملیات اصلی',
-      requirements: ['dashboard', 'orders', 'settlements', 'support', 'vendors'],
+      requirements: ['dashboard', 'orders', 'settlements', 'support', 'vendors', 'vendorOnboarding'],
       items: [
         { key: 'dashboard', label: 'داشبورد', hint: 'نمای نقش محور از وضعیت کلی', active: currentRoute === 'dashboard' },
         { key: 'orders', label: 'سفارش ها', hint: 'کارتابل عملیات سفارش و صف استثناها', active: currentRoute === 'orders' || currentRoute === 'ordersWorkspace' },
         { key: 'settlements', label: 'تسویه و مالی', hint: 'کارتابل triage مالی، کیف پول و صف استثناها', active: currentRoute === 'settlements' || currentRoute === 'financeWorkspace' },
         { key: 'support', label: 'پشتیبانی', hint: 'تیکت ها، noteها و رسیدگی بعدی', active: currentRoute === 'support' || currentRoute === 'supportWorkspace' },
         { key: 'vendors', label: 'فروشنده ها و ریسک', hint: 'visibility ریسک، policy و سلامت فروشنده', active: currentRoute === 'vendors' || currentRoute === 'vendorWorkspace' },
+        { key: 'vendorOnboarding', label: 'درخواست‌های فروشندگی', hint: 'مدارک، جواز و تصمیم‌گیری روی فروشنده‌های جدید', active: currentRoute === 'vendorOnboarding' || currentRoute === 'vendorOnboardingWorkspace' },
       ],
     },
     {
@@ -117,6 +120,18 @@ function getPageMeta(route: AdminRoute) {
         title: 'بررسی متمرکز فروشنده و تصمیم های بعدی',
         description: 'اقدام های سنگین روی vendor باید در یک workspace مجزا و متمرکز انجام شوند.',
       }
+    case 'vendorOnboarding':
+      return {
+        eyebrow: 'درخواست‌های فروشندگی',
+        title: 'فروشنده‌های جدید، مدارک و جوازهای در انتظار بررسی',
+        description: 'این route برای اسکن سریع درخواست‌های تازه و ورود به workspace بررسی مدارک و تصمیم‌گیری ساخته شده است.',
+      }
+    case 'vendorOnboardingWorkspace':
+      return {
+        eyebrow: 'میزکار درخواست فروشنده',
+        title: 'بررسی هویت، مدارک و محصول اولیه فروشنده',
+        description: 'در این workspace ادمین یا اپراتور مجاز می‌تواند مدارک را ببیند و درباره اصل درخواست و محصول اولیه تصمیم بگیرد.',
+      }
     case 'content':
       return {
         eyebrow: 'کارتابل محتوا',
@@ -168,9 +183,12 @@ function renderRoute(
     onOpenSupportWorkspace: (ticket: Record<string, unknown>) => void
     onBackToSupport: () => void
     vendorWorkspaceStore: Record<string, unknown> | null
+    vendorOnboardingRequest: Record<string, unknown> | null
     financeWorkspaceSettlement: Record<string, unknown> | null
     onOpenVendorWorkspace: (store: Record<string, unknown>) => void
+    onOpenVendorOnboardingWorkspace: (request: Record<string, unknown>) => void
     onBackToVendors: () => void
+    onBackToVendorOnboarding: () => void
     onOpenFinanceWorkspace: (item: Record<string, unknown>) => void
     onBackToSettlements: () => void
     contentWorkspaceArticleId: string | null
@@ -199,6 +217,10 @@ function renderRoute(
       return <VendorsPage onOpenVendorWorkspace={options.onOpenVendorWorkspace} session={session} />
     case 'vendorWorkspace':
       return <VendorWorkspacePage onBack={options.onBackToVendors} session={session} store={options.vendorWorkspaceStore} />
+    case 'vendorOnboarding':
+      return <VendorOnboardingPage onOpenWorkspace={options.onOpenVendorOnboardingWorkspace} session={session} />
+    case 'vendorOnboardingWorkspace':
+      return <VendorOnboardingWorkspacePage onBack={options.onBackToVendorOnboarding} request={options.vendorOnboardingRequest} session={session} />
     case 'content':
       return <ContentPage onCreateArticle={options.onOpenContentWorkspaceForCreate} onEditArticle={options.onOpenContentWorkspaceForEdit} session={session} />
     case 'contentWorkspace':
@@ -221,6 +243,7 @@ export default function App() {
   const [ordersWorkspaceOrder, setOrdersWorkspaceOrder] = useState<Record<string, unknown> | null>(null)
   const [supportWorkspaceTicket, setSupportWorkspaceTicket] = useState<Record<string, unknown> | null>(null)
   const [vendorWorkspaceStore, setVendorWorkspaceStore] = useState<Record<string, unknown> | null>(null)
+  const [vendorOnboardingRequest, setVendorOnboardingRequest] = useState<Record<string, unknown> | null>(null)
   const [financeWorkspaceSettlement, setFinanceWorkspaceSettlement] = useState<Record<string, unknown> | null>(null)
   const [contentWorkspaceArticleId, setContentWorkspaceArticleId] = useState<string | null>(null)
   const [contentWorkspaceMode, setContentWorkspaceMode] = useState<'create' | 'edit'>('create')
@@ -439,6 +462,15 @@ export default function App() {
     handleNavigate('vendors')
   }
 
+  function handleOpenVendorOnboardingWorkspace(request: Record<string, unknown>) {
+    setVendorOnboardingRequest(request)
+    handleNavigate('vendorOnboardingWorkspace')
+  }
+
+  function handleBackToVendorOnboarding() {
+    handleNavigate('vendorOnboarding')
+  }
+
   function handleOpenFinanceWorkspace(item: Record<string, unknown>) {
     setFinanceWorkspaceSettlement(item)
     handleNavigate('financeWorkspace')
@@ -541,8 +573,11 @@ export default function App() {
         onOpenSupportWorkspace: handleOpenSupportWorkspace,
         onBackToSupport: handleBackToSupport,
         vendorWorkspaceStore,
+        vendorOnboardingRequest,
         onOpenVendorWorkspace: handleOpenVendorWorkspace,
+        onOpenVendorOnboardingWorkspace: handleOpenVendorOnboardingWorkspace,
         onBackToVendors: handleBackToVendors,
+        onBackToVendorOnboarding: handleBackToVendorOnboarding,
         financeWorkspaceSettlement,
         onOpenFinanceWorkspace: handleOpenFinanceWorkspace,
         onBackToSettlements: handleBackToSettlements,

@@ -31,6 +31,7 @@ type AppSubjects =
   | 'AdminUser'
   | 'AdminRole'
   | 'AdminPermission'
+  | 'VendorOnboardingRequest'
   | 'Article'
   | 'ArticleCategory'
   | 'Author'
@@ -208,6 +209,7 @@ export class AbilityFactory {
       SUPPORT_AGENT: [
         { action: ['read', 'update'], subject: 'SupportTicket' },
         { action: ['create', 'read'], subject: 'SupportTicketNote' },
+        { action: ['read', 'review'], subject: 'VendorOnboardingRequest' },
       ],
       ACCESS_MANAGER: [
         { action: ['read', 'create'], subject: 'AdminUser' },
@@ -216,6 +218,7 @@ export class AbilityFactory {
         { action: 'assignRoles', subject: 'AdminUser' },
         { action: ['create', 'update'], subject: 'AdminRole' },
         { action: 'assignPermissions', subject: 'AdminRole' },
+        { action: ['read', 'review'], subject: 'VendorOnboardingRequest' },
       ],
     };
 
