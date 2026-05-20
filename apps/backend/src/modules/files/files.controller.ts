@@ -47,6 +47,35 @@ export const multerOptions = {
   }),
 };
 
+export const documentMulterOptions = {
+  limits: {
+    fileSize: 1024 * 1024 * 2,
+  },
+  fileFilter: (
+    req: Express.Request,
+    file: Express.Multer.File,
+    callback: (error: Error | null, acceptFile: boolean) => void,
+  ) => {
+    const isAllowed = /\.(png|jpeg|jpg|webp)$/i.test(file.originalname);
+    if (!isAllowed) {
+      return callback(
+        new BadRequestException('فرمت فایل مجاز نیست. فقط png, jpeg, jpg, webp'),
+        false,
+      );
+    }
+
+    callback(null, true);
+  },
+  storage: diskStorage({
+    destination: './uploads/documents',
+    filename: (req, file, callback) => {
+      const uniqueSuffix = uuidv4();
+      const fileExtName = extname(file.originalname);
+      callback(null, `${uniqueSuffix}${fileExtName}`);
+    },
+  }),
+};
+
 @ApiTags('Files')
 @Controller('files')
 export class FilesController {
@@ -95,9 +124,8 @@ export class FilesController {
 
   @Post('upload-document-image')
   @HttpCode(HttpStatus.CREATED)
-  @UseGuards(JwtAuthGuard, AbilitiesGuard)
-  @CheckAbilities((ability) => ability.can('create', 'File'))
-  @UseInterceptors(FileInterceptor('file', multerOptions))
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FileInterceptor('file', documentMulterOptions))
   @ApiOperation({ summary: 'آپلود تصویر مدرک' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } })
@@ -110,7 +138,7 @@ export class FilesController {
 
     this.validateUploadedFile(file);
 
-    return { url: `/uploads/products/${file.filename}` };
+    return { url: `/uploads/documents/${file.filename}` };
   }
 
   private validateUploadedFile(file: Express.Multer.File) {
