@@ -1,16 +1,14 @@
 import { ActivityFeed, Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { useNoticeEffect } from '../components/NoticeCenter'
 import { adminApi } from '../lib/api'
-import { readText, toArray } from '../lib/normalize'
+import { readText } from '../lib/normalize'
 import { hasPermission } from '../lib/permissions'
 import type { AuthSession } from '../lib/session'
 
 type FinanceRecord = Record<string, unknown>
 type FinanceLane = 'overview' | 'wallet' | 'settlement' | 'refunds'
-
-const walletStatuses = ['افزایش', 'کاهش'] as const
 
 function toObject(value: unknown): FinanceRecord {
   return typeof value === 'object' && value !== null ? (value as FinanceRecord) : {}
