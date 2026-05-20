@@ -10,6 +10,37 @@ import type { AuthSession } from '../lib/session'
 type FinanceRecord = Record<string, unknown>
 type FinanceLane = 'overview' | 'wallet' | 'settlement' | 'refunds'
 
+function readDisplayValue(value: unknown, fallback = '—') {
+  if (value === null || value === undefined || value === '') return fallback
+  if (typeof value === 'object') return fallback
+  return String(value)
+}
+
+function translateFinanceEnum(value: string) {
+  switch (value) {
+    case 'CANCELLED_BY_CUSTOMER':
+      return 'لغو شده توسط مشتری'
+    case 'CANCELLED_BY_ADMIN':
+      return 'لغو شده توسط ادمین'
+    case 'CANCELLED':
+      return 'لغو شده'
+    case 'REVERSED':
+      return 'برگشت خورده'
+    case 'RELEASED':
+      return 'آزاد شده'
+    case 'ON_HOLD':
+      return 'در نگه داری'
+    case 'PENDING':
+      return 'در انتظار نگه داری'
+    case 'DECREMENT':
+      return 'کاهش موجودی'
+    case 'INCREMENT':
+      return 'افزایش موجودی'
+    default:
+      return value || 'نامشخص'
+  }
+}
+
 function toObject(value: unknown): FinanceRecord {
   return typeof value === 'object' && value !== null ? (value as FinanceRecord) : {}
 }
@@ -159,7 +190,7 @@ export function FinanceWorkspacePage({
     {
       label: 'وضعیت تسویه',
       value: getSettlementStatusLabel(settlementStatus),
-      delta: readText(settlement ?? {}, ['type'], '—'),
+      delta: translateFinanceEnum(readText(settlement ?? {}, ['type'], '—')),
       detail: 'جایگاه فعلی این مورد در چرخه تسویه',
       hint: 'اگر این مورد هنوز در نگه داری است، آزادسازی فقط بعد از رفع مانع منطقی است.',
       tone: getToneByStatus(settlementStatus),
@@ -167,7 +198,7 @@ export function FinanceWorkspacePage({
     {
       label: 'فروشگاه',
       value: readText(settlement ?? {}, ['storeName', 'store', 'storeId'], '—'),
-      delta: readText(walletDetail ?? {}, ['currency'], 'ریال'),
+      delta: 'ریال',
       detail: 'فروشگاه و زمینه مالی مرتبط با این مورد',
       hint: 'در adjustment و بررسی استثنا باید همیشه مطمئن باشی روی فروشگاه درست کار می کنی.',
       tone: 'primary' as const,
@@ -183,7 +214,7 @@ export function FinanceWorkspacePage({
     {
       label: 'ردپای مالی',
       value: formatJalaliDate(readText(settlement ?? {}, ['updatedAt', 'createdAt'], ''), true),
-      delta: readText(settlement ?? {}, ['reason', 'message'], 'بدون علت ثبت شده'),
+      delta: readDisplayValue((settlement ?? {}).reason, readDisplayValue((settlement ?? {}).message, 'بدون علت ثبت شده')),
       detail: 'آخرین زمان تغییر و علت اصلی این مورد',
       hint: 'اگر تصمیم مالی مبهم است، از همین کارت شروع کن و بعد سراغ actionها برو.',
       tone: 'warning' as const,
@@ -472,7 +503,7 @@ export function FinanceWorkspacePage({
                     id: 'finance-item-1',
                     title: 'وضعیت فعلی مورد',
                     meta: getSettlementStatusLabel(settlementStatus),
-                    description: readText(settlement ?? {}, ['reason', 'message'], 'علتی برای این مورد ثبت نشده است.'),
+                    description: readDisplayValue((settlement ?? {}).reason, readDisplayValue((settlement ?? {}).message, 'علتی برای این مورد ثبت نشده است.')),
                     tone: getToneByStatus(settlementStatus),
                   },
                   {

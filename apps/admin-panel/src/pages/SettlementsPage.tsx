@@ -7,6 +7,16 @@ import type { AuthSession } from '../lib/session'
 
 type FinanceRecord = Record<string, unknown>
 
+function toObject(value: unknown): FinanceRecord {
+  return typeof value === 'object' && value !== null ? (value as FinanceRecord) : {}
+}
+
+function readDisplayValue(value: unknown, fallback = '—') {
+  if (value === null || value === undefined || value === '') return fallback
+  if (typeof value === 'object') return fallback
+  return String(value)
+}
+
 const walletColumns = [
   { key: 'id', label: 'شناسه' },
   { key: 'store', label: 'فروشگاه' },
@@ -59,11 +69,15 @@ function getSettlementStatus(record: FinanceRecord) {
 }
 
 function getSettlementReason(record: FinanceRecord) {
-  return readText(record, ['reason', 'type', 'message'], '—')
+  const reason = record.reason
+  const type = record.type
+  const message = record.message
+  return readDisplayValue(reason) !== '—' ? readDisplayValue(reason) : readDisplayValue(type) !== '—' ? readDisplayValue(type) : readDisplayValue(message)
 }
 
 function getWalletStore(record: FinanceRecord) {
-  return readText(record, ['storeName', 'store', 'storeId'], '—')
+  const store = toObject(record.store)
+  return readText(store, ['name', 'slug'], readDisplayValue(record.storeName, readDisplayValue(record.storeId)))
 }
 
 function statusOptions(items: FinanceRecord[]) {
@@ -149,24 +163,24 @@ export function SettlementsPage({ session, onOpenFinanceWorkspace }: { session: 
 
   const walletRows = useMemo(
     () =>
-      makeRows(wallets.slice(0, 10), [
-        { key: 'id', source: ['id', 'storeId'] },
-        { key: 'store', source: ['storeName', 'store', 'storeId'] },
-        { key: 'balance', source: ['balance', 'availableBalance'] },
-        { key: 'held', source: ['heldBalance', 'heldAmount'] },
-        { key: 'updated', source: ['updatedAt'] },
-      ]),
+      wallets.slice(0, 10).map((item, index) => ({
+        id: readText(item, ['id', 'storeId'], String(index + 1)),
+        store: getWalletStore(item),
+        balance: formatPersianNumber(readText(item, ['balance', 'availableBalance'], '—')),
+        held: formatPersianNumber(readText(item, ['heldBalance', 'heldAmount'], '—')),
+        updated: formatJalaliDate(readText(item, ['updatedAt'], ''), true),
+      })),
     [wallets],
   )
 
   const settlementRows = useMemo(
     () =>
-      makeRows(filteredExceptions.slice(0, 10), [
-        { key: 'id', source: ['id', 'orderId'] },
-        { key: 'status', source: ['status'] },
-        { key: 'reason', source: ['reason', 'type', 'message'] },
-        { key: 'updated', source: ['updatedAt', 'createdAt'] },
-      ]),
+      filteredExceptions.slice(0, 10).map((item, index) => ({
+        id: readText(item, ['id', 'orderId'], String(index + 1)),
+        status: getSettlementStatusLabel(getSettlementStatus(item)),
+        reason: getSettlementReason(item),
+        updated: formatJalaliDate(readText(item, ['updatedAt', 'createdAt'], ''), true),
+      })),
     [filteredExceptions],
   )
 
