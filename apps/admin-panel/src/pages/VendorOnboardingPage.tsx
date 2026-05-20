@@ -46,6 +46,12 @@ function statusTone(status: string) {
   return 'primary' as const
 }
 
+function getImageUrl(url: string) {
+  if (!url) return ''
+  if (/^https?:\/\//i.test(url)) return url
+  return `${import.meta.env.VITE_API_BASE_URL?.replace(/\/v1$/, '') ?? 'http://localhost:3000'}${url}`
+}
+
 export function VendorOnboardingPage({
   session,
   onOpenWorkspace,
@@ -60,6 +66,7 @@ export function VendorOnboardingPage({
   const [page, setPage] = useState(1)
   const [lastPage, setLastPage] = useState(1)
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null)
+  const [selectedFilter, setSelectedFilter] = useState<(typeof statusFilters)[number]>('ALL')
 
   useEffect(() => {
     let active = true
@@ -143,13 +150,14 @@ export function VendorOnboardingPage({
         title="فروشنده‌های جدید و مدارک در انتظار بررسی"
         description="از اینجا می‌توانی درخواست‌ها را غربال کنی، مدارک را ببینی و وارد workspace تصمیم‌گیری شوی."
       >
-        <div className="vendor-orders-filters">
+        <div className="vendor-orders-filters vendor-orders-filters--styled">
           {statusFilters.map((status) => (
             <button
               key={status}
               className={`vendor-orders-filter-chip${statusFilter === status ? ' is-active' : ''}`}
               onClick={() => {
                 setStatusFilter(status)
+                setSelectedFilter(status)
                 setPage(1)
               }}
               type="button"
@@ -178,7 +186,7 @@ export function VendorOnboardingPage({
           >
             {selected ? (
               <div className="vendor-onboarding-admin-summary">
-                <div><strong>متقاضی</strong><span>{readText(selected, ['user', 'fullName'], readText(selected, ['user', 'phoneNumber'], '—'))}</span></div>
+                <div><strong>متقاضی</strong><span>{readText(selected, ['user', 'fullName', 'user'], readText(selected, ['user', 'phoneNumber'], '—'))}</span></div>
                 <div><strong>کسب‌وکار</strong><span>{readText(selected, ['businessName'], '—')}</span></div>
                 <div><strong>وضعیت درخواست</strong><span><Pill tone={statusTone(readText(selected, ['applicationStatus'], ''))}>{translateStatus(readText(selected, ['applicationStatus'], ''))}</Pill></span></div>
                 <div><strong>وضعیت محصول</strong><span><Pill tone={statusTone(readText(selected, ['productStatus'], ''))}>{translateStatus(readText(selected, ['productStatus'], ''))}</Pill></span></div>

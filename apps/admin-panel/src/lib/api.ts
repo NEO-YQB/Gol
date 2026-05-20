@@ -374,6 +374,12 @@ export const adminApi = {
   getVendorHealthDetail(session: AuthSession, storeId: string) {
     return request<unknown>(`/stores/admin/${storeId}/vendor-health`, {}, session.accessToken)
   },
+  updateStore(session: AuthSession, storeId: string, body: { isVerified?: boolean }) {
+    return request<unknown>(`/stores/admin/${storeId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
   getVendorOnboardingRequests(
     session: AuthSession,
     query?: {

@@ -21,6 +21,13 @@ export function readText(record: Record<string, unknown>, keys: string[], fallba
   for (const key of keys) {
     const value = record[key]
     if (value !== undefined && value !== null && value !== '') {
+      if (typeof value === 'object') {
+        const nested = toRecord(value)
+        const nestedFallback = nested.title ?? nested.name ?? nested.phoneNumber ?? nested.slug ?? nested.id
+        if (nestedFallback !== undefined && nestedFallback !== null && nestedFallback !== '') {
+          return String(nestedFallback)
+        }
+      }
       return String(value)
     }
   }

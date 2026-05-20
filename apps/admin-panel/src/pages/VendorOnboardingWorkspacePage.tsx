@@ -39,6 +39,13 @@ function statusTone(status: string) {
   return 'primary' as const
 }
 
+function getImageUrl(url: string) {
+  if (!url) return ''
+  if (/^https?:\/\//i.test(url)) return url
+  const base = import.meta.env.VITE_API_BASE_URL?.replace(/\/v1$/, '') ?? 'http://localhost:3000'
+  return `${base}${url}`
+}
+
 export function VendorOnboardingWorkspacePage({
   session,
   request,
@@ -54,6 +61,7 @@ export function VendorOnboardingWorkspacePage({
   const [decisionBusy, setDecisionBusy] = useState<string | null>(null)
   const [reviewNote, setReviewNote] = useState('')
   const [message, setMessage] = useState<string | null>(null)
+  const [selectedImage, setSelectedImage] = useState<string | null>(null)
   useNoticeEffect(message, 'success')
   useNoticeEffect(error, 'error')
 
@@ -103,7 +111,6 @@ export function VendorOnboardingWorkspacePage({
     if (!requestId) return
     setDecisionBusy(approved ? 'approve-application' : 'reject-application')
     setError(null)
-
     try {
       const payload = await adminApi.reviewVendorOnboardingApplication(session, requestId, {
         approved,
@@ -122,7 +129,6 @@ export function VendorOnboardingWorkspacePage({
     if (!requestId) return
     setDecisionBusy(approved ? 'approve-product' : 'reject-product')
     setError(null)
-
     try {
       const payload = await adminApi.reviewVendorOnboardingProduct(session, requestId, {
         approved,
@@ -135,6 +141,13 @@ export function VendorOnboardingWorkspacePage({
     } finally {
       setDecisionBusy(null)
     }
+  }
+
+  async function handleSavePreview(url: string) {
+    const link = document.createElement('a')
+    link.href = url
+    link.download = ''
+    link.click()
   }
 
   return (
@@ -165,16 +178,17 @@ export function VendorOnboardingWorkspacePage({
           </div>
 
           <div className="vendor-onboarding-workspace-panel">
-            <SectionCard title="مدارک ارسالی" description="فایل‌هایی که متقاضی برای بررسی پیوست کرده است.">
+            <SectionCard title="مدارک ارسالی" description="برای بررسی بهتر، روی هر تصویر کلیک کن تا بزرگ‌تر باز شود.">
               {documents.length ? (
-                <div className="vendor-onboarding-doc-list">
+                <div className="vendor-doc-grid">
                   {documents.map((item, index) => {
                     const record = item as Record<string, unknown>
+                    const url = getImageUrl(readText(record, ['url'], ''))
                     return (
-                      <div className="vendor-onboarding-doc-item" key={`${readText(record, ['title'], 'doc')}-${index}`}>
-                        <strong>{readText(record, ['title'], 'مدرک')}</strong>
-                        <span>{readText(record, ['url'], '—')}</span>
-                      </div>
+                      <button className="vendor-doc-thumb" key={`${readText(record, ['title'], 'doc')}-${index}`} type="button" onClick={() => setSelectedImage(url)}>
+                        <img src={url} alt={readText(record, ['title'], 'مدرک')} />
+                        <span>{readText(record, ['title'], 'مدرک')}</span>
+                      </button>
                     )
                   })}
                 </div>
@@ -225,6 +239,20 @@ export function VendorOnboardingWorkspacePage({
           <Pill tone={statusTone(readText(detail ?? {}, ['productStatus'], ''))}>{translateStatus(readText(detail ?? {}, ['productStatus'], ''))}</Pill>
         </div>
       </SectionCard>
+
+      {selectedImage ? (
+        <div className="vendor-lightbox" role="dialog" aria-modal="true">
+          <div className="vendor-lightbox__backdrop" onClick={() => setSelectedImage(null)} />
+          <div className="vendor-lightbox__panel">
+            <button className="vendor-lightbox__close" type="button" onClick={() => setSelectedImage(null)}>×</button>
+            <img src={selectedImage} alt="preview" />
+            <div className="vendor-lightbox__actions">
+              <button className="fm-button fm-button--ghost" type="button" onClick={() => setSelectedImage(null)}>بستن</button>
+              <button className="fm-button fm-button--primary" type="button" onClick={() => void handleSavePreview(selectedImage)}>ذخیره</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

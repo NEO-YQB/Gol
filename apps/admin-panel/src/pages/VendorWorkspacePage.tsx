@@ -151,6 +151,7 @@ export function VendorWorkspacePage({
     metadata: '',
   })
   const [releaseOrderId, setReleaseOrderId] = useState('')
+  const [storeActiveBusy, setStoreActiveBusy] = useState(false)
 
   const storeId = readText(store ?? {}, ['storeId'], '')
 
@@ -250,7 +251,30 @@ export function VendorWorkspacePage({
       hint: 'اگر این عدد بالا باشد، تصمیم‌ها باید با دقت بیشتری ثبت شوند تا دوباره‌کاری کم شود.',
       tone: 'warning' as const,
     },
+    {
+      label: 'فعال‌سازی فروشگاه',
+      value: detailStore.isVerified === true ? 'فعال' : 'غیرفعال',
+      delta: detailStore.name ? String(detailStore.name) : 'وضعیت دسترسی فروشگاه',
+      detail: 'ادمین می‌تواند فروشگاه را فعال یا غیرفعال کند.',
+      hint: 'بعد از تکمیل و تایید همه مراحل، از همین‌جا فروشگاه را فعال کن.',
+      tone: detailStore.isVerified === true ? 'success' as const : 'warning' as const,
+    },
   ]
+
+  async function handleToggleStoreActivation(nextIsVerified: boolean) {
+    if (!storeId) return
+    setStoreActiveBusy(true)
+    setActionError(null)
+    try {
+      await adminApi.updateStore(session, storeId, { isVerified: nextIsVerified })
+      setActionMessage(nextIsVerified ? 'فروشگاه فعال شد.' : 'فروشگاه غیرفعال شد.')
+      await loadWorkspaceData()
+    } catch (toggleError) {
+      setActionError(toggleError instanceof Error ? toggleError.message : 'تغییر وضعیت فروشگاه ناموفق بود')
+    } finally {
+      setStoreActiveBusy(false)
+    }
+  }
 
   const laneCards = [
     {
@@ -579,6 +603,18 @@ export function VendorWorkspacePage({
           actions={<Pill tone="success">اقدام زنده</Pill>}
         >
           <div className="vendors-workspace-surface-grid">
+            <article className="vendors-workspace-surface-card">
+              <strong>فعال‌سازی فروشگاه</strong>
+              <p>بعد از تایید کامل مدارک و محصول اولیه، از اینجا فروشگاه را برای فعالیت باز یا بسته کن.</p>
+              <button
+                className={`fm-button ${detailStore.isVerified === true ? 'fm-button--ghost' : 'fm-button--primary'}`}
+                disabled={storeActiveBusy}
+                onClick={() => void handleToggleStoreActivation(!(detailStore.isVerified === true))}
+                type="button"
+              >
+                {storeActiveBusy ? 'در حال بروزرسانی...' : detailStore.isVerified === true ? 'غیرفعال کردن فروشگاه' : 'فعال کردن فروشگاه'}
+              </button>
+            </article>
             <article className="vendors-workspace-surface-card">
               <strong>محاسبه دوباره سلامت</strong>
               <p>اگر لازم است امتیاز و تصویر فعلی فروشگاه دوباره به‌روز شود، از این دکمه استفاده کن.</p>
