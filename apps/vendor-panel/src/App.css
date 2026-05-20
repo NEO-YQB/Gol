@@ -1268,6 +1268,43 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.vendor-upload-card {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid var(--fm-border-soft);
+  background: rgba(255, 253, 248, 0.88);
+  animation: vendor-step-in 220ms ease-out;
+}
+
+.vendor-upload-card span {
+  font-weight: 700;
+  color: var(--fm-text-primary);
+}
+
+.vendor-upload-card small {
+  color: var(--fm-text-secondary);
+  line-height: 1.8;
+  word-break: break-all;
+}
+
+.vendor-upload-card--wide {
+  grid-column: 1 / -1;
+}
+
+@keyframes vendor-step-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (max-width: 980px) {
   .vendor-onboarding-form-grid,
   .vendor-onboarding-stats {

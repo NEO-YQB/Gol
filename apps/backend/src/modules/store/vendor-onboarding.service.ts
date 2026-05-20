@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common'
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common'
 import { Prisma, VendorOnboardingStatus } from '@prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
 
@@ -24,11 +24,8 @@ type SubmitVendorOnboardingDto = {
 type SubmitVendorProductDto = {
   productName: string
   productDescription?: string
-  productCategoryId: number
-  productTypeId: number
   productMainImage?: string
-  productPrice: number
-  productQuantity: number
+  productGalleryImages?: string[]
 }
 
 type ReviewVendorOnboardingDto = {
@@ -124,11 +121,8 @@ export class VendorOnboardingService {
         productStatus: VendorOnboardingStatus.SUBMITTED,
         productName: dto.productName,
         productDescription: dto.productDescription ?? null,
-        productCategoryId: dto.productCategoryId,
-        productTypeId: dto.productTypeId,
         productMainImage: dto.productMainImage ?? null,
-        productPrice: new Prisma.Decimal(dto.productPrice),
-        productQuantity: dto.productQuantity,
+        documents: this.mergeDocumentsWithGallery(request.documents, dto.productGalleryImages),
         productSubmittedAt: new Date(),
       },
     })
@@ -287,5 +281,11 @@ export class VendorOnboardingService {
 
   private toJsonDocuments(documents?: Array<{ title: string; url: string }>) {
     return documents && documents.length ? (documents as Prisma.InputJsonValue) : undefined
+  }
+
+  private mergeDocumentsWithGallery(existing: Prisma.JsonValue | null, gallery?: string[]) {
+    const current = Array.isArray(existing) ? [...existing] : []
+    const galleryDocs = (gallery ?? []).map((url) => ({ title: 'گالری محصول نمونه', url }))
+    return [...current, ...galleryDocs] as Prisma.InputJsonValue
   }
 }

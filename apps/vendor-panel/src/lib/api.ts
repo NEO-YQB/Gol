@@ -237,6 +237,18 @@ export const vendorApi = {
     const payload = await uploadRequest<{ url: string }>('/files/upload-product-image', formData, session.accessToken)
     return { ...payload, url: resolveAssetUrl(payload.url) }
   },
+  async uploadOnboardingFile(session: AuthSession, file: File) {
+    const formData = new FormData()
+    formData.append('file', file)
+    const payload = await uploadRequest<{ url: string }>('/files/upload-product-image', formData, session.accessToken)
+    return { ...payload, url: resolveAssetUrl(payload.url) }
+  },
+  async uploadOnboardingGallery(session: AuthSession, files: File[]) {
+    const formData = new FormData()
+    files.forEach((file) => formData.append('files', file))
+    const payload = await uploadRequest<Array<{ url: string }>>('/files/upload-gallery-images', formData, session.accessToken)
+    return payload.map((item) => ({ ...item, url: resolveAssetUrl(item.url) }))
+  },
   async uploadGalleryImages(session: AuthSession, files: File[]) {
     const formData = new FormData()
     files.forEach((file) => formData.append('files', file))
@@ -355,9 +367,6 @@ export type VendorOnboardingApplicationPayload = {
 export type VendorOnboardingProductPayload = {
   productName: string
   productDescription?: string
-  productCategoryId: number
-  productTypeId: number
   productMainImage?: string
-  productPrice: number
-  productQuantity: number
+  productGalleryImages?: string[]
 }

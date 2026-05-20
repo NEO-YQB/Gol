@@ -3,7 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiProperty, ApiTags } from '@nestjs/swagg
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
 import { GetUser } from '../../common/decorators/get-user.decorator'
 import { VendorOnboardingService } from './vendor-onboarding.service'
-import { IsArray, IsInt, IsNumber, IsOptional, IsString, MinLength, ValidateNested } from 'class-validator'
+import { IsArray, IsOptional, IsString, MinLength, ValidateNested } from 'class-validator'
 import { Type } from 'class-transformer'
 import { AbilitiesGuard } from '../../common/guards/abilities.guard'
 import { CheckAbilities } from '../../common/decorators/check-abilities.decorator'
@@ -83,26 +83,16 @@ class SubmitVendorProductDto {
   @IsString()
   productDescription?: string
 
-  @ApiProperty()
-  @IsInt()
-  productCategoryId!: number
-
-  @ApiProperty()
-  @IsInt()
-  productTypeId!: number
-
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
   productMainImage?: string
 
-  @ApiProperty()
-  @IsNumber()
-  productPrice!: number
-
-  @ApiProperty()
-  @IsInt()
-  productQuantity!: number
+  @ApiProperty({ required: false, type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  productGalleryImages?: string[]
 }
 
 class ReviewDto {
