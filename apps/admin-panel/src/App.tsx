@@ -8,6 +8,7 @@ import {
   describeScope,
   getFirstAccessibleRoute,
   hasPermission,
+  hasRole,
   type SessionBootstrap,
 } from './lib/permissions'
 import { adminRouteLabels, adminRouteOrder, type AdminRoute } from './lib/routes'
@@ -30,9 +31,13 @@ import { VendorWorkspacePage } from './pages/VendorWorkspacePage'
 const defaultRoute: AdminRoute = 'dashboard'
 
 function buildNav(currentRoute: AdminRoute, session: AuthSession): NavSection[] {
+  const isAccessOnly = hasRole(session, 'ACCESS_MANAGER') && !hasPermission(session, 'manage', 'all')
+  const isSeoOnly = (hasRole(session, 'SEO_MANAGER') || hasRole(session, 'CONTENT_EDITOR') || hasRole(session, 'CONTENT_WRITER')) && !hasPermission(session, 'manage', 'all')
+  const isFinanceOnly = hasRole(session, 'FINANCE_OPERATOR') && !hasPermission(session, 'manage', 'all')
+  const isSupportOnly = hasRole(session, 'SUPPORT_AGENT') && !hasPermission(session, 'manage', 'all')
   const sections: Array<NavSection & { requirements: AdminRoute[] }> = [
     {
-      title: 'عملیات اصلی',
+      title: isFinanceOnly ? 'عملیات مالی' : isSupportOnly ? 'رسیدگی پشتیبانی' : isSeoOnly ? 'تحریریه و سئو' : isAccessOnly ? 'کنترل کاربران و دسترسی' : 'عملیات اصلی',
       requirements: ['dashboard', 'orders', 'settlements', 'support', 'vendors'],
       items: [
         { key: 'dashboard', label: 'داشبورد', hint: 'نمای نقش محور از وضعیت کلی', active: currentRoute === 'dashboard' },
@@ -43,7 +48,7 @@ function buildNav(currentRoute: AdminRoute, session: AuthSession): NavSection[] 
       ],
     },
     {
-      title: 'رشد و کنترل',
+      title: isAccessOnly ? 'پیکربندی دسترسی' : isSeoOnly ? 'کیفیت محتوا' : 'رشد و کنترل',
       requirements: ['content', 'alerts', 'accessControl'],
       items: [
         { key: 'content', label: 'محتوا و سئو', hint: 'تحریریه، taxonomy و auditهای محتوا', active: currentRoute === 'content' || currentRoute === 'contentWorkspace' },
