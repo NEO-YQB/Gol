@@ -4,6 +4,7 @@ import { LoadableState } from '../components/LoadableState'
 import { useNoticeEffect } from '../components/NoticeCenter'
 import { adminApi } from '../lib/api'
 import { readText, toArray } from '../lib/normalize'
+import { hasPermission } from '../lib/permissions'
 import type { AuthSession } from '../lib/session'
 
 type OrderRecord = Record<string, unknown>
@@ -213,6 +214,53 @@ function getExceptionLabel(reason: string) {
     default:
       return reason || 'مورد ناشناخته'
   }
+}
+
+
+function getRecommendedActionLabel(options: {
+  canAccept: boolean
+  canShip: boolean
+  canDeliver: boolean
+  canCancel: boolean
+  canInitiatePayment: boolean
+  canManualRefund: boolean
+  canReleaseSettlement: boolean
+  paymentExceptionsCount: number
+  operationalFlagsCount: number
+}) {
+  if (options.paymentExceptionsCount > 0 || options.operationalFlagsCount > 0) {
+    return 'اول استثناها و هشدارهای این سفارش را بررسی کن.'
+  }
+
+  if (options.canInitiatePayment) {
+    return 'این سفارش هنوز به پرداخت تازه نیاز دارد؛ از lane پرداخت شروع کن.'
+  }
+
+  if (options.canAccept) {
+    return 'سفارش آماده تایید اولیه است.'
+  }
+
+  if (options.canShip) {
+    return 'سفارش آماده ارسال است.'
+  }
+
+  if (options.canDeliver) {
+    return 'بعد از اطمینان از تحویل، وضعیت را به تحویل شده تغییر بده.'
+  }
+
+  if (options.canReleaseSettlement) {
+    return 'اگر مانع فعالی وجود ندارد، تسویه را آزاد کن.'
+  }
+
+  if (options.canManualRefund) {
+    return 'این سفارش در وضعیت مناسبی برای بازگشت وجه دستی قرار دارد.'
+  }
+
+  if (options.canCancel) {
+    return 'اگر ادامه سفارش منطقی نیست، لغو را با دلیل روشن ثبت کن.'
+  }
+
+  return 'برای این سفارش فعلا action مستقیمی از سمت پنل پیشنهاد نمی شود.'
 }
 
 function toPositiveNumber(value: string) {
@@ -495,19 +543,35 @@ export function OrdersWorkspacePage({
     }
   }
 
-  const canAccept = availableActions.canAccept === true
-  const canShip = availableActions.canShip === true
-  const canDeliver = availableActions.canDeliver === true
-  const canCancel = availableActions.canCancel === true
-  const canInitiatePayment = availableActions.canInitiatePayment === true
-  const canManualRefund = Boolean(
+  const canReadPayments = hasPermission(session, 'read', 'Payment') || hasPermission(session, 'manage', 'all')
+  const canUpdateOrders = hasPermission(session, 'update', 'Order') || hasPermission(session, 'manage', 'all')
+  const canUpdateWallets = hasPermission(session, 'update', 'StoreWallet') || hasPermission(session, 'manage', 'all')
+
+  const canAccept = availableActions.canAccept === true && canUpdateOrders
+  const canShip = availableActions.canShip === true && canUpdateOrders
+  const canDeliver = availableActions.canDeliver === true && canUpdateOrders
+  const canCancel = availableActions.canCancel === true && canUpdateOrders
+  const canInitiatePayment = availableActions.canInitiatePayment === true && canReadPayments
+  const canManualRefund = canReadPayments && Boolean(
     paymentId &&
       paymentId !== '—' &&
       paymentStatus === 'PAID' &&
       ['REJECTED_BY_VENDOR', 'CANCELLED', 'CANCELLED_BY_ADMIN', 'CANCELLED_BY_CUSTOMER'].includes(orderStatus),
   )
   const canReleaseSettlement =
-    settlementStatus === 'ON_HOLD' && readText(currentOrder, ['earningsReleasedAt'], '') === ''
+    canUpdateWallets && settlementStatus === 'ON_HOLD' && readText(currentOrder, ['earningsReleasedAt'], '') === ''
+
+  const recommendedActionLabel = getRecommendedActionLabel({
+    canAccept,
+    canShip,
+    canDeliver,
+    canCancel,
+    canInitiatePayment,
+    canManualRefund,
+    canReleaseSettlement,
+    paymentExceptionsCount: paymentExceptions.length,
+    operationalFlagsCount: operationalFlags.length,
+  })
 
   const summaryItems = [
     { label: 'شناسه سفارش', value: readText(currentOrder, ['id'], '—') },
@@ -578,6 +642,24 @@ export function OrdersWorkspacePage({
                         <strong>{item.value}</strong>
                       </article>
                     ))}
+                  </div>
+                </SectionCard>
+
+                <SectionCard
+                  eyebrow="پیشنهاد اقدام"
+                  title="الان مهم ترین کار روی این سفارش چیست؟"
+                  description="این نوار تصمیم فقط برای کم کردن تردید اپراتور ساخته شده و باید در چند ثانیه مسیر اقدام را روشن کند."
+                  actions={<Pill tone={operationalFlags.length || paymentExceptions.length ? 'warning' : 'primary'}>{operationalFlags.length || paymentExceptions.length ? 'نیازمند توجه' : 'عادی'}</Pill>}
+                >
+                  <div className="orders-decision-strip">
+                    <strong>{recommendedActionLabel}</strong>
+                    <p>
+                      {paymentExceptions.length > 0
+                        ? `برای این سفارش ${formatPersianNumber(paymentExceptions.length)} استثنای پرداخت یا مالی ثبت شده است.`
+                        : operationalFlags.length > 0
+                          ? `برای این سفارش ${formatPersianNumber(operationalFlags.length)} پرچم عملیاتی فعال دیده می شود.`
+                          : 'در وضعیت فعلی، این سفارش هشدار فوری ثبت شده ای ندارد و می توانی بر اساس مرحله طبیعی آن پیش بروی.'}
+                    </p>
                   </div>
                 </SectionCard>
 
