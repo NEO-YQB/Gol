@@ -92,7 +92,7 @@ export const adminApi = {
   },
 
   getSessionBootstrap(session: AuthSession) {
-    return request<SessionBootstrapResponse>(`/admin/access-control/users/${session.user.id}`, {}, session.accessToken)
+    return request<SessionBootstrapResponse>('/auth/session-bootstrap', {}, session.accessToken)
   },
 
   createAccessControlUser(session: AuthSession, body: {

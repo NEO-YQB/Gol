@@ -1,11 +1,34 @@
-import { Controller, Post, Body, BadRequestException } from '@nestjs/common';
-import { ApiBody, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Controller, Post, Body, BadRequestException, Get, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiBody, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { GetUser } from '../../common/decorators/get-user.decorator';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AuthService } from './auth.service';
 
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+
+  @Get('session-bootstrap')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'دریافت bootstrap نشست برای فرانت پنل' })
+  @ApiOkResponse({
+    description: 'نقش ها و دسترسی های موثر نشست جاری',
+    schema: {
+      example: {
+        roles: ['SEO_MANAGER'],
+        effectivePermissions: [
+          { action: 'read', subject: 'Article' },
+          { action: 'update', subject: 'Article' },
+        ],
+      },
+    },
+  })
+  getSessionBootstrap(@GetUser() user: { id: number; roles: string[]; phoneNumber?: string }) {
+    return this.authService.getSessionBootstrap(user);
+  }
 
   @Post('send-otp')
   @ApiOperation({ summary: 'ارسال کد OTP برای شماره موبایل' })

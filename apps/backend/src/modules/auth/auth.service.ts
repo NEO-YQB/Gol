@@ -104,6 +104,49 @@ export class AuthService {
     };
   }
 
+
+  async getSessionBootstrap(user: { id: number; roles: string[]; phoneNumber?: string }) {
+    const dbUser = await this.prisma.user.findUnique({
+      where: { id: user.id },
+      include: {
+        roles: {
+          include: {
+            role: {
+              include: {
+                permissions: {
+                  include: {
+                    permission: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const effectiveRoles = dbUser
+      ? dbUser.roles.map((userRole) => userRole.role.name)
+      : user.roles;
+
+    const permissionMap = new Map<string, { action: string; subject: string }>();
+
+    for (const userRole of dbUser?.roles ?? []) {
+      for (const rolePermission of userRole.role.permissions) {
+        const permission = rolePermission.permission;
+        permissionMap.set(`${permission.action}:${permission.subject}`, {
+          action: permission.action,
+          subject: permission.subject,
+        });
+      }
+    }
+
+    return {
+      roles: effectiveRoles,
+      effectivePermissions: Array.from(permissionMap.values()),
+    };
+  }
+
   async sendOtp(phoneNumber: string) {
     const existingUser = await this.prisma.user.findUnique({
       where: { phoneNumber },
