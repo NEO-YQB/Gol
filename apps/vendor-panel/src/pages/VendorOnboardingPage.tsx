@@ -73,6 +73,10 @@ export function VendorOnboardingPage({ session }: { session: AuthSession }) {
         const onboarding = await vendorApi.getVendorOnboarding(session)
         if (!active) return
         const record = onboarding as Record<string, unknown>
+        const userRecord =
+          typeof record.user === 'object' && record.user !== null
+            ? (record.user as Record<string, unknown>)
+            : null
         const docs = Array.isArray(record.documents) ? record.documents : []
         const mappedDocs = docs
           .map((item) => (typeof item === 'object' && item !== null ? (item as Record<string, unknown>) : null))
@@ -84,7 +88,7 @@ export function VendorOnboardingPage({ session }: { session: AuthSession }) {
         setDocuments(mappedDocs)
         setDraft((current) => ({
           ...current,
-          personalFullName: String(record.personalFullName ?? record.user?.fullName ?? session.user.fullName ?? ''),
+          personalFullName: String(record.personalFullName ?? userRecord?.fullName ?? session.user.fullName ?? ''),
           personalNationalId: String(record.personalNationalId ?? ''),
           businessName: String(record.businessName ?? ''),
           businessSlug: String(record.businessSlug ?? ''),
@@ -107,7 +111,7 @@ export function VendorOnboardingPage({ session }: { session: AuthSession }) {
         setApplicationState(appState)
         setProductState(prodState)
         setHasApprovedProduct(prodState === 'approved')
-        setStoreName(String(record.businessName ?? record.user?.fullName ?? session.user.fullName ?? session.user.phoneNumber))
+        setStoreName(String(record.businessName ?? userRecord?.fullName ?? session.user.fullName ?? session.user.phoneNumber))
       } catch (loadError) {
         if (!active) return
         setError(loadError instanceof Error ? loadError.message : 'خطا در بارگذاری onboarding')

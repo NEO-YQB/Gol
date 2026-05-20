@@ -201,20 +201,21 @@ export default function App() {
 
   useEffect(() => {
     if (!session || session.bootstrap) return
+    const currentSession = session
 
     let active = true
 
     async function loadBootstrap() {
       try {
-        const response = await vendorApi.getSessionBootstrap(session)
+        const response = await vendorApi.getSessionBootstrap(currentSession)
         if (!active) return
 
         const nextSession: AuthSession = {
-          ...session,
+          ...currentSession,
           bootstrap: response,
           user: {
-            ...session.user,
-            roles: response.roles ?? session.user.roles,
+            ...currentSession.user,
+            roles: response.roles ?? currentSession.user.roles,
           },
         }
 
@@ -223,7 +224,7 @@ export default function App() {
         setAccessState(resolveAccessState(nextSession))
       } catch {
         if (!active) return
-        setAccessState(resolveAccessState(session))
+        setAccessState(resolveAccessState(currentSession))
       }
     }
 
