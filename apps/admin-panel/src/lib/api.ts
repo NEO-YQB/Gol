@@ -375,7 +375,7 @@ export const adminApi = {
     return request<unknown>(`/stores/admin/${storeId}/vendor-health`, {}, session.accessToken)
   },
   updateStore(session: AuthSession, storeId: string, body: { isVerified?: boolean }) {
-    return request<unknown>(`/stores/admin/${storeId}`, {
+    return request<unknown>(`/stores/${storeId}`, {
       method: 'PATCH',
       body: JSON.stringify(body),
     }, session.accessToken)

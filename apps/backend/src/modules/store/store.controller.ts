@@ -14,7 +14,7 @@ import {
 } from '@nestjs/common';
 import { StoreService } from './store.service';
 import { CreateStoreDto } from './dto/create-store.dto';
-import { UpdateStoreDto } from './dto/update-store.dto';
+import { AdminUpdateStoreDto, UpdateStoreDto } from './dto/update-store.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'; // اصلاح مسیر مطابق ساختار پروژه شما
 import { GetUser } from '../../common/decorators/get-user.decorator';
 import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
@@ -71,13 +71,14 @@ export class StoreController {
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AbilitiesGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'ویرایش فروشگاه' })
   @ApiParam({ name: 'id', type: Number, description: 'شناسه فروشگاه' })
+  @CheckAbilities((ability) => ability.can('manage', 'all') || ability.can('update', 'Store'))
   update(
     @Param('id', ParseIntPipe) id: number,
-    @Body() updateStoreDto: UpdateStoreDto,
+    @Body() updateStoreDto: AdminUpdateStoreDto,
     @GetUser() user: { id: number; roles: string[] },
   ) {
     return this.storeService.update(id, updateStoreDto, user);
