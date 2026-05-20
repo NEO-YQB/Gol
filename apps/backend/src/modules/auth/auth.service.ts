@@ -109,7 +109,7 @@ export class AuthService {
     const dbUser = await this.prisma.user.findUnique({
       where: { id: user.id },
       include: {
-        stores: {
+        store: {
           select: {
             id: true,
             isVerified: true,
@@ -153,12 +153,12 @@ export class AuthService {
     return {
       roles: effectiveRoles,
       effectivePermissions: Array.from(permissionMap.values()),
-      store: dbUser?.stores?.[0]
+      store: dbUser?.store
         ? {
-            id: dbUser.stores[0].id,
-            isVerified: dbUser.stores[0].isVerified,
-            name: dbUser.stores[0].name,
-            slug: dbUser.stores[0].slug,
+            id: dbUser.store.id,
+            isVerified: dbUser.store.isVerified,
+            name: dbUser.store.name,
+            slug: dbUser.store.slug,
           }
         : null,
       vendorOnboarding: dbUser?.vendorOnboardingRequest
