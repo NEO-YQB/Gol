@@ -4,6 +4,7 @@ import { LoadableState } from '../components/LoadableState'
 import { useNoticeEffect } from '../components/NoticeCenter'
 import { adminApi } from '../lib/api'
 import { readText, toArray } from '../lib/normalize'
+import { hasPermission } from '../lib/permissions'
 import type { AuthSession } from '../lib/session'
 
 type TicketRecord = Record<string, unknown>
@@ -121,6 +122,34 @@ function getStatusTone(status: string) {
   return 'primary' as const
 }
 
+
+function getRecommendedSupportAction(options: {
+  status: string
+  flagsCount: number
+  notesCount: number
+  canChangeStatus: boolean
+  canWriteNote: boolean
+  canSubmitFinance: boolean
+}) {
+  if (options.flagsCount > 0) {
+    return 'این تیکت نشانه های حساس دارد؛ قبل از هر چیز summary و ردپای رخدادها را مرور کن.'
+  }
+
+  if (options.status === 'ESCALATED_TO_FINANCE' && options.canSubmitFinance) {
+    return 'تیکت به مالی ارجاع شده و حالا باید نتیجه مالی روشن و ثبت شود.'
+  }
+
+  if ((options.status === 'OPEN' || options.status === 'IN_REVIEW') && options.canChangeStatus) {
+    return 'اول وضعیت واقعی تیکت را با روند رسیدگی هماهنگ کن.'
+  }
+
+  if (options.notesCount === 0 && options.canWriteNote) {
+    return 'برای اینکه روند رسیدگی گم نشود، یک یادداشت روشن ثبت کن.'
+  }
+
+  return 'این تیکت در وضعیت پایدارتری قرار دارد و فعلا فقط نیاز به مرور یا پیگیری مرحله بعدی دارد.'
+}
+
 function getFinanceTone(outcome: string) {
   if (outcome.includes('REFUND') || outcome.includes('REVERSAL')) return 'danger' as const
   if (outcome === 'EXTEND_HOLD') return 'warning' as const
@@ -191,6 +220,10 @@ export function SupportWorkspacePage({
     void loadTicket()
   }, [loadTicket])
 
+  const canChangeStatus = hasPermission(session, 'update', 'SupportTicket') || hasPermission(session, 'manage', 'all')
+  const canWriteNote = hasPermission(session, 'create', 'SupportTicketNote') || hasPermission(session, 'manage', 'all')
+  const canSubmitFinance = hasPermission(session, 'read', 'StoreWallet') || hasPermission(session, 'manage', 'all')
+
   const notes = useMemo(() => toArray(detail?.notes), [detail])
   const auditTrail = useMemo(() => toArray(detail?.auditTrail), [detail])
   const flags = useMemo(
@@ -212,6 +245,15 @@ export function SupportWorkspacePage({
     setNotesPage(1)
     setAuditPage(1)
   }, [ticketId])
+
+  const recommendedAction = getRecommendedSupportAction({
+    status,
+    flagsCount: flags.length,
+    notesCount: notes.length,
+    canChangeStatus,
+    canWriteNote,
+    canSubmitFinance,
+  })
 
   const stats = [
     {
@@ -383,7 +425,7 @@ export function SupportWorkspacePage({
           title="جمع‌بندی سریع این تیکت"
           description="قبل از هر اقدام، اطلاعات اصلی سفارش، مشتری، فروشگاه و نشانه‌های حساس را همین‌جا ببین."
           hint="اگر هنوز دلیل تیکت برایت روشن نیست، اول این چهار کارت را بخوان و بعد سراغ فرم‌ها برو."
-          actions={<Pill tone="neutral">مرور سریع</Pill>}
+          actions={<Pill tone="primary">مرور سریع</Pill>}
         >
           <div className="support-brief-grid">
             {[
@@ -398,6 +440,24 @@ export function SupportWorkspacePage({
                 <small>{item.detail}</small>
               </article>
             ))}
+          </div>
+        </SectionCard>
+
+        <SectionCard
+          eyebrow="پیشنهاد اقدام"
+          title="الان مهم ترین کار روی این تیکت چیست؟"
+          description="این نوار تصمیم برای کم کردن تردید اپراتور ساخته شده و باید در چند ثانیه مسیر رسیدگی را روشن کند."
+          actions={<Pill tone={flags.length || status === 'ESCALATED_TO_FINANCE' ? 'warning' : 'primary'}>{flags.length || status === 'ESCALATED_TO_FINANCE' ? 'نیازمند توجه' : 'عادی'}</Pill>}
+        >
+          <div className="support-decision-strip">
+            <strong>{recommendedAction}</strong>
+            <p>
+              {status === 'ESCALATED_TO_FINANCE'
+                ? 'این تیکت وارد لایه تصمیم مالی شده و نتیجه آن باید شفاف و ثبت شده باشد.'
+                : flags.length > 0
+                  ? `برای این تیکت ${formatPersianNumber(flags.length)} نشانه حساس ثبت شده است.`
+                  : 'در وضعیت فعلی، این تیکت هشدار فوری ثبت شده ای ندارد و می توانی بر اساس مرحله طبیعی رسیدگی پیش بروی.'}
+            </p>
           </div>
         </SectionCard>
 
@@ -441,7 +501,7 @@ export function SupportWorkspacePage({
                 value={statusForm.internalNote}
               />
             </div>
-            <button className="fm-button fm-button--primary" disabled={actionBusy === 'status-submit'} type="submit">
+            <button className="fm-button fm-button--primary" disabled={!canChangeStatus || actionBusy === 'status-submit'} type="submit">
               {actionBusy === 'status-submit' ? 'در حال ثبت...' : 'ثبت تغییر وضعیت'}
             </button>
           </form>
@@ -514,7 +574,7 @@ export function SupportWorkspacePage({
                 value={financeForm.refundNote}
               />
             </div>
-            <button className="fm-button fm-button--primary" disabled={actionBusy === 'finance-submit'} type="submit">
+            <button className="fm-button fm-button--primary" disabled={!canSubmitFinance || actionBusy === 'finance-submit'} type="submit">
               {actionBusy === 'finance-submit' ? 'در حال ثبت...' : 'ثبت تصمیم مالی'}
             </button>
           </form>
@@ -545,7 +605,7 @@ export function SupportWorkspacePage({
               />
               <span>یادداشت فقط برای همکاران باشد</span>
             </label>
-            <button className="fm-button fm-button--primary" disabled={actionBusy === 'note-submit'} type="submit">
+            <button className="fm-button fm-button--primary" disabled={!canWriteNote || actionBusy === 'note-submit'} type="submit">
               {actionBusy === 'note-submit' ? 'در حال ثبت...' : 'ثبت یادداشت'}
             </button>
           </form>

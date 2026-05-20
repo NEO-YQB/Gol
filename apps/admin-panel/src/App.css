@@ -2351,3 +2351,24 @@
   color: var(--fm-text-secondary);
   line-height: 1.9;
 }
+
+
+.support-decision-strip {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid var(--fm-border-soft);
+  background: rgba(255, 252, 246, 0.82);
+}
+
+.support-decision-strip strong {
+  color: var(--fm-text-primary);
+  line-height: 1.8;
+}
+
+.support-decision-strip p {
+  margin: 0;
+  color: var(--fm-text-secondary);
+  line-height: 1.9;
+}
