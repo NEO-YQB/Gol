@@ -26,6 +26,19 @@ export type VerifyOtpResponse = {
   }
 }
 
+export type VendorSessionBootstrapResponse = {
+  roles?: string[]
+  effectivePermissions?: Array<{
+    action: string
+    subject: string
+  }>
+  vendorOnboarding?: {
+    applicationStatus: string
+    productStatus: string
+    storeActivatedAt?: string | null
+  } | null
+}
+
 export type VendorDiscountPayload = {
   productId: number
   title: string
@@ -174,6 +187,9 @@ export const vendorApi = {
       method: 'POST',
       body: JSON.stringify({ phoneNumber, code }),
     })
+  },
+  getSessionBootstrap(session: AuthSession) {
+    return request<VendorSessionBootstrapResponse>('/auth/session-bootstrap', {}, session.accessToken)
   },
   getVendorOrders(session: AuthSession) {
     return request<unknown[]>('/orders/vendor', {}, session.accessToken)

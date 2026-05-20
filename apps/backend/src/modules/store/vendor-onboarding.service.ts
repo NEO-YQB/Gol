@@ -1,5 +1,5 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
-import { Prisma } from '@prisma/client'
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common'
+import { Prisma, VendorOnboardingStatus } from '@prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
 
 type AuthenticatedUser = {
@@ -44,35 +44,70 @@ export class VendorOnboardingService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getMyRequest(user: AuthenticatedUser) {
-    return this.getOrCreateRequest(user.id)
+    return this.prisma.vendorOnboardingRequest.upsert({
+      where: { userId: user.id },
+      create: { userId: user.id },
+      update: {},
+      include: {
+        user: {
+          select: {
+            id: true,
+            phoneNumber: true,
+            fullName: true,
+          },
+        },
+      },
+    })
   }
 
   async submitApplication(user: AuthenticatedUser, dto: SubmitVendorOnboardingDto) {
     const request = await this.getOrCreateRequest(user.id)
 
-    if (request.applicationStatus === 'UNDER_REVIEW' || request.applicationStatus === 'APPROVED') {
+    if (
+      request.applicationStatus === VendorOnboardingStatus.SUBMITTED ||
+      request.applicationStatus === VendorOnboardingStatus.UNDER_REVIEW ||
+      request.applicationStatus === VendorOnboardingStatus.APPROVED
+    ) {
       throw new ConflictException('درخواست شما قبلا ثبت شده و در حال بررسی است')
     }
 
     await this.ensureSlugAvailable(dto.businessSlug, request.id)
 
-    return this.prisma.vendorOnboardingRequest.update({
-      where: { id: request.id },
-      data: {
-        applicationStatus: 'SUBMITTED',
-        personalFullName: dto.personalFullName,
-        personalNationalId: dto.personalNationalId,
-        businessName: dto.businessName,
-        businessSlug: dto.businessSlug,
-        businessDescription: dto.businessDescription ?? null,
-        businessAddress: dto.businessAddress,
-        businessLat: dto.businessLat ?? null,
-        businessLng: dto.businessLng ?? null,
-        licenseNumber: dto.licenseNumber,
-        licenseImageUrl: dto.licenseImageUrl ?? null,
-        documents: this.toJsonDocuments(dto.documents),
-        submittedAt: new Date(),
-      },
+    return this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: user.id },
+        data: {
+          fullName: dto.personalFullName,
+        },
+      })
+
+      return tx.vendorOnboardingRequest.update({
+        where: { id: request.id },
+        data: {
+          applicationStatus: VendorOnboardingStatus.SUBMITTED,
+          personalFullName: dto.personalFullName,
+          personalNationalId: dto.personalNationalId,
+          businessName: dto.businessName,
+          businessSlug: dto.businessSlug,
+          businessDescription: dto.businessDescription ?? null,
+          businessAddress: dto.businessAddress,
+          businessLat: dto.businessLat ?? null,
+          businessLng: dto.businessLng ?? null,
+          licenseNumber: dto.licenseNumber,
+          licenseImageUrl: dto.licenseImageUrl ?? null,
+          documents: this.toJsonDocuments(dto.documents),
+          submittedAt: new Date(),
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              phoneNumber: true,
+              fullName: true,
+            },
+          },
+        },
+      })
     })
   }
 
@@ -86,7 +121,7 @@ export class VendorOnboardingService {
     return this.prisma.vendorOnboardingRequest.update({
       where: { id: request.id },
       data: {
-        productStatus: 'SUBMITTED',
+        productStatus: VendorOnboardingStatus.SUBMITTED,
         productName: dto.productName,
         productDescription: dto.productDescription ?? null,
         productCategoryId: dto.productCategoryId,
@@ -105,7 +140,9 @@ export class VendorOnboardingService {
     const limit = query.limit ?? 20
     const skip = (page - 1) * limit
 
-    const where = query.status ? { applicationStatus: query.status } : {}
+    const where: Prisma.VendorOnboardingRequestWhereInput = query.status
+      ? { applicationStatus: query.status as VendorOnboardingStatus }
+      : {}
 
     const [data, total] = await Promise.all([
       this.prisma.vendorOnboardingRequest.findMany({
@@ -122,8 +159,6 @@ export class VendorOnboardingService {
   }
 
   async adminGetRequest(user: AuthenticatedUser, requestId: number) {
-    this.assertAdmin(user)
-
     const request = await this.prisma.vendorOnboardingRequest.findUnique({
       where: { id: requestId },
       include: { user: { select: { id: true, phoneNumber: true, fullName: true, roles: true } } },
@@ -137,8 +172,6 @@ export class VendorOnboardingService {
   }
 
   async adminReviewApplication(user: AuthenticatedUser, requestId: number, approved: boolean, dto: ReviewVendorOnboardingDto) {
-    this.assertAdmin(user)
-
     const request = await this.prisma.vendorOnboardingRequest.findUnique({ where: { id: requestId } })
     if (!request) {
       throw new NotFoundException('درخواست مورد نظر یافت نشد')
@@ -148,7 +181,7 @@ export class VendorOnboardingService {
       throw new ConflictException('این درخواست قبلا نهایی شده است')
     }
 
-    const nextStatus = approved ? 'APPROVED' : 'REJECTED'
+    const nextStatus = approved ? VendorOnboardingStatus.APPROVED : VendorOnboardingStatus.REJECTED
 
     const updated = await this.prisma.$transaction(async (tx) => {
       const next = await tx.vendorOnboardingRequest.update({
@@ -179,6 +212,26 @@ export class VendorOnboardingService {
             },
           })
         }
+
+        const existingStore = await tx.store.findFirst({
+          where: { ownerId: request.userId },
+          select: { id: true },
+        })
+
+        if (!existingStore && request.businessName && request.businessSlug) {
+          await tx.store.create({
+            data: {
+              name: request.businessName,
+              slug: request.businessSlug,
+              description: request.businessDescription ?? null,
+              address: request.businessAddress ?? null,
+              lat: request.businessLat ?? null,
+              lng: request.businessLng ?? null,
+              ownerId: request.userId,
+              isVerified: false,
+            },
+          })
+        }
       }
 
       return next
@@ -188,14 +241,12 @@ export class VendorOnboardingService {
   }
 
   async adminReviewProduct(user: AuthenticatedUser, requestId: number, approved: boolean, dto: ReviewVendorProductDto) {
-    this.assertAdmin(user)
-
     const request = await this.prisma.vendorOnboardingRequest.findUnique({ where: { id: requestId } })
     if (!request) {
       throw new NotFoundException('درخواست مورد نظر یافت نشد')
     }
 
-    const nextStatus = approved ? 'APPROVED' : 'REJECTED'
+    const nextStatus = approved ? VendorOnboardingStatus.APPROVED : VendorOnboardingStatus.REJECTED
 
     return this.prisma.vendorOnboardingRequest.update({
       where: { id: requestId },
@@ -236,12 +287,6 @@ export class VendorOnboardingService {
   }
 
   private toJsonDocuments(documents?: Array<{ title: string; url: string }>) {
-    return documents && documents.length ? (documents as Prisma.InputJsonValue) : null
-  }
-
-  private assertAdmin(user: AuthenticatedUser) {
-    if (!user.roles.includes('ADMIN')) {
-      throw new ForbiddenException('این endpoint فقط برای ادمین مجاز است')
-    }
+    return documents && documents.length ? (documents as Prisma.InputJsonValue) : undefined
   }
 }

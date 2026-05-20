@@ -84,7 +84,7 @@ export function VendorOnboardingPage({ session }: { session: AuthSession }) {
         setDocuments(mappedDocs)
         setDraft((current) => ({
           ...current,
-          personalFullName: String(record.personalFullName ?? ''),
+          personalFullName: String(record.personalFullName ?? record.user?.fullName ?? session.user.fullName ?? ''),
           personalNationalId: String(record.personalNationalId ?? ''),
           businessName: String(record.businessName ?? ''),
           businessSlug: String(record.businessSlug ?? ''),
@@ -107,7 +107,7 @@ export function VendorOnboardingPage({ session }: { session: AuthSession }) {
         setApplicationState(appState)
         setProductState(prodState)
         setHasApprovedProduct(prodState === 'approved')
-        setStoreName(String(record.businessName ?? session.user.fullName || session.user.phoneNumber))
+        setStoreName(String(record.businessName ?? record.user?.fullName ?? session.user.fullName ?? session.user.phoneNumber))
       } catch (loadError) {
         if (!active) return
         setError(loadError instanceof Error ? loadError.message : 'خطا در بارگذاری onboarding')

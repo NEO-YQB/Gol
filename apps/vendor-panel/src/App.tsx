@@ -85,7 +85,9 @@ function renderRoute(route: VendorRoute, session: AuthSession) {
 }
 
 function resolveAccessState(session: AuthSession): VendorAccessState {
-  return session.user.roles.includes('VENDOR') ? 'active' : 'pending'
+  const onboardingStatus = session.bootstrap?.vendorOnboarding?.applicationStatus
+  if (onboardingStatus === 'APPROVED') return 'active'
+  return 'pending'
 }
 
 export default function App() {
@@ -196,6 +198,40 @@ export default function App() {
     setOtpCountdown(null)
     setAccessState('pending')
   }
+
+  useEffect(() => {
+    if (!session || session.bootstrap) return
+
+    let active = true
+
+    async function loadBootstrap() {
+      try {
+        const response = await vendorApi.getSessionBootstrap(session)
+        if (!active) return
+
+        const nextSession: AuthSession = {
+          ...session,
+          bootstrap: response,
+          user: {
+            ...session.user,
+            roles: response.roles ?? session.user.roles,
+          },
+        }
+
+        saveSession(nextSession)
+        setSession(nextSession)
+        setAccessState(resolveAccessState(nextSession))
+      } catch {
+        if (!active) return
+        setAccessState(resolveAccessState(session))
+      }
+    }
+
+    void loadBootstrap()
+    return () => {
+      active = false
+    }
+  }, [session])
 
   if (!session) {
     return (

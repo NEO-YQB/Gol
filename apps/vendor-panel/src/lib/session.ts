@@ -5,9 +5,23 @@ export type SessionUser = {
   roles: string[]
 }
 
+export type VendorBootstrap = {
+  roles?: string[]
+  effectivePermissions?: Array<{
+    action: string
+    subject: string
+  }>
+  vendorOnboarding?: {
+    applicationStatus: string
+    productStatus: string
+    storeActivatedAt?: string | null
+  } | null
+}
+
 export type AuthSession = {
   accessToken: string
   user: SessionUser
+  bootstrap?: VendorBootstrap
 }
 
 const SESSION_KEY = 'flower-marketplace.vendor.session'
