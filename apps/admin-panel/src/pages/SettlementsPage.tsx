@@ -2,7 +2,7 @@ import { DataTable, Pill, SectionCard, StatCard } from '@flower-marketplace/fron
 import { useEffect, useMemo, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { adminApi } from '../lib/api'
-import { makeRows, makeStats, readText, toArray } from '../lib/normalize'
+import { makeStats, readText, toArray } from '../lib/normalize'
 import type { AuthSession } from '../lib/session'
 
 type FinanceRecord = Record<string, unknown>
@@ -31,6 +31,16 @@ const settlementColumns = [
   { key: 'reason', label: 'علت' },
   { key: 'updated', label: 'بروزرسانی' },
 ]
+
+function formatPersianNumber(value: unknown) {
+  if (typeof value === 'number') return new Intl.NumberFormat('fa-IR').format(value)
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value)
+    if (!Number.isNaN(parsed)) return new Intl.NumberFormat('fa-IR').format(parsed)
+    return value
+  }
+  return '—'
+}
 
 function formatJalaliDate(value: unknown, withTime = false) {
   if (typeof value !== 'string' || !value) return '—'
