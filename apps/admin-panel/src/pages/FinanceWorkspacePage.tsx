@@ -331,7 +331,7 @@ export function FinanceWorkspacePage({
                       return
                     }
                     if (!walletForm.title.trim() || !walletForm.amount.trim()) {
-                      setActionError('برای adjustment، عنوان و مبلغ الزامی است.')
+                      setActionError('برای اصلاح مالی کیف پول، عنوان و مبلغ الزامی است.')
                       return
                     }
 
@@ -345,7 +345,7 @@ export function FinanceWorkspacePage({
                           title: walletForm.title.trim(),
                           description: walletForm.description.trim() || undefined,
                         }),
-                      'adjustment کیف پول با موفقیت ثبت شد.',
+                      'اصلاح مالی کیف پول با موفقیت ثبت شد.',
                     )
                   }}
                 >
@@ -399,7 +399,7 @@ export function FinanceWorkspacePage({
                     />
                   </div>
                   <button className="orders-primary-button" disabled={!canAdjustWallet || actionBusy === 'wallet-adjustment'} type="submit">
-                    {actionBusy === 'wallet-adjustment' ? 'در حال ثبت adjustment...' : 'ثبت adjustment کیف پول'}
+                    {actionBusy === 'wallet-adjustment' ? 'در حال ثبت اصلاح مالی...' : 'ثبت اصلاح مالی کیف پول'}
                   </button>
                 </form>
               </SectionCard>
@@ -408,8 +408,8 @@ export function FinanceWorkspacePage({
             {activeLane === 'settlement' || activeLane === 'overview' ? (
               <SectionCard
                 eyebrow="آزادسازی تسویه"
-                title="کنترل release مورد مالی"
-                description="اگر این مورد در نگه داری است و مانع فعالی وجود ندارد، release را از همینجا انجام بده."
+                title="کنترل آزادسازی تسویه"
+                description="اگر این مورد در نگه داری است و مانع فعالی وجود ندارد، آزادسازی را از همینجا انجام بده."
                 actions={<Pill tone={canReleaseSettlement ? 'success' : 'warning'}>{canReleaseSettlement ? 'قابل اجرا' : 'غیرفعال'}</Pill>}
               >
                 <div className="orders-action-stack">
@@ -430,7 +430,7 @@ export function FinanceWorkspacePage({
                     }
                     type="button"
                   >
-                    {actionBusy === 'release-settlement' ? 'در حال آزادسازی...' : 'آزادسازی تسویه'}
+                    {actionBusy === 'release-settlement' ? 'در حال آزادسازی تسویه...' : 'آزادسازی تسویه'}
                   </button>
                 </div>
               </SectionCard>
@@ -439,15 +439,15 @@ export function FinanceWorkspacePage({
             {activeLane === 'refunds' || activeLane === 'overview' ? (
               <SectionCard
                 eyebrow="جمع بندی مالی"
-                title="summaryهای مالی و refund"
-                description="برای مرور سریع وضعیت عمومی lane مالی، summaryهای backend اینجا نشان داده می شوند."
+                title="خلاصه های مالی و بازگشت وجه"
+                description="برای مرور سریع وضعیت عمومی بخش مالی، خلاصه های backend اینجا به شکل فارسی نمایش داده می شوند."
                 actions={<Pill tone="danger">گزارش فشرده</Pill>}
               >
                 <div className="orders-summary-grid">
                   {[
                     { label: 'خلاصه کیف پول', value: readText(financeSummary ?? {}, ['total', 'count'], '—') },
-                    { label: 'خلاصه refund', value: readText(refundSummary ?? {}, ['total', 'count'], '—') },
-                    { label: 'آخرین بروزرسانی summary', value: formatJalaliDate(readText(financeSummary ?? {}, ['updatedAt'], ''), true), wide: true },
+                    { label: 'خلاصه بازگشت وجه', value: readText(refundSummary ?? {}, ['total', 'count'], '—') },
+                    { label: 'آخرین بروزرسانی خلاصه', value: formatJalaliDate(readText(financeSummary ?? {}, ['updatedAt'], ''), true), wide: true },
                   ].map((item) => (
                     <article className={`orders-detail-item${item.wide ? ' orders-detail-item--wide' : ''}`} key={item.label}>
                       <span>{item.label}</span>
@@ -479,7 +479,7 @@ export function FinanceWorkspacePage({
                     id: 'finance-item-2',
                     title: 'موجودی کیف پول',
                     meta: formatPersianNumber(readText(walletDetail ?? {}, ['balance', 'availableBalance'], '—')),
-                    description: `نگه داری شده: ${formatPersianNumber(readText(walletDetail ?? {}, ['heldBalance', 'heldAmount'], '—'))}`,
+                    description: `مبلغ نگه داری شده: ${formatPersianNumber(readText(walletDetail ?? {}, ['heldBalance', 'heldAmount'], '—'))}`,
                     tone: 'primary',
                   },
                   {

@@ -22,6 +22,38 @@ const settlementColumns = [
   { key: 'updated', label: 'بروزرسانی' },
 ]
 
+function formatJalaliDate(value: unknown, withTime = false) {
+  if (typeof value !== 'string' || !value) return '—'
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return '—'
+  return new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    ...(withTime
+      ? {
+          hour: '2-digit',
+          minute: '2-digit',
+        }
+      : {}),
+  }).format(parsed)
+}
+
+function getSettlementStatusLabel(status: string) {
+  switch (status) {
+    case 'PENDING':
+      return 'در انتظار نگه داری'
+    case 'ON_HOLD':
+      return 'در نگه داری'
+    case 'RELEASED':
+      return 'آزاد شده'
+    case 'REVERSED':
+      return 'برگشت خورده'
+    default:
+      return status || 'نامشخص'
+  }
+}
+
 function getSettlementStatus(record: FinanceRecord) {
   return readText(record, ['status'], 'UNKNOWN')
 }
@@ -70,10 +102,10 @@ export function SettlementsPage({ session, onOpenFinanceWorkspace }: { session: 
 
         setStats(
           makeStats([
-            { label: 'کیف پول‌ها', value: wallets, detail: 'ورودی اصلی کارتابل مالی ادمین', tone: 'primary' },
-            { label: 'استثناهای تسویه', value: exceptions, detail: 'صف block و ناسازگاری‌های تسویه', tone: 'warning' },
-            { label: 'خلاصه کیف پول', value: financeSummary, detail: 'summary endpoint برای widgetهای گزارش', tone: 'success' },
-            { label: 'خلاصه refund', value: refundSummary, detail: 'دید refund و reversal', tone: 'danger' },
+            { label: 'کیف پول ها', value: wallets, detail: 'ورودی اصلی کارتابل مالی پنل', tone: 'primary' },
+            { label: 'استثناهای تسویه', value: exceptions, detail: 'صف مغایرت ها و توقف های مالی', tone: 'warning' },
+            { label: 'خلاصه کیف پول', value: financeSummary, detail: 'خلاصه فشرده برای مرور وضعیت کیف پول ها', tone: 'success' },
+            { label: 'خلاصه بازگشت وجه', value: refundSummary, detail: 'مرور سریع بازگشت وجه و برگشت تراکنش', tone: 'danger' },
           ]),
         )
         setWallets(walletList)
@@ -147,10 +179,10 @@ export function SettlementsPage({ session, onOpenFinanceWorkspace }: { session: 
   const selectedSummary = selectedSettlement
     ? [
         { label: 'شناسه', value: readText(selectedSettlement, ['id', 'orderId'], '—') },
-        { label: 'وضعیت', value: getSettlementStatus(selectedSettlement) },
+        { label: 'وضعیت', value: getSettlementStatusLabel(getSettlementStatus(selectedSettlement)) },
         { label: 'علت', value: getSettlementReason(selectedSettlement) },
         { label: 'فروشگاه', value: getWalletStore(selectedSettlement) },
-        { label: 'بروزرسانی', value: readText(selectedSettlement, ['updatedAt', 'createdAt'], '—') },
+        { label: 'بروزرسانی', value: formatJalaliDate(readText(selectedSettlement, ['updatedAt', 'createdAt'], ''), true) },
         { label: 'نوع', value: readText(selectedSettlement, ['type'], '—') },
       ]
     : []
@@ -178,7 +210,7 @@ export function SettlementsPage({ session, onOpenFinanceWorkspace }: { session: 
                 onClick={() => setStatusFilter(status)}
                 type="button"
               >
-                {status === 'ALL' ? 'همه وضعیت‌ها' : status}
+                {status === 'ALL' ? 'همه وضعیت ها' : getSettlementStatusLabel(status)}
               </button>
             ))}
           </div>
@@ -216,8 +248,8 @@ export function SettlementsPage({ session, onOpenFinanceWorkspace }: { session: 
                         onClick={() => setSelectedSettlementId(id)}
                         type="button"
                       >
-                        <strong>exception #{id}</strong>
-                        <span>{getSettlementStatus(item)}</span>
+                        <strong>مورد مالی #{id}</strong>
+                        <span>{getSettlementStatusLabel(getSettlementStatus(item))}</span>
                         <small>{getSettlementReason(item)}</small>
                       </button>
                     )
@@ -233,7 +265,7 @@ export function SettlementsPage({ session, onOpenFinanceWorkspace }: { session: 
               actions={
                 selectedSettlement ? (
                   <div className="orders-workspace-header-actions">
-                    <Pill tone="danger">{getSettlementStatus(selectedSettlement)}</Pill>
+                    <Pill tone="danger">{getSettlementStatusLabel(getSettlementStatus(selectedSettlement))}</Pill>
                     <button className="orders-secondary-button" onClick={() => onOpenFinanceWorkspace(selectedSettlement)} type="button">
                       ورود به میزکار مالی
                     </button>
