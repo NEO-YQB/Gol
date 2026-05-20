@@ -240,7 +240,7 @@ export const vendorApi = {
   async uploadOnboardingFile(session: AuthSession, file: File) {
     const formData = new FormData()
     formData.append('file', file)
-    const payload = await uploadRequest<{ url: string }>('/files/upload-product-image', formData, session.accessToken)
+    const payload = await uploadRequest<{ url: string }>('/files/upload-document-image', formData, session.accessToken)
     return { ...payload, url: resolveAssetUrl(payload.url) }
   },
   async uploadOnboardingGallery(session: AuthSession, files: File[]) {

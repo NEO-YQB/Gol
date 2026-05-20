@@ -93,6 +93,26 @@ export class FilesController {
     return files.map(file => ({ url: `/uploads/products/${file.filename}` }));
   }
 
+  @Post('upload-document-image')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(JwtAuthGuard, AbilitiesGuard)
+  @CheckAbilities((ability) => ability.can('create', 'File'))
+  @UseInterceptors(FileInterceptor('file', multerOptions))
+  @ApiOperation({ summary: 'آپلود تصویر مدرک' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } })
+  @ApiResponse({ status: 201, description: 'فایل با موفقیت آپلود شد.', schema: { type: 'object', properties: { url: { type: 'string' } } } })
+  @ApiBearerAuth('JWT-auth')
+  uploadDocumentImage(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('هیچ فایلی برای آپلود ارسال نشده است.');
+    }
+
+    this.validateUploadedFile(file);
+
+    return { url: `/uploads/products/${file.filename}` };
+  }
+
   private validateUploadedFile(file: Express.Multer.File) {
     const isAllowed = /\.(png|jpeg|jpg|webp)$/i.test(file.originalname);
     if (!isAllowed) {

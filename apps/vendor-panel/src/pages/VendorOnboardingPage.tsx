@@ -185,7 +185,7 @@ export function VendorOnboardingPage({ session }: { session: AuthSession }) {
       if (target === 'idFront') updateDraft('personalNationalIdFrontUrl', result.url)
       if (target === 'idBack') updateDraft('personalNationalIdBackUrl', result.url)
       if (target === 'productMain') updateDraft('productMainImage', result.url)
-      setMessage('فایل با موفقیت بارگذاری شد.')
+      setMessage('فایل با موفقیت بارگذاری شد و پیش‌نمایش آماده است.')
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : 'بارگذاری فایل ناموفق بود')
     } finally {
@@ -321,6 +321,7 @@ export function VendorOnboardingPage({ session }: { session: AuthSession }) {
                   {uploading === 'idFront' || uploadProgress.idFront > 0 ? <div className="vendor-upload-progress" style={{ ['--progress' as string]: `${uploadProgress.idFront}%` }}><span>{uploadProgress.idFront}%</span></div> : null}
                   {renderUploadPreview(draft.personalNationalIdFrontUrl, 'پیش‌نمایش کارت ملی روی')}
                 </div>
+                {draft.personalNationalIdFrontUrl ? <small>مدرک ثبت شد.</small> : null}
               </div>
               <div className="vendor-upload-card">
                 <span>کارت ملی پشت</span>
@@ -330,6 +331,7 @@ export function VendorOnboardingPage({ session }: { session: AuthSession }) {
                   {uploading === 'idBack' || uploadProgress.idBack > 0 ? <div className="vendor-upload-progress" style={{ ['--progress' as string]: `${uploadProgress.idBack}%` }}><span>{uploadProgress.idBack}%</span></div> : null}
                   {renderUploadPreview(draft.personalNationalIdBackUrl, 'پیش‌نمایش کارت ملی پشت')}
                 </div>
+                {draft.personalNationalIdBackUrl ? <small>مدرک ثبت شد.</small> : null}
               </div>
             </div>
             <div className="vendor-onboarding-actions">
@@ -367,6 +369,7 @@ export function VendorOnboardingPage({ session }: { session: AuthSession }) {
                   {uploading === 'license' || uploadProgress.license > 0 ? <div className="vendor-upload-progress" style={{ ['--progress' as string]: `${uploadProgress.license}%` }}><span>{uploadProgress.license}%</span></div> : null}
                   {renderUploadPreview(draft.licenseImageUrl, 'پیش‌نمایش جواز کسب')}
                 </div>
+                {draft.licenseImageUrl ? <small>مدرک ثبت شد.</small> : null}
               </div>
             </div>
             <div className="vendor-onboarding-actions">
