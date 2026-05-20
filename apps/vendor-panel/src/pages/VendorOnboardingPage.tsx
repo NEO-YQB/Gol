@@ -198,39 +198,6 @@ export function VendorOnboardingPage({ session }: { session: AuthSession }) {
     if (index > 0) setActiveStep(stepOrder[index - 1])
   }
 
-  async function handleSubmitApplication() {
-    setSaving(true)
-    setError(null)
-    setMessage(null)
-
-    try {
-      const response = await vendorApi.submitVendorOnboarding(session, {
-        personalFullName: draft.personalFullName.trim(),
-        personalNationalId: draft.personalNationalId.trim(),
-        businessName: draft.businessName.trim(),
-        businessSlug: draft.businessSlug.trim(),
-        businessDescription: draft.businessDescription.trim() || undefined,
-        businessAddress: draft.businessAddress.trim(),
-        businessLat: draft.businessLat.trim() ? Number(draft.businessLat) : undefined,
-        businessLng: draft.businessLng.trim() ? Number(draft.businessLng) : undefined,
-        licenseNumber: draft.licenseNumber.trim(),
-        licenseImageUrl: draft.licenseImageUrl.trim() || undefined,
-        documents: [
-          draft.personalNationalIdFrontUrl ? { title: 'کارت ملی روی', url: draft.personalNationalIdFrontUrl } : null,
-          draft.personalNationalIdBackUrl ? { title: 'کارت ملی پشت', url: draft.personalNationalIdBackUrl } : null,
-          draft.licenseImageUrl ? { title: 'جواز کسب', url: draft.licenseImageUrl } : null,
-        ].filter(Boolean) as DraftDocument[],
-      }) as Record<string, unknown>
-      setApplicationState(String(response.applicationStatus ?? 'submitted').toLowerCase() as VendorApplicationState)
-      setActiveStep('status')
-      setMessage('درخواست فروشندگی ثبت شد و در انتظار بررسی است.')
-    } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : 'ثبت درخواست ناموفق بود')
-    } finally {
-      setSaving(false)
-    }
-  }
-
   async function handleSubmitProduct() {
     setSaving(true)
     setError(null)
