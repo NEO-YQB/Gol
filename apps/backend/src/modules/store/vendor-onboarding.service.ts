@@ -135,7 +135,6 @@ export class VendorOnboardingService {
   }
 
   async adminListRequests(user: AuthenticatedUser, query: { status?: string; page?: number; limit?: number }) {
-    this.assertAdmin(user)
     const page = query.page ?? 1
     const limit = query.limit ?? 20
     const skip = (page - 1) * limit
