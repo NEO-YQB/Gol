@@ -2389,3 +2389,30 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+.settlements-layout,
+.settlements-detail-column,
+.finance-workspace-page .orders-workspace-body,
+.finance-workspace-page .orders-workspace-main,
+.finance-workspace-page .orders-workspace-side,
+.finance-workspace-page .fm-section-card,
+.settlements-detail-column .fm-section-card,
+.settlements-layout .fm-section-card {
+  align-items: start;
+  align-content: start;
+}
+
+.settlements-detail-column,
+.finance-workspace-page .orders-workspace-side {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
+.finance-workspace-page .orders-workspace-main > .fm-section-card,
+.finance-workspace-page .orders-workspace-side > .fm-section-card,
+.settlements-detail-column > .fm-section-card {
+  height: auto;
+  align-self: start;
+}
