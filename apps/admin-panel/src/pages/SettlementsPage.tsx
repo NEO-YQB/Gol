@@ -59,6 +59,47 @@ function formatJalaliDate(value: unknown, withTime = false) {
   }).format(parsed)
 }
 
+function translateAnyStatus(status: string) {
+  switch (status) {
+    case 'PENDING':
+      return 'در انتظار تایید'
+    case 'PAID':
+      return 'پرداخت شده'
+    case 'ACCEPTED':
+      return 'تایید شده'
+    case 'PROCESSING':
+      return 'در حال آماده سازی'
+    case 'SHIPPED':
+      return 'ارسال شده'
+    case 'DELIVERED':
+      return 'تحویل شده'
+    case 'REJECTED_BY_VENDOR':
+      return 'رد شده توسط فروشنده'
+    case 'CANCELLED':
+      return 'لغو شده'
+    case 'CANCELLED_BY_ADMIN':
+      return 'لغو شده توسط ادمین'
+    case 'CANCELLED_BY_CUSTOMER':
+      return 'لغو شده توسط مشتری'
+    case 'FAILED':
+      return 'ناموفق'
+    case 'EXPIRED':
+      return 'منقضی شده'
+    case 'REFUNDED':
+      return 'بازگشت کامل وجه'
+    case 'PARTIALLY_REFUNDED':
+      return 'بازگشت بخشی از وجه'
+    case 'REVERSED':
+      return 'برگشت خورده'
+    case 'RELEASED':
+      return 'آزاد شده'
+    case 'ON_HOLD':
+      return 'در نگه داری'
+    default:
+      return status || 'نامشخص'
+  }
+}
+
 function getSettlementStatusLabel(status: string) {
   switch (status) {
     case 'PENDING':
@@ -204,7 +245,7 @@ export function SettlementsPage({ session, onOpenFinanceWorkspace }: { session: 
     ? [
         { label: 'شناسه', value: readText(selectedSettlement, ['id', 'orderId'], '—') },
         { label: 'وضعیت', value: getSettlementStatusLabel(getSettlementStatus(selectedSettlement)) },
-        { label: 'علت', value: getSettlementReason(selectedSettlement) },
+        { label: 'علت', value: translateAnyStatus(getSettlementReason(selectedSettlement)) },
         { label: 'فروشگاه', value: getWalletStore(selectedSettlement) },
         { label: 'بروزرسانی', value: formatJalaliDate(readText(selectedSettlement, ['updatedAt', 'createdAt'], ''), true) },
         { label: 'نوع', value: readText(selectedSettlement, ['type'], '—') },
@@ -274,7 +315,7 @@ export function SettlementsPage({ session, onOpenFinanceWorkspace }: { session: 
                       >
                         <strong>مورد مالی #{id}</strong>
                         <span>{getSettlementStatusLabel(getSettlementStatus(item))}</span>
-                        <small>{getSettlementReason(item)}</small>
+                        <small>{translateAnyStatus(getSettlementReason(item))}</small>
                       </button>
                     )
                   })}

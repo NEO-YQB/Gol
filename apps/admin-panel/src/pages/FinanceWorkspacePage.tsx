@@ -36,6 +36,24 @@ function translateFinanceEnum(value: string) {
       return 'کاهش موجودی'
     case 'INCREMENT':
       return 'افزایش موجودی'
+    case 'DELIVERED':
+      return 'تحویل شده'
+    case 'SHIPPED':
+      return 'ارسال شده'
+    case 'ACCEPTED':
+      return 'تایید شده'
+    case 'PROCESSING':
+      return 'در حال آماده سازی'
+    case 'PAID':
+      return 'پرداخت شده'
+    case 'FAILED':
+      return 'ناموفق'
+    case 'REFUNDED':
+      return 'بازگشت کامل وجه'
+    case 'PARTIALLY_REFUNDED':
+      return 'بازگشت بخشی از وجه'
+    case 'REJECTED_BY_VENDOR':
+      return 'رد شده توسط فروشنده'
     default:
       return value || 'نامشخص'
   }
@@ -214,7 +232,7 @@ export function FinanceWorkspacePage({
     {
       label: 'ردپای مالی',
       value: formatJalaliDate(readText(settlement ?? {}, ['updatedAt', 'createdAt'], ''), true),
-      delta: readDisplayValue((settlement ?? {}).reason, readDisplayValue((settlement ?? {}).message, 'بدون علت ثبت شده')),
+      delta: translateFinanceEnum(readDisplayValue((settlement ?? {}).reason, readDisplayValue((settlement ?? {}).message, 'بدون علت ثبت شده'))),
       detail: 'آخرین زمان تغییر و علت اصلی این مورد',
       hint: 'اگر تصمیم مالی مبهم است، از همین کارت شروع کن و بعد سراغ actionها برو.',
       tone: 'warning' as const,
@@ -503,7 +521,7 @@ export function FinanceWorkspacePage({
                     id: 'finance-item-1',
                     title: 'وضعیت فعلی مورد',
                     meta: getSettlementStatusLabel(settlementStatus),
-                    description: readDisplayValue((settlement ?? {}).reason, readDisplayValue((settlement ?? {}).message, 'علتی برای این مورد ثبت نشده است.')),
+                    description: translateFinanceEnum(readDisplayValue((settlement ?? {}).reason, readDisplayValue((settlement ?? {}).message, 'علتی برای این مورد ثبت نشده است.'))),
                     tone: getToneByStatus(settlementStatus),
                   },
                   {
