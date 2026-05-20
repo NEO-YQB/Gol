@@ -39,6 +39,15 @@ const routeRequirements: Partial<Record<AdminRoute, AccessRequirement>> = {
       { action: 'update', subject: 'Order' },
     ],
   },
+  financeWorkspace: {
+    anyOf: [
+      { action: 'manage', subject: 'all' },
+      { action: 'read', subject: 'StoreWallet' },
+      { action: 'update', subject: 'StoreWallet' },
+      { action: 'read', subject: 'WalletTransaction' },
+      { action: 'read', subject: 'CommissionRule' },
+    ],
+  },
   settlements: {
     anyOf: [
       { action: 'manage', subject: 'all' },

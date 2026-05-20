@@ -19,6 +19,7 @@ import { AlertsPage } from './pages/AlertsPage'
 import { ContentPage } from './pages/ContentPage'
 import { ContentWorkspacePage } from './pages/ContentWorkspacePage'
 import { DashboardPage } from './pages/DashboardPage'
+import { FinanceWorkspacePage } from './pages/FinanceWorkspacePage'
 import { LoginPage } from './pages/LoginPage'
 import { OrdersPage } from './pages/OrdersPage'
 import { OrdersWorkspacePage } from './pages/OrdersWorkspacePage'
@@ -42,7 +43,7 @@ function buildNav(currentRoute: AdminRoute, session: AuthSession): NavSection[] 
       items: [
         { key: 'dashboard', label: 'داشبورد', hint: 'نمای نقش محور از وضعیت کلی', active: currentRoute === 'dashboard' },
         { key: 'orders', label: 'سفارش ها', hint: 'کارتابل عملیات سفارش و صف استثناها', active: currentRoute === 'orders' || currentRoute === 'ordersWorkspace' },
-        { key: 'settlements', label: 'تسویه و مالی', hint: 'کیف پول، تسویه و summaryهای مالی', active: currentRoute === 'settlements' },
+        { key: 'settlements', label: 'تسویه و مالی', hint: 'کارتابل triage مالی، کیف پول و صف استثناها', active: currentRoute === 'settlements' || currentRoute === 'financeWorkspace' },
         { key: 'support', label: 'پشتیبانی', hint: 'تیکت ها، noteها و رسیدگی بعدی', active: currentRoute === 'support' || currentRoute === 'supportWorkspace' },
         { key: 'vendors', label: 'فروشنده ها و ریسک', hint: 'visibility ریسک، policy و سلامت فروشنده', active: currentRoute === 'vendors' || currentRoute === 'vendorWorkspace' },
       ],
@@ -77,8 +78,14 @@ function getPageMeta(route: AdminRoute) {
     case 'settlements':
       return {
         eyebrow: 'کارتابل مالی',
-        title: 'تسویه، کیف پول و دید مالی',
-        description: 'اپراتور مالی یا ادمین از این route تصویر روشن تری از wallet، settlement و exceptionها می گیرد.',
+        title: 'تسویه، کیف پول و صف استثناهای مالی',
+        description: 'این route برای triage مالی است؛ summary و exceptionها را نشان می دهد و از آن وارد workspace متمرکز مالی می شوی.',
+      }
+    case 'financeWorkspace':
+      return {
+        eyebrow: 'میزکار مالی',
+        title: 'رسیدگی متمرکز به کیف پول، adjustment و آزادسازی تسویه',
+        description: 'تصمیم های واقعی مالی باید در workspace جدا و focused انجام شوند، نه داخل list کارتابل.',
       }
     case 'ordersWorkspace':
       return {
@@ -161,8 +168,11 @@ function renderRoute(
     onOpenSupportWorkspace: (ticket: Record<string, unknown>) => void
     onBackToSupport: () => void
     vendorWorkspaceStore: Record<string, unknown> | null
+    financeWorkspaceSettlement: Record<string, unknown> | null
     onOpenVendorWorkspace: (store: Record<string, unknown>) => void
     onBackToVendors: () => void
+    onOpenFinanceWorkspace: (item: Record<string, unknown>) => void
+    onBackToSettlements: () => void
     contentWorkspaceArticleId: string | null
     contentWorkspaceMode: 'create' | 'edit'
     onOpenContentWorkspaceForCreate: () => void
@@ -178,7 +188,9 @@ function renderRoute(
     case 'ordersWorkspace':
       return <OrdersWorkspacePage onBack={options.onBackToOrders} order={options.ordersWorkspaceOrder} session={session} />
     case 'settlements':
-      return <SettlementsPage session={session} />
+      return <SettlementsPage onOpenFinanceWorkspace={options.onOpenFinanceWorkspace} session={session} />
+    case 'financeWorkspace':
+      return <FinanceWorkspacePage onBack={options.onBackToSettlements} session={session} settlement={options.financeWorkspaceSettlement} />
     case 'support':
       return <SupportPage onOpenSupportWorkspace={options.onOpenSupportWorkspace} session={session} />
     case 'supportWorkspace':
@@ -209,6 +221,7 @@ export default function App() {
   const [ordersWorkspaceOrder, setOrdersWorkspaceOrder] = useState<Record<string, unknown> | null>(null)
   const [supportWorkspaceTicket, setSupportWorkspaceTicket] = useState<Record<string, unknown> | null>(null)
   const [vendorWorkspaceStore, setVendorWorkspaceStore] = useState<Record<string, unknown> | null>(null)
+  const [financeWorkspaceSettlement, setFinanceWorkspaceSettlement] = useState<Record<string, unknown> | null>(null)
   const [contentWorkspaceArticleId, setContentWorkspaceArticleId] = useState<string | null>(null)
   const [contentWorkspaceMode, setContentWorkspaceMode] = useState<'create' | 'edit'>('create')
   const [phoneNumber, setPhoneNumber] = useState('')
@@ -426,6 +439,15 @@ export default function App() {
     handleNavigate('vendors')
   }
 
+  function handleOpenFinanceWorkspace(item: Record<string, unknown>) {
+    setFinanceWorkspaceSettlement(item)
+    handleNavigate('financeWorkspace')
+  }
+
+  function handleBackToSettlements() {
+    handleNavigate('settlements')
+  }
+
   function handleOpenContentWorkspaceForCreate() {
     setContentWorkspaceMode('create')
     setContentWorkspaceArticleId(null)
@@ -521,6 +543,9 @@ export default function App() {
         vendorWorkspaceStore,
         onOpenVendorWorkspace: handleOpenVendorWorkspace,
         onBackToVendors: handleBackToVendors,
+        financeWorkspaceSettlement,
+        onOpenFinanceWorkspace: handleOpenFinanceWorkspace,
+        onBackToSettlements: handleBackToSettlements,
         contentWorkspaceArticleId,
         contentWorkspaceMode,
         onOpenContentWorkspaceForCreate: handleOpenContentWorkspaceForCreate,

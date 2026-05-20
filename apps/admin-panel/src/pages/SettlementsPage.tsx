@@ -39,7 +39,7 @@ function statusOptions(items: FinanceRecord[]) {
   return ['ALL', ...unique]
 }
 
-export function SettlementsPage({ session }: { session: AuthSession }) {
+export function SettlementsPage({ session, onOpenFinanceWorkspace }: { session: AuthSession; onOpenFinanceWorkspace: (item: Record<string, unknown>) => void }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [stats, setStats] = useState(() => makeStats([]))
@@ -166,9 +166,9 @@ export function SettlementsPage({ session }: { session: AuthSession }) {
 
         <SectionCard
           eyebrow="کارتابل مالی"
-          title="workspace مالی، کیف پول و صف استثناها"
-          description="این route حالا به‌جای دو جدول خام، دید triage بهتری روی کیف پول‌ها و settlement exceptionها می‌دهد."
-          actions={<Pill tone="success">مالی v2</Pill>}
+          title="کارتابل مالی، کیف پول و صف استثناهای تسویه"
+          description="این route حالا نقطه triage مالی است؛ مرور سریع اینجا انجام می شود و تصمیم های واقعی داخل workspace مالی."
+          actions={<Pill tone="success">مالی و تسویه</Pill>}
         >
           <div className="settlements-filters">
             {statusOptions(exceptions).map((status) => (
@@ -227,10 +227,21 @@ export function SettlementsPage({ session }: { session: AuthSession }) {
             </SectionCard>
 
             <SectionCard
-              eyebrow="استثنای انتخاب‌شده"
+              eyebrow="استثنای انتخاب شده"
               title={selectedSettlement ? `استثنا #${readText(selectedSettlement, ['id', 'orderId'], '—')}` : 'استثنایی انتخاب نشده'}
-              description="این summary پایه detail drawer بعدی و actionهای release/review در finance workspace است."
-              actions={<Pill tone="danger">{selectedSettlement ? getSettlementStatus(selectedSettlement) : 'بدون انتخاب'}</Pill>}
+              description="این summary حالا نقطه شروع ورود به workspace مالی و تصمیم های واقعی کیف پول و تسویه است."
+              actions={
+                selectedSettlement ? (
+                  <div className="orders-workspace-header-actions">
+                    <Pill tone="danger">{getSettlementStatus(selectedSettlement)}</Pill>
+                    <button className="orders-secondary-button" onClick={() => onOpenFinanceWorkspace(selectedSettlement)} type="button">
+                      ورود به میزکار مالی
+                    </button>
+                  </div>
+                ) : (
+                  <Pill tone="danger">بدون انتخاب</Pill>
+                )
+              }
             >
               {selectedSummary.length ? (
                 <div className="settlements-detail-grid">
