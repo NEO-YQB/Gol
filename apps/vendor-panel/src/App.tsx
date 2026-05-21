@@ -8,6 +8,7 @@ import { LoginPage } from './pages/LoginPage'
 import { NotificationsPage } from './pages/NotificationsPage'
 import { DiscountsPage } from './pages/DiscountsPage'
 import { OrdersPage } from './pages/OrdersPage'
+import { OrderWorkspacePage } from './pages/OrderWorkspacePage'
 import { OverviewPage } from './pages/OverviewPage'
 import { ProductsPage } from './pages/ProductsPage'
 import { ReviewsPage } from './pages/ReviewsPage'
@@ -26,7 +27,7 @@ function buildNav(currentRoute: VendorRoute): NavSection[] {
       title: 'فروشگاه',
       items: [
         { key: 'overview', label: 'نمای کلی', hint: 'خلاصه فروشگاه و محدودیت‌های موثر', active: currentRoute === 'overview' },
-        { key: 'orders', label: 'سفارش‌ها', hint: 'سفارش‌های فروشگاه روی داده واقعی', active: currentRoute === 'orders' },
+        { key: 'orders', label: 'سفارش‌ها', hint: 'سفارش‌های فروشگاه روی داده واقعی', active: currentRoute === 'orders' || currentRoute === 'order-workspace' },
         { key: 'store', label: 'پروفایل فروشگاه', hint: 'هویت فروشگاه، زمان‌بندی ارسال و تنظیمات profile', active: currentRoute === 'store' },
         { key: 'products', label: 'محصولات', hint: 'موجودی، دسته‌ها و محصول‌های نیازمند توجه', active: currentRoute === 'products' },
         { key: 'discounts', label: 'تخفیف‌ها و پروموشن‌ها', hint: 'vendor discountها و readiness پروموشن', active: currentRoute === 'discounts' },
@@ -48,6 +49,8 @@ function getPageMeta(route: VendorRoute) {
   switch (route) {
     case 'orders':
       return { eyebrow: 'کارتابل سفارش‌ها', title: 'سفارش‌های فروشگاه', description: 'فروشنده از اینجا باید بتواند سفارش‌های خودش را روی داده واقعی backend ببیند و برای اقدام‌های بعدی آماده باشد.' }
+    case 'order-workspace':
+      return { eyebrow: 'میزکار سفارش', title: 'رسیدگی متمرکز به یک سفارش', description: 'همه dependencyها و actionهای مرتبط با یک سفارش در این workspace جدا جمع می‌شوند تا کاربر بدون اسکرول اضافه روی همان سفارش متمرکز بماند.' }
     case 'wallet':
       return { eyebrow: 'کارتابل مالی', title: 'کیف پول، جریان پول و تسویه‌ها', description: 'این route با خلاصه کیف پول و خلاصه تسویه‌ها پر می‌شود تا وضعیت مالی فروشگاه شفاف و قابل‌پیگیری باشد.' }
     case 'products':
@@ -68,9 +71,18 @@ function getPageMeta(route: VendorRoute) {
   }
 }
 
-function renderRoute(route: VendorRoute, session: AuthSession, onNavigate: (route: VendorRoute) => void) {
+function renderRoute(
+  route: VendorRoute,
+  session: AuthSession,
+  onNavigate: (route: VendorRoute) => void,
+  selectedOrder: Record<string, unknown> | null,
+  onSelectOrder: (order: Record<string, unknown> | null) => void,
+) {
   switch (route) {
-    case 'orders': return <OrdersPage session={session} onNavigate={onNavigate} />
+    case 'orders':
+      return <OrdersPage session={session} onNavigate={onNavigate} onSelectOrder={onSelectOrder} />
+    case 'order-workspace':
+      return <OrderWorkspacePage session={session} order={selectedOrder} onNavigate={onNavigate} onBack={() => onNavigate('orders')} />
     case 'products': return <ProductsPage session={session} />
     case 'store': return <StoreProfilePage session={session} />
     case 'discounts': return <DiscountsPage session={session} />
@@ -93,6 +105,7 @@ function resolveAccessState(session: AuthSession): VendorAccessState {
 export default function App() {
   const [session, setSession] = useState<AuthSession | null>(null)
   const [route, setRoute] = useState<VendorRoute>(defaultRoute)
+  const [selectedOrder, setSelectedOrder] = useState<Record<string, unknown> | null>(null)
   const [phoneNumber, setPhoneNumber] = useState('')
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
@@ -280,7 +293,7 @@ export default function App() {
         <Pill>{session.user.phoneNumber}</Pill>
         <button className="vendor-logout" onClick={handleLogout} type="button">خروج از پنل</button>
       </div>
-      {renderRoute(route, session, setRoute)}
+      {renderRoute(route, session, setRoute, selectedOrder, setSelectedOrder)}
     </AppShell>
   )
 }

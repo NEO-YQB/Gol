@@ -263,20 +263,38 @@
   grid-column: 1 / -1;
 }
 
-.vendor-orders-workflow-grid,
-.vendor-orders-dependency-grid,
-.vendor-orders-action-grid,
-.vendor-orders-review-grid {
+.vendor-order-workspace-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.vendor-order-workspace-back {
+  min-height: 38px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(31, 106, 82, 0.22);
+  background: rgba(31, 106, 82, 0.1);
+  color: var(--fm-brand-primary);
+  font-weight: 700;
+}
+
+.vendor-order-workspace-summary-grid,
+.vendor-order-workspace-workflow-grid,
+.vendor-order-workspace-dependency-grid,
+.vendor-order-workspace-review-grid {
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: start;
 }
 
-.vendor-orders-workflow-item,
-.vendor-orders-dependency-card,
-.vendor-orders-action-card,
-.vendor-orders-review-card {
+.vendor-order-workspace-summary-card,
+.vendor-order-workspace-workflow-item,
+.vendor-order-workspace-dependency-card,
+.vendor-order-workspace-review-card {
   border: 1px solid var(--fm-border-soft);
   border-radius: 18px;
   padding: 16px;
@@ -287,25 +305,25 @@
   height: fit-content;
 }
 
-.vendor-orders-workflow-item span,
-.vendor-orders-dependency-card span,
-.vendor-orders-review-card span {
+.vendor-order-workspace-summary-card span,
+.vendor-order-workspace-workflow-item span,
+.vendor-order-workspace-dependency-card span,
+.vendor-order-workspace-review-card span {
   color: var(--fm-text-secondary);
   font-size: 0.88rem;
 }
 
-.vendor-orders-workflow-item strong,
-.vendor-orders-dependency-card strong,
-.vendor-orders-action-card strong,
-.vendor-orders-review-card strong {
+.vendor-order-workspace-summary-card strong,
+.vendor-order-workspace-workflow-item strong,
+.vendor-order-workspace-dependency-card strong,
+.vendor-order-workspace-review-card strong {
   color: var(--fm-text-primary);
   line-height: 1.8;
 }
 
-.vendor-orders-workflow-item p,
-.vendor-orders-dependency-card p,
-.vendor-orders-action-card p,
-.vendor-orders-review-card p {
+.vendor-order-workspace-workflow-item p,
+.vendor-order-workspace-dependency-card p,
+.vendor-order-workspace-review-card p {
   margin: 0;
   color: var(--fm-text-secondary);
   line-height: 1.9;
@@ -1392,10 +1410,10 @@
 
 @media (max-width: 980px) {
   .vendor-orders-detail-grid,
-  .vendor-orders-workflow-grid,
-  .vendor-orders-dependency-grid,
-  .vendor-orders-action-grid,
-  .vendor-orders-review-grid,
+  .vendor-order-workspace-summary-grid,
+  .vendor-order-workspace-workflow-grid,
+  .vendor-order-workspace-dependency-grid,
+  .vendor-order-workspace-review-grid,
   .vendor-onboarding-form-grid,
   .vendor-onboarding-stats {
     grid-template-columns: 1fr;
