@@ -353,6 +353,11 @@
   color: var(--fm-text-primary);
 }
 
+.vendor-order-workspace-audit-card small {
+  color: var(--fm-text-secondary);
+  line-height: 1.8;
+}
+
 .vendor-products-toolbar {
   display: grid;
   gap: 16px;

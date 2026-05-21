@@ -201,8 +201,8 @@ export function OrderWorkspacePage({
     ? [
         {
           label: 'وضعیت سفارش',
-          value: translateOrderStatus(getOrderStatus(order)),
-          delta: translatePaymentStatus(getPaymentStatus(order)),
+          value: translateOrderStatus(getOrderStatus(currentOrder)),
+          delta: translatePaymentStatus(getPaymentStatus(currentOrder)),
           detail: 'جایگاه فعلی سفارش در مسیر اجرا',
           tone: 'primary' as const,
         },
@@ -222,7 +222,7 @@ export function OrderWorkspacePage({
         },
         {
           label: 'اثر روی کیفیت',
-          value: getOrderStatus(order) === 'DELIVERED' ? 'قابل اثرگذاری' : 'هنوز زود است',
+          value: getOrderStatus(currentOrder) === 'DELIVERED' ? 'قابل اثرگذاری' : 'هنوز زود است',
           delta: `${formatFaNumber(Number(healthStore.customerRatingCount ?? 0))} نظر ثبت‌شده`,
           detail: 'بازخورد این سفارش باید در کنار سلامت فروشگاه خوانده شود',
           tone: 'danger' as const,
@@ -234,7 +234,7 @@ export function OrderWorkspacePage({
     ? [
         {
           label: '۱. جمع‌بندی وضعیت سفارش',
-          value: `${translateOrderStatus(getOrderStatus(order))} / ${translatePaymentStatus(getPaymentStatus(order))}`,
+          value: `${translateOrderStatus(getOrderStatus(currentOrder))} / ${translatePaymentStatus(getPaymentStatus(currentOrder))}`,
           detail: 'اول خود سفارش باید خوانده شود تا context پایه روشن بماند.',
         },
         {
@@ -249,7 +249,7 @@ export function OrderWorkspacePage({
         },
         {
           label: '۴. بررسی اثر روی کیفیت',
-          value: getOrderStatus(order) === 'DELIVERED' ? 'سفارش تحویل شده' : 'در انتظار تکمیل',
+          value: getOrderStatus(currentOrder) === 'DELIVERED' ? 'سفارش تحویل شده' : 'در انتظار تکمیل',
           detail: 'برای سفارش تحویل‌شده باید اثر آن بر perception مشتری و سلامت فروشگاه را هم ببینی.',
         },
       ]
@@ -257,12 +257,12 @@ export function OrderWorkspacePage({
 
   const summaryCards = currentOrder
     ? [
-        { label: 'شناسه سفارش', value: readText(order, ['id'], '—') },
-        { label: 'مشتری', value: getCustomerText(order) },
-        { label: 'مبلغ', value: getTotalAmount(order) },
-        { label: 'ثبت سفارش', value: formatJalaliDate(order.createdAt ?? order.updatedAt, true) },
-        { label: 'بازه تحویل', value: formatJalaliDate(order.deliveredAt ?? order.deliveryDate ?? order.scheduledFor, true) },
-        { label: 'شماره تماس', value: readText(order, ['recipientPhoneNumber', 'phoneNumber'], '—') },
+        { label: 'شناسه سفارش', value: readText(currentOrder, ['id'], '—') },
+        { label: 'مشتری', value: getCustomerText(currentOrder) },
+        { label: 'مبلغ', value: getTotalAmount(currentOrder) },
+        { label: 'ثبت سفارش', value: formatJalaliDate(currentOrder.createdAt ?? currentOrder.updatedAt, true) },
+        { label: 'بازه تحویل', value: formatJalaliDate(currentOrder.deliveredAt ?? currentOrder.deliveryDate ?? currentOrder.scheduledFor, true) },
+        { label: 'شماره تماس', value: readText(currentOrder, ['recipientPhoneNumber', 'phoneNumber'], '—') },
       ]
     : []
 
@@ -284,7 +284,7 @@ export function OrderWorkspacePage({
         },
         {
           label: 'کیفیت و بازخورد',
-          value: getOrderStatus(order) === 'DELIVERED' ? 'این سفارش می‌تواند بازخورد بسازد' : 'هنوز در مرحله قبل از بازخورد است',
+          value: getOrderStatus(currentOrder) === 'DELIVERED' ? 'این سفارش می‌تواند بازخورد بسازد' : 'هنوز در مرحله قبل از بازخورد است',
           detail: `میانگین فعلی فروشگاه ${formatFaNumber(Number(healthStore.customerRatingAverage ?? 0))} از ۵ است.`,
           action: 'رفتن به کیفیت و سلامت',
           route: 'reviews' as const,
@@ -296,7 +296,7 @@ export function OrderWorkspacePage({
     ? [
         {
           label: 'آمادگی برای نظر مشتری',
-          value: getOrderStatus(order) === 'DELIVERED' ? 'بله' : 'خیر',
+          value: getOrderStatus(currentOrder) === 'DELIVERED' ? 'بله' : 'خیر',
           detail: 'نظرات به سفارش متصل‌اند و بهترین جایشان همین context سفارش است.',
         },
         {
@@ -404,13 +404,19 @@ export function OrderWorkspacePage({
     )
   }
 
+  const actionSummary = orderTimeline.slice(0, 1).map((item) => ({
+    key: readText(item, ['id'], '1'),
+    label: readText(item, ['toStatus'], 'آخرین تغییر'),
+    value: formatJalaliDate(item.createdAt, true),
+  }))
+
   return (
     <div className="fm-stack">
       <div className="vendor-order-workspace-topbar">
         <button className="vendor-order-workspace-back" onClick={onBack} type="button">
           بازگشت به فهرست سفارش‌ها
         </button>
-        <Pill tone="primary">{order ? `سفارش #${orderId}` : 'بدون سفارش'}</Pill>
+        <Pill tone="primary">{currentOrder ? `سفارش #${orderId}` : 'بدون سفارش'}</Pill>
       </div>
 
       <LoadableState loading={loading} error={error}>
@@ -530,7 +536,7 @@ export function OrderWorkspacePage({
           title="timeline وضعیت سفارش"
           description="هر تغییر status و هر event عملیاتی باید بعد از هر action قابل مرور باشد تا trace سفارش گم نشود."
           hint="این بخش برای audit و فهم مسیر سفارش است، نه فقط برای نمایش خلاصه."
-          actions={<Pill tone="neutral">{formatFaNumber(orderTimeline.length)} رخداد</Pill>}
+          actions={<Pill tone="neutral">{`${formatFaNumber(orderTimeline.length)} رخداد`}</Pill>}
         >
           {orderTimeline.length ? (
             <ActivityFeed
@@ -551,6 +557,17 @@ export function OrderWorkspacePage({
                 <article className="vendor-order-workspace-audit-card" key={readText(item, ['id'], String(index + 1))}>
                   <span>{readText(item, ['summary'], 'رویداد')}</span>
                   <strong>{formatJalaliDate(item.createdAt, true)}</strong>
+                </article>
+              ))}
+            </div>
+          ) : null}
+          {actionSummary.length ? (
+            <div className="vendor-order-workspace-audit-grid">
+              {actionSummary.map((item) => (
+                <article className="vendor-order-workspace-audit-card" key={item.key}>
+                  <span>آخرین تغییر ثبت‌شده</span>
+                  <strong>{item.label}</strong>
+                  <small>{item.value}</small>
                 </article>
               ))}
             </div>
