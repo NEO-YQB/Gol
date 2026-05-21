@@ -308,6 +308,14 @@
   height: fit-content;
 }
 
+.vendor-order-workspace-action-card--accept {
+  border-color: rgba(47, 125, 87, 0.2);
+}
+
+.vendor-order-workspace-action-card--cancel {
+  border-color: rgba(180, 73, 73, 0.2);
+}
+
 .vendor-order-workspace-summary-card span,
 .vendor-order-workspace-workflow-item span,
 .vendor-order-workspace-action-card span,
@@ -333,6 +341,11 @@
   margin: 0;
   color: var(--fm-text-secondary);
   line-height: 1.9;
+}
+
+.vendor-order-workspace-action-card .fm-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .vendor-order-workspace-audit-card {

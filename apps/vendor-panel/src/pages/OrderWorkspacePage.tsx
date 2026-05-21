@@ -63,6 +63,36 @@ function translateSettlementStatus(value: string) {
   return settlementStatusTranslations[value] ?? value ?? 'نامشخص'
 }
 
+function getOrderActionLabel(key: string) {
+  switch (key) {
+    case 'accept':
+      return 'سفارش توسط فروشنده پذیرفته شد.'
+    case 'ship':
+      return 'سفارش توسط فروشنده برای مشتری ارسال شد.'
+    case 'deliver':
+      return 'سفارش تحویل مشتری شد.'
+    case 'cancel':
+      return 'سفارش توسط فروشنده پذیرفته نشد.'
+    default:
+      return ''
+  }
+}
+
+function getActionButtonText(key: string) {
+  switch (key) {
+    case 'accept':
+      return 'پذیرش سفارش'
+    case 'ship':
+      return 'ثبت ارسال'
+    case 'deliver':
+      return 'ثبت تحویل'
+    case 'cancel':
+      return 'لغو پذیرش'
+    default:
+      return 'اجرا'
+  }
+}
+
 function getOrderStatus(record: OrderRecord) {
   return readText(record, ['status'], 'UNKNOWN')
 }
@@ -317,34 +347,26 @@ export function OrderWorkspacePage({
         {
           key: 'accept',
           label: 'پذیرش سفارش',
-          description: 'فقط وقتی سفارش در انتظار یا پرداخت‌شده است.',
-          button: 'پذیرفتن سفارش',
+          description: getOrderActionLabel('accept'),
           canRun: availableActions.canAccept === true,
-          status: translateOrderStatus(getOrderStatus(currentOrder)),
         },
         {
           key: 'ship',
           label: 'ثبت ارسال',
-          description: 'پس از پذیرش و آماده شدن سفارش.',
-          button: 'ثبت ارسال',
+          description: getOrderActionLabel('ship'),
           canRun: availableActions.canShip === true,
-          status: translateOrderStatus(getOrderStatus(currentOrder)),
         },
         {
           key: 'deliver',
           label: 'ثبت تحویل',
-          description: 'فقط برای سفارش ارسال‌شده.',
-          button: 'ثبت تحویل',
+          description: getOrderActionLabel('deliver'),
           canRun: availableActions.canDeliver === true,
-          status: translateOrderStatus(getOrderStatus(currentOrder)),
         },
         {
           key: 'cancel',
           label: 'لغو توسط فروشنده',
-          description: 'فقط تا قبل از terminal شدن سفارش.',
-          button: 'لغو سفارش',
+          description: getOrderActionLabel('cancel'),
           canRun: availableActions.canCancel === true,
-          status: translateOrderStatus(getOrderStatus(currentOrder)),
         },
       ]
     : []
@@ -470,41 +492,85 @@ export function OrderWorkspacePage({
 
         <SectionCard
           eyebrow="اکشن‌های سفارش"
-          title="پذیرش، ارسال، تحویل و لغو"
-          description="این‌ها مهم‌ترین actionهای سفارش هستند و باید دقیقا بر اساس enum و status مجاز اجرا شوند."
-          hint="اگر سفارش آنلاین هنوز paid نشده باشد، پذیرش نباید فعال شود؛ تاریخچه تغییرات بعد از هر action به‌روز می‌شود."
+          title="پذیرش و عدم پذیرش سفارش"
+          description="اکشن‌های اصلی همین‌جا هستند و فقط مرحله‌ای که قابل‌اجراست فعال می‌ماند."
+          hint="دکمه غیرفعال قابل کلیک نیست و فقط مرحله مجاز اجرا می‌شود."
           actions={<Pill tone="primary">actionهای اصلی</Pill>}
         >
           <div className="vendor-order-workspace-action-grid">
-            {availableActionCards.map((item) => (
-              <article className="vendor-order-workspace-action-card" key={item.key}>
+            <article className="vendor-order-workspace-action-card vendor-order-workspace-action-card--accept">
+              <span>پذیرش سفارش</span>
+              <strong>{availableActions.canAccept === true ? 'قابل اجرا' : 'غیرفعال'}</strong>
+              <p>{getOrderActionLabel('accept')}</p>
+              <button
+                className="fm-button fm-button--success"
+                disabled={!availableActions.canAccept || actionBusy === 'accept'}
+                onClick={handleAcceptOrder}
+                type="button"
+              >
+                {actionBusy === 'accept' ? 'در حال اجرا...' : 'پذیرفتن سفارش'}
+              </button>
+            </article>
+
+            <article className="vendor-order-workspace-action-card vendor-order-workspace-action-card--cancel">
+              <span>لغو پذیرش</span>
+              <strong>{availableActions.canCancel === true ? 'قابل اجرا' : 'غیرفعال'}</strong>
+              <p>{getOrderActionLabel('cancel')}</p>
+              <button
+                className="fm-button fm-button--danger"
+                disabled={!availableActions.canCancel || actionBusy === 'cancel'}
+                onClick={handleVendorCancel}
+                type="button"
+              >
+                {actionBusy === 'cancel' ? 'در حال اجرا...' : 'لغو پذیرش'}
+              </button>
+            </article>
+          </div>
+        </SectionCard>
+
+        <SectionCard
+          eyebrow="مسیر اجرا"
+          title="ارسال و تحویل"
+          description="بعد از پذیرش، این دو مرحله در مسیر سفارش فعال می‌شوند."
+          hint="اگر سفارش در وضعیت مجاز نباشد، این دکمه‌ها غیرفعال می‌مانند."
+          actions={<Pill tone="warning">مرحله بعد</Pill>}
+        >
+          <div className="vendor-order-workspace-action-grid">
+            {[
+              {
+                key: 'ship',
+                label: 'ثبت ارسال',
+                canRun: availableActions.canShip === true,
+                button: getActionButtonText('ship'),
+                description: getOrderActionLabel('ship'),
+                onClick: handleShipOrder,
+                tone: 'primary' as const,
+              },
+              {
+                key: 'deliver',
+                label: 'ثبت تحویل',
+                canRun: availableActions.canDeliver === true,
+                button: getActionButtonText('deliver'),
+                description: getOrderActionLabel('deliver'),
+                onClick: handleDeliverOrder,
+                tone: 'success' as const,
+              },
+            ].map((item) => (
+              <article
+                className={`vendor-order-workspace-action-card vendor-order-workspace-action-card--${item.tone}`}
+                key={item.key}
+              >
                 <span>{item.label}</span>
                 <strong>{item.canRun ? 'قابل اجرا' : 'غیرفعال'}</strong>
                 <p>{item.description}</p>
-                <div className="vendor-products-actions">
-                  <input
-                    className="fm-input"
-                    onChange={(event) => setActionNote(event.target.value)}
-                    placeholder="یادداشت اختیاری برای این action"
-                    value={actionNote}
-                  />
-                  <button
-                    className="fm-button fm-button--primary"
-                    disabled={!item.canRun || actionBusy === item.key}
-                    onClick={
-                      item.key === 'accept'
-                        ? handleAcceptOrder
-                        : item.key === 'ship'
-                          ? handleShipOrder
-                          : item.key === 'deliver'
-                            ? handleDeliverOrder
-                            : handleVendorCancel
-                    }
-                    type="button"
-                  >
-                    {actionBusy === item.key ? 'در حال اجرا...' : item.button}
-                  </button>
-                </div>
+                <button
+                  className={`fm-button fm-button--${item.tone}`}
+                  disabled={!item.canRun || actionBusy === item.key}
+                  onClick={item.onClick}
+                  type="button"
+                >
+                  {actionBusy === item.key ? 'در حال اجرا...' : item.button}
+                </button>
               </article>
             ))}
           </div>
