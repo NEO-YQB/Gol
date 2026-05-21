@@ -104,6 +104,15 @@ export type SupportTicketNotePayload = {
   message: string
 }
 
+export type OrderActionNotePayload = {
+  note?: string
+}
+
+export type VendorOrderCancelPayload = {
+  reason: string
+  note?: string
+}
+
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ??
   import.meta.env.VITE_API_URL ??
@@ -199,6 +208,33 @@ export const vendorApi = {
   },
   getVendorOrders(session: AuthSession) {
     return request<unknown[]>('/orders/vendor', {}, session.accessToken)
+  },
+  getOrderDetail(session: AuthSession, orderId: number) {
+    return request<unknown>(`/orders/${orderId}`, {}, session.accessToken)
+  },
+  acceptOrder(session: AuthSession, orderId: number, payload: OrderActionNotePayload = {}) {
+    return request<unknown>(`/orders/${orderId}/accept`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }, session.accessToken)
+  },
+  shipOrder(session: AuthSession, orderId: number, payload: OrderActionNotePayload = {}) {
+    return request<unknown>(`/orders/${orderId}/ship`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }, session.accessToken)
+  },
+  deliverOrder(session: AuthSession, orderId: number, payload: OrderActionNotePayload = {}) {
+    return request<unknown>(`/orders/${orderId}/deliver`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }, session.accessToken)
+  },
+  vendorCancelOrder(session: AuthSession, orderId: number, payload: VendorOrderCancelPayload) {
+    return request<unknown>(`/orders/${orderId}/vendor-cancel`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }, session.accessToken)
   },
   getProducts(session: AuthSession, query: { storeId: number; search?: string; limit?: number }) {
     const params = new URLSearchParams()

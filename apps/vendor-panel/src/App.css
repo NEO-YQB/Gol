@@ -283,8 +283,10 @@
 
 .vendor-order-workspace-summary-grid,
 .vendor-order-workspace-workflow-grid,
+.vendor-order-workspace-action-grid,
 .vendor-order-workspace-dependency-grid,
-.vendor-order-workspace-review-grid {
+.vendor-order-workspace-review-grid,
+.vendor-order-workspace-audit-grid {
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -293,6 +295,7 @@
 
 .vendor-order-workspace-summary-card,
 .vendor-order-workspace-workflow-item,
+.vendor-order-workspace-action-card,
 .vendor-order-workspace-dependency-card,
 .vendor-order-workspace-review-card {
   border: 1px solid var(--fm-border-soft);
@@ -307,6 +310,7 @@
 
 .vendor-order-workspace-summary-card span,
 .vendor-order-workspace-workflow-item span,
+.vendor-order-workspace-action-card span,
 .vendor-order-workspace-dependency-card span,
 .vendor-order-workspace-review-card span {
   color: var(--fm-text-secondary);
@@ -315,6 +319,7 @@
 
 .vendor-order-workspace-summary-card strong,
 .vendor-order-workspace-workflow-item strong,
+.vendor-order-workspace-action-card strong,
 .vendor-order-workspace-dependency-card strong,
 .vendor-order-workspace-review-card strong {
   color: var(--fm-text-primary);
@@ -322,11 +327,30 @@
 }
 
 .vendor-order-workspace-workflow-item p,
+.vendor-order-workspace-action-card p,
 .vendor-order-workspace-dependency-card p,
 .vendor-order-workspace-review-card p {
   margin: 0;
   color: var(--fm-text-secondary);
   line-height: 1.9;
+}
+
+.vendor-order-workspace-audit-card {
+  border: 1px solid var(--fm-border-soft);
+  border-radius: 18px;
+  padding: 14px 16px;
+  background: rgba(255, 253, 248, 0.86);
+  display: grid;
+  gap: 8px;
+}
+
+.vendor-order-workspace-audit-card span {
+  color: var(--fm-text-secondary);
+  font-size: 0.88rem;
+}
+
+.vendor-order-workspace-audit-card strong {
+  color: var(--fm-text-primary);
 }
 
 .vendor-products-toolbar {
@@ -1412,8 +1436,10 @@
   .vendor-orders-detail-grid,
   .vendor-order-workspace-summary-grid,
   .vendor-order-workspace-workflow-grid,
+  .vendor-order-workspace-action-grid,
   .vendor-order-workspace-dependency-grid,
   .vendor-order-workspace-review-grid,
+  .vendor-order-workspace-audit-grid,
   .vendor-onboarding-form-grid,
   .vendor-onboarding-stats {
     grid-template-columns: 1fr;

@@ -1,4 +1,4 @@
-import { Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
+import { ActivityFeed, Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
 import { useEffect, useMemo, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { vendorApi } from '../lib/api'
@@ -102,6 +102,10 @@ function formatJalaliDate(value: unknown, withTime = false) {
   }).format(parsed)
 }
 
+function toObject(value: unknown) {
+  return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {}
+}
+
 export function OrderWorkspacePage({
   session,
   order,
@@ -120,6 +124,11 @@ export function OrderWorkspacePage({
   const [walletMeta, setWalletMeta] = useState<OrderRecord>({})
   const [healthStore, setHealthStore] = useState<OrderRecord>({})
   const [restrictions, setRestrictions] = useState<OrderRecord>({})
+  const [orderDetail, setOrderDetail] = useState<OrderRecord | null>(order)
+  const [actionBusy, setActionBusy] = useState<string | null>(null)
+  const [actionMessage, setActionMessage] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [actionNote, setActionNote] = useState('')
 
   const orderId = readText(order ?? {}, ['id'], '')
 
@@ -137,6 +146,7 @@ export function OrderWorkspacePage({
       setError(null)
 
       try {
+        const detailPayload = await vendorApi.getOrderDetail(session, Number(orderId))
         const [ticketsPayload, walletPayload, settlementsPayload, healthPayload, policyPayload] =
           await Promise.all([
             vendorApi.getTicketsSummary(session),
@@ -155,6 +165,7 @@ export function OrderWorkspacePage({
         const healthRecord = (healthPayload as Record<string, unknown>) ?? {}
         const policyRecord = (policyPayload as Record<string, unknown>) ?? {}
 
+        setOrderDetail((detailPayload as Record<string, unknown>) ?? order)
         setTickets(ticketList)
         setSettlements(settlementList)
         setWalletMeta(((walletRecord.wallet as Record<string, unknown>) ?? {}))
@@ -174,14 +185,19 @@ export function OrderWorkspacePage({
     }
   }, [orderId, session])
 
+  const currentOrder = orderDetail ?? order
+
   const relatedTickets = useMemo(() => tickets.filter((item) => getTicketOrder(item) === orderId), [orderId, tickets])
+  const orderTimeline = useMemo(() => toArray(currentOrder?.timeline ?? currentOrder?.statusHistories), [currentOrder])
+  const orderAuditTrail = useMemo(() => toArray(currentOrder?.auditTrail), [currentOrder])
+  const availableActions = toObject(currentOrder?.availableActions)
 
   const selectedSettlement = useMemo(
     () => settlements.find((item) => readText(item, ['id', 'orderId'], '') === orderId) ?? null,
     [orderId, settlements],
   )
 
-  const stats = order
+  const stats = currentOrder
     ? [
         {
           label: 'وضعیت سفارش',
@@ -214,7 +230,7 @@ export function OrderWorkspacePage({
       ]
     : []
 
-  const workflowSteps = order
+  const workflowSteps = currentOrder
     ? [
         {
           label: '۱. جمع‌بندی وضعیت سفارش',
@@ -239,7 +255,7 @@ export function OrderWorkspacePage({
       ]
     : []
 
-  const summaryCards = order
+  const summaryCards = currentOrder
     ? [
         { label: 'شناسه سفارش', value: readText(order, ['id'], '—') },
         { label: 'مشتری', value: getCustomerText(order) },
@@ -250,7 +266,7 @@ export function OrderWorkspacePage({
       ]
     : []
 
-  const dependencyCards = order
+  const dependencyCards = currentOrder
     ? [
         {
           label: 'پشتیبانی سفارش',
@@ -276,7 +292,7 @@ export function OrderWorkspacePage({
       ]
     : []
 
-  const reviewContext = order
+  const reviewContext = currentOrder
     ? [
         {
           label: 'آمادگی برای نظر مشتری',
@@ -296,6 +312,98 @@ export function OrderWorkspacePage({
       ]
     : []
 
+  const availableActionCards = currentOrder
+    ? [
+        {
+          key: 'accept',
+          label: 'پذیرش سفارش',
+          description: 'فقط وقتی سفارش در انتظار یا پرداخت‌شده است.',
+          button: 'پذیرفتن سفارش',
+          canRun: availableActions.canAccept === true,
+          status: translateOrderStatus(getOrderStatus(currentOrder)),
+        },
+        {
+          key: 'ship',
+          label: 'ثبت ارسال',
+          description: 'پس از پذیرش و آماده شدن سفارش.',
+          button: 'ثبت ارسال',
+          canRun: availableActions.canShip === true,
+          status: translateOrderStatus(getOrderStatus(currentOrder)),
+        },
+        {
+          key: 'deliver',
+          label: 'ثبت تحویل',
+          description: 'فقط برای سفارش ارسال‌شده.',
+          button: 'ثبت تحویل',
+          canRun: availableActions.canDeliver === true,
+          status: translateOrderStatus(getOrderStatus(currentOrder)),
+        },
+        {
+          key: 'cancel',
+          label: 'لغو توسط فروشنده',
+          description: 'فقط تا قبل از terminal شدن سفارش.',
+          button: 'لغو سفارش',
+          canRun: availableActions.canCancel === true,
+          status: translateOrderStatus(getOrderStatus(currentOrder)),
+        },
+      ]
+    : []
+
+  function getActionPayload() {
+    const note = actionNote.trim()
+    return note ? { note } : {}
+  }
+
+  async function runOrderAction(key: string, action: () => Promise<unknown>, successMessage: string) {
+    setActionBusy(key)
+    setActionError(null)
+    setActionMessage(null)
+
+    try {
+      const payload = await action()
+      setOrderDetail((payload as Record<string, unknown>) ?? null)
+      setActionMessage(successMessage)
+      setActionNote('')
+    } catch (requestError) {
+      setActionError(requestError instanceof Error ? requestError.message : 'اجرای action سفارش ناموفق بود')
+    } finally {
+      setActionBusy(null)
+    }
+  }
+
+  async function handleAcceptOrder() {
+    await runOrderAction(
+      'accept',
+      () => vendorApi.acceptOrder(session, Number(orderId), getActionPayload()),
+      'سفارش با موفقیت پذیرفته شد.',
+    )
+  }
+
+  async function handleShipOrder() {
+    await runOrderAction(
+      'ship',
+      () => vendorApi.shipOrder(session, Number(orderId), getActionPayload()),
+      'سفارش با موفقیت به وضعیت ارسال شده رفت.',
+    )
+  }
+
+  async function handleDeliverOrder() {
+    await runOrderAction(
+      'deliver',
+      () => vendorApi.deliverOrder(session, Number(orderId), getActionPayload()),
+      'سفارش با موفقیت تحویل‌شده ثبت شد.',
+    )
+  }
+
+  async function handleVendorCancel() {
+    const reason = actionNote.trim() || 'لغو توسط فروشنده'
+    await runOrderAction(
+      'cancel',
+      () => vendorApi.vendorCancelOrder(session, Number(orderId), { reason, note: actionNote.trim() || undefined }),
+      'سفارش با موفقیت لغو شد.',
+    )
+  }
+
   return (
     <div className="fm-stack">
       <div className="vendor-order-workspace-topbar">
@@ -312,12 +420,15 @@ export function OrderWorkspacePage({
           ))}
         </div>
 
+        {actionMessage ? <div className="fm-message fm-message--success">{actionMessage}</div> : null}
+        {actionError ? <div className="fm-message fm-message--danger">{actionError}</div> : null}
+
         <SectionCard
           eyebrow="هویت سفارش"
-          title={order ? `رسیدگی متمرکز به سفارش #${orderId}` : 'میزکار سفارش'}
+          title={currentOrder ? `رسیدگی متمرکز به سفارش #${orderId}` : 'میزکار سفارش'}
           description="این workspace فقط برای یک سفارش ساخته شده تا dependencyها و actionها در context همان سفارش جمع شوند و اسکرول اضافی از route اصلی حذف شود."
           hint="اگر کار روی این سفارش تمام شد، برگرد به کارتابل و سفارش بعدی را جداگانه باز کن."
-          actions={<Pill tone="warning">{order ? translateOrderStatus(getOrderStatus(order)) : 'در حال انتظار'}</Pill>}
+          actions={<Pill tone="warning">{currentOrder ? translateOrderStatus(getOrderStatus(currentOrder)) : 'در حال انتظار'}</Pill>}
         >
           {summaryCards.length ? (
             <div className="vendor-order-workspace-summary-grid">
@@ -352,6 +463,48 @@ export function OrderWorkspacePage({
         </SectionCard>
 
         <SectionCard
+          eyebrow="اکشن‌های سفارش"
+          title="پذیرش، ارسال، تحویل و لغو"
+          description="این‌ها مهم‌ترین actionهای سفارش هستند و باید دقیقا بر اساس enum و status مجاز اجرا شوند."
+          hint="اگر سفارش آنلاین هنوز paid نشده باشد، پذیرش نباید فعال شود؛ تاریخچه تغییرات بعد از هر action به‌روز می‌شود."
+          actions={<Pill tone="primary">actionهای اصلی</Pill>}
+        >
+          <div className="vendor-order-workspace-action-grid">
+            {availableActionCards.map((item) => (
+              <article className="vendor-order-workspace-action-card" key={item.key}>
+                <span>{item.label}</span>
+                <strong>{item.canRun ? 'قابل اجرا' : 'غیرفعال'}</strong>
+                <p>{item.description}</p>
+                <div className="vendor-products-actions">
+                  <input
+                    className="fm-input"
+                    onChange={(event) => setActionNote(event.target.value)}
+                    placeholder="یادداشت اختیاری برای این action"
+                    value={actionNote}
+                  />
+                  <button
+                    className="fm-button fm-button--primary"
+                    disabled={!item.canRun || actionBusy === item.key}
+                    onClick={
+                      item.key === 'accept'
+                        ? handleAcceptOrder
+                        : item.key === 'ship'
+                          ? handleShipOrder
+                          : item.key === 'deliver'
+                            ? handleDeliverOrder
+                            : handleVendorCancel
+                    }
+                    type="button"
+                  >
+                    {actionBusy === item.key ? 'در حال اجرا...' : item.button}
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        </SectionCard>
+
+        <SectionCard
           eyebrow="domainهای وابسته"
           title="پشتیبانی، مالی و کیفیت مرتبط با این سفارش"
           description="این سه بخش به سفارش وصل‌اند و از همین workspace به‌صورت تصمیم‌محور دیده می‌شوند."
@@ -370,6 +523,38 @@ export function OrderWorkspacePage({
               </article>
             ))}
           </div>
+        </SectionCard>
+
+        <SectionCard
+          eyebrow="تاریخچه تغییرات"
+          title="timeline وضعیت سفارش"
+          description="هر تغییر status و هر event عملیاتی باید بعد از هر action قابل مرور باشد تا trace سفارش گم نشود."
+          hint="این بخش برای audit و فهم مسیر سفارش است، نه فقط برای نمایش خلاصه."
+          actions={<Pill tone="neutral">{formatFaNumber(orderTimeline.length)} رخداد</Pill>}
+        >
+          {orderTimeline.length ? (
+            <ActivityFeed
+              items={orderTimeline.slice(0, 12).map((item, index) => ({
+                id: readText(item, ['id'], String(index + 1)),
+                title: readText(item, ['toStatus'], readText(item, ['status'], 'رخداد سفارش')),
+                meta: formatJalaliDate(item.createdAt, true),
+                description: `${readText(item, ['fromStatus'], '—')} → ${readText(item, ['toStatus'], '—')}${readText(item, ['note'], '') ? ` / ${readText(item, ['note'], '')}` : ''}`,
+                tone: index % 2 === 0 ? ('primary' as const) : ('warning' as const),
+              }))}
+            />
+          ) : (
+            <div className="vendor-note-card">برای این سفارش هنوز timeline قابل‌نمایشی ثبت نشده است.</div>
+          )}
+          {orderAuditTrail.length ? (
+            <div className="vendor-order-workspace-audit-grid">
+              {orderAuditTrail.slice(0, 6).map((item, index) => (
+                <article className="vendor-order-workspace-audit-card" key={readText(item, ['id'], String(index + 1))}>
+                  <span>{readText(item, ['summary'], 'رویداد')}</span>
+                  <strong>{formatJalaliDate(item.createdAt, true)}</strong>
+                </article>
+              ))}
+            </div>
+          ) : null}
         </SectionCard>
 
         <SectionCard
