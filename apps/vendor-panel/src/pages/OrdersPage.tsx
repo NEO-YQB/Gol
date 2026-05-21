@@ -122,10 +122,6 @@ function getTicketOrder(record: OrderRecord) {
   return readText(record, ['orderId'], readText((record.order as OrderRecord) ?? {}, ['id'], '—'))
 }
 
-function countRelatedTickets(tickets: OrderRecord[], orderId: string) {
-  return tickets.filter((item) => getTicketOrder(item) === orderId).length
-}
-
 export function OrdersPage({
   session,
   onNavigate,
