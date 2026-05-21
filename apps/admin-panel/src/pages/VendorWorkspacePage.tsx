@@ -13,6 +13,11 @@ function getDirectionLabel(direction: string) {
   return direction === 'DEBIT' ? 'برداشت' : 'افزایش'
 }
 
+function translateTimelineActor(value: string) {
+  if (!value) return 'سامانه یا نامشخص'
+  return value
+}
+
 function toObject(value: unknown): VendorRecord {
   return typeof value === 'object' && value !== null ? (value as VendorRecord) : {}
 }
@@ -90,6 +95,20 @@ function translatePolicyKey(key: string) {
       return 'جلوگیری از تخفیف تازه'
     case 'note':
       return 'توضیح'
+    case 'metadata':
+      return 'جزئیات تکمیلی'
+    case 'VendorRiskPolicy':
+      return 'سیاست ریسک فروشنده'
+    case 'Store':
+      return 'فروشگاه'
+    case 'WalletTransaction':
+      return 'گردش کیف پول'
+    case 'Settlement':
+      return 'تسویه'
+    case 'SupportTicket':
+      return 'تیکت پشتیبانی'
+    case 'Review':
+      return 'نظر مشتری'
     default:
       return key
   }
@@ -98,7 +117,7 @@ function translatePolicyKey(key: string) {
 function collectActiveFlags(policy: unknown) {
   return Object.entries(toObject(policy))
     .filter(([, value]) => value === true)
-    .map(([key]) => key)
+    .map(([key]) => translatePolicyKey(key))
 }
 
 function parseMetadataInput(value: string) {
@@ -390,18 +409,51 @@ export function VendorWorkspacePage({
 
   const latestEventDigest = timeline.slice(0, 4).map((item, index) => ({
     id: readText(item, ['id'], String(index + 1)),
-    title: readText(item, ['summary', 'aggregateType'], 'رخداد'),
+    title: readText(item, ['summary'], '') || translatePolicyKey(readText(item, ['aggregateType'], 'رخداد')),
     meta: formatJalaliDate(item.createdAt),
-    actor: readText(item, ['actorUserId'], 'سامانه یا نامشخص'),
+    actor: translateTimelineActor(readText(item, ['actorUserId'], 'سامانه یا نامشخص')),
   }))
 
   const timelineFeed = timeline.slice(0, 10).map((item, index) => ({
     id: readText(item, ['id'], String(index + 1)),
-    title: readText(item, ['summary', 'aggregateType'], 'رخداد ریسک'),
+    title: readText(item, ['summary'], '') || translatePolicyKey(readText(item, ['aggregateType'], 'رخداد ریسک')),
     meta: formatJalaliDate(item.createdAt),
-    description: readText(item, ['aggregateType'], 'جزئیات رخداد'),
+    description: translatePolicyKey(readText(item, ['aggregateType'], 'جزئیات رخداد')),
     tone: index % 2 === 0 ? ('warning' as const) : ('success' as const),
   }))
+
+  const actionWorkflow = [
+    {
+      lane: 'هماهنگی',
+      label: 'فعال‌سازی یا غیرفعال‌سازی فروشگاه',
+      detail: 'برای باز یا بسته کردن دسترسی عملیاتی فروشگاه بعد از جمع‌بندی نهایی.',
+    },
+    {
+      lane: 'ریسک',
+      label: 'محاسبه دوباره وضعیت سلامت',
+      detail: 'پس از تغییر محدودیت‌ها یا ثبت رخدادهای اثرگذار، تصویر سلامت را تازه می‌کند.',
+    },
+    {
+      lane: 'ریسک',
+      label: 'ثبت تغییر محدودیت',
+      detail: 'نگه‌داری تسویه، بررسی دستی و توقف تخفیف تازه از همین فرم اعمال می‌شود.',
+    },
+    {
+      lane: 'مالی',
+      label: 'اصلاح کیف پول',
+      detail: 'افزایش یا برداشت دستی همراه با عنوان، توضیح و جزئیات ساختاریافته.',
+    },
+    {
+      lane: 'مالی',
+      label: 'آزادسازی تسویه سفارش',
+      detail: 'برای آزادسازی دستی یک سفارش مشخص که آماده خروج از نگه‌داری است.',
+    },
+    {
+      lane: 'مالی',
+      label: 'آزادسازی گروهی تسویه‌های آماده',
+      detail: 'برای اجرای یک‌جای release روی موردهای رسیده به شرط لازم.',
+    },
+  ]
 
   async function runAction(key: string, action: () => Promise<unknown>, successMessage: string) {
     setActionBusy(key)
@@ -590,6 +642,24 @@ export function VendorWorkspacePage({
               <article className="vendors-workspace-action-card" key={item}>
                 <strong>قاعده رسیدگی</strong>
                 <p>{item}</p>
+              </article>
+            ))}
+          </div>
+        </SectionCard>
+
+        <SectionCard
+          eyebrow="workflow اقدام‌ها"
+          title="ترتیب اجرای actionهای این workspace"
+          description="همه actionهای اصلی این حوزه در همین workflow کنار هم آمده‌اند تا اجرای رسیدگی مرحله‌ای، روشن و قابل‌پیگیری بماند."
+          hint="اگر قرار است روی این فروشنده چند اقدام پشت‌سرهم انجام شود، از این نقشه کوتاه استفاده کن."
+          actions={<Pill tone="neutral">نقشه اقدام‌ها</Pill>}
+        >
+          <div className="vendors-workspace-workflow-grid">
+            {actionWorkflow.map((item) => (
+              <article className="vendors-workspace-workflow-item" key={item.label}>
+                <span>{item.lane}</span>
+                <strong>{item.label}</strong>
+                <p>{item.detail}</p>
               </article>
             ))}
           </div>

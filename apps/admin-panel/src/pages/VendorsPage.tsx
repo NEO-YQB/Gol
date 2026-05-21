@@ -103,7 +103,10 @@ function formatPolicy(policy: unknown) {
   const record = toObject(policy)
   const entries = Object.entries(record)
     .filter(([, value]) => value !== null && value !== undefined && value !== '')
-    .map(([key, value]) => `${key}: ${typeof value === 'boolean' ? (value ? 'بله' : 'خیر') : String(value)}`)
+    .map(
+      ([key, value]) =>
+        `${translatePolicyKey(key)}: ${typeof value === 'boolean' ? (value ? 'بله' : 'خیر') : String(value)}`,
+    )
 
   return entries.length ? entries.join(' | ') : '—'
 }
@@ -115,13 +118,51 @@ function summarizePolicyFlags(policy: unknown) {
     .map(([key]) => key)
 
   if (!activeFlags.length) return 'محدودیت فعالی دیده نمی‌شود'
-  return activeFlags.join(' / ')
+  return activeFlags.map((item) => translatePolicyKey(item)).join(' / ')
 }
 
 function getSuggestedRoute(status: string) {
   if (status === 'AT_RISK') return 'مسیر ریسک و مالی'
   if (status === 'WATCHLIST') return 'مسیر ریسک و هماهنگی'
   return 'مسیر مالی و پایش'
+}
+
+function translatePolicyKey(key: string) {
+  switch (key) {
+    case 'autoSettlementHoldEnabled':
+      return 'نگه‌داری خودکار تسویه'
+    case 'settlementHoldDaysOverride':
+      return 'تعداد روز نگه‌داری'
+    case 'manualReviewRequired':
+      return 'نیازمند بررسی دستی'
+    case 'blockNewDiscounts':
+      return 'جلوگیری از تخفیف تازه'
+    case 'note':
+      return 'توضیح'
+    case 'metadata':
+      return 'جزئیات تکمیلی'
+    default:
+      return key
+  }
+}
+
+function translateEventType(value: string) {
+  switch (value) {
+    case 'VendorRiskPolicy':
+      return 'سیاست ریسک فروشنده'
+    case 'Store':
+      return 'فروشگاه'
+    case 'WalletTransaction':
+      return 'گردش کیف پول'
+    case 'Settlement':
+      return 'تسویه'
+    case 'SupportTicket':
+      return 'تیکت پشتیبانی'
+    case 'Review':
+      return 'نظر مشتری'
+    default:
+      return value || 'رخداد'
+  }
 }
 
 export function VendorsPage({
@@ -275,9 +316,9 @@ export function VendorsPage({
     () =>
       timeline.slice(0, 6).map((item, index) => ({
         id: readText(item, ['id'], String(index + 1)),
-        title: readText(item, ['summary', 'aggregateType'], 'policy event'),
+        title: readText(item, ['summary'], '') || translateEventType(readText(item, ['aggregateType'], '')),
         meta: formatJalaliDate(item.createdAt),
-        description: readText(item, ['aggregateType'], 'جزئیات policy event'),
+        description: translateEventType(readText(item, ['aggregateType'], 'رخداد ریسک')),
         tone: index % 2 === 0 ? ('warning' as const) : ('success' as const),
       })),
     [timeline],
@@ -441,6 +482,31 @@ export function VendorsPage({
       ]
     : []
 
+  const workflowBoard = selectedSummaryRecord
+    ? [
+        {
+          label: '۱. تشخیص ریسک',
+          value: getStatusLabel(readText(selectedSummaryRecord, ['vendorHealthStatus'], '—')),
+          detail: `امتیاز سلامت ${formatPersianNumber(readText(selectedSummaryRecord, ['vendorHealthScore'], '—'))} و ${formatPersianNumber(toDisplayValue(getMetric(selectedSummaryRecord, 'ticketCount')))} تیکت`,
+        },
+        {
+          label: '۲. مرور محدودیت',
+          value: summarizePolicyFlags(selectedPolicy.effective),
+          detail: 'پیش از هر اقدام واقعی باید وضعیت محدودیت‌های موثر خوانده شود.',
+        },
+        {
+          label: '۳. جمع‌بندی مالی',
+          value: `${formatPersianNumber(toDisplayValue(getMetric(selectedSummaryRecord, 'refundCount')))} بازگشت وجه`,
+          detail: `${formatPersianNumber(toDisplayValue(getMetric(selectedSummaryRecord, 'reversalCount')))} برگشت تراکنش و ${formatPersianNumber(toDisplayValue(getMetric(selectedSummaryRecord, 'escalatedCount')))} ارجاع مالی`,
+        },
+        {
+          label: '۴. ورود به میزکار',
+          value: 'اجرای اقدام‌های زنده',
+          detail: 'فعال‌سازی فروشگاه، بازمحاسبه سلامت، کنترل محدودیت و عملیات مالی در میزکار انجام می‌شود.',
+        },
+      ]
+    : []
+
   return (
     <div className="fm-stack">
       <LoadableState error={error} loading={loading}>
@@ -527,6 +593,28 @@ export function VendorsPage({
               })}
             </div>
           </div>
+        </SectionCard>
+
+        <SectionCard
+          eyebrow="گردش کار"
+          title="مراحل رسیدگی در این route"
+          description="این route از انتخاب فروشنده تا ورود به میزکار متمرکز، یک workflow روشن و کوتاه دارد تا صفحه اصلی شلوغ و کش‌آمده نشود."
+          hint="اگر اپراتور تازه وارد این صفحه شده، این چهار گام بهترین شروع برای رسیدگی مرحله‌ای است."
+          actions={<Pill tone="primary">workflow روشن</Pill>}
+        >
+          {workflowBoard.length ? (
+            <div className="vendors-workflow-grid">
+              {workflowBoard.map((item) => (
+                <article className="vendors-workflow-item" key={item.label}>
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                  <small>{item.detail}</small>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="fm-message">بعد از انتخاب فروشنده، workflow رسیدگی اینجا کامل می‌شود.</div>
+          )}
         </SectionCard>
 
         <SectionCard

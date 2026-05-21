@@ -899,22 +899,26 @@
 .vendors-finance-grid,
 .vendors-brief-grid,
 .vendors-policy-grid,
-.vendors-detail-grid {
+.vendors-detail-grid,
+.vendors-workflow-grid {
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
 }
 
 .vendors-finance-item,
 .vendors-brief-item,
 .vendors-policy-item,
-.vendors-detail-item {
+.vendors-detail-item,
+.vendors-workflow-item {
   border: 1px solid var(--fm-border-soft);
   border-radius: 18px;
   padding: 16px;
   background: rgba(255, 253, 248, 0.86);
   display: grid;
   gap: 8px;
+  align-content: start;
 }
 
 .vendors-finance-item span,
@@ -935,6 +939,11 @@
 
 .vendors-brief-item small,
 .vendors-preview-item {
+  color: var(--fm-text-secondary);
+  line-height: 1.9;
+}
+
+.vendors-workflow-item small {
   color: var(--fm-text-secondary);
   line-height: 1.9;
 }
@@ -964,7 +973,8 @@
 .vendors-workspace-lanes,
 .vendors-workspace-action-grid,
 .vendors-workspace-checklist,
-.vendors-workspace-surface-grid {
+.vendors-workspace-surface-grid,
+.vendors-workspace-workflow-grid {
   display: grid;
   gap: 16px;
 }
@@ -981,20 +991,25 @@
 .vendors-workspace-action-grid,
 .vendors-workspace-checklist,
 .vendors-workspace-policy-grid,
-.vendors-workspace-surface-grid {
+.vendors-workspace-surface-grid,
+.vendors-workspace-workflow-grid {
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
 }
 
 .vendors-workspace-lane-card,
 .vendors-workspace-action-card,
 .vendors-workspace-check-item,
-.vendors-workspace-surface-card {
+.vendors-workspace-surface-card,
+.vendors-workspace-workflow-item {
   border: 1px solid var(--fm-border-soft);
   border-radius: 18px;
   padding: 18px;
   background: rgba(255, 253, 248, 0.86);
+  align-content: start;
+  height: fit-content;
 }
 
 .vendors-workspace-lane-card {
@@ -1009,7 +1024,8 @@
 .vendors-workspace-lane-card strong,
 .vendors-workspace-action-card strong,
 .vendors-workspace-check-item strong,
-.vendors-workspace-surface-card strong {
+.vendors-workspace-surface-card strong,
+.vendors-workspace-workflow-item strong {
   display: block;
   color: var(--fm-text-primary);
 }
@@ -1017,14 +1033,16 @@
 .vendors-workspace-lane-card p,
 .vendors-workspace-action-card p,
 .vendors-workspace-check-item p,
-.vendors-workspace-surface-card p {
+.vendors-workspace-surface-card p,
+.vendors-workspace-workflow-item p {
   margin: 10px 0 0;
   color: var(--fm-text-secondary);
   line-height: 1.9;
 }
 
 .vendors-workspace-lane-card small,
-.vendors-workspace-check-item span {
+.vendors-workspace-check-item span,
+.vendors-workspace-workflow-item span {
   display: block;
   margin-top: 10px;
   color: var(--fm-text-secondary);
@@ -1084,12 +1102,14 @@
   .vendors-brief-grid,
   .vendors-policy-grid,
   .vendors-detail-grid,
+  .vendors-workflow-grid,
   .vendors-workspace-wallet-grid,
   .vendors-workspace-lanes,
   .vendors-workspace-action-grid,
   .vendors-workspace-checklist,
   .vendors-workspace-policy-grid,
-  .vendors-workspace-surface-grid {
+  .vendors-workspace-surface-grid,
+  .vendors-workspace-workflow-grid {
     grid-template-columns: 1fr;
   }
 }
