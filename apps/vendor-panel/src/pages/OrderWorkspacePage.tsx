@@ -342,35 +342,6 @@ export function OrderWorkspacePage({
       ]
     : []
 
-  const availableActionCards = currentOrder
-    ? [
-        {
-          key: 'accept',
-          label: 'پذیرش سفارش',
-          description: getOrderActionLabel('accept'),
-          canRun: availableActions.canAccept === true,
-        },
-        {
-          key: 'ship',
-          label: 'ثبت ارسال',
-          description: getOrderActionLabel('ship'),
-          canRun: availableActions.canShip === true,
-        },
-        {
-          key: 'deliver',
-          label: 'ثبت تحویل',
-          description: getOrderActionLabel('deliver'),
-          canRun: availableActions.canDeliver === true,
-        },
-        {
-          key: 'cancel',
-          label: 'لغو توسط فروشنده',
-          description: getOrderActionLabel('cancel'),
-          canRun: availableActions.canCancel === true,
-        },
-      ]
-    : []
-
   function getActionPayload() {
     const note = actionNote.trim()
     return note ? { note } : {}
