@@ -68,9 +68,9 @@ function getPageMeta(route: VendorRoute) {
   }
 }
 
-function renderRoute(route: VendorRoute, session: AuthSession) {
+function renderRoute(route: VendorRoute, session: AuthSession, onNavigate: (route: VendorRoute) => void) {
   switch (route) {
-    case 'orders': return <OrdersPage session={session} />
+    case 'orders': return <OrdersPage session={session} onNavigate={onNavigate} />
     case 'products': return <ProductsPage session={session} />
     case 'store': return <StoreProfilePage session={session} />
     case 'discounts': return <DiscountsPage session={session} />
@@ -280,7 +280,7 @@ export default function App() {
         <Pill>{session.user.phoneNumber}</Pill>
         <button className="vendor-logout" onClick={handleLogout} type="button">خروج از پنل</button>
       </div>
-      {renderRoute(route, session)}
+      {renderRoute(route, session, setRoute)}
     </AppShell>
   )
 }
