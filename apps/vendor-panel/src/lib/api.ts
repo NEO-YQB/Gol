@@ -81,6 +81,11 @@ export type VendorProductPayload = {
   isPurchasable?: boolean
   isArchived?: boolean
   reviewNote?: string
+  compositions?: Array<{
+    elementId: number
+    quantity: number
+    elementType: 'FLOWER' | 'FILLER' | 'BASE' | 'ACCESSORY'
+  }>
 }
 
 export type DeliveryWindowPayload = {
