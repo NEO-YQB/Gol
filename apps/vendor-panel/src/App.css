@@ -654,6 +654,22 @@
   gap: 18px;
 }
 
+.vendor-product-composition-list {
+  display: grid;
+  gap: 12px;
+}
+
+.vendor-product-composition-item {
+  border: 1px solid var(--fm-border-soft);
+  border-radius: 20px;
+  padding: 14px;
+  background: rgba(255, 253, 248, 0.86);
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: end;
+}
+
 .vendor-product-editor-footer {
   display: grid;
   gap: 16px;
@@ -1243,6 +1259,7 @@
   .vendor-products-workspace-grid,
   .vendor-products-summary-grid,
   .vendor-product-editor-fields,
+  .vendor-product-composition-item,
   .vendor-product-editor-footer,
   .vendor-support-issue-grid,
   .vendor-discounts-layout,

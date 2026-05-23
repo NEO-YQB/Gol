@@ -273,6 +273,9 @@ export const vendorApi = {
   getProductTypes() {
     return request<unknown>('/product-types')
   },
+  getProductElements() {
+    return request<unknown>('/products/elements')
+  },
   createProduct(session: AuthSession, payload: VendorProductPayload) {
     return request<unknown>('/products', {
       method: 'POST',

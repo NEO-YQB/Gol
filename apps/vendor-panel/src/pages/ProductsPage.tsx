@@ -7,6 +7,11 @@ import type { AuthSession } from '../lib/session'
 
 type ProductRecord = Record<string, unknown>
 type CategoryRecord = Record<string, unknown>
+type CompositionRow = {
+  elementId: string
+  quantity: string
+  elementType: string
+}
 
 type ProductFormState = {
   name: string
@@ -28,6 +33,7 @@ type ProductFormState = {
   isPurchasable: boolean
   isArchived: boolean
   reviewNote: string
+  compositions: CompositionRow[]
 }
 
 type ProductOption = {
@@ -63,6 +69,7 @@ const initialFormState: ProductFormState = {
   isPurchasable: false,
   isArchived: false,
   reviewNote: '',
+  compositions: [],
 }
 
 function getProductName(record: ProductRecord) {
@@ -167,6 +174,13 @@ function buildPayload(form: ProductFormState, storeId: number): VendorProductPay
     isPurchasable: form.isPurchasable,
     isArchived: form.isArchived,
     reviewNote: form.reviewNote.trim() || undefined,
+    compositions: form.compositions
+      .filter((item) => item.elementId && item.quantity)
+      .map((item) => ({
+        elementId: Number(item.elementId),
+        quantity: Number(item.quantity),
+        elementType: item.elementType as 'FLOWER' | 'FILLER' | 'BASE' | 'ACCESSORY',
+      })),
   }
 }
 
@@ -187,6 +201,17 @@ function getGalleryAltText(record: ProductRecord) {
     .join('\n')
 }
 
+function mapCompositions(record: ProductRecord): CompositionRow[] {
+  if (!Array.isArray(record.composition)) return []
+  return record.composition
+    .map((item) => (typeof item === 'object' && item !== null ? (item as ProductRecord) : {}))
+    .map((item) => ({
+      elementId: readText(item, ['elementId', 'element.id'], ''),
+      quantity: readText(item, ['quantity'], '1'),
+      elementType: readText(item, ['elementType'], readText(item, ['element.type'], 'FLOWER')),
+    }))
+}
+
 export function ProductsPage({ session }: { session: AuthSession }) {
   const mainImageInputRef = useRef<HTMLInputElement | null>(null)
   const galleryInputRef = useRef<HTMLInputElement | null>(null)
@@ -201,6 +226,7 @@ export function ProductsPage({ session }: { session: AuthSession }) {
   const [products, setProducts] = useState<ProductRecord[]>([])
   const [categoryOptions, setCategoryOptions] = useState<ProductOption[]>([])
   const [productTypeOptions, setProductTypeOptions] = useState<ProductOption[]>([])
+  const [elements, setElements] = useState<ProductRecord[]>([])
   const [search, setSearch] = useState('')
   const [inventoryFilter, setInventoryFilter] = useState('ALL')
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
@@ -227,16 +253,18 @@ export function ProductsPage({ session }: { session: AuthSession }) {
     const nextStoreId = Number(readText(store, ['id'], '0'))
     setStoreId(nextStoreId)
 
-    const [productsPayload, categoriesPayload, productTypesPayload] = await Promise.all([
+    const [productsPayload, categoriesPayload, productTypesPayload, elementsPayload] = await Promise.all([
       nextStoreId ? vendorApi.getProducts(session, { storeId: nextStoreId, search, limit: 50 }) : Promise.resolve({ data: [] }),
       vendorApi.getCategories(),
       vendorApi.getProductTypes(),
+      vendorApi.getProductElements(),
     ])
     if (!activeRef.current) return
 
     const productList = toArray(productsPayload)
     const categoryList = toArray(categoriesPayload)
     const productTypeList = toArray(productTypesPayload)
+    const nextElements = toArray(elementsPayload)
     const nextCategoryOptions = flattenCategories(categoryList)
     const nextProductTypeOptions = productTypeList.map((item) => ({
       id: readText(item, ['id'], ''),
@@ -246,6 +274,7 @@ export function ProductsPage({ session }: { session: AuthSession }) {
     setProducts(productList)
     setCategoryOptions(nextCategoryOptions)
     setProductTypeOptions(nextProductTypeOptions)
+    setElements(nextElements)
 
     if (productList.length > 0) {
       setSelectedProductId((current) => current ?? readText(productList[0], ['id'], ''))
@@ -371,6 +400,7 @@ export function ProductsPage({ session }: { session: AuthSession }) {
       ...initialFormState,
       categoryId: categoryOptions[0]?.id || '',
       productTypeId: productTypeOptions[0]?.id || '',
+      compositions: [],
     })
   }
 
@@ -401,6 +431,7 @@ export function ProductsPage({ session }: { session: AuthSession }) {
       isPurchasable: Boolean(selectedProduct.isPurchasable),
       isArchived: Boolean(selectedProduct.isArchived),
       reviewNote: readText(selectedProduct, ['reviewNote'], ''),
+      compositions: mapCompositions(selectedProduct),
     })
   }
 
@@ -522,6 +553,34 @@ export function ProductsPage({ session }: { session: AuthSession }) {
     } finally {
       setSaving(false)
     }
+  }
+
+  function addCompositionRow() {
+    setForm((current) => ({
+      ...current,
+      compositions: [
+        ...current.compositions,
+        {
+          elementId: readText(elements[0] ?? {}, ['id'], ''),
+          quantity: '1',
+          elementType: readText(elements[0] ?? {}, ['type'], 'FLOWER'),
+        },
+      ],
+    }))
+  }
+
+  function updateCompositionRow(index: number, patch: Partial<CompositionRow>) {
+    setForm((current) => ({
+      ...current,
+      compositions: current.compositions.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)),
+    }))
+  }
+
+  function removeCompositionRow(index: number) {
+    setForm((current) => ({
+      ...current,
+      compositions: current.compositions.filter((_, itemIndex) => itemIndex !== index),
+    }))
   }
 
   return (
@@ -916,6 +975,82 @@ export function ProductsPage({ session }: { session: AuthSession }) {
                       </div>
                     </div>
                   </article>
+
+                  <article className="vendor-product-editor-panel vendor-product-editor-panel--full">
+                    <div className="vendor-product-editor-panel-head">
+                      <strong>ترکیبات محصول</strong>
+                      <span>مشخص کن در این دسته گل یا محصول دقیقاً چه المان‌هایی با چه تعداد استفاده شده‌اند.</span>
+                    </div>
+
+                    <div className="vendor-product-editor-stack">
+                      <div className="vendor-products-actions">
+                        <button className="fm-button fm-button--secondary" onClick={addCompositionRow} type="button">
+                          افزودن جزء
+                        </button>
+                      </div>
+
+                      {form.compositions.length ? (
+                        <div className="vendor-product-composition-list">
+                          {form.compositions.map((item, index) => (
+                            <article className="vendor-product-composition-item" key={`${item.elementId}-${index}`}>
+                              <div className="fm-field">
+                                <label>{`جزء ${formatFaNumber(index + 1)}`}</label>
+                                <select
+                                  onChange={(event) => {
+                                    const selectedElement = elements.find((entry) => readText(entry, ['id'], '') === event.target.value) ?? {}
+                                    updateCompositionRow(index, {
+                                      elementId: event.target.value,
+                                      elementType: readText(selectedElement, ['type'], item.elementType || 'FLOWER'),
+                                    })
+                                  }}
+                                  value={item.elementId}
+                                >
+                                  {!elements.length ? <option value="">المانی در دسترس نیست</option> : null}
+                                  {elements.map((entry) => (
+                                    <option key={readText(entry, ['id'], '')} value={readText(entry, ['id'], '')}>
+                                      {`${readText(entry, ['name'], 'المان')} · ${readText(entry, ['type'], '—')}`}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              <div className="fm-field">
+                                <label>تعداد</label>
+                                <input
+                                  inputMode="numeric"
+                                  onChange={(event) => updateCompositionRow(index, { quantity: event.target.value })}
+                                  placeholder="مثلاً ۳"
+                                  value={item.quantity}
+                                />
+                              </div>
+
+                              <div className="fm-field">
+                                <label>نوع جزء</label>
+                                <select
+                                  onChange={(event) => updateCompositionRow(index, { elementType: event.target.value })}
+                                  value={item.elementType}
+                                >
+                                  {['FLOWER', 'FILLER', 'BASE', 'ACCESSORY'].map((type) => (
+                                    <option key={type} value={type}>
+                                      {type}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              <div className="vendor-products-actions">
+                                <button className="fm-button fm-button--ghost" onClick={() => removeCompositionRow(index)} type="button">
+                                  حذف جزء
+                                </button>
+                              </div>
+                            </article>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="vendor-note-card">هنوز ترکیبی ثبت نشده. اگر این محصول دسته گل یا ترکیبی است، جزءها را از اینجا اضافه کن.</div>
+                      )}
+                    </div>
+                  </article>
                 </div>
 
                 <div className="vendor-product-editor-footer">
@@ -934,6 +1069,8 @@ export function ProductsPage({ session }: { session: AuthSession }) {
                       <strong>{categoryOptions.find((item) => item.id === form.categoryId)?.label || '—'}</strong>
                       <span>نوع</span>
                       <strong>{productTypeOptions.find((item) => item.id === form.productTypeId)?.label || '—'}</strong>
+                      <span>ترکیبات</span>
+                      <strong>{formatFaNumber(form.compositions.length)}</strong>
                     </div>
                   </article>
 

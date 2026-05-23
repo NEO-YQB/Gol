@@ -52,6 +52,11 @@ type ProductFormState = {
   isPurchasable: boolean
   isArchived: boolean
   reviewNote: string
+  compositions: Array<{
+    elementId: string
+    quantity: string
+    elementType: string
+  }>
 }
 
 function createEmptyProductForm(): ProductFormState {
@@ -77,6 +82,7 @@ function createEmptyProductForm(): ProductFormState {
     isPurchasable: false,
     isArchived: false,
     reviewNote: '',
+    compositions: [],
   }
 }
 
@@ -94,6 +100,9 @@ function mapProductToForm(product: ProductRecord): ProductFormState {
   const images = Array.isArray(product.images) ? product.images.filter((item): item is string => typeof item === 'string') : []
   const gallery = Array.isArray(product.gallery)
     ? product.gallery.filter((item): item is ProductRecord => typeof item === 'object' && item !== null)
+    : []
+  const compositions = Array.isArray(product.composition)
+    ? product.composition.filter((item): item is ProductRecord => typeof item === 'object' && item !== null)
     : []
   return {
     name: readText(product, ['name'], ''),
@@ -117,6 +126,11 @@ function mapProductToForm(product: ProductRecord): ProductFormState {
     isPurchasable: Boolean(product.isPurchasable),
     isArchived: Boolean(product.isArchived),
     reviewNote: readText(product, ['reviewNote'], ''),
+    compositions: compositions.map((item) => ({
+      elementId: readText(item, ['elementId', 'element.id'], ''),
+      quantity: readText(item, ['quantity'], '1'),
+      elementType: readText(item, ['elementType'], readText(item, ['element.type'], 'FLOWER')),
+    })),
   }
 }
 
@@ -334,6 +348,13 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
       isPurchasable: productForm.isPurchasable,
       isArchived: productForm.isArchived,
       reviewNote: toOptionalText(productForm.reviewNote),
+      compositions: productForm.compositions
+        .filter((item) => item.elementId && item.quantity)
+        .map((item) => ({
+          elementId: Number(item.elementId),
+          quantity: Number(item.quantity),
+          elementType: item.elementType,
+        })),
     }
 
     try {
@@ -489,6 +510,34 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
     } finally {
       setSubmitting(false)
     }
+  }
+
+  function addCompositionRow() {
+    setProductForm((current) => ({
+      ...current,
+      compositions: [
+        ...current.compositions,
+        {
+          elementId: readText(elements[0] ?? {}, ['id'], ''),
+          quantity: '1',
+          elementType: readText(elements[0] ?? {}, ['type'], 'FLOWER'),
+        },
+      ],
+    }))
+  }
+
+  function updateCompositionRow(index: number, patch: Partial<ProductFormState['compositions'][number]>) {
+    setProductForm((current) => ({
+      ...current,
+      compositions: current.compositions.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)),
+    }))
+  }
+
+  function removeCompositionRow(index: number) {
+    setProductForm((current) => ({
+      ...current,
+      compositions: current.compositions.filter((_, itemIndex) => itemIndex !== index),
+    }))
   }
 
   function toggleSection(key: string) {
@@ -911,13 +960,65 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
                   </article>
                   <article className="content-workspace-check-item">
                     <span>تعداد composition فعلی</span>
-                    <strong>{formatPersianNumber(getProductCompositions(productDetail ?? {}).length)}</strong>
+                    <strong>{formatPersianNumber(productForm.compositions.length)}</strong>
                   </article>
                   <article className="content-workspace-check-item">
                     <span>رسانه آماده نمایش</span>
                     <strong>{formatPersianNumber(getProductImageCount(productDetail ?? {}) || ((productForm.mainImage.trim() ? 1 : 0) + galleryImages.length))}</strong>
                   </article>
                 </div>
+                <div className="content-workspace-topbar-actions">
+                  <button className="content-secondary-action" onClick={addCompositionRow} type="button">
+                    افزودن جزء
+                  </button>
+                </div>
+                {productForm.compositions.length ? (
+                  <div className="admin-product-composition-list">
+                    {productForm.compositions.map((item, index) => (
+                      <article className="admin-product-composition-item" key={`${item.elementId}-${index}`}>
+                        <label className="content-select-field">
+                          <span>{`جزء ${formatPersianNumber(index + 1)}`}</span>
+                          <select
+                            className="fm-input"
+                            onChange={(event) => {
+                              const selectedElement = elements.find((entry) => readText(entry, ['id'], '') === event.target.value) ?? {}
+                              updateCompositionRow(index, {
+                                elementId: event.target.value,
+                                elementType: readText(selectedElement, ['type'], item.elementType || 'FLOWER'),
+                              })
+                            }}
+                            value={item.elementId}
+                          >
+                            {elements.map((entry) => (
+                              <option key={readText(entry, ['id'], '')} value={readText(entry, ['id'], '')}>
+                                {`${readText(entry, ['name'], 'المان')} · ${readText(entry, ['type'], '—')}`}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="content-select-field">
+                          <span>تعداد</span>
+                          <input className="fm-input" inputMode="numeric" onChange={(event) => updateCompositionRow(index, { quantity: event.target.value })} value={item.quantity} />
+                        </label>
+                        <label className="content-select-field">
+                          <span>نوع جزء</span>
+                          <select className="fm-input" onChange={(event) => updateCompositionRow(index, { elementType: event.target.value })} value={item.elementType}>
+                            {['FLOWER', 'FILLER', 'BASE', 'ACCESSORY'].map((type) => (
+                              <option key={type} value={type}>
+                                {type}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <button className="content-secondary-action" onClick={() => removeCompositionRow(index)} type="button">
+                          حذف جزء
+                        </button>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="products-muted-note">هنوز ترکیبی برای این محصول ثبت نشده است.</p>
+                )}
                 <div className="content-mini-checklist">
                   {elements.slice(0, 8).map((item) => (
                     <article className="content-mini-checklist-item" key={readText(item, ['id'], '')}>

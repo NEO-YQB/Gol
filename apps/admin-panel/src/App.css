@@ -2830,6 +2830,22 @@
   line-height: 1.9;
 }
 
+.admin-product-composition-list {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-product-composition-item {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: end;
+  border: 1px solid var(--fm-border-soft);
+  border-radius: 20px;
+  padding: 14px;
+  background: rgba(255, 253, 248, 0.86);
+}
+
 .admin-products-upload-card {
   display: grid;
   gap: 12px;
@@ -2909,7 +2925,8 @@
   .products-summary-grid,
   .product-workspace-meta-grid,
   .product-workspace-signal-grid,
-  .product-workspace-checklist-grid {
+  .product-workspace-checklist-grid,
+  .admin-product-composition-item {
     grid-template-columns: 1fr;
   }
 }
