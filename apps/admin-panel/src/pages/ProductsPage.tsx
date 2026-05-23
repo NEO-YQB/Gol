@@ -285,7 +285,9 @@ export function ProductsPage({ session, onCreateProduct, onEditProduct }: Produc
           <SectionCard eyebrow="نمای جدولی" title="کارتابل خلاصه محصول‌ها" description="جدول برای scan سریع و مقایسه استفاده می‌شود؛ ویرایش کامل داخل workspace جدا انجام می‌شود.">
             <DataTable columns={productColumns} rows={rows} />
           </SectionCard>
+        </div>
 
+        <div className="products-lower-grid">
           <SectionCard eyebrow="صف انتخاب" title="محصول‌های نمای فعلی" description="در این بخش محصول موردنظر را انتخاب کن تا summary کوتاه و actionهای سریع آن را ببینی.">
             <div className="products-selection-list">
               {paginatedSelection.map((item) => {
@@ -328,13 +330,11 @@ export function ProductsPage({ session, onCreateProduct, onEditProduct }: Produc
               </div>
             </div>
           </SectionCard>
-        </div>
 
-        <div className="products-detail-column">
           <SectionCard
-            eyebrow="خلاصه انتخاب"
-            title={selectedProduct ? getProductName(selectedProduct) : 'هنوز محصولی انتخاب نشده'}
-            description="این summary باید کوتاه، actionable و کافی برای تصمیم ورود به workspace باشد."
+            eyebrow="ورود به workspace"
+            title={selectedProduct ? `ادامه روی ${getProductName(selectedProduct)}` : 'هنوز محصولی انتخاب نشده'}
+            description="ورود به workspace باید کنار فهرست انتخاب بماند تا بعد از انتخاب، کاربر سریع وارد سطح focused ویرایش شود."
             actions={
               selectedProduct ? (
                 <button className="content-primary-action" onClick={() => onEditProduct(selectedProduct)} type="button">
@@ -356,7 +356,9 @@ export function ProductsPage({ session, onCreateProduct, onEditProduct }: Produc
               <p className="products-muted-note">برای دیدن summary و actionهای سریع، یک محصول را از فهرست انتخاب کن.</p>
             )}
           </SectionCard>
+        </div>
 
+        <div className="products-detail-column">
           <SectionCard eyebrow="تصمیم سریع" title="برداشت اجرایی از محصول" description="بدون بازکردن editor کامل هم باید بدانی این محصول الان بیشتر به چه نوع رسیدگی نیاز دارد.">
             {selectedProduct ? (
               <div className="products-brief-list">
