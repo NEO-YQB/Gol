@@ -326,8 +326,9 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
               <label className="content-select-field content-editor-field--wide">
                 <span>توضیح کامل محصول</span>
                 <FormatTextarea
-                  minHeight={220}
+                  id="product-description"
                   onChange={(value) => setProductForm((current) => ({ ...current, description: value }))}
+                  placeholder="توضیح کامل محصول را اینجا بنویس..."
                   value={productForm.description}
                 />
               </label>
