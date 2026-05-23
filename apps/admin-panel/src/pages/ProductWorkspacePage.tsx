@@ -6,10 +6,16 @@ import { adminApi } from '../lib/api'
 import { readText, toArray } from '../lib/normalize'
 import {
   formatCurrency,
+  formatPersianNumber,
   formatJalaliDate,
+  getProductCategory,
+  getProductCompositions,
+  getProductImageCount,
   getContentReadinessLabel,
   getProductSeoReadinessLabel,
   getProductStatusLabel,
+  getProductStore,
+  getProductType,
   normalizeSlug,
   toProductRecord,
 } from '../lib/products'
@@ -187,6 +193,56 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
     [productForm.metaDescription, productForm.metaTitle, productForm.slug],
   )
 
+  const galleryImages = useMemo(
+    () =>
+      productForm.imagesText
+        .split('\n')
+        .map((item) => item.trim())
+        .filter(Boolean),
+    [productForm.imagesText],
+  )
+
+  const workspaceMeta = useMemo(
+    () => [
+      { label: 'حالت فعال', value: workspaceMode === 'create' ? 'ایجاد محصول' : workspaceMode === 'review' ? 'بازبینی محصول' : 'ویرایش محصول' },
+      { label: 'فروشگاه', value: productDetail ? getProductStore(productDetail) : readText(stores.find((item) => readText(item, ['id'], '') === productForm.storeId) ?? {}, ['name'], 'هنوز انتخاب نشده') },
+      { label: 'دسته‌بندی', value: productDetail ? getProductCategory(productDetail) : readText(categories.find((item) => readText(item, ['id'], '') === productForm.categoryId) ?? {}, ['name', 'title'], 'هنوز انتخاب نشده') },
+      { label: 'نوع محصول', value: productDetail ? getProductType(productDetail) : readText(productTypes.find((item) => readText(item, ['id'], '') === productForm.productTypeId) ?? {}, ['name'], 'هنوز انتخاب نشده') },
+      { label: 'آخرین ویرایش', value: productDetail ? formatJalaliDate(productDetail.updatedAt ?? productDetail.createdAt, true) : 'هنوز ثبت نشده' },
+      { label: 'وضعیت موجودی', value: getProductStatusLabel({ quantity: Number(productForm.quantity || 0) }) },
+    ],
+    [categories, productDetail, productForm.categoryId, productForm.productTypeId, productForm.quantity, productForm.storeId, productTypes, stores, workspaceMode],
+  )
+
+  const workspaceSignals = useMemo(
+    () => [
+      { label: 'تصویرها', value: formatPersianNumber((productForm.mainImage.trim() ? 1 : 0) + galleryImages.length), hint: 'تصویر اصلی و گالری' },
+      { label: 'قیمت نهایی', value: productForm.discountPrice ? formatCurrency(productForm.discountPrice) : productForm.price ? formatCurrency(productForm.price) : 'ثبت نشده', hint: 'مبنای نمایش فعلی' },
+      { label: 'المان‌های آماده', value: formatPersianNumber(elements.length), hint: 'برای composition بعدی' },
+      { label: 'حجم توضیح', value: formatPersianNumber(productForm.description.replace(/<[^>]*>/g, ' ').trim().length), hint: 'تقریبی از محتوای بدنه' },
+    ],
+    [elements.length, galleryImages.length, productForm.description, productForm.discountPrice, productForm.mainImage, productForm.price],
+  )
+
+  const seoChecklist = useMemo(
+    () => [
+      { label: 'اسلاگ', value: productForm.slug.trim() ? 'آماده' : 'نیازمند تکمیل' },
+      { label: 'عنوان متا', value: productForm.metaTitle.trim() ? `${formatPersianNumber(productForm.metaTitle.trim().length)} کاراکتر` : 'نیازمند تکمیل' },
+      { label: 'توضیح متا', value: productForm.metaDescription.trim() ? `${formatPersianNumber(productForm.metaDescription.trim().length)} کاراکتر` : 'نیازمند تکمیل' },
+      { label: 'خلاصه کوتاه', value: productForm.shortDescription.trim() ? 'ثبت شده' : 'نیازمند تکمیل' },
+    ],
+    [productForm.metaDescription, productForm.metaTitle, productForm.shortDescription, productForm.slug],
+  )
+
+  const operationalNotes = useMemo(
+    () => [
+      `این محصول از نظر محتوا ${contentReadiness} است و باید قبل از انتشار، متن و رسانه‌اش یکدست بماند.`,
+      `آمادگی سئو فعلاً ${seoReadiness} است؛ قبل از نهایی‌سازی، عنوان متا و توضیح متا را بازبینی کن.`,
+      productForm.quantity ? `موجودی فعلی ${formatPersianNumber(productForm.quantity)} عدد است و باید با قیمت ثبت‌شده هم‌خوان بماند.` : 'موجودی هنوز مشخص نشده و برای تصمیم‌گیری عملیاتی باید کامل شود.',
+    ],
+    [contentReadiness, productForm.quantity, seoReadiness],
+  )
+
   const previewTitle = productForm.metaTitle.trim() || productForm.name.trim() || 'عنوان محصول'
   const previewDescription =
     productForm.metaDescription.trim() ||
@@ -269,24 +325,41 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
           </button>
         </div>
 
-        <div className="content-workspace-meta-grid">
-          <article className="content-workspace-meta-item">
-            <span>mode فعال</span>
-            <strong>{workspaceMode === 'create' ? 'ایجاد محصول' : workspaceMode === 'review' ? 'بازبینی محصول' : 'ویرایش محصول'}</strong>
-          </article>
-          <article className="content-workspace-meta-item">
-            <span>وضعیت محتوایی</span>
-            <strong>{contentReadiness}</strong>
-          </article>
-          <article className="content-workspace-meta-item">
-            <span>وضعیت سئو</span>
-            <strong>{seoReadiness}</strong>
-          </article>
-          <article className="content-workspace-meta-item">
-            <span>آخرین ویرایش</span>
-            <strong>{productDetail ? formatJalaliDate(productDetail.updatedAt ?? productDetail.createdAt, true) : 'هنوز ثبت نشده'}</strong>
-          </article>
+        <div className="content-workspace-meta-grid product-workspace-meta-grid">
+          {workspaceMeta.map((item) => (
+            <article className="content-workspace-meta-item" key={item.label}>
+              <span>{item.label}</span>
+              <strong>{item.value}</strong>
+            </article>
+          ))}
         </div>
+
+        <SectionCard eyebrow="برداشت سریع" title="خلاصه تصمیم‌محور میزکار" description="قبل از ورود به فرم‌های عمیق، همین‌جا باید بدانی این محصول از نظر محتوا، سئو و عملیات در چه وضعیتی است.">
+          <div className="content-workspace-signal-grid product-workspace-signal-grid">
+            <article className="content-workspace-signal-item">
+              <span>آمادگی محتوایی</span>
+              <strong>{contentReadiness}</strong>
+            </article>
+            <article className="content-workspace-signal-item">
+              <span>آمادگی سئو</span>
+              <strong>{seoReadiness}</strong>
+            </article>
+            {workspaceSignals.map((item) => (
+              <article className="content-workspace-signal-item" key={item.label}>
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+              </article>
+            ))}
+          </div>
+          <div className="product-workspace-note-list">
+            {operationalNotes.map((note) => (
+              <article className="product-workspace-note-item" key={note}>
+                <strong>یادداشت اجرایی</strong>
+                <p>{note}</p>
+              </article>
+            ))}
+          </div>
+        </SectionCard>
 
         <div className="content-workspace-stack product-workspace-stack">
           <SectionCard eyebrow="اطلاعات پایه" title="هسته محصول" description="نام، اسلاگ، خلاصه و قیمت‌ها را اینجا کامل کن تا هویت محصول روشن شود.">
@@ -334,15 +407,15 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
               </label>
               <label className="content-select-field">
                 <span>قیمت پایه</span>
-                <input className="fm-input" onChange={(event) => setProductForm((current) => ({ ...current, price: event.target.value }))} value={productForm.price} />
+                <input className="fm-input" inputMode="numeric" onChange={(event) => setProductForm((current) => ({ ...current, price: event.target.value }))} placeholder="مثلاً ۴۹۰۰۰۰" value={productForm.price} />
               </label>
               <label className="content-select-field">
                 <span>قیمت تخفیفی</span>
-                <input className="fm-input" onChange={(event) => setProductForm((current) => ({ ...current, discountPrice: event.target.value }))} value={productForm.discountPrice} />
+                <input className="fm-input" inputMode="numeric" onChange={(event) => setProductForm((current) => ({ ...current, discountPrice: event.target.value }))} placeholder="در صورت وجود تخفیف" value={productForm.discountPrice} />
               </label>
               <label className="content-select-field">
                 <span>موجودی</span>
-                <input className="fm-input" onChange={(event) => setProductForm((current) => ({ ...current, quantity: event.target.value }))} value={productForm.quantity} />
+                <input className="fm-input" inputMode="numeric" onChange={(event) => setProductForm((current) => ({ ...current, quantity: event.target.value }))} placeholder="تعداد موجودی" value={productForm.quantity} />
               </label>
             </div>
           </SectionCard>
@@ -440,6 +513,15 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
               <p className="content-collapsed-note">تنظیمات سئو در این بخش جمع می‌شوند تا تمرکز روی هسته محصول حفظ شود.</p>
             )}
 
+            <div className="content-workspace-checklist-grid product-workspace-checklist-grid">
+              {seoChecklist.map((item) => (
+                <article className="content-workspace-check-item" key={item.label}>
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                </article>
+              ))}
+            </div>
+
             <div className="content-preview-grid product-preview-grid">
               <article className="content-preview-card">
                 <span>پیش‌نمایش جستجو</span>
@@ -450,6 +532,11 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
                 <span>سیگنال سئو</span>
                 <strong>{seoReadiness}</strong>
                 <p>اسلاگ، عنوان متا و توضیح متا معیارهای اولیه این نمای readiness هستند.</p>
+              </article>
+              <article className="content-preview-card">
+                <span>پیش‌نمایش محصول</span>
+                <strong>{productForm.name.trim() || 'نام محصول هنوز تکمیل نشده'}</strong>
+                <p>{productForm.shortDescription.trim() || 'خلاصه کوتاه این محصول هنوز نوشته نشده است.'}</p>
               </article>
             </div>
           </SectionCard>
@@ -503,17 +590,46 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
             }
           >
             {openSections.composition ? (
-              <div className="content-mini-checklist">
-                {elements.slice(0, 8).map((item) => (
-                  <article className="content-mini-checklist-item" key={readText(item, ['id'], '')}>
-                    <span>{readText(item, ['type'], 'المان')}</span>
-                    <strong>{readText(item, ['name'], 'بدون نام')}</strong>
+              <>
+                <div className="content-workspace-checklist-grid product-workspace-checklist-grid">
+                  <article className="content-workspace-check-item">
+                    <span>تعداد تصویرهای ثبت‌شده</span>
+                    <strong>{formatPersianNumber((productForm.mainImage.trim() ? 1 : 0) + galleryImages.length)}</strong>
                   </article>
-                ))}
-              </div>
+                  <article className="content-workspace-check-item">
+                    <span>تعداد composition فعلی</span>
+                    <strong>{formatPersianNumber(getProductCompositions(productDetail ?? {}).length)}</strong>
+                  </article>
+                  <article className="content-workspace-check-item">
+                    <span>رسانه آماده نمایش</span>
+                    <strong>{formatPersianNumber(getProductImageCount(productDetail ?? {}) || ((productForm.mainImage.trim() ? 1 : 0) + galleryImages.length))}</strong>
+                  </article>
+                </div>
+                <div className="content-mini-checklist">
+                  {elements.slice(0, 8).map((item) => (
+                    <article className="content-mini-checklist-item" key={readText(item, ['id'], '')}>
+                      <span>{readText(item, ['type'], 'المان')}</span>
+                      <strong>{readText(item, ['name'], 'بدون نام')}</strong>
+                    </article>
+                  ))}
+                </div>
+              </>
             ) : (
               <p className="content-collapsed-note">composition در این فاز بیشتر برای visibility و آمادگی توسعه بعدی نگه داشته شده است.</p>
             )}
+          </SectionCard>
+
+          <SectionCard eyebrow="راهنمای کار" title="قاعده این workspace" description="این صفحه برای ویرایش متمرکز ساخته شده است؛ summary کوتاه می‌دهد اما فرم اصلی را از دید کاربر پنهان نمی‌کند.">
+            <div className="product-workspace-note-list">
+              <article className="product-workspace-note-item">
+                <strong>ترتیب پیشنهادی</strong>
+                <p>اول هویت محصول و قیمت را کامل کن، بعد رسانه‌ها را ببند، و در آخر metadata و preview جستجو را بازبینی کن.</p>
+              </article>
+              <article className="product-workspace-note-item">
+                <strong>قاعده انتشار</strong>
+                <p>اگر خلاصه، توضیح، تصویر اصلی و metadata ناقص باشد، این محصول هنوز برای بازبینی نهایی و تصمیم محتوایی آماده نیست.</p>
+              </article>
+            </div>
           </SectionCard>
         </div>
       </LoadableState>
