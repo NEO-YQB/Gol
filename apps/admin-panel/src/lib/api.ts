@@ -43,6 +43,8 @@ const API_BASE_URL =
   import.meta.env.VITE_API_URL ??
   'http://localhost:3000/v1'
 
+const API_ORIGIN = new URL(API_BASE_URL).origin
+
 async function readJson(response: Response) {
   const text = await response.text()
   if (!text) return null
@@ -78,8 +80,39 @@ async function request<T>(path: string, init: RequestInit = {}, token?: string):
   return payload as T
 }
 
+async function uploadRequest<T>(path: string, formData: FormData, token?: string): Promise<T> {
+  const headers = new Headers()
+
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`)
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  })
+
+  const payload = await readJson(response)
+
+  if (!response.ok) {
+    const message = getApiErrorMessage(payload, response.status)
+
+    throw new ApiError(message, response.status)
+  }
+
+  return payload as T
+}
+
+function resolveAssetUrl(path: string) {
+  if (!path) return ''
+  if (/^https?:\/\//i.test(path)) return path
+  return `${API_ORIGIN}${path}`
+}
+
 export const apiConfig = {
   baseUrl: API_BASE_URL,
+  origin: API_ORIGIN,
 }
 
 export const adminApi = {
@@ -543,6 +576,18 @@ export const adminApi = {
       method: 'PATCH',
       body: JSON.stringify(body),
     }, session.accessToken)
+  },
+  async uploadProductImage(session: AuthSession, file: File) {
+    const formData = new FormData()
+    formData.append('file', file)
+    const payload = await uploadRequest<{ url: string }>('/files/upload-product-image', formData, session.accessToken)
+    return { ...payload, url: resolveAssetUrl(payload.url) }
+  },
+  async uploadGalleryImages(session: AuthSession, files: File[]) {
+    const formData = new FormData()
+    files.forEach((file) => formData.append('files', file))
+    const payload = await uploadRequest<Array<{ url: string }>>('/files/upload-gallery-images', formData, session.accessToken)
+    return payload.map((item) => ({ ...item, url: resolveAssetUrl(item.url) }))
   },
   getProductTypes(session: AuthSession) {
     return request<unknown[]>('/product-types', {}, session.accessToken)

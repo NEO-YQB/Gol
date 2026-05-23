@@ -1,5 +1,5 @@
 import { FormatTextarea, SectionCard } from '@flower-marketplace/frontend-core'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { useNoticeEffect } from '../components/NoticeCenter'
 import { adminApi } from '../lib/api'
@@ -39,7 +39,9 @@ type ProductFormState = {
   discountPrice: string
   quantity: string
   mainImage: string
+  mainImageAlt: string
   imagesText: string
+  galleryAltText: string
   videoUrl: string
   storeId: string
   categoryId: string
@@ -58,7 +60,9 @@ function createEmptyProductForm(): ProductFormState {
     discountPrice: '',
     quantity: '',
     mainImage: '',
+    mainImageAlt: '',
     imagesText: '',
+    galleryAltText: '',
     videoUrl: '',
     storeId: '',
     categoryId: '',
@@ -89,7 +93,9 @@ function mapProductToForm(product: ProductRecord): ProductFormState {
     discountPrice: readText(product, ['discountPrice'], ''),
     quantity: readText(product, ['quantity'], ''),
     mainImage: readText(product, ['mainImage'], ''),
+    mainImageAlt: '',
     imagesText: images.join('\n'),
+    galleryAltText: '',
     videoUrl: readText(product, ['videoUrl'], ''),
     storeId: readText(product, ['storeId'], ''),
     categoryId: readText(product, ['categoryId'], ''),
@@ -104,6 +110,8 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitMessage, setSubmitMessage] = useState<string | null>(null)
+  const [uploadingMainImage, setUploadingMainImage] = useState(false)
+  const [uploadingGallery, setUploadingGallery] = useState(false)
   const [workspaceMode, setWorkspaceMode] = useState<'create' | 'edit' | 'review'>(mode === 'create' ? 'create' : 'edit')
   const [currentProductSlug, setCurrentProductSlug] = useState<string | null>(productSlug)
   const [productDetail, setProductDetail] = useState<ProductRecord | null>(null)
@@ -119,6 +127,8 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
     media: false,
     composition: false,
   })
+  const mainImageInputRef = useRef<HTMLInputElement | null>(null)
+  const galleryInputRef = useRef<HTMLInputElement | null>(null)
 
   useNoticeEffect(error, 'error')
   useNoticeEffect(submitMessage, 'success')
@@ -200,6 +210,15 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
         .map((item) => item.trim())
         .filter(Boolean),
     [productForm.imagesText],
+  )
+
+  const galleryAltItems = useMemo(
+    () =>
+      productForm.galleryAltText
+        .split('\n')
+        .map((item) => item.trim())
+        .filter(Boolean),
+    [productForm.galleryAltText],
   )
 
   const workspaceMeta = useMemo(
@@ -306,6 +325,67 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
     }
   }
 
+  async function handleMainImageChoose(fileList: FileList | null) {
+    const file = fileList?.[0]
+    if (!file) return
+
+    setUploadingMainImage(true)
+    setError(null)
+
+    try {
+      const uploaded = await adminApi.uploadProductImage(session, file)
+      setProductForm((current) => ({
+        ...current,
+        mainImage: uploaded.url,
+        mainImageAlt: current.mainImageAlt.trim() || current.name.trim() || 'تصویر اصلی محصول',
+      }))
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : 'آپلود تصویر اصلی ناموفق بود')
+    } finally {
+      setUploadingMainImage(false)
+      if (mainImageInputRef.current) {
+        mainImageInputRef.current.value = ''
+      }
+    }
+  }
+
+  async function handleGalleryChoose(fileList: FileList | null) {
+    const files = fileList ? Array.from(fileList) : []
+    if (!files.length) return
+
+    setUploadingGallery(true)
+    setError(null)
+
+    try {
+      const uploaded = await adminApi.uploadGalleryImages(session, files)
+      setProductForm((current) => {
+        const currentImages = current.imagesText
+          .split('\n')
+          .map((item) => item.trim())
+          .filter(Boolean)
+        const currentAlts = current.galleryAltText
+          .split('\n')
+          .map((item) => item.trim())
+          .filter(Boolean)
+        const nextImages = [...currentImages, ...uploaded.map((item) => item.url)]
+        const nextAlts = [...currentAlts, ...uploaded.map(() => current.name.trim() || 'تصویر گالری محصول')]
+
+        return {
+          ...current,
+          imagesText: nextImages.join('\n'),
+          galleryAltText: nextAlts.join('\n'),
+        }
+      })
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : 'آپلود گالری ناموفق بود')
+    } finally {
+      setUploadingGallery(false)
+      if (galleryInputRef.current) {
+        galleryInputRef.current.value = ''
+      }
+    }
+  }
+
   function toggleSection(key: string) {
     setOpenSections((current) => ({ ...current, [key]: !current[key] }))
   }
@@ -358,6 +438,19 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
                 <p>{note}</p>
               </article>
             ))}
+          </div>
+        </SectionCard>
+
+        <SectionCard eyebrow="وضعیت اجرایی" title="بازبینی ادمین و availability" description="بر اساس backend فعلی، انتشار نهایی و کنترل buyability هنوز به فیلدها و endpointهای اختصاصی محصول نیاز دارد. اینجا منطق محصولی ثبت می‌شود تا UI رفتار اشتباه نسازد.">
+          <div className="product-workspace-note-list">
+            <article className="product-workspace-note-item">
+              <strong>workflow تایید محصول</strong>
+              <p>محصولی که فروشنده می‌سازد باید در حالت پیش‌نویس یا submitted به صف ادمین برسد، ادمین برای اصلاح برگرداند یا بعد از ویرایش محتوایی/سئویی آن را تایید و منتشر کند. این flow هنوز در مدل `Product` و APIهای backend پیاده نشده است.</p>
+            </article>
+            <article className="product-workspace-note-item">
+              <strong>حذف نکردن محصول</strong>
+              <p>برای حفظ جایگاه سئو، محصول نباید از لیست حذف شود؛ باید بتوان آن را غیرقابل‌خرید یا موقتاً غیرفعال کرد و بعداً دوباره فعالش کرد. backend فعلی برای `Product` هنوز فیلدی مثل `isPurchasable` یا `publicationStatus` ندارد.</p>
+            </article>
           </div>
         </SectionCard>
 
@@ -470,17 +563,86 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
           >
             {openSections.media ? (
               <div className="content-editor-grid">
-                <label className="content-select-field">
+                <div className="content-select-field content-editor-field--wide">
                   <span>تصویر اصلی</span>
-                  <input className="fm-input" onChange={(event) => setProductForm((current) => ({ ...current, mainImage: event.target.value }))} value={productForm.mainImage} />
-                </label>
+                  <div className="admin-products-upload-card">
+                    <div className="admin-products-upload-actions">
+                      <button className="content-secondary-action" disabled={uploadingMainImage} onClick={() => mainImageInputRef.current?.click()} type="button">
+                        {uploadingMainImage ? 'در حال آپلود...' : 'انتخاب تصویر اصلی'}
+                      </button>
+                      <input
+                        ref={mainImageInputRef}
+                        accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+                        className="admin-products-file-input"
+                        onChange={(event) => void handleMainImageChoose(event.target.files)}
+                        type="file"
+                      />
+                      <span className="admin-products-upload-hint">لینک مستقیم تصویر پنهان شده تا UI شلوغ نشود؛ بعد از انتخاب فایل، آدرس نهایی خودکار ثبت می‌شود.</span>
+                    </div>
+
+                    {productForm.mainImage ? (
+                      <div className="admin-products-image-preview">
+                        <img alt={productForm.mainImageAlt.trim() || 'پیش‌نمایش تصویر اصلی محصول'} src={productForm.mainImage} />
+                      </div>
+                    ) : null}
+
+                    <label className="content-select-field">
+                      <span>متن جایگزین تصویر اصلی</span>
+                      <input
+                        className="fm-input"
+                        onChange={(event) => setProductForm((current) => ({ ...current, mainImageAlt: event.target.value }))}
+                        placeholder="مثلاً دسته‌گل رز سفید برای مناسبت رسمی"
+                        value={productForm.mainImageAlt}
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                <div className="content-select-field content-editor-field--wide">
+                  <span>تصاویر گالری</span>
+                  <div className="admin-products-upload-card">
+                    <div className="admin-products-upload-actions">
+                      <button className="content-secondary-action" disabled={uploadingGallery} onClick={() => galleryInputRef.current?.click()} type="button">
+                        {uploadingGallery ? 'در حال آپلود...' : 'انتخاب تصاویر گالری'}
+                      </button>
+                      <input
+                        ref={galleryInputRef}
+                        multiple
+                        accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+                        className="admin-products-file-input"
+                        onChange={(event) => void handleGalleryChoose(event.target.files)}
+                        type="file"
+                      />
+                      <span className="admin-products-upload-hint">برای هر تصویر گالری هم ALT لازم است؛ فعلاً هر خط ALT متناظر با همان تصویر در همان ترتیب ذخیره می‌شود.</span>
+                    </div>
+
+                    {galleryImages.length ? (
+                      <div className="admin-products-gallery-preview">
+                        {galleryImages.map((url, index) => (
+                          <article className="admin-products-gallery-item" key={`${url}-${index}`}>
+                            <img alt={galleryAltItems[index] || `پیش‌نمایش گالری ${index + 1}`} src={url} />
+                            <span>{galleryAltItems[index] || 'ALT ثبت نشده'}</span>
+                          </article>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    <label className="content-select-field content-editor-field--wide">
+                      <span>متن جایگزین گالری</span>
+                      <textarea
+                        className="fm-input"
+                        onChange={(event) => setProductForm((current) => ({ ...current, galleryAltText: event.target.value }))}
+                        placeholder="هر خط ALT متناظر با یک تصویر گالری باشد"
+                        rows={4}
+                        value={productForm.galleryAltText}
+                      />
+                    </label>
+                  </div>
+                </div>
+
                 <label className="content-select-field">
                   <span>ویدیو</span>
                   <input className="fm-input" onChange={(event) => setProductForm((current) => ({ ...current, videoUrl: event.target.value }))} value={productForm.videoUrl} />
-                </label>
-                <label className="content-select-field content-editor-field--wide">
-                  <span>تصاویر گالری (هر خط یک آدرس)</span>
-                  <textarea className="fm-input" onChange={(event) => setProductForm((current) => ({ ...current, imagesText: event.target.value }))} rows={5} value={productForm.imagesText} />
                 </label>
               </div>
             ) : (
