@@ -504,6 +504,58 @@ export const adminApi = {
       session.accessToken,
     )
   },
+  getProducts(
+    session: AuthSession,
+    query?: {
+      page?: number
+      limit?: number
+      search?: string
+      categoryId?: number
+      storeId?: number
+      minPrice?: number
+      maxPrice?: number
+    },
+  ) {
+    const params = new URLSearchParams()
+
+    if (query?.page) params.set('page', String(query.page))
+    if (query?.limit) params.set('limit', String(query.limit))
+    if (query?.search) params.set('search', query.search)
+    if (query?.categoryId) params.set('categoryId', String(query.categoryId))
+    if (query?.storeId) params.set('storeId', String(query.storeId))
+    if (typeof query?.minPrice === 'number') params.set('minPrice', String(query.minPrice))
+    if (typeof query?.maxPrice === 'number') params.set('maxPrice', String(query.maxPrice))
+
+    const search = params.toString()
+    return request<unknown>(`/products${search ? `?${search}` : ''}`, {}, session.accessToken)
+  },
+  getProductDetail(session: AuthSession, slug: string) {
+    return request<unknown>(`/products/${slug}`, {}, session.accessToken)
+  },
+  createProduct(session: AuthSession, body: Record<string, unknown>) {
+    return request<unknown>('/products', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  updateProduct(session: AuthSession, productId: string, body: Record<string, unknown>) {
+    return request<unknown>(`/products/${productId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  getProductTypes(session: AuthSession) {
+    return request<unknown[]>('/product-types', {}, session.accessToken)
+  },
+  getCategories(session: AuthSession) {
+    return request<unknown[]>('/categories', {}, session.accessToken)
+  },
+  getStores(session: AuthSession) {
+    return request<unknown[]>('/stores', {}, session.accessToken)
+  },
+  getProductElements(session: AuthSession) {
+    return request<unknown[]>('/products/elements', {}, session.accessToken)
+  },
   getArticles(
     session: AuthSession,
     query?: {

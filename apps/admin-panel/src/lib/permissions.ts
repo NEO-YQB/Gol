@@ -23,6 +23,8 @@ const routeRequirements: Partial<Record<AdminRoute, AccessRequirement>> = {
       { action: 'read', subject: 'SupportTicket' },
       { action: 'read', subject: 'AdminUser' },
       { action: 'create', subject: 'AdminUser' },
+      { action: 'read', subject: 'Product' },
+      { action: 'create', subject: 'Product' },
       { action: 'read', subject: 'Article' },
     ],
   },
@@ -95,6 +97,21 @@ const routeRequirements: Partial<Record<AdminRoute, AccessRequirement>> = {
       { action: 'review', subject: 'VendorOnboardingRequest' },
     ],
   },
+  products: {
+    anyOf: [
+      { action: 'manage', subject: 'all' },
+      { action: 'read', subject: 'Product' },
+      { action: 'create', subject: 'Product' },
+      { action: 'update', subject: 'Product' },
+    ],
+  },
+  productWorkspace: {
+    anyOf: [
+      { action: 'manage', subject: 'all' },
+      { action: 'create', subject: 'Product' },
+      { action: 'update', subject: 'Product' },
+    ],
+  },
   content: {
     anyOf: [
       { action: 'manage', subject: 'all' },
@@ -158,6 +175,7 @@ export function describeScope(session: AuthSession | null) {
   if (hasPermission(session, 'manage', 'all')) return 'دسترسی کامل ادمین'
   if (hasPermission(session, 'read', 'AdminUser')) return 'مدیریت دسترسی و کاربران'
   if (hasPermission(session, 'read', 'VendorOnboardingRequest')) return 'بررسی درخواست فروشنده'
+  if (hasPermission(session, 'read', 'Product') || hasPermission(session, 'create', 'Product')) return 'مدیریت محصولات و کیفیت محتوایی'
   if (hasPermission(session, 'read', 'Article')) return 'تحریریه و عملیات محتوا'
   if (hasPermission(session, 'read', 'StoreWallet')) return 'عملیات مالی و تسویه'
   if (hasPermission(session, 'read', 'SupportTicket')) return 'رسیدگی به پشتیبانی'

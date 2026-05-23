@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 import { useNoticeEffect } from './components/NoticeCenter'
 import { adminApi, ApiError } from './lib/api'
+import { readText } from './lib/normalize'
 import {
   canAccessRoute,
   describeScope,
@@ -23,6 +24,8 @@ import { FinanceWorkspacePage } from './pages/FinanceWorkspacePage'
 import { LoginPage } from './pages/LoginPage'
 import { OrdersPage } from './pages/OrdersPage'
 import { OrdersWorkspacePage } from './pages/OrdersWorkspacePage'
+import { ProductsPage } from './pages/ProductsPage'
+import { ProductWorkspacePage } from './pages/ProductWorkspacePage'
 import { SettlementsPage } from './pages/SettlementsPage'
 import { SupportPage } from './pages/SupportPage'
 import { SupportWorkspacePage } from './pages/SupportWorkspacePage'
@@ -41,7 +44,7 @@ function buildNav(currentRoute: AdminRoute, session: AuthSession): NavSection[] 
   const sections: Array<NavSection & { requirements: AdminRoute[] }> = [
     {
       title: isFinanceOnly ? 'عملیات مالی' : isSupportOnly ? 'رسیدگی پشتیبانی' : isSeoOnly ? 'تحریریه و سئو' : isAccessOnly ? 'کنترل کاربران و دسترسی' : 'عملیات اصلی',
-      requirements: ['dashboard', 'orders', 'settlements', 'support', 'vendors', 'vendorOnboarding'],
+      requirements: ['dashboard', 'orders', 'settlements', 'support', 'vendors', 'vendorOnboarding', 'products'],
       items: [
         { key: 'dashboard', label: 'داشبورد', hint: 'نمای نقش محور از وضعیت کلی', active: currentRoute === 'dashboard' },
         { key: 'orders', label: 'سفارش ها', hint: 'کارتابل عملیات سفارش و صف استثناها', active: currentRoute === 'orders' || currentRoute === 'ordersWorkspace' },
@@ -49,6 +52,7 @@ function buildNav(currentRoute: AdminRoute, session: AuthSession): NavSection[] 
         { key: 'support', label: 'پشتیبانی', hint: 'تیکت ها، noteها و رسیدگی بعدی', active: currentRoute === 'support' || currentRoute === 'supportWorkspace' },
         { key: 'vendors', label: 'فروشنده ها و ریسک', hint: 'visibility ریسک، policy و سلامت فروشنده', active: currentRoute === 'vendors' || currentRoute === 'vendorWorkspace' },
         { key: 'vendorOnboarding', label: 'درخواست‌های فروشندگی', hint: 'مدارک، جواز و تصمیم‌گیری روی فروشنده‌های جدید', active: currentRoute === 'vendorOnboarding' || currentRoute === 'vendorOnboardingWorkspace' },
+        { key: 'products', label: 'محصولات', hint: 'کارتابل catalog، کیفیت محتوا و سئوی محصول', active: currentRoute === 'products' || currentRoute === 'productWorkspace' },
       ],
     },
     {
@@ -132,6 +136,18 @@ function getPageMeta(route: AdminRoute) {
         title: 'بررسی هویت، مدارک و محصول اولیه فروشنده',
         description: 'در این workspace ادمین یا اپراتور مجاز می‌تواند مدارک را ببیند و درباره اصل درخواست و محصول اولیه تصمیم بگیرد.',
       }
+    case 'products':
+      return {
+        eyebrow: 'کارتابل محصولات',
+        title: 'محصول‌ها، آمادگی محتوایی و عملیات سئوی محصول',
+        description: 'این route برای اسکن سریع catalog و ورود به workspace جدا برای ایجاد، ویرایش و بازبینی محصول ساخته شده است.',
+      }
+    case 'productWorkspace':
+      return {
+        eyebrow: 'میزکار محصول',
+        title: 'workspace متمرکز ایجاد، ویرایش و بازبینی محصول',
+        description: 'فرم‌های سنگین، سئو، preview و جزئیات محتوایی محصول باید در این surface focused انجام شوند، نه در کارتابل اصلی.',
+      }
     case 'content':
       return {
         eyebrow: 'کارتابل محتوا',
@@ -193,6 +209,11 @@ function renderRoute(
     onBackToSettlements: () => void
     contentWorkspaceArticleId: string | null
     contentWorkspaceMode: 'create' | 'edit'
+    productWorkspaceSlug: string | null
+    productWorkspaceMode: 'create' | 'edit'
+    onOpenProductWorkspaceForCreate: () => void
+    onOpenProductWorkspaceForEdit: (product: Record<string, unknown>) => void
+    onBackToProducts: () => void
     onOpenContentWorkspaceForCreate: () => void
     onOpenContentWorkspaceForEdit: (articleId: string) => void
     onBackToContent: () => void
@@ -221,6 +242,10 @@ function renderRoute(
       return <VendorOnboardingPage onOpenWorkspace={options.onOpenVendorOnboardingWorkspace} session={session} />
     case 'vendorOnboardingWorkspace':
       return <VendorOnboardingWorkspacePage onBack={options.onBackToVendorOnboarding} request={options.vendorOnboardingRequest} session={session} />
+    case 'products':
+      return <ProductsPage onCreateProduct={options.onOpenProductWorkspaceForCreate} onEditProduct={options.onOpenProductWorkspaceForEdit} session={session} />
+    case 'productWorkspace':
+      return <ProductWorkspacePage mode={options.productWorkspaceMode} onBack={options.onBackToProducts} productSlug={options.productWorkspaceSlug} session={session} />
     case 'content':
       return <ContentPage onCreateArticle={options.onOpenContentWorkspaceForCreate} onEditArticle={options.onOpenContentWorkspaceForEdit} session={session} />
     case 'contentWorkspace':
@@ -245,6 +270,8 @@ export default function App() {
   const [vendorWorkspaceStore, setVendorWorkspaceStore] = useState<Record<string, unknown> | null>(null)
   const [vendorOnboardingRequest, setVendorOnboardingRequest] = useState<Record<string, unknown> | null>(null)
   const [financeWorkspaceSettlement, setFinanceWorkspaceSettlement] = useState<Record<string, unknown> | null>(null)
+  const [productWorkspaceSlug, setProductWorkspaceSlug] = useState<string | null>(null)
+  const [productWorkspaceMode, setProductWorkspaceMode] = useState<'create' | 'edit'>('create')
   const [contentWorkspaceArticleId, setContentWorkspaceArticleId] = useState<string | null>(null)
   const [contentWorkspaceMode, setContentWorkspaceMode] = useState<'create' | 'edit'>('create')
   const [phoneNumber, setPhoneNumber] = useState('')
@@ -486,6 +513,22 @@ export default function App() {
     handleNavigate('contentWorkspace')
   }
 
+  function handleOpenProductWorkspaceForCreate() {
+    setProductWorkspaceMode('create')
+    setProductWorkspaceSlug(null)
+    handleNavigate('productWorkspace')
+  }
+
+  function handleOpenProductWorkspaceForEdit(product: Record<string, unknown>) {
+    setProductWorkspaceMode('edit')
+    setProductWorkspaceSlug(readText(product, ['slug'], ''))
+    handleNavigate('productWorkspace')
+  }
+
+  function handleBackToProducts() {
+    handleNavigate('products')
+  }
+
   function handleOpenContentWorkspaceForEdit(articleId: string) {
     setContentWorkspaceMode('edit')
     setContentWorkspaceArticleId(articleId)
@@ -581,6 +624,11 @@ export default function App() {
         financeWorkspaceSettlement,
         onOpenFinanceWorkspace: handleOpenFinanceWorkspace,
         onBackToSettlements: handleBackToSettlements,
+        productWorkspaceSlug,
+        productWorkspaceMode,
+        onOpenProductWorkspaceForCreate: handleOpenProductWorkspaceForCreate,
+        onOpenProductWorkspaceForEdit: handleOpenProductWorkspaceForEdit,
+        onBackToProducts: handleBackToProducts,
         contentWorkspaceArticleId,
         contentWorkspaceMode,
         onOpenContentWorkspaceForCreate: handleOpenContentWorkspaceForCreate,
