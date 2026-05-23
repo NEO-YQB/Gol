@@ -16,12 +16,18 @@ type ProductFormState = {
   discountPrice: string
   quantity: string
   mainImage: string
+  mainImageAlt: string
   imagesText: string
+  galleryAltText: string
   videoUrl: string
   shortDescription: string
   description: string
   metaTitle: string
   metaDescription: string
+  publicationStatus: string
+  isPurchasable: boolean
+  isArchived: boolean
+  reviewNote: string
 }
 
 type ProductOption = {
@@ -45,12 +51,18 @@ const initialFormState: ProductFormState = {
   discountPrice: '',
   quantity: '',
   mainImage: '',
+  mainImageAlt: '',
   imagesText: '',
+  galleryAltText: '',
   videoUrl: '',
   shortDescription: '',
   description: '',
   metaTitle: '',
   metaDescription: '',
+  publicationStatus: 'DRAFT',
+  isPurchasable: false,
+  isArchived: false,
+  reviewNote: '',
 }
 
 function getProductName(record: ProductRecord) {
@@ -127,6 +139,10 @@ function getGalleryImages(value: string) {
 
 function buildPayload(form: ProductFormState, storeId: number): VendorProductPayload {
   const galleryImages = getGalleryImages(form.imagesText)
+  const galleryAltItems = form.galleryAltText
+    .split('\n')
+    .map((item) => item.trim())
+    .filter(Boolean)
 
   return {
     name: form.name.trim(),
@@ -136,13 +152,21 @@ function buildPayload(form: ProductFormState, storeId: number): VendorProductPay
     discountPrice: form.discountPrice.trim() ? Number(form.discountPrice) : undefined,
     quantity: Number(form.quantity),
     mainImage: form.mainImage.trim(),
+    mainImageAlt: form.mainImageAlt.trim() || undefined,
     images: galleryImages.length ? galleryImages : undefined,
+    gallery: galleryImages.length
+      ? galleryImages.map((url, index) => ({ url, alt: galleryAltItems[index] || undefined }))
+      : undefined,
     videoUrl: form.videoUrl.trim() || undefined,
     categoryId: Number(form.categoryId),
     storeId,
     productTypeId: Number(form.productTypeId),
     metaTitle: form.metaTitle.trim() || undefined,
     metaDescription: form.metaDescription.trim() || undefined,
+    publicationStatus: form.publicationStatus || undefined,
+    isPurchasable: form.isPurchasable,
+    isArchived: form.isArchived,
+    reviewNote: form.reviewNote.trim() || undefined,
   }
 }
 
@@ -154,6 +178,13 @@ function formatPrice(value: number | null) {
 function getImagesText(record: ProductRecord) {
   if (!Array.isArray(record.images)) return ''
   return record.images.map((item) => String(item)).join('\n')
+}
+
+function getGalleryAltText(record: ProductRecord) {
+  if (!Array.isArray(record.gallery)) return ''
+  return record.gallery
+    .map((item) => (typeof item === 'object' && item !== null ? readText(item as ProductRecord, ['alt'], '') : ''))
+    .join('\n')
 }
 
 export function ProductsPage({ session }: { session: AuthSession }) {
@@ -179,6 +210,14 @@ export function ProductsPage({ session }: { session: AuthSession }) {
   const [form, setForm] = useState<ProductFormState>(initialFormState)
 
   const galleryImages = useMemo(() => getGalleryImages(form.imagesText), [form.imagesText])
+  const galleryAltItems = useMemo(
+    () =>
+      form.galleryAltText
+        .split('\n')
+        .map((item) => item.trim())
+        .filter(Boolean),
+    [form.galleryAltText],
+  )
 
   async function loadProductData(activeRef = { current: true }) {
     const health = await vendorApi.getHealthSummary(session)
@@ -350,12 +389,18 @@ export function ProductsPage({ session }: { session: AuthSession }) {
       discountPrice: readText(selectedProduct, ['discountPrice'], ''),
       quantity: readText(selectedProduct, ['quantity'], ''),
       mainImage: readText(selectedProduct, ['mainImage'], ''),
+      mainImageAlt: readText(selectedProduct, ['mainImageAlt'], ''),
       imagesText: getImagesText(selectedProduct),
+      galleryAltText: getGalleryAltText(selectedProduct),
       videoUrl: readText(selectedProduct, ['videoUrl'], ''),
       shortDescription: readText(selectedProduct, ['shortDescription'], ''),
       description: readText(selectedProduct, ['description'], ''),
       metaTitle: readText(selectedProduct, ['metaTitle'], ''),
       metaDescription: readText(selectedProduct, ['metaDescription'], ''),
+      publicationStatus: readText(selectedProduct, ['publicationStatus'], 'DRAFT'),
+      isPurchasable: Boolean(selectedProduct.isPurchasable),
+      isArchived: Boolean(selectedProduct.isArchived),
+      reviewNote: readText(selectedProduct, ['reviewNote'], ''),
     })
   }
 
@@ -374,12 +419,16 @@ export function ProductsPage({ session }: { session: AuthSession }) {
     setFormMessage(null)
 
     try {
-      await vendorApi.deleteProduct(session, Number(readText(selectedProduct, ['id'], '0')))
-      setFormMessage('محصول با موفقیت حذف شد.')
+      await vendorApi.toggleProductPurchasable(session, Number(readText(selectedProduct, ['id'], '0')), {
+        isPurchasable: false,
+        isArchived: true,
+        note: 'آرشیو توسط فروشنده',
+      })
+      setFormMessage('محصول حذف فیزیکی نشد و با موفقیت آرشیو شد.')
       await loadProductData({ current: true })
       closeEditor()
     } catch (deleteError) {
-      setFormError(deleteError instanceof Error ? deleteError.message : 'حذف محصول ناموفق بود')
+      setFormError(deleteError instanceof Error ? deleteError.message : 'آرشیو محصول ناموفق بود')
     } finally {
       setSaving(false)
     }
@@ -395,7 +444,7 @@ export function ProductsPage({ session }: { session: AuthSession }) {
 
     try {
       const uploaded = await vendorApi.uploadProductImage(session, file)
-      setForm((current) => ({ ...current, mainImage: uploaded.url }))
+      setForm((current) => ({ ...current, mainImage: uploaded.url, mainImageAlt: current.mainImageAlt || current.name || 'تصویر اصلی محصول' }))
       setFormMessage('تصویر اصلی آپلود شد و در فرم قرار گرفت.')
     } catch (uploadError) {
       setFormError(uploadError instanceof Error ? uploadError.message : 'آپلود تصویر اصلی ناموفق بود')
@@ -420,7 +469,14 @@ export function ProductsPage({ session }: { session: AuthSession }) {
       const nextUrls = uploaded.map((item) => item.url)
       setForm((current) => {
         const merged = Array.from(new Set([...getGalleryImages(current.imagesText), ...nextUrls]))
-        return { ...current, imagesText: merged.join('\n') }
+        const nextAlts = [
+          ...current.galleryAltText
+            .split('\n')
+            .map((item) => item.trim())
+            .filter(Boolean),
+          ...uploaded.map(() => current.name || 'تصویر گالری محصول'),
+        ]
+        return { ...current, imagesText: merged.join('\n'), galleryAltText: nextAlts.join('\n') }
       })
       setFormMessage('تصاویر گالری آپلود شدند و به فرم اضافه شدند.')
     } catch (uploadError) {
@@ -727,6 +783,12 @@ export function ProductsPage({ session }: { session: AuthSession }) {
                               <img alt="پیش‌نمایش تصویر اصلی محصول" src={form.mainImage} />
                             </div>
                           ) : null}
+
+                          <input
+                            onChange={(event) => setForm((current) => ({ ...current, mainImageAlt: event.target.value }))}
+                            placeholder="متن جایگزین تصویر اصلی"
+                            value={form.mainImageAlt}
+                          />
                         </div>
                       </div>
 
@@ -763,14 +825,21 @@ export function ProductsPage({ session }: { session: AuthSession }) {
 
                           {galleryImages.length ? (
                             <div className="vendor-products-gallery-preview">
-                              {galleryImages.map((url) => (
+                              {galleryImages.map((url, index) => (
                                 <article className="vendor-products-gallery-item" key={url}>
-                                  <img alt="پیش‌نمایش گالری محصول" src={url} />
-                                  <span>{url}</span>
+                                  <img alt={galleryAltItems[index] || 'پیش‌نمایش گالری محصول'} src={url} />
+                                  <span>{galleryAltItems[index] || url}</span>
                                 </article>
                               ))}
                             </div>
                           ) : null}
+
+                          <textarea
+                            onChange={(event) => setForm((current) => ({ ...current, galleryAltText: event.target.value }))}
+                            placeholder="هر خط ALT متناظر با تصویر گالری در همان ترتیب"
+                            rows={4}
+                            value={form.galleryAltText}
+                          />
                         </div>
                       </div>
 
@@ -855,6 +924,10 @@ export function ProductsPage({ session }: { session: AuthSession }) {
                     <div className="vendor-product-editor-sidegrid">
                       <span>وضعیت</span>
                       <strong>{form.quantity.trim() ? (Number(form.quantity) <= 0 ? 'ناموجود' : Number(form.quantity) <= 5 ? 'کم‌موجودی' : 'عادی') : 'نامشخص'}</strong>
+                      <span>انتشار</span>
+                      <strong>{form.publicationStatus || 'DRAFT'}</strong>
+                      <span>خرید</span>
+                      <strong>{form.isPurchasable ? 'فعال' : 'غیرفعال'}</strong>
                       <span>گالری</span>
                       <strong>{formatFaNumber(galleryImages.length)}</strong>
                       <span>دسته</span>
@@ -869,6 +942,7 @@ export function ProductsPage({ session }: { session: AuthSession }) {
                     <p>
                       لیست و ویرایش از هم جدا شده‌اند تا بعداً همین الگو برای مقالات، دسته‌بندی‌ها، تگ‌ها و typeها هم بدون شلوغی تکرار شود.
                     </p>
+                    <p>{form.reviewNote || 'اگر ادمین محصول را برای اصلاح برگرداند، یادداشت بازبینی در همین بخش دیده می‌شود.'}</p>
                   </article>
                 </div>
 

@@ -577,6 +577,24 @@ export const adminApi = {
       body: JSON.stringify(body),
     }, session.accessToken)
   },
+  reviewProduct(session: AuthSession, productId: string, body: { approved?: boolean; requestChanges?: boolean; reviewNote?: string }) {
+    return request<unknown>(`/products/${productId}/review`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  publishProduct(session: AuthSession, productId: string, body: { publish?: boolean; note?: string }) {
+    return request<unknown>(`/products/${productId}/publish`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  toggleProductPurchasable(session: AuthSession, productId: string, body: { isPurchasable: boolean; isArchived?: boolean; note?: string }) {
+    return request<unknown>(`/products/${productId}/purchasable`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
   async uploadProductImage(session: AuthSession, file: File) {
     const formData = new FormData()
     formData.append('file', file)

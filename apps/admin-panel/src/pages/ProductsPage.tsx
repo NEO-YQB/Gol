@@ -35,6 +35,7 @@ const productColumns = [
   { key: 'store', label: 'فروشنده' },
   { key: 'catalog', label: 'دسته و نوع' },
   { key: 'pricing', label: 'قیمت و موجودی' },
+  { key: 'status', label: 'وضعیت اجرایی' },
   { key: 'readiness', label: 'آمادگی' },
   { key: 'updatedAt', label: 'آخرین ویرایش' },
 ]
@@ -50,7 +51,7 @@ export function ProductsPage({ session, onCreateProduct, onEditProduct }: Produc
   const [search, setSearch] = useState('')
   const [storeFilter, setStoreFilter] = useState('ALL')
   const [categoryFilter, setCategoryFilter] = useState('ALL')
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'READY' | 'LOW' | 'EMPTY'>('ALL')
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'READY' | 'LOW' | 'EMPTY' | 'SUBMITTED' | 'CHANGES' | 'PUBLISHED'>('ALL')
   const [selectedProductSlug, setSelectedProductSlug] = useState<string | null>(null)
   const [selectedProduct, setSelectedProduct] = useState<ProductRecord | null>(null)
   const [selectionPage, setSelectionPage] = useState(1)
@@ -111,9 +112,13 @@ export function ProductsPage({ session, onCreateProduct, onEditProduct }: Produc
       if (categoryFilter !== 'ALL' && readText(item, ['categoryId'], '') !== categoryFilter) return false
 
       const quantity = getProductQuantity(item)
+      const publicationStatus = readText(item, ['publicationStatus'], '')
       if (statusFilter === 'READY' && quantity < 5) return false
       if (statusFilter === 'LOW' && (quantity <= 0 || quantity >= 5)) return false
       if (statusFilter === 'EMPTY' && quantity > 0) return false
+      if (statusFilter === 'SUBMITTED' && publicationStatus !== 'SUBMITTED') return false
+      if (statusFilter === 'CHANGES' && publicationStatus !== 'CHANGES_REQUESTED') return false
+      if (statusFilter === 'PUBLISHED' && publicationStatus !== 'PUBLISHED') return false
 
       if (!normalizedSearch) return true
 
@@ -173,6 +178,14 @@ export function ProductsPage({ session, onCreateProduct, onEditProduct }: Produc
         hint: 'این عدد کمک می‌کند تیم ادمین زودتر محصول‌های نیازمند رسیدگی یا بازنویسی را پیدا کند.',
         tone: 'warning' as const,
       },
+      {
+        label: 'در صف بازبینی',
+        value: formatPersianNumber(products.filter((item) => readText(item, ['publicationStatus'], '') === 'SUBMITTED').length),
+        delta: 'نیازمند تصمیم ادمین',
+        detail: 'محصول‌هایی که فروشنده فرستاده و منتظر بررسی‌اند',
+        hint: 'این بخش همان queue واقعی برای triage محتوایی، سئو و تایید انتشار است.',
+        tone: 'danger' as const,
+      },
     ],
     [filteredProducts.length, products],
   )
@@ -186,6 +199,7 @@ export function ProductsPage({ session, onCreateProduct, onEditProduct }: Produc
         catalog: `${getProductCategory(item)} / ${getProductType(item)}`,
         pricing: `${formatCurrency(getProductPrice(item))} · ${formatPersianNumber(getProductQuantity(item))} عدد`,
         readiness: `${getContentReadinessLabel(item)} · ${getProductSeoReadinessLabel(item)}`,
+        status: getProductStatusLabel(item),
         updatedAt: formatJalaliDate(item.updatedAt ?? item.createdAt, true),
       })),
     [filteredProducts],
@@ -203,6 +217,7 @@ export function ProductsPage({ session, onCreateProduct, onEditProduct }: Produc
         { label: 'وضعیت موجودی', value: getProductStatusLabel(selectedProduct) },
         { label: 'آمادگی محتوایی', value: getContentReadinessLabel(selectedProduct) },
         { label: 'آمادگی سئو', value: getProductSeoReadinessLabel(selectedProduct) },
+        { label: 'وضعیت انتشار', value: readText(selectedProduct, ['publicationStatus'], 'DRAFT') },
         { label: 'قیمت فعلی', value: formatCurrency(getProductPrice(selectedProduct)) },
         {
           label: 'قیمت تخفیفی',
@@ -265,6 +280,9 @@ export function ProductsPage({ session, onCreateProduct, onEditProduct }: Produc
                 { key: 'READY', label: 'آماده فروش' },
                 { key: 'LOW', label: 'کم موجودی' },
                 { key: 'EMPTY', label: 'ناموجود' },
+                { key: 'SUBMITTED', label: 'در صف بازبینی' },
+                { key: 'CHANGES', label: 'برگشتی برای اصلاح' },
+                { key: 'PUBLISHED', label: 'منتشرشده' },
               ].map((item) => (
                 <button
                   key={item.key}

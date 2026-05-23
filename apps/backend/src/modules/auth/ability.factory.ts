@@ -195,11 +195,13 @@ export class AbilityFactory {
         { action: 'read', subject: ['Article', 'ArticleCategory', 'Author', 'ArticleTag'] },
         { action: ['create', 'update', 'delete', 'assignTags'], subject: 'Article' },
         { action: ['create', 'update'], subject: ['ArticleCategory', 'Author', 'ArticleTag'] },
+        { action: ['read', 'review'], subject: 'Product' },
       ],
       SEO_MANAGER: [
         { action: 'read', subject: ['Article', 'ArticleCategory', 'Author', 'ArticleTag'] },
         { action: ['create', 'update', 'delete', 'assignTags'], subject: 'Article' },
         { action: ['create', 'update', 'delete'], subject: ['ArticleCategory', 'Author', 'ArticleTag'] },
+        { action: ['read', 'review', 'publish'], subject: 'Product' },
       ],
       FINANCE_OPERATOR: [
         { action: 'read', subject: ['Payment', 'StoreWallet', 'WalletTransaction', 'CommissionRule', 'AdminPermission'] },

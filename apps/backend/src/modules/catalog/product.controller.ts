@@ -16,6 +16,9 @@ import { ProductService } from './product.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { GetProductsQueryDto } from './dto/get-products-query.dto';
+import { ReviewProductDto } from './dto/review-product.dto';
+import { PublishProductDto } from './dto/publish-product.dto';
+import { ToggleProductPurchasableDto } from './dto/toggle-product-purchasable.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CreateElementDto } from './dto/create-element.dto';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
@@ -85,6 +88,44 @@ export class ProductController {
     @GetUser() user: { id: number; roles: string[] },
   ) {
     return this.productService.update(id, updateProductDto, user);
+  }
+
+  @Patch(':id/review')
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard, AbilitiesGuard)
+  @CheckAbilities((ability) => ability.can('manage', 'all') || ability.can('review', 'Product'))
+  @ApiOperation({ summary: 'بازبینی ادمینی محصول و تایید/بازگشت برای اصلاح' })
+  async review(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: ReviewProductDto,
+    @GetUser() user: { id: number; roles: string[] },
+  ) {
+    return this.productService.review(id, body, user);
+  }
+
+  @Patch(':id/publish')
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard, AbilitiesGuard)
+  @CheckAbilities((ability) => ability.can('manage', 'all') || ability.can('publish', 'Product'))
+  @ApiOperation({ summary: 'انتشار یا خروج از انتشار محصول توسط ادمین' })
+  async publish(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: PublishProductDto,
+    @GetUser() user: { id: number; roles: string[] },
+  ) {
+    return this.productService.publish(id, body, user);
+  }
+
+  @Patch(':id/purchasable')
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'فعال/غیرفعال کردن قابلیت خرید محصول بدون حذف از لیست' })
+  async togglePurchasable(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: ToggleProductPurchasableDto,
+    @GetUser() user: { id: number; roles: string[] },
+  ) {
+    return this.productService.togglePurchasable(id, body, user);
   }
 
   // ۵. حذف محصول - ادمین یا مالک فروشگاه

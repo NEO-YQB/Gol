@@ -68,13 +68,19 @@ export type VendorProductPayload = {
   discountPrice?: number
   quantity: number
   mainImage: string
+  mainImageAlt?: string
   images?: string[]
+  gallery?: Array<{ url: string; alt?: string }>
   videoUrl?: string
   categoryId: number
   storeId: number
   productTypeId: number
   metaTitle?: string
   metaDescription?: string
+  publicationStatus?: string
+  isPurchasable?: boolean
+  isArchived?: boolean
+  reviewNote?: string
 }
 
 export type DeliveryWindowPayload = {
@@ -303,9 +309,10 @@ export const vendorApi = {
       body: JSON.stringify(payload),
     }, session.accessToken)
   },
-  deleteProduct(session: AuthSession, productId: number) {
-    return request<unknown>(`/products/${productId}`, {
-      method: 'DELETE',
+  toggleProductPurchasable(session: AuthSession, productId: number, payload: { isPurchasable: boolean; isArchived?: boolean; note?: string }) {
+    return request<unknown>(`/products/${productId}/purchasable`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
     }, session.accessToken)
   },
   getVendorDiscounts(

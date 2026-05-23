@@ -8,10 +8,11 @@ import {
   Min, 
   IsEnum, 
   ValidateNested,
+  IsBoolean,
   IsUrl 
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ElementType } from '@prisma/client';
+import { ElementType, ProductPublicationStatus } from '@prisma/client';
 import { ApiProperty, ApiPropertyOptional  } from '@nestjs/swagger';
 
 
@@ -27,6 +28,18 @@ class ProductCompositionDto {
 
   @IsEnum(ElementType)
   elementType!: ElementType;
+}
+
+class ProductGalleryItemDto {
+  @ApiProperty({ description: 'آدرس تصویر گالری', example: 'https://example.com/image1.jpg' })
+  @IsString()
+  @IsNotEmpty()
+  url!: string;
+
+  @ApiPropertyOptional({ description: 'متن جایگزین تصویر گالری', example: 'نمای نزدیک دسته گل رز سفید' })
+  @IsOptional()
+  @IsString()
+  alt?: string;
 }
 
 export class CreateProductDto {
@@ -65,11 +78,23 @@ export class CreateProductDto {
   @IsNotEmpty({ message: 'تصویر اصلی اجباری است' })
   mainImage!: string;
 
+  @ApiPropertyOptional({ description: 'متن جایگزین تصویر اصلی', example: 'تصویر اصلی محصول با پس‌زمینه روشن' })
+  @IsString()
+  @IsOptional()
+  mainImageAlt?: string;
+
   @ApiProperty({ description: 'تصاویر', example: ['https://example.com/image1.jpg', 'https://example.com/image2.jpg'] })
   @IsArray()
   @IsString({ each: true })
   @IsOptional()
   images?: string[];
+
+  @ApiPropertyOptional({ description: 'گالری ساخت‌یافته با alt', type: [ProductGalleryItemDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ProductGalleryItemDto)
+  gallery?: ProductGalleryItemDto[];
 
   @ApiProperty({ description: 'ویدیو', example: 'https://example.com/video.mp4' })
   @IsString()
@@ -107,4 +132,24 @@ export class CreateProductDto {
   @IsString()
   @IsOptional()
   metaDescription?: string;
-}
+
+  @ApiPropertyOptional({ enum: ProductPublicationStatus, description: 'وضعیت انتشار محصول' })
+  @IsOptional()
+  @IsEnum(ProductPublicationStatus)
+  publicationStatus?: ProductPublicationStatus;
+
+  @ApiPropertyOptional({ description: 'آیا محصول قابل خرید است؟' })
+  @IsOptional()
+  @IsBoolean()
+  isPurchasable?: boolean;
+
+  @ApiPropertyOptional({ description: 'آیا محصول آرشیو شده است؟' })
+  @IsOptional()
+  @IsBoolean()
+  isArchived?: boolean;
+
+  @ApiPropertyOptional({ description: 'یادداشت بازبینی ادمین' })
+  @IsOptional()
+  @IsString()
+  reviewNote?: string;
+} 

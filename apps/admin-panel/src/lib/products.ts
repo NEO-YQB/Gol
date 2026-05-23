@@ -81,6 +81,17 @@ export function getProductDiscountPrice(record: ProductRecord) {
 }
 
 export function getProductStatusLabel(record: ProductRecord) {
+  const publicationStatus = readText(record, ['publicationStatus'], '')
+  const isPurchasable = Boolean(record.isPurchasable)
+  const isArchived = Boolean(record.isArchived)
+
+  if (isArchived || publicationStatus === 'ARCHIVED') return 'آرشیوشده'
+  if (publicationStatus === 'SUBMITTED') return 'در صف بازبینی'
+  if (publicationStatus === 'CHANGES_REQUESTED') return 'نیازمند اصلاح'
+  if (publicationStatus === 'APPROVED' && !isPurchasable) return 'آماده انتشار'
+  if (publicationStatus === 'PUBLISHED' && !isPurchasable) return 'منتشر ولی غیرقابل خرید'
+  if (publicationStatus === 'PUBLISHED' && isPurchasable) return 'منتشر و قابل خرید'
+
   const quantity = getProductQuantity(record)
   if (quantity <= 0) return 'ناموجود'
   if (quantity < 5) return 'کم موجودی'

@@ -825,6 +825,9 @@ export class OrderService {
         quantity: true,
         price: true,
         discountPrice: true,
+        isPurchasable: true,
+        isArchived: true,
+        publicationStatus: true,
         categoryId: true,
         store: {
           select: {
@@ -845,6 +848,10 @@ export class OrderService {
 
     if (products.length !== uniqueProductIds.length) {
       throw new NotFoundException('یک یا چند محصول سفارش وجود ندارند');
+    }
+
+    if (products.some((product) => !product.isPurchasable || product.isArchived || product.publicationStatus !== 'PUBLISHED')) {
+      throw new BadRequestException('یک یا چند محصول انتخاب‌شده فعلاً قابل خرید نیستند');
     }
 
     return products;
@@ -877,6 +884,9 @@ export class OrderService {
                 quantity: true,
                 price: true,
                 discountPrice: true,
+                isPurchasable: true,
+                isArchived: true,
+                publicationStatus: true,
                 categoryId: true,
                 store: {
                   select: {

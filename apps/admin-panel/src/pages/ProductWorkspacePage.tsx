@@ -48,6 +48,10 @@ type ProductFormState = {
   productTypeId: string
   metaTitle: string
   metaDescription: string
+  publicationStatus: string
+  isPurchasable: boolean
+  isArchived: boolean
+  reviewNote: string
 }
 
 function createEmptyProductForm(): ProductFormState {
@@ -69,6 +73,10 @@ function createEmptyProductForm(): ProductFormState {
     productTypeId: '',
     metaTitle: '',
     metaDescription: '',
+    publicationStatus: 'DRAFT',
+    isPurchasable: false,
+    isArchived: false,
+    reviewNote: '',
   }
 }
 
@@ -84,6 +92,9 @@ function toOptionalText(value: string) {
 
 function mapProductToForm(product: ProductRecord): ProductFormState {
   const images = Array.isArray(product.images) ? product.images.filter((item): item is string => typeof item === 'string') : []
+  const gallery = Array.isArray(product.gallery)
+    ? product.gallery.filter((item): item is ProductRecord => typeof item === 'object' && item !== null)
+    : []
   return {
     name: readText(product, ['name'], ''),
     slug: readText(product, ['slug'], ''),
@@ -93,15 +104,19 @@ function mapProductToForm(product: ProductRecord): ProductFormState {
     discountPrice: readText(product, ['discountPrice'], ''),
     quantity: readText(product, ['quantity'], ''),
     mainImage: readText(product, ['mainImage'], ''),
-    mainImageAlt: '',
-    imagesText: images.join('\n'),
-    galleryAltText: '',
+    mainImageAlt: readText(product, ['mainImageAlt'], ''),
+    imagesText: gallery.length ? gallery.map((item) => readText(item, ['url'], '')).filter(Boolean).join('\n') : images.join('\n'),
+    galleryAltText: gallery.map((item) => readText(item, ['alt'], '')).join('\n'),
     videoUrl: readText(product, ['videoUrl'], ''),
     storeId: readText(product, ['storeId'], ''),
     categoryId: readText(product, ['categoryId'], ''),
     productTypeId: readText(product, ['productTypeId'], ''),
     metaTitle: readText(product, ['metaTitle'], ''),
     metaDescription: readText(product, ['metaDescription'], ''),
+    publicationStatus: readText(product, ['publicationStatus'], 'DRAFT'),
+    isPurchasable: Boolean(product.isPurchasable),
+    isArchived: Boolean(product.isArchived),
+    reviewNote: readText(product, ['reviewNote'], ''),
   }
 }
 
@@ -228,9 +243,10 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
       { label: 'دسته‌بندی', value: productDetail ? getProductCategory(productDetail) : readText(categories.find((item) => readText(item, ['id'], '') === productForm.categoryId) ?? {}, ['name', 'title'], 'هنوز انتخاب نشده') },
       { label: 'نوع محصول', value: productDetail ? getProductType(productDetail) : readText(productTypes.find((item) => readText(item, ['id'], '') === productForm.productTypeId) ?? {}, ['name'], 'هنوز انتخاب نشده') },
       { label: 'آخرین ویرایش', value: productDetail ? formatJalaliDate(productDetail.updatedAt ?? productDetail.createdAt, true) : 'هنوز ثبت نشده' },
-      { label: 'وضعیت موجودی', value: getProductStatusLabel({ quantity: Number(productForm.quantity || 0) }) },
+      { label: 'وضعیت انتشار', value: productForm.publicationStatus || 'DRAFT' },
+      { label: 'قابلیت خرید', value: productForm.isPurchasable ? 'قابل خرید' : 'غیرقابل خرید' },
     ],
-    [categories, productDetail, productForm.categoryId, productForm.productTypeId, productForm.quantity, productForm.storeId, productTypes, stores, workspaceMode],
+    [categories, productDetail, productForm.categoryId, productForm.isPurchasable, productForm.productTypeId, productForm.publicationStatus, productForm.storeId, productTypes, stores, workspaceMode],
   )
 
   const workspaceSignals = useMemo(
@@ -291,10 +307,22 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
       discountPrice: toOptionalNumber(productForm.discountPrice),
       quantity: toOptionalNumber(productForm.quantity) ?? 0,
       mainImage: productForm.mainImage.trim(),
+      mainImageAlt: toOptionalText(productForm.mainImageAlt),
       images: productForm.imagesText
         .split('\n')
         .map((item) => item.trim())
         .filter(Boolean),
+      gallery: productForm.imagesText
+        .split('\n')
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .map((url, index) => ({
+          url,
+          alt: productForm.galleryAltText
+            .split('\n')
+            .map((item) => item.trim())
+            .filter(Boolean)[index] || undefined,
+        })),
       videoUrl: toOptionalText(productForm.videoUrl),
       storeId: Number(productForm.storeId),
       categoryId: Number(productForm.categoryId),
@@ -302,6 +330,10 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
       compositions: [],
       metaTitle: toOptionalText(productForm.metaTitle),
       metaDescription: toOptionalText(productForm.metaDescription),
+      publicationStatus: productForm.publicationStatus || undefined,
+      isPurchasable: productForm.isPurchasable,
+      isArchived: productForm.isArchived,
+      reviewNote: toOptionalText(productForm.reviewNote),
     }
 
     try {
@@ -386,6 +418,79 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
     }
   }
 
+  async function handleRequestChanges() {
+    if (!productDetail) return
+    setSubmitting(true)
+    setError(null)
+    try {
+      await adminApi.reviewProduct(session, readText(productDetail, ['id'], ''), {
+        requestChanges: true,
+        reviewNote: productForm.reviewNote,
+      })
+      setSubmitMessage('محصول برای اصلاح به فروشنده بازگردانده شد.')
+      setProductForm((current) => ({ ...current, publicationStatus: 'CHANGES_REQUESTED' }))
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'ارسال برای اصلاح ناموفق بود')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleApproveReview() {
+    if (!productDetail) return
+    setSubmitting(true)
+    setError(null)
+    try {
+      await adminApi.reviewProduct(session, readText(productDetail, ['id'], ''), {
+        approved: true,
+        reviewNote: productForm.reviewNote,
+      })
+      setSubmitMessage('محصول تایید شد و آماده انتشار است.')
+      setProductForm((current) => ({ ...current, publicationStatus: 'APPROVED' }))
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'تایید محصول ناموفق بود')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handlePublishToggle(nextPublish: boolean) {
+    if (!productDetail) return
+    setSubmitting(true)
+    setError(null)
+    try {
+      await adminApi.publishProduct(session, readText(productDetail, ['id'], ''), {
+        publish: nextPublish,
+        note: productForm.reviewNote,
+      })
+      setSubmitMessage(nextPublish ? 'محصول منتشر شد.' : 'محصول از انتشار خارج شد.')
+      setProductForm((current) => ({ ...current, publicationStatus: nextPublish ? 'PUBLISHED' : 'APPROVED' }))
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'تغییر انتشار ناموفق بود')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handlePurchasableToggle(nextPurchasable: boolean) {
+    if (!productDetail) return
+    setSubmitting(true)
+    setError(null)
+    try {
+      await adminApi.toggleProductPurchasable(session, readText(productDetail, ['id'], ''), {
+        isPurchasable: nextPurchasable,
+        isArchived: productForm.isArchived,
+        note: productForm.reviewNote,
+      })
+      setSubmitMessage(nextPurchasable ? 'محصول قابل خرید شد.' : 'محصول از خرید خارج شد.')
+      setProductForm((current) => ({ ...current, isPurchasable: nextPurchasable }))
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'تغییر قابلیت خرید ناموفق بود')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   function toggleSection(key: string) {
     setOpenSections((current) => ({ ...current, [key]: !current[key] }))
   }
@@ -397,6 +502,16 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
           <button className="content-secondary-action" onClick={onBack} type="button">
             بازگشت به کارتابل محصول‌ها
           </button>
+          {productDetail ? (
+            <button className="content-secondary-action" disabled={submitting} onClick={() => void handleRequestChanges()} type="button">
+              بازگشت برای اصلاح
+            </button>
+          ) : null}
+          {productDetail ? (
+            <button className="content-secondary-action" disabled={submitting} onClick={() => void handleApproveReview()} type="button">
+              تایید برای انتشار
+            </button>
+          ) : null}
           <button className="content-primary-action" disabled={submitting} onClick={() => setWorkspaceMode('review')} type="button">
             حالت بازبینی
           </button>
@@ -441,15 +556,41 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
           </div>
         </SectionCard>
 
-        <SectionCard eyebrow="وضعیت اجرایی" title="بازبینی ادمین و availability" description="بر اساس backend فعلی، انتشار نهایی و کنترل buyability هنوز به فیلدها و endpointهای اختصاصی محصول نیاز دارد. اینجا منطق محصولی ثبت می‌شود تا UI رفتار اشتباه نسازد.">
+        <SectionCard eyebrow="وضعیت اجرایی" title="بازبینی ادمین و availability" description="این بخش حالا به workflow واقعی backend وصل است و انتشار یا خریدپذیری محصول را بدون حذف فیزیکی کنترل می‌کند.">
+          <div className="content-workspace-checklist-grid product-workspace-checklist-grid">
+            <article className="content-workspace-check-item">
+              <span>وضعیت انتشار</span>
+              <strong>{productForm.publicationStatus || 'DRAFT'}</strong>
+            </article>
+            <article className="content-workspace-check-item">
+              <span>قابل خرید</span>
+              <strong>{productForm.isPurchasable ? 'بله' : 'خیر'}</strong>
+            </article>
+            <article className="content-workspace-check-item">
+              <span>آرشیو</span>
+              <strong>{productForm.isArchived ? 'بله' : 'خیر'}</strong>
+            </article>
+          </div>
+          <div className="content-workspace-topbar-actions">
+            {productDetail ? (
+              <button className="content-secondary-action" disabled={submitting} onClick={() => void handlePublishToggle(productForm.publicationStatus !== 'PUBLISHED')} type="button">
+                {productForm.publicationStatus === 'PUBLISHED' ? 'خروج از انتشار' : 'انتشار محصول'}
+              </button>
+            ) : null}
+            {productDetail ? (
+              <button className="content-secondary-action" disabled={submitting} onClick={() => void handlePurchasableToggle(!productForm.isPurchasable)} type="button">
+                {productForm.isPurchasable ? 'غیرقابل‌خرید کردن' : 'قابل‌خرید کردن'}
+              </button>
+            ) : null}
+          </div>
           <div className="product-workspace-note-list">
             <article className="product-workspace-note-item">
               <strong>workflow تایید محصول</strong>
-              <p>محصولی که فروشنده می‌سازد باید در حالت پیش‌نویس یا submitted به صف ادمین برسد، ادمین برای اصلاح برگرداند یا بعد از ویرایش محتوایی/سئویی آن را تایید و منتشر کند. این flow هنوز در مدل `Product` و APIهای backend پیاده نشده است.</p>
+              <p>محصول فروشنده حالا می‌تواند در صف بازبینی بماند، برای اصلاح برگردد، تایید شود و بعد توسط ادمین منتشر شود.</p>
             </article>
             <article className="product-workspace-note-item">
               <strong>حذف نکردن محصول</strong>
-              <p>برای حفظ جایگاه سئو، محصول نباید از لیست حذف شود؛ باید بتوان آن را غیرقابل‌خرید یا موقتاً غیرفعال کرد و بعداً دوباره فعالش کرد. backend فعلی برای `Product` هنوز فیلدی مثل `isPurchasable` یا `publicationStatus` ندارد.</p>
+              <p>برای حفظ جایگاه سئو، رفتار اصلی این route حذف فیزیکی نیست؛ محصول می‌تواند غیرقابل‌خرید یا آرشیو شود و بعداً دوباره برگردد.</p>
             </article>
           </div>
         </SectionCard>
@@ -643,6 +784,16 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
                 <label className="content-select-field">
                   <span>ویدیو</span>
                   <input className="fm-input" onChange={(event) => setProductForm((current) => ({ ...current, videoUrl: event.target.value }))} value={productForm.videoUrl} />
+                </label>
+                <label className="content-select-field content-editor-field--wide">
+                  <span>یادداشت بازبینی ادمین</span>
+                  <textarea
+                    className="fm-input"
+                    onChange={(event) => setProductForm((current) => ({ ...current, reviewNote: event.target.value }))}
+                    placeholder="اگر محصول باید برای اصلاح برگردد یا نکته‌ای برای انتشار دارد اینجا ثبت کن"
+                    rows={4}
+                    value={productForm.reviewNote}
+                  />
                 </label>
               </div>
             ) : (

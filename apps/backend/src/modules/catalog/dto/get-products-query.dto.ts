@@ -1,6 +1,7 @@
-import { IsOptional, IsNumber, IsString, Min, IsEnum } from 'class-validator';
+import { IsOptional, IsNumber, IsString, Min, IsBoolean, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ProductPublicationStatus } from '@prisma/client';
 
 export class GetProductsQueryDto {
   @ApiPropertyOptional({ description: 'شماره صفحه', default: 1 })
@@ -45,4 +46,21 @@ export class GetProductsQueryDto {
   @Type(() => Number)
   @IsNumber()
   maxPrice?: number;
-}
+
+  @ApiPropertyOptional({ description: 'فیلتر بر اساس وضعیت انتشار', enum: ProductPublicationStatus })
+  @IsOptional()
+  @IsEnum(ProductPublicationStatus)
+  publicationStatus?: ProductPublicationStatus;
+
+  @ApiPropertyOptional({ description: 'فیلتر بر اساس قابل خرید بودن' })
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  isPurchasable?: boolean;
+
+  @ApiPropertyOptional({ description: 'فیلتر بر اساس آرشیوی بودن' })
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  isArchived?: boolean;
+} 

@@ -25,7 +25,9 @@ type SubmitVendorProductDto = {
   productName: string
   productDescription?: string
   productMainImage?: string
+  productMainImageAlt?: string
   productGalleryImages?: string[]
+  productGalleryAlts?: string[]
   productCategoryId?: number
   productTypeId?: number
   productPrice?: number
@@ -124,7 +126,7 @@ export class VendorOnboardingService {
       data: {
         productStatus: VendorOnboardingStatus.SUBMITTED,
         productName: dto.productName,
-        productDescription: dto.productDescription ?? null,
+        productDescription: this.buildProductDraftDescription(dto),
         productMainImage: dto.productMainImage ?? null,
         productCategoryId: dto.productCategoryId ?? request.productCategoryId,
         productTypeId: dto.productTypeId ?? request.productTypeId,
@@ -295,5 +297,22 @@ export class VendorOnboardingService {
     const current = Array.isArray(existing) ? [...existing] : []
     const galleryDocs = (gallery ?? []).map((url) => ({ title: 'گالری محصول نمونه', url }))
     return [...current, ...galleryDocs] as Prisma.InputJsonValue
+  }
+
+  private buildProductDraftDescription(dto: SubmitVendorProductDto) {
+    const parts = [dto.productDescription?.trim() || '']
+
+    if (dto.productMainImageAlt?.trim()) {
+      parts.push(`ALT تصویر اصلی: ${dto.productMainImageAlt.trim()}`)
+    }
+
+    if (dto.productGalleryAlts?.length) {
+      const galleryLines = dto.productGalleryAlts
+        .map((item, index) => item?.trim() ? `ALT گالری ${index + 1}: ${item.trim()}` : '')
+        .filter(Boolean)
+      parts.push(...galleryLines)
+    }
+
+    return parts.filter(Boolean).join('\n')
   }
 }

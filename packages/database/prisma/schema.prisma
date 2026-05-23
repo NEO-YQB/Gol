@@ -34,6 +34,8 @@ model User {
   vendorOnboardingRequest VendorOnboardingRequest? @relation("VendorOnboardingOwner")
   vendorOnboardingReviewedRequests VendorOnboardingRequest[] @relation("VendorOnboardingReviewedBy")
   vendorOnboardingProductReviewedRequests VendorOnboardingRequest[] @relation("VendorOnboardingProductReviewedBy")
+  reviewedProducts Product[] @relation("ProductReviewedBy")
+  publishedProducts Product[] @relation("ProductPublishedBy")
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -189,8 +191,20 @@ model Product {
   price           Float
   discountPrice   Float?
   mainImage       String
+  mainImageAlt    String?
   images          Json?
+  gallery         Json?
   videoUrl        String?
+  publicationStatus ProductPublicationStatus @default(DRAFT)
+  isPurchasable   Boolean  @default(false)
+  isArchived      Boolean  @default(false)
+  submittedAt     DateTime?
+  reviewedAt      DateTime?
+  reviewedByUserId Int?
+  reviewNote      String?  @db.Text
+  approvedAt      DateTime?
+  publishedAt     DateTime?
+  publishedByUserId Int?
 
   storeId         Int
   store           Store    @relation(fields: [storeId], references: [id])
@@ -206,6 +220,8 @@ model Product {
   vendorDiscounts VendorDiscount[]
   promotions      PromotionOnProducts[]
   couponScopes    CouponOnProducts[]
+  reviewedByUser  User?    @relation("ProductReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  publishedByUser User?    @relation("ProductPublishedBy", fields: [publishedByUserId], references: [id], onDelete: SetNull)
 
   metaTitle       String?
   metaDescription String?
@@ -213,6 +229,10 @@ model Product {
   
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
+
+  @@index([publicationStatus, updatedAt])
+  @@index([storeId, publicationStatus, updatedAt])
+  @@index([isPurchasable, isArchived])
 }
 
 model ProductType {
@@ -819,6 +839,15 @@ enum VendorHealthStatus {
   GOOD
   WATCHLIST
   AT_RISK
+}
+
+enum ProductPublicationStatus {
+  DRAFT
+  SUBMITTED
+  CHANGES_REQUESTED
+  APPROVED
+  PUBLISHED
+  ARCHIVED
 }
 
 enum VendorOnboardingStatus {

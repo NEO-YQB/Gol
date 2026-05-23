@@ -88,11 +88,22 @@ class SubmitVendorProductDto {
   @IsString()
   productMainImage?: string
 
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  productMainImageAlt?: string
+
   @ApiProperty({ required: false, type: [String] })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   productGalleryImages?: string[]
+
+  @ApiProperty({ required: false, type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  productGalleryAlts?: string[]
 
   @ApiProperty({ required: false })
   @IsOptional()
