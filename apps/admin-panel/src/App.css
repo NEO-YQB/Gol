@@ -2607,6 +2607,36 @@
   align-items: end;
 }
 
+.products-elements-layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.9fr) minmax(0, 1.1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.products-elements-form,
+.products-elements-list {
+  display: grid;
+  gap: 14px;
+}
+
+.products-element-item {
+  border: 1px solid var(--fm-border-soft);
+  border-radius: 18px;
+  padding: 14px 16px;
+  background: rgba(255, 253, 248, 0.86);
+  display: grid;
+  gap: 8px;
+}
+
+.products-element-item strong {
+  color: var(--fm-text-primary);
+}
+
+.products-element-item span {
+  color: var(--fm-text-secondary);
+}
+
 .products-toolbar .fm-input,
 .products-toolbar select.fm-input,
 .product-workspace-page .fm-input,
@@ -2922,6 +2952,7 @@
   .products-filters,
   .products-layout,
   .products-lower-grid,
+  .products-elements-layout,
   .products-summary-grid,
   .product-workspace-meta-grid,
   .product-workspace-signal-grid,

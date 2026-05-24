@@ -619,6 +619,25 @@ export const adminApi = {
   getProductElements(session: AuthSession) {
     return request<unknown[]>('/products/elements', {}, session.accessToken)
   },
+  createProductElement(
+    session: AuthSession,
+    body: {
+      name: string
+      type: 'FLOWER' | 'FILLER' | 'BASE' | 'ACCESSORY'
+      unit?: string
+      image?: string
+    },
+  ) {
+    return request<unknown>('/products/elements', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  removeProductElement(session: AuthSession, elementId: string) {
+    return request<unknown>(`/products/elements/${elementId}`, {
+      method: 'DELETE',
+    }, session.accessToken)
+  },
   getArticles(
     session: AuthSession,
     query?: {

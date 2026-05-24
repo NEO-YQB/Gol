@@ -29,6 +29,7 @@ type ProductsPageProps = {
 }
 
 type ProductRecord = Record<string, unknown>
+type ProductElementRecord = Record<string, unknown>
 
 const productColumns = [
   { key: 'name', label: 'محصول' },
@@ -45,7 +46,11 @@ const selectionPageSize = 8
 export function ProductsPage({ session, onCreateProduct, onEditProduct }: ProductsPageProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [elementError, setElementError] = useState<string | null>(null)
+  const [elementMessage, setElementMessage] = useState<string | null>(null)
+  const [savingElement, setSavingElement] = useState(false)
   const [products, setProducts] = useState<ProductRecord[]>([])
+  const [elements, setElements] = useState<ProductElementRecord[]>([])
   const [stores, setStores] = useState<Record<string, unknown>[]>([])
   const [categories, setCategories] = useState<Record<string, unknown>[]>([])
   const [search, setSearch] = useState('')
@@ -56,6 +61,14 @@ export function ProductsPage({ session, onCreateProduct, onEditProduct }: Produc
   const [selectedProduct, setSelectedProduct] = useState<ProductRecord | null>(null)
   const [selectionPage, setSelectionPage] = useState(1)
   useNoticeEffect(error, 'error')
+  useNoticeEffect(elementError, 'error')
+  useNoticeEffect(elementMessage, 'success')
+  const [elementForm, setElementForm] = useState({
+    name: '',
+    type: 'FLOWER' as 'FLOWER' | 'FILLER' | 'BASE' | 'ACCESSORY',
+    unit: 'شاخه',
+    image: '',
+  })
 
   useEffect(() => {
     let active = true
@@ -64,10 +77,11 @@ export function ProductsPage({ session, onCreateProduct, onEditProduct }: Produc
       setLoading(true)
       setError(null)
       try {
-        const [productsPayload, storesPayload, categoriesPayload] = await Promise.all([
+        const [productsPayload, storesPayload, categoriesPayload, elementsPayload] = await Promise.all([
           adminApi.getProducts(session, { page: 1, limit: 100 }),
           adminApi.getStores(session),
           adminApi.getCategories(session),
+          adminApi.getProductElements(session),
         ])
 
         if (!active) return
@@ -76,6 +90,7 @@ export function ProductsPage({ session, onCreateProduct, onEditProduct }: Produc
         setProducts(nextProducts)
         setStores(toArray(storesPayload))
         setCategories(toArray(categoriesPayload))
+        setElements(toArray(elementsPayload))
 
         if (nextProducts.length > 0) {
           setSelectedProductSlug(readText(nextProducts[0], ['slug'], ''))
@@ -227,6 +242,51 @@ export function ProductsPage({ session, onCreateProduct, onEditProduct }: Produc
       ]
     : []
 
+  async function handleCreateElement() {
+    if (!elementForm.name.trim()) {
+      setElementError('نام جزء را وارد کن.')
+      return
+    }
+
+    setSavingElement(true)
+    setElementError(null)
+    setElementMessage(null)
+
+    try {
+      await adminApi.createProductElement(session, {
+        name: elementForm.name.trim(),
+        type: elementForm.type,
+        unit: elementForm.unit.trim() || undefined,
+        image: elementForm.image.trim() || undefined,
+      })
+      const nextElements = await adminApi.getProductElements(session)
+      setElements(toArray(nextElements))
+      setElementForm({ name: '', type: 'FLOWER', unit: 'شاخه', image: '' })
+      setElementMessage('جزء جدید با موفقیت اضافه شد.')
+    } catch (requestError) {
+      setElementError(requestError instanceof Error ? requestError.message : 'ثبت جزء جدید ناموفق بود')
+    } finally {
+      setSavingElement(false)
+    }
+  }
+
+  async function handleRemoveElement(elementId: string) {
+    setSavingElement(true)
+    setElementError(null)
+    setElementMessage(null)
+
+    try {
+      await adminApi.removeProductElement(session, elementId)
+      const nextElements = await adminApi.getProductElements(session)
+      setElements(toArray(nextElements))
+      setElementMessage('جزء با موفقیت حذف شد.')
+    } catch (requestError) {
+      setElementError(requestError instanceof Error ? requestError.message : 'حذف جزء ناموفق بود')
+    } finally {
+      setSavingElement(false)
+    }
+  }
+
   return (
     <div className="fm-stack products-page">
       <LoadableState error={error} loading={loading}>
@@ -297,6 +357,78 @@ export function ProductsPage({ session, onCreateProduct, onEditProduct }: Produc
           </div>
         </SectionCard>
       </div>
+
+      <SectionCard
+        eyebrow="المان‌های سراسری محصول"
+        title="تعریف گل، پرکننده، اکسسوری و بیس"
+        description="این بخش سراسری است و به یک محصول خاص وابسته نیست. هر موردی که اینجا بسازی، بعداً در composition همه محصولات قابل انتخاب می‌شود."
+      >
+        <div className="products-elements-layout">
+          <div className="products-elements-form">
+            <label className="content-select-field">
+              <span>نام جزء</span>
+              <input
+                className="fm-input"
+                onChange={(event) => setElementForm((current) => ({ ...current, name: event.target.value }))}
+                placeholder="مثلاً آفتابگردان"
+                value={elementForm.name}
+              />
+            </label>
+            <label className="content-select-field">
+              <span>نوع</span>
+              <select className="fm-input" onChange={(event) => setElementForm((current) => ({ ...current, type: event.target.value as typeof current.type }))} value={elementForm.type}>
+                <option value="FLOWER">FLOWER</option>
+                <option value="FILLER">FILLER</option>
+                <option value="ACCESSORY">ACCESSORY</option>
+                <option value="BASE">BASE</option>
+              </select>
+            </label>
+            <label className="content-select-field">
+              <span>واحد</span>
+              <input
+                className="fm-input"
+                onChange={(event) => setElementForm((current) => ({ ...current, unit: event.target.value }))}
+                placeholder="مثلاً شاخه"
+                value={elementForm.unit}
+              />
+            </label>
+            <label className="content-select-field">
+              <span>تصویر مرجع</span>
+              <input
+                className="fm-input"
+                onChange={(event) => setElementForm((current) => ({ ...current, image: event.target.value }))}
+                placeholder="اختیاری"
+                value={elementForm.image}
+              />
+            </label>
+            <div className="products-header-actions">
+              <button className="content-primary-action" disabled={savingElement} onClick={() => void handleCreateElement()} type="button">
+                {savingElement ? 'در حال ثبت...' : 'افزودن جزء جدید'}
+              </button>
+            </div>
+            {elementMessage ? <p className="products-muted-note">{elementMessage}</p> : null}
+            {elementError ? <p className="products-muted-note">{elementError}</p> : null}
+          </div>
+
+          <div className="products-elements-list">
+            {elements.length ? (
+              elements.map((item) => (
+                <article className="products-element-item" key={readText(item, ['id'], '')}>
+                  <strong>{readText(item, ['name'], 'جزء بدون نام')}</strong>
+                  <span>{`${readText(item, ['type'], '—')} · ${readText(item, ['unit'], 'واحد نامشخص')}`}</span>
+                  <div className="products-header-actions">
+                    <button className="content-secondary-action" disabled={savingElement} onClick={() => void handleRemoveElement(readText(item, ['id'], ''))} type="button">
+                      حذف
+                    </button>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <p className="products-muted-note">هنوز هیچ جزء سراسری تعریف نشده است.</p>
+            )}
+          </div>
+        </div>
+      </SectionCard>
 
       <div className="products-layout">
         <div className="products-table-card">
