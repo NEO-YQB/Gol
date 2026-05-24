@@ -27,11 +27,11 @@ export class CategoryService {
 
   async findAllWithChildren() {
     return this.prisma.category.findMany({
-      where: { parentId: null }, // دریافت ریشه‌ها
+      where: { parentId: null }, 
       include: {
         children: {
           include: {
-            children: true, // تا ۲ مرحله عمق
+            children: true, 
           },
         },
       },

@@ -6,7 +6,6 @@ import { PureAbility } from '@casl/ability';
 import { PrismaQuery, Subjects } from '@casl/prisma';
 import { AbilityHandler } from '../decorators/check-abilities.decorator';
 
-// تعریف نوع Ability برای پروژه ما
 export type AppAbility = PureAbility<[string, Subjects<PrismaQuery<any>>]>;
 
 @Injectable()
@@ -22,13 +21,12 @@ export class AbilitiesGuard implements CanActivate {
       [context.getHandler(), context.getClass()],
     );
 
-    // اگر هیچ قابلیتی برای مسیر تعریف نشده، دسترسی آزاد است
     if (!requiredAbilities) {
       return true;
     }
 
     const request = context.switchToHttp().getRequest();
-    const user = request.user; // اطلاعات کاربر از JWTAuthGuard می‌آید
+    const user = request.user; 
 
     if (!user) {
       throw new ForbiddenException('کاربر احراز هویت نشده است');

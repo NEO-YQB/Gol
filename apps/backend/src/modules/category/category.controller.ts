@@ -19,23 +19,23 @@ import { AbilitiesGuard } from '../../common/guards/abilities.guard';
 import { CheckAbilities } from '../../common/decorators/check-abilities.decorator';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 
-@ApiTags('Catalog - Categories') // اضافه شد
+@ApiTags('Catalog - Categories')
 @Controller('categories')
 export class CategoryController {
   constructor(private readonly categoryService: CategoryService) {}
 
   @Post()
   @UseGuards(JwtAuthGuard, AbilitiesGuard)
-  @ApiOperation({ summary: 'ایجاد دسته‌بندی جدید' }) // اضافه شد
-  @ApiBearerAuth('JWT-auth') // اضافه شد
-  @ApiResponse({ status: 201, description: 'دسته‌بندی با موفقیت ایجاد شد.' }) // اضافه شد
+  @ApiOperation({ summary: 'ایجاد دسته‌بندی جدید' }) 
+  @ApiBearerAuth('JWT-auth') 
+  @ApiResponse({ status: 201, description: 'دسته‌بندی با موفقیت ایجاد شد.' }) 
   @CheckAbilities((ability) => ability.can('create', 'Category'))
   create(@Body() createCategoryDto: CreateCategoryDto) {
     return this.categoryService.create(createCategoryDto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'دریافت لیست درختی دسته‌بندی‌ها' }) // اضافه شد
+  @ApiOperation({ summary: 'دریافت لیست درختی دسته‌بندی‌ها' })
   findAll() {
     return this.categoryService.findAllWithChildren();
   }

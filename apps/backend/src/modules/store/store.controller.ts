@@ -15,7 +15,7 @@ import {
 import { StoreService } from './store.service';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { AdminUpdateStoreDto, UpdateStoreDto } from './dto/update-store.dto';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'; // اصلاح مسیر مطابق ساختار پروژه شما
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'; 
 import { GetUser } from '../../common/decorators/get-user.decorator';
 import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { AbilitiesGuard } from '../../common/guards/abilities.guard';

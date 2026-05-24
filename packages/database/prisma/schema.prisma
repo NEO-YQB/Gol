@@ -7,7 +7,6 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// ۱. مدل کاربران (User) - تغییر یافته برای پشتیبانی از نقش‌های داینامیک
 model User {
   id            Int      @id @default(autoincrement())
   phoneNumber   String   @unique
@@ -15,10 +14,8 @@ model User {
   fullName      String?
   isActive      Boolean  @default(true)
   
-  // رابطه با نقش‌ها (یک کاربر می‌تواند چندین نقش داشته باشد)
   roles         UsersOnRoles[]
 
-  // روابط قبلی
   addresses     UserAddress[]
   cart          Cart?
   store         Store?
@@ -41,11 +38,10 @@ model User {
   updatedAt     DateTime @updatedAt
 }
 
-// ۲. مدل نقش‌ها (مثلا: Admin, Vendor, Editor)
 model Role {
   id          Int      @id @default(autoincrement())
-  name        String   @unique // نام انگلیسی: ADMIN
-  label       String?  // نام فارسی: مدیر کل
+  name        String   @unique 
+  label       String?  
   description String?
 
   users       UsersOnRoles[]
@@ -55,13 +51,12 @@ model Role {
   updatedAt   DateTime @updatedAt
 }
 
-// ۳. مدل دسترسی‌ها (مثلا: create:product, delete:order)
 model Permission {
   id          Int      @id @default(autoincrement())
-  action      String   // مثلا: create, read, update, delete
-  subject     String   // مثلا: Product, Order, User
-  inverted    Boolean  @default(false) // برای استثنا قائل شدن
-  conditions  Json?    // برای دسترسی‌های شرطی (مثلا فقط محصول خودش)
+  action      String   
+  subject     String   
+  inverted    Boolean  @default(false) 
+  conditions  Json?    
 
   roles       RolesOnPermissions[]
 
@@ -71,7 +66,6 @@ model Permission {
   @@unique([action, subject])
 }
 
-// ۴. جدول واسط کاربر و نقش (Many-to-Many)
 model UsersOnRoles {
   userId Int
   user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -81,7 +75,6 @@ model UsersOnRoles {
   @@id([userId, roleId])
 }
 
-// ۵. جدول واسط نقش و دسترسی (Many-to-Many)
 model RolesOnPermissions {
   roleId       Int
   role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
@@ -91,7 +84,6 @@ model RolesOnPermissions {
   @@id([roleId, permissionId])
 }
 
-// ۶. مدل فروشگاه (بدون تغییر نسبت به نسخه قبل)
 model Store {
   id            Int      @id @default(autoincrement())
   name          String
@@ -180,7 +172,6 @@ enum ElementType {
   ACCESSORY
 }
 
-// ۷. مدل محصولات
 model Product {
   id              Int      @id @default(autoincrement())
   name            String

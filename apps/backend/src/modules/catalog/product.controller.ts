@@ -31,7 +31,6 @@ import { CheckAbilities } from '../../common/decorators/check-abilities.decorato
 export class ProductController {
   constructor(private readonly productService: ProductService) {}
 
-  // ۱. ایجاد محصول - فقط ادمین و فروشنده
   @Post()
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard)
@@ -44,7 +43,6 @@ export class ProductController {
     return this.productService.create(createProductDto, user);
   }
 
-  // ۲. مدیریت المان‌ها (Product Elements)
   @Post('elements')
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard, AbilitiesGuard)
@@ -70,14 +68,12 @@ export class ProductController {
     return this.productService.removeElement(id);
   }
 
-  // ۳. لیست محصولات با فیلتر و صفحه‌بندی (عمومی)
   @Get()  
   @ApiOperation({ summary: 'دریافت لیست محصولات با فیلتر و صفحه‌بندی' })
   async findAll(@Query() query: GetProductsQueryDto) {
     return this.productService.findAll(query);
   }
 
-  // ۴. به‌روزرسانی محصول - ادمین و فروشنده
   @Patch(':id')
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard)
@@ -128,7 +124,6 @@ export class ProductController {
     return this.productService.togglePurchasable(id, body, user);
   }
 
-  // ۵. حذف محصول - ادمین یا مالک فروشگاه
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT) 
   @ApiBearerAuth('JWT-auth')
@@ -141,7 +136,6 @@ export class ProductController {
     return this.productService.remove(id, user);
   }
 
-  // ۶. جزئیات محصول بر اساس اسلاگ (عمومی برای SEO)
   @Get(':slug')
   @ApiOperation({ summary: 'دریافت جزئیات یک محصول' })
   async findOne(@Param('slug') slug: string) {

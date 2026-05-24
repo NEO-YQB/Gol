@@ -12,7 +12,6 @@ export class RolesGuard implements CanActivate {
       context.getClass(),
     ]);
 
-    // اگر برای مسیری نقشی تعریف نشده، همه دسترسی دارند
     if (!requiredRoles) {
       return true;
     }
@@ -24,7 +23,6 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('کاربر احراز هویت نشده یا نقشی ندارد');
     }
 
-    // منطق جدید: بررسی اینکه آیا کاربر حداقل یکی از نقش‌های مورد نیاز را دارد؟
     const hasRole = requiredRoles.some((role) => user.roles.includes(role));
 
     if (!hasRole) {

@@ -3,7 +3,6 @@ import { PrismaClient } from '@prisma/client';
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
-  // دیگر نیازی به پاس دادن دستی URL در سازنده نیست
   async onModuleInit() {
     try {
       await this.$connect();

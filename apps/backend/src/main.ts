@@ -8,7 +8,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    // سطح لاگ‌ها طبق توافق قبلی برای خلوت ماندن کنسول
+   
     logger: ['error', 'warn'],
   });
 
@@ -32,7 +32,7 @@ async function bootstrap() {
     allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
-  // ۱. تنظیم پیشوند نسخه (باید قبل از Swagger باشد)
+
   app.setGlobalPrefix('v1');
 
   app.useStaticAssets(join(process.cwd(), 'uploads'), {
@@ -40,19 +40,18 @@ async function bootstrap() {
   });
 
 
-  // ۲. تنظیم لوله اعتبار‌سنجی (ValidationPipe)
+
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // حذف فیلدهای ناخواسته
-      forbidNonWhitelisted: true, // خطا در صورت وجود فیلد اضافی
-      transform: true, // تبدیل خودکار تایپ‌ها (مثلا String به Number)
+      whitelist: true, 
+      forbidNonWhitelisted: true, 
+      transform: true, 
       transformOptions: {
-        enableImplicitConversion: true, // تبدیل هوشمند بر اساس تایپ‌های DTO
+        enableImplicitConversion: true, 
       },
     }),
   );
 
-  // ۳. پیکربندی مستندات Swagger
   const config = new DocumentBuilder()
     .setTitle('MasterDebug API')
     .setDescription('مستندات API پنل مدیریت محصولات و کاتالوگ مرکزی')
@@ -66,25 +65,24 @@ async function bootstrap() {
         description: 'توکن JWT خود را اینجا وارد کنید',
         in: 'header',
       },
-      'JWT-auth', // این کلید برای استفاده در دکوراتور @ApiBearerAuth('JWT-auth') است
+      'JWT-auth', 
     )
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
   
-  // تنظیم آدرس مستندات (مثال: http://localhost:3000/api/docs)
   SwaggerModule.setup('api/docs', app, document, {
     swaggerOptions: {
-      persistAuthorization: true, // جلوگیری از پریدن توکن با رفرش صفحه
-      filter: true, // اضافه کردن باکس جستجو در مستندات
+      persistAuthorization: true, 
+      filter: true, 
     },
   });
 
-  // ۴. اجرای اپلیکیشن روی پورت ۳۰۰۰ یا پورت تنظیم شده در سرور
+
   const PORT = process.env.PORT || 3000;
   await app.listen(PORT);
 
-  // نمایش لینک‌های دسترسی در کنسول
+
   console.log(`\n✅ Application is running on: http://localhost:${PORT}/v1`);
   console.log(`📝 Swagger docs available at: http://localhost:${PORT}/api/docs\n`);
 }

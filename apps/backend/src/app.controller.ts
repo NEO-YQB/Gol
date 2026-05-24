@@ -14,7 +14,7 @@ export class AppController {
   }
   
   @Get('profile')
-  @UseGuards(AuthGuard('jwt')) // محافظت از این مسیر
+  @UseGuards(AuthGuard('jwt')) 
   getProfile(@Request() req) {
     return {
       message: 'شما به این مسیر امن دسترسی دارید',

@@ -14,7 +14,6 @@ export class AddressService {
   async create(user: { id: number; roles: string[] }, dto: CreateAddressDto) {
     await this.assertCanManageAddress(user, 'create', user.id);
 
-    // اگر این آدرس به عنوان پیش‌فرض ست شده، بقیه آدرس‌های کاربر از حالت پیش‌فرض خارج شوند
     if (dto.isDefault) {
       await this.prisma.userAddress.updateMany({
         where: { userId: user.id },

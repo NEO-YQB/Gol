@@ -16,7 +16,6 @@ import { ElementType, ProductPublicationStatus } from '@prisma/client';
 import { ApiProperty, ApiPropertyOptional  } from '@nestjs/swagger';
 
 
-// DTO کمکی برای ترکیب‌بندی محصول
 class ProductCompositionDto {
   @IsInt()
   @IsNotEmpty()
@@ -71,7 +70,7 @@ export class CreateProductDto {
   @ApiProperty({ description: 'موجودی', example: 100 })
   @IsInt()
   @Min(0)
-  quantity!: number; // موجودی انبار
+  quantity!: number;
 
   @ApiProperty({ description: 'تصویر اصلی', example: 'https://example.com/image.jpg' })
   @IsString()
@@ -119,10 +118,10 @@ export class CreateProductDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => ProductCompositionDto)
-  @IsOptional() // اگر محصول ساده باشد ممکن است ترکیب نداشته باشد
+  @IsOptional() 
   compositions!: ProductCompositionDto[];
 
-  // فیلدهای سئو (طبق مدل تو)
+  
   @ApiProperty({ description: 'عنوان متا', example: 'عنوان متا' })
   @IsString()
   @IsOptional()

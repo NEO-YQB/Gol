@@ -1,11 +1,11 @@
 import { IsString, IsNotEmpty, IsOptional, IsInt, Min, IsBoolean } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'; // برای مستندات Swagger
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'; 
 
 export class CreateCategoryDto {
   @ApiProperty({ description: 'نام دسته‌بندی', example: 'گیاهان آپارتمانی' })
   @IsString({ message: 'نام دسته‌بندی باید رشته باشد' })
   @IsNotEmpty({ message: 'نام دسته‌بندی نباید خالی باشد' })
-  name!: string; // ! برای نشان دادن اینکه این فیلد حتماً مقدار دارد
+  name!: string;
 
   @ApiProperty({ description: 'اسلاگ دسته‌بندی (برای URL)', example: 'indoor-plants' })
   @IsString({ message: 'اسلاگ باید رشته باشد' })
@@ -26,9 +26,8 @@ export class CreateCategoryDto {
   @ApiPropertyOptional({ description: 'آدرس تصویر دسته‌بندی (اختیاری)', example: 'https://example.com/category-image.jpg' })
   @IsOptional()
   @IsString({ message: 'آدرس تصویر باید رشته باشد' })
-  image?: string; // اضافه کردن این فیلد مطابق با schema.prisma
+  image?: string; 
 
-  // فیلدهای SEO که در schema.prisma وجود دارند را نیز اضافه می‌کنیم
   @ApiPropertyOptional({ description: 'عنوان متا برای SEO', example: 'خرید گیاهان آپارتمانی' })
   @IsOptional()
   @IsString({ message: 'عنوان متا باید رشته باشد' })
