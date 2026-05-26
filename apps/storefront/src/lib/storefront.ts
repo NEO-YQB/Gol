@@ -308,19 +308,19 @@ async function enrichBlock(block: StorefrontBlock): Promise<EnrichedBlock> {
   return block
 }
 
-export const getEnrichedStorefrontPage = cache(
-  async (slugSegments?: string[]): Promise<EnrichedStorefrontPage | null> => {
-    const page = await getStorefrontPage(toPageSlug(slugSegments))
-    if (!page) return null
+export async function getEnrichedStorefrontPage(
+  slugSegments?: string[],
+): Promise<EnrichedStorefrontPage | null> {
+  const page = await getStorefrontPage(toPageSlug(slugSegments))
+  if (!page) return null
 
-    const blocks = await Promise.all((page.blocks ?? []).map((block) => enrichBlock(block)))
+  const blocks = await Promise.all((page.blocks ?? []).map((block) => enrichBlock(block)))
 
-    return {
-      ...page,
-      blocks,
-    }
-  },
-)
+  return {
+    ...page,
+    blocks,
+  }
+}
 
 export async function getStorefrontMetadata(slugSegments?: string[]): Promise<Metadata> {
   const page = await getEnrichedStorefrontPage(slugSegments)
