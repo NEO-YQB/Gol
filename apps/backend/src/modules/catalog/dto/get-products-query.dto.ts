@@ -1,7 +1,13 @@
-import { IsOptional, IsNumber, IsString, Min, IsBoolean, IsEnum } from 'class-validator';
+import { IsOptional, IsNumber, IsString, Min, IsBoolean, IsEnum, Matches } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { ProductPublicationStatus } from '@prisma/client';
+
+export enum ProductListingSortBy {
+  NEWEST = 'newest',
+  MOST_SOLD = 'most_sold',
+  INSTANT_DELIVERY = 'instant_delivery',
+}
 
 export class GetProductsQueryDto {
   @ApiPropertyOptional({ description: 'شماره صفحه', default: 1 })
@@ -35,6 +41,23 @@ export class GetProductsQueryDto {
   @IsNumber()
   storeId?: number;
 
+  @ApiPropertyOptional({ description: 'فیلتر بر اساس شناسه نوع محصول' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  productTypeId?: number;
+
+  @ApiPropertyOptional({
+    description: 'فیلتر بر اساس شناسه‌های محصول به صورت comma-separated',
+    example: '12,18,24',
+  })
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d+(,\d+)*$/, {
+    message: 'ids باید به صورت comma-separated از اعداد باشد',
+  })
+  ids?: string;
+
   @ApiPropertyOptional({ description: 'حداقل قیمت' })
   @IsOptional()
   @Type(() => Number)
@@ -63,4 +86,9 @@ export class GetProductsQueryDto {
   @Type(() => Boolean)
   @IsBoolean()
   isArchived?: boolean;
+
+  @ApiPropertyOptional({ description: 'ترتیب نتایج برای مصرف storefront', enum: ProductListingSortBy })
+  @IsOptional()
+  @IsEnum(ProductListingSortBy)
+  sortBy?: ProductListingSortBy;
 } 

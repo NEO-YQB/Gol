@@ -38,6 +38,23 @@ export type SessionBootstrapResponse = {
   } | null
 }
 
+export type StorefrontPagePayload = {
+  id: string
+  title: string
+  slug: string
+  pageType: 'HOME' | 'LANDING' | 'CAMPAIGN' | 'STATIC'
+  isActive: boolean
+  metaTitle?: string | null
+  metaDescription?: string | null
+  keywords?: string[]
+  ogImage?: string | null
+  canonicalUrl?: string | null
+  noIndex?: boolean
+  blocks?: Array<Record<string, unknown>>
+  updatedAt?: string
+  publishedAt?: string | null
+}
+
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ??
   import.meta.env.VITE_API_URL ??
@@ -729,6 +746,29 @@ export const adminApi = {
   },
   getContentAudits(session: AuthSession) {
     return request<unknown[]>('/content/articles/audits/list', {}, session.accessToken)
+  },
+  getStorefrontPages(session: AuthSession) {
+    return request<StorefrontPagePayload[]>('/admin/pages', {}, session.accessToken)
+  },
+  getStorefrontPageDetail(session: AuthSession, pageId: string) {
+    return request<StorefrontPagePayload>(`/admin/pages/${pageId}`, {}, session.accessToken)
+  },
+  createStorefrontPage(session: AuthSession, body: Record<string, unknown>) {
+    return request<StorefrontPagePayload>('/admin/pages', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  updateStorefrontPage(session: AuthSession, pageId: string, body: Record<string, unknown>) {
+    return request<StorefrontPagePayload>(`/admin/pages/${pageId}`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  deleteStorefrontPage(session: AuthSession, pageId: string) {
+    return request<void>(`/admin/pages/${pageId}`, {
+      method: 'DELETE',
+    }, session.accessToken)
   },
   getNotifications(session: AuthSession) {
     return request<unknown>('/notifications/admin', {}, session.accessToken)

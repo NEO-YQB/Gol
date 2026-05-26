@@ -24,6 +24,8 @@ import { FinanceWorkspacePage } from './pages/FinanceWorkspacePage'
 import { LoginPage } from './pages/LoginPage'
 import { OrdersPage } from './pages/OrdersPage'
 import { OrdersWorkspacePage } from './pages/OrdersWorkspacePage'
+import { PageBuilderPage } from './pages/PageBuilderPage'
+import { PageBuilderWorkspacePage } from './pages/PageBuilderWorkspacePage'
 import { ProductsPage } from './pages/ProductsPage'
 import { ProductWorkspacePage } from './pages/ProductWorkspacePage'
 import { SettlementsPage } from './pages/SettlementsPage'
@@ -57,9 +59,10 @@ function buildNav(currentRoute: AdminRoute, session: AuthSession): NavSection[] 
     },
     {
       title: isAccessOnly ? 'پیکربندی دسترسی' : isSeoOnly ? 'کیفیت محتوا' : 'رشد و کنترل',
-      requirements: ['content', 'alerts', 'accessControl'],
+      requirements: ['content', 'pageBuilder', 'alerts', 'accessControl'],
       items: [
         { key: 'content', label: 'محتوا و سئو', hint: 'تحریریه، taxonomy و auditهای محتوا', active: currentRoute === 'content' || currentRoute === 'contentWorkspace' },
+        { key: 'pageBuilder', label: 'صفحه‌ساز استور', hint: 'landing pageها، homepage و چیدمان بلاک‌های storefront', active: currentRoute === 'pageBuilder' || currentRoute === 'pageBuilderWorkspace' },
         { key: 'alerts', label: 'هشدارها و اعلان ها', hint: 'outbox و رخدادهای مهم عملیاتی', active: currentRoute === 'alerts' },
         { key: 'accessControl', label: 'کاربران و دسترسی', hint: 'مدیریت user، role و permission', active: currentRoute === 'accessControl' || currentRoute === 'accessControlWorkspace', badge: hasPermission(session, 'assignPermissions', 'AdminRole') ? 'قابل ویرایش' : 'فقط مشاهده' },
       ],
@@ -154,6 +157,18 @@ function getPageMeta(route: AdminRoute) {
         title: 'محتوا، taxonomy و عملیات سئو',
         description: 'این route بر اساس permission نشست فعلی، سطح دسترسی واقعی تیم محتوا و SEO را نشان می دهد.',
       }
+    case 'pageBuilder':
+      return {
+        eyebrow: 'page builder',
+        title: 'صفحه‌ساز storefront و چیدمان کمپین‌ها',
+        description: 'از این route می‌توان صفحه اصلی، لندینگ‌ها و بلاک‌های صفحه‌ساز storefront را مدیریت کرد.',
+      }
+    case 'pageBuilderWorkspace':
+      return {
+        eyebrow: 'page builder workspace',
+        title: 'ویرایشگر متمرکز صفحه‌های storefront',
+        description: 'تنظیمات SEO، بلوک‌ها، ترتیب نمایش و وضعیت انتشار هر صفحه storefront در این workspace مدیریت می‌شود.',
+      }
     case 'contentWorkspace':
       return {
         eyebrow: 'ویرایشگر محتوایی',
@@ -209,6 +224,8 @@ function renderRoute(
     onBackToSettlements: () => void
     contentWorkspaceArticleId: string | null
     contentWorkspaceMode: 'create' | 'edit'
+    pageBuilderWorkspacePageId: string | null
+    pageBuilderWorkspaceMode: 'create' | 'edit'
     productWorkspaceSlug: string | null
     productWorkspaceMode: 'create' | 'edit'
     onOpenProductWorkspaceForCreate: () => void
@@ -217,6 +234,9 @@ function renderRoute(
     onOpenContentWorkspaceForCreate: () => void
     onOpenContentWorkspaceForEdit: (articleId: string) => void
     onBackToContent: () => void
+    onOpenPageBuilderWorkspaceForCreate: () => void
+    onOpenPageBuilderWorkspaceForEdit: (pageId: string) => void
+    onBackToPageBuilder: () => void
     onOpenAccessControlWorkspace: () => void
     onBackToAccessControl: () => void
   },
@@ -248,6 +268,10 @@ function renderRoute(
       return <ProductWorkspacePage mode={options.productWorkspaceMode} onBack={options.onBackToProducts} productSlug={options.productWorkspaceSlug} session={session} />
     case 'content':
       return <ContentPage onCreateArticle={options.onOpenContentWorkspaceForCreate} onEditArticle={options.onOpenContentWorkspaceForEdit} session={session} />
+    case 'pageBuilder':
+      return <PageBuilderPage onCreatePage={options.onOpenPageBuilderWorkspaceForCreate} onEditPage={options.onOpenPageBuilderWorkspaceForEdit} session={session} />
+    case 'pageBuilderWorkspace':
+      return <PageBuilderWorkspacePage mode={options.pageBuilderWorkspaceMode} onBack={options.onBackToPageBuilder} pageId={options.pageBuilderWorkspacePageId} session={session} />
     case 'contentWorkspace':
       return <ContentWorkspacePage articleId={options.contentWorkspaceArticleId} mode={options.contentWorkspaceMode} onBack={options.onBackToContent} session={session} />
     case 'alerts':
@@ -272,6 +296,8 @@ export default function App() {
   const [financeWorkspaceSettlement, setFinanceWorkspaceSettlement] = useState<Record<string, unknown> | null>(null)
   const [productWorkspaceSlug, setProductWorkspaceSlug] = useState<string | null>(null)
   const [productWorkspaceMode, setProductWorkspaceMode] = useState<'create' | 'edit'>('create')
+  const [pageBuilderWorkspacePageId, setPageBuilderWorkspacePageId] = useState<string | null>(null)
+  const [pageBuilderWorkspaceMode, setPageBuilderWorkspaceMode] = useState<'create' | 'edit'>('create')
   const [contentWorkspaceArticleId, setContentWorkspaceArticleId] = useState<string | null>(null)
   const [contentWorkspaceMode, setContentWorkspaceMode] = useState<'create' | 'edit'>('create')
   const [phoneNumber, setPhoneNumber] = useState('')
@@ -539,6 +565,22 @@ export default function App() {
     handleNavigate('content')
   }
 
+  function handleOpenPageBuilderWorkspaceForCreate() {
+    setPageBuilderWorkspaceMode('create')
+    setPageBuilderWorkspacePageId(null)
+    handleNavigate('pageBuilderWorkspace')
+  }
+
+  function handleOpenPageBuilderWorkspaceForEdit(pageId: string) {
+    setPageBuilderWorkspaceMode('edit')
+    setPageBuilderWorkspacePageId(pageId)
+    handleNavigate('pageBuilderWorkspace')
+  }
+
+  function handleBackToPageBuilder() {
+    handleNavigate('pageBuilder')
+  }
+
   function handleOpenAccessControlWorkspace() {
     handleNavigate('accessControlWorkspace')
   }
@@ -634,6 +676,11 @@ export default function App() {
         onOpenContentWorkspaceForCreate: handleOpenContentWorkspaceForCreate,
         onOpenContentWorkspaceForEdit: handleOpenContentWorkspaceForEdit,
         onBackToContent: handleBackToContent,
+        pageBuilderWorkspacePageId,
+        pageBuilderWorkspaceMode,
+        onOpenPageBuilderWorkspaceForCreate: handleOpenPageBuilderWorkspaceForCreate,
+        onOpenPageBuilderWorkspaceForEdit: handleOpenPageBuilderWorkspaceForEdit,
+        onBackToPageBuilder: handleBackToPageBuilder,
         onOpenAccessControlWorkspace: handleOpenAccessControlWorkspace,
         onBackToAccessControl: handleBackToAccessControl,
       })}

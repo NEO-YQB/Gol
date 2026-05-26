@@ -217,13 +217,35 @@ export class ProductService {
   }
 
   async findAll(query: GetProductsQueryDto) {
-    const { page = 1, limit = 10, search, categoryId, storeId, minPrice, maxPrice, publicationStatus, isPurchasable, isArchived } = query;
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      categoryId,
+      storeId,
+      productTypeId,
+      ids,
+      minPrice,
+      maxPrice,
+      publicationStatus,
+      isPurchasable,
+      isArchived,
+      sortBy,
+    } = query;
     const skip = (page - 1) * limit;
+    const productIds = ids
+      ? ids
+          .split(',')
+          .map((value) => Number(value.trim()))
+          .filter((value) => Number.isInteger(value) && value > 0)
+      : [];
 
     const where: any = {
       ...(search && { name: { contains: search, mode: 'insensitive' } }),
       ...(categoryId && { categoryId }),
       ...(storeId && { storeId }),
+      ...(productTypeId && { productTypeId }),
+      ...(productIds.length > 0 ? { id: { in: productIds } } : {}),
       ...(publicationStatus && { publicationStatus }),
       ...(typeof isPurchasable === 'boolean' ? { isPurchasable } : {}),
       ...(typeof isArchived === 'boolean' ? { isArchived } : {}),
@@ -234,6 +256,13 @@ export class ProductService {
         },
       }),
     };
+
+    const orderBy =
+      sortBy === 'most_sold'
+        ? [{ orderItems: { _count: 'desc' as const } }, { createdAt: 'desc' as const }]
+        : sortBy === 'instant_delivery'
+          ? [{ store: { sameDayDelivery: 'desc' as const } }, { createdAt: 'desc' as const }]
+          : [{ createdAt: 'desc' as const }];
 
     const [products, total] = await Promise.all([
       this.prisma.product.findMany({
@@ -247,7 +276,7 @@ export class ProductService {
           reviewedByUser: { select: { id: true, fullName: true, phoneNumber: true } },
           publishedByUser: { select: { id: true, fullName: true, phoneNumber: true } },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy,
       }),
       this.prisma.product.count({ where }),
     ]);

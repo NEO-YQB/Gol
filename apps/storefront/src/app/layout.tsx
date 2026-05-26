@@ -1,8 +1,8 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "Golino | گلینو",
-  description: "Golino Coming Soon Page",
+  title: "گلینو | بازار گل و هدیه",
+  description: "خرید آنلاین گل، باکس هدیه و سفارش از فروشگاه‌های منتخب گلینو",
 };
 
 export default function RootLayout({
