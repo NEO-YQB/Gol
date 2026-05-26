@@ -218,7 +218,9 @@ async function enrichBlock(block: StorefrontBlock): Promise<EnrichedBlock> {
     const categoryIds = Array.isArray(block.data.categoryIds) ? block.data.categoryIds.map((item) => String(item)) : []
 
     const enrichedBlock: CategoryCirclesBlock = {
-      ...block,
+      id: block.id,
+      type: 'CATEGORY_CIRCLES',
+      data: block.data,
       categories: categories.filter((category) => categoryIds.includes(String(category.id))),
     }
 
@@ -261,7 +263,9 @@ async function enrichBlock(block: StorefrontBlock): Promise<EnrichedBlock> {
     }
 
     const enrichedBlock: ProductCarouselBlock = {
-      ...block,
+      id: block.id,
+      type: 'PRODUCT_CAROUSEL',
+      data: block.data,
       products: products.slice(0, limit),
     }
 
@@ -292,7 +296,9 @@ async function enrichBlock(block: StorefrontBlock): Promise<EnrichedBlock> {
     }
 
     const enrichedBlock: VendorCarouselBlock = {
-      ...block,
+      id: block.id,
+      type: 'VENDOR_CAROUSEL',
+      data: block.data,
       vendors: vendors.slice(0, 8),
     }
 
