@@ -16,21 +16,9 @@ export type StorefrontPage = {
   slug: string
   pageType: 'HOME' | 'LANDING' | 'CAMPAIGN' | 'STATIC'
   seo: StorefrontSeo
-  blocks: StorefrontBlock[]
+  blocks: Array<Record<string, unknown>>
   updatedAt?: string
   publishedAt?: string | null
-}
-
-export type StorefrontBlock = {
-  id: string
-  type:
-    | 'HERO_HEADER'
-    | 'CATEGORY_CIRCLES'
-    | 'PRODUCT_CAROUSEL'
-    | 'EDITORIAL_RICH_BLOCK'
-    | 'VENDOR_CAROUSEL'
-    | 'CAMPAIGN_GRID'
-  data: Record<string, unknown>
 }
 
 export type CategorySummary = {
@@ -70,40 +58,14 @@ export type StoreSummary = {
   customerRatingCount?: number
 }
 
-type HeroHeaderBlock = StorefrontBlock & {
-  type: 'HERO_HEADER'
+export type EnrichedBlock = Record<string, unknown> & {
+  id: string
+  type: string
+  data: Record<string, unknown>
+  categories?: CategorySummary[]
+  products?: ProductSummary[]
+  vendors?: StoreSummary[]
 }
-
-type CategoryCirclesBlock = StorefrontBlock & {
-  type: 'CATEGORY_CIRCLES'
-  categories: CategorySummary[]
-}
-
-type ProductCarouselBlock = StorefrontBlock & {
-  type: 'PRODUCT_CAROUSEL'
-  products: ProductSummary[]
-}
-
-type EditorialRichBlock = StorefrontBlock & {
-  type: 'EDITORIAL_RICH_BLOCK'
-}
-
-type VendorCarouselBlock = StorefrontBlock & {
-  type: 'VENDOR_CAROUSEL'
-  vendors: StoreSummary[]
-}
-
-type CampaignGridBlock = StorefrontBlock & {
-  type: 'CAMPAIGN_GRID'
-}
-
-export type EnrichedBlock =
-  | HeroHeaderBlock
-  | CategoryCirclesBlock
-  | ProductCarouselBlock
-  | EditorialRichBlock
-  | VendorCarouselBlock
-  | CampaignGridBlock
 
 export type EnrichedStorefrontPage = Omit<StorefrontPage, 'blocks'> & {
   blocks: EnrichedBlock[]
@@ -212,26 +174,33 @@ const getStorefrontPage = cache(async (slug: string): Promise<StorefrontPage | n
   }
 })
 
-async function enrichBlock(block: StorefrontBlock): Promise<EnrichedBlock> {
-  if (block.type === 'CATEGORY_CIRCLES') {
-    const categories = await getCategories()
-    const categoryIds = Array.isArray(block.data.categoryIds) ? block.data.categoryIds.map((item) => String(item)) : []
-
-    const enrichedBlock: CategoryCirclesBlock = {
-      id: block.id,
-      type: 'CATEGORY_CIRCLES',
-      data: block.data,
-      categories: categories.filter((category) => categoryIds.includes(String(category.id))),
-    }
-
-    return enrichedBlock
+async function enrichBlock(block: Record<string, unknown>): Promise<EnrichedBlock> {
+  const normalizedBlock: EnrichedBlock = {
+    id: String(block.id ?? ''),
+    type: String(block.type ?? ''),
+    data:
+      typeof block.data === 'object' && block.data !== null
+        ? (block.data as Record<string, unknown>)
+        : {},
   }
 
-  if (block.type === 'PRODUCT_CAROUSEL') {
-    const filterType = String(block.data.filterType ?? 'category')
-    const sortBy = String(block.data.sortBy ?? 'newest') as ProductQuery['sortBy']
-    const limit = Number(block.data.limit ?? 8) || 8
-    const filterValue = block.data.filterValue
+  if (normalizedBlock.type === 'CATEGORY_CIRCLES') {
+    const categories = await getCategories()
+    const categoryIds = Array.isArray(normalizedBlock.data.categoryIds)
+      ? normalizedBlock.data.categoryIds.map((item) => String(item))
+      : []
+
+    return {
+      ...normalizedBlock,
+      categories: categories.filter((category) => categoryIds.includes(String(category.id))),
+    }
+  }
+
+  if (normalizedBlock.type === 'PRODUCT_CAROUSEL') {
+    const filterType = String(normalizedBlock.data.filterType ?? 'category')
+    const sortBy = String(normalizedBlock.data.sortBy ?? 'newest') as ProductQuery['sortBy']
+    const limit = Number(normalizedBlock.data.limit ?? 8) || 8
+    const filterValue = normalizedBlock.data.filterValue
 
     let products: ProductSummary[] = []
 
@@ -262,20 +231,18 @@ async function enrichBlock(block: StorefrontBlock): Promise<EnrichedBlock> {
       })
     }
 
-    const enrichedBlock: ProductCarouselBlock = {
-      id: block.id,
-      type: 'PRODUCT_CAROUSEL',
-      data: block.data,
+    return {
+      ...normalizedBlock,
       products: products.slice(0, limit),
     }
-
-    return enrichedBlock
   }
 
-  if (block.type === 'VENDOR_CAROUSEL') {
+  if (normalizedBlock.type === 'VENDOR_CAROUSEL') {
     const stores = await getStores()
-    const filterType = String(block.data.filterType ?? 'top_rated')
-    const vendorIds = Array.isArray(block.data.vendorIds) ? block.data.vendorIds.map((item) => Number(item)) : []
+    const filterType = String(normalizedBlock.data.filterType ?? 'top_rated')
+    const vendorIds = Array.isArray(normalizedBlock.data.vendorIds)
+      ? normalizedBlock.data.vendorIds.map((item) => Number(item))
+      : []
 
     let vendors = [...stores]
 
@@ -295,17 +262,13 @@ async function enrichBlock(block: StorefrontBlock): Promise<EnrichedBlock> {
       })
     }
 
-    const enrichedBlock: VendorCarouselBlock = {
-      id: block.id,
-      type: 'VENDOR_CAROUSEL',
-      data: block.data,
+    return {
+      ...normalizedBlock,
       vendors: vendors.slice(0, 8),
     }
-
-    return enrichedBlock
   }
 
-  return block
+  return normalizedBlock
 }
 
 export async function getEnrichedStorefrontPage(
