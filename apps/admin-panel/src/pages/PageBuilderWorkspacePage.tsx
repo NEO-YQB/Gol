@@ -131,7 +131,7 @@ function createEmptyForm(): PageForm {
     ogImage: '',
     canonicalUrl: '',
     noIndex: false,
-    blocks: [createBlock('HERO_HEADER')],
+    blocks: [],
   }
 }
 
@@ -161,7 +161,7 @@ function mapApiPageToForm(page: Record<string, unknown>): PageForm {
     ogImage: readText(page, ['ogImage'], ''),
     canonicalUrl: readText(page, ['canonicalUrl'], ''),
     noIndex: page.noIndex === true,
-    blocks: blocks.length > 0 ? blocks : [createBlock('HERO_HEADER')],
+    blocks,
   }
 }
 
