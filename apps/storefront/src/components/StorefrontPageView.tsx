@@ -136,6 +136,8 @@ export function StorefrontPageView({ page }: { page: EnrichedStorefrontPage }) {
           }
 
           if (block.type === 'CATEGORY_CIRCLES') {
+            const categories = Array.isArray(block.categories) ? block.categories : []
+
             return (
               <section className="mb-8 rounded-[36px] bg-[linear-gradient(180deg,rgba(255,253,248,0.96),rgba(248,241,230,0.95))] px-5 py-8 shadow-[0_18px_50px_rgba(40,29,12,0.08)] md:px-8" key={block.id}>
                 <div className="mb-6 flex items-center justify-between gap-4">
@@ -145,7 +147,7 @@ export function StorefrontPageView({ page }: { page: EnrichedStorefrontPage }) {
                   </div>
                 </div>
                 <div className="flex gap-5 overflow-x-auto pb-2">
-                  {block.categories.map((category) => (
+                  {categories.map((category) => (
                     <CategoryCircle category={category} key={category.id} />
                   ))}
                 </div>
@@ -154,6 +156,8 @@ export function StorefrontPageView({ page }: { page: EnrichedStorefrontPage }) {
           }
 
           if (block.type === 'PRODUCT_CAROUSEL') {
+            const products = Array.isArray(block.products) ? block.products : []
+
             return (
               <section className="mb-8" key={block.id}>
                 <div className="mb-6 flex items-end justify-between gap-4">
@@ -161,10 +165,10 @@ export function StorefrontPageView({ page }: { page: EnrichedStorefrontPage }) {
                     <p className="text-xs font-bold uppercase tracking-[0.28em] text-[#9f7e56]">live catalog</p>
                     <h2 className="mt-2 text-3xl font-black text-[#173126]">{String(block.data.title || 'انتخاب‌های ویژه')}</h2>
                   </div>
-                  <PillLike text={`${block.products.length} محصول`} />
+                  <PillLike text={`${products.length} محصول`} />
                 </div>
                 <div className="flex gap-5 overflow-x-auto pb-2">
-                  {block.products.map((product) => (
+                  {products.map((product) => (
                     <ProductCard key={product.id} product={product} />
                   ))}
                 </div>
@@ -201,6 +205,8 @@ export function StorefrontPageView({ page }: { page: EnrichedStorefrontPage }) {
           }
 
           if (block.type === 'VENDOR_CAROUSEL') {
+            const vendors = Array.isArray(block.vendors) ? block.vendors : []
+
             return (
               <section className="mb-8" key={block.id}>
                 <div className="mb-6 flex items-end justify-between gap-4">
@@ -208,10 +214,10 @@ export function StorefrontPageView({ page }: { page: EnrichedStorefrontPage }) {
                     <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#9f7e56]">vendor selection</p>
                     <h2 className="mt-2 text-3xl font-black text-[#173126]">{String(block.data.title || 'فروشگاه‌های برتر')}</h2>
                   </div>
-                  <PillLike text={`${block.vendors.length} فروشگاه`} />
+                  <PillLike text={`${vendors.length} فروشگاه`} />
                 </div>
                 <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-                  {block.vendors.map((vendor) => (
+                  {vendors.map((vendor) => (
                     <VendorCard key={vendor.id} vendor={vendor} />
                   ))}
                 </div>
