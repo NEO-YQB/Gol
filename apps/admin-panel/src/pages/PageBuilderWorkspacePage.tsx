@@ -1,5 +1,5 @@
 import { Pill, SectionCard } from '@flower-marketplace/frontend-core'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { useNoticeEffect } from '../components/NoticeCenter'
 import { adminApi } from '../lib/api'
@@ -207,6 +207,8 @@ export function PageBuilderWorkspacePage({
   const [form, setForm] = useState<PageForm>(() => createEmptyForm())
   const [editorMode, setEditorMode] = useState<'create' | 'edit'>(mode)
   const [currentPageId, setCurrentPageId] = useState<string | null>(pageId)
+  const [uploadingImageTarget, setUploadingImageTarget] = useState<string | null>(null)
+  const imageInputRef = useRef<HTMLInputElement | null>(null)
 
   useNoticeEffect(error, 'error')
   useNoticeEffect(message, 'success')
@@ -362,6 +364,62 @@ export function PageBuilderWorkspacePage({
     }))
   }
 
+  function openImagePicker(target: string) {
+    setUploadingImageTarget(target)
+    imageInputRef.current?.click()
+  }
+
+  function getImagePreview(url: unknown) {
+    return typeof url === 'string' && url.trim().length > 0 ? url : ''
+  }
+
+  function setPageImageField(field: 'ogImage', value: string) {
+    updateForm(field, value)
+  }
+
+  async function handleImageChoose(fileList: FileList | null) {
+    const file = fileList?.[0]
+    const target = uploadingImageTarget
+    if (!file || !target) return
+
+    setError(null)
+
+    try {
+      const uploaded = await adminApi.uploadProductImage(session, file)
+
+      if (target === 'page:ogImage') {
+        setPageImageField('ogImage', uploaded.url)
+        return
+      }
+
+      if (target.startsWith('block:')) {
+        const parts = target.split(':')
+        const blockId = parts[1]
+
+        if (parts[2] === 'banner') {
+          const bannerIndex = Number(parts[3])
+          const field = parts[4]
+          if (field === 'imageUrl' && Number.isInteger(bannerIndex)) {
+            patchCampaignBanner(blockId, bannerIndex, 'imageUrl', uploaded.url)
+          }
+          return
+        }
+
+        const field = parts[2]
+        if (field === 'imageUrl' || field === 'mobileImageUrl') {
+          patchBlockData(blockId, field, uploaded.url)
+        }
+      }
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : 'آپلود تصویر ناموفق بود')
+    } finally {
+      setUploadingImageTarget(null)
+      if (imageInputRef.current) {
+        imageInputRef.current.value = ''
+      }
+    }
+  }
+
   function removeCampaignBanner(blockId: string, index: number) {
     updateBlock(blockId, (block) => ({
       ...block,
@@ -504,6 +562,13 @@ export function PageBuilderWorkspacePage({
       </SectionCard>
 
       <LoadableState error={error} loading={loading}>
+        <input
+          ref={imageInputRef}
+          accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+          className="admin-products-file-input"
+          onChange={(event) => void handleImageChoose(event.target.files)}
+          type="file"
+        />
         <SectionCard
           eyebrow="page settings"
           title="تنظیمات پایه صفحه"
@@ -548,6 +613,19 @@ export function PageBuilderWorkspacePage({
               <span>OG image</span>
               <input onChange={(event) => updateForm('ogImage', event.target.value)} type="text" value={form.ogImage} />
             </label>
+            <div className="admin-products-upload-card">
+              <div className="admin-products-upload-actions">
+                <button className="content-secondary-action" disabled={uploadingImageTarget === 'page:ogImage'} onClick={() => openImagePicker('page:ogImage')} type="button">
+                  {uploadingImageTarget === 'page:ogImage' ? 'در حال آپلود...' : 'انتخاب تصویر OG'}
+                </button>
+                <span className="admin-products-upload-hint">می‌توانی فایل را همین‌جا آپلود کنی یا URL را دستی وارد کنی.</span>
+              </div>
+              {getImagePreview(form.ogImage) ? (
+                <div className="admin-products-image-preview">
+                  <img alt="Preview OG image" src={form.ogImage} />
+                </div>
+              ) : null}
+            </div>
             <label className="fm-field page-builder-field--wide">
               <span>Meta description</span>
               <textarea onChange={(event) => updateForm('metaDescription', event.target.value)} rows={4} value={form.metaDescription} />
@@ -644,10 +722,34 @@ export function PageBuilderWorkspacePage({
                           <span>Image URL</span>
                           <input onChange={(event) => patchBlockData(block.id, 'imageUrl', event.target.value)} type="text" value={String(data.imageUrl ?? '')} />
                         </label>
+                        <div className="admin-products-upload-card page-builder-field--wide">
+                          <div className="admin-products-upload-actions">
+                            <button className="content-secondary-action" disabled={uploadingImageTarget === `block:${block.id}:imageUrl`} onClick={() => openImagePicker(`block:${block.id}:imageUrl`)} type="button">
+                              {uploadingImageTarget === `block:${block.id}:imageUrl` ? 'در حال آپلود...' : 'انتخاب تصویر هیرو'}
+                            </button>
+                          </div>
+                          {getImagePreview(data.imageUrl) ? (
+                            <div className="admin-products-image-preview">
+                              <img alt="Preview hero image" src={String(data.imageUrl)} />
+                            </div>
+                          ) : null}
+                        </div>
                         <label className="fm-field">
                           <span>Mobile image</span>
                           <input onChange={(event) => patchBlockData(block.id, 'mobileImageUrl', event.target.value)} type="text" value={String(data.mobileImageUrl ?? '')} />
                         </label>
+                        <div className="admin-products-upload-card page-builder-field--wide">
+                          <div className="admin-products-upload-actions">
+                            <button className="content-secondary-action" disabled={uploadingImageTarget === `block:${block.id}:mobileImageUrl`} onClick={() => openImagePicker(`block:${block.id}:mobileImageUrl`)} type="button">
+                              {uploadingImageTarget === `block:${block.id}:mobileImageUrl` ? 'در حال آپلود...' : 'انتخاب تصویر موبایل'}
+                            </button>
+                          </div>
+                          {getImagePreview(data.mobileImageUrl) ? (
+                            <div className="admin-products-image-preview">
+                              <img alt="Preview hero mobile image" src={String(data.mobileImageUrl)} />
+                            </div>
+                          ) : null}
+                        </div>
                         <label className="fm-field">
                           <span>CTA text</span>
                           <input onChange={(event) => patchBlockData(block.id, 'ctaText', event.target.value)} type="text" value={String(data.ctaText ?? '')} />
@@ -736,6 +838,18 @@ export function PageBuilderWorkspacePage({
                           <span>Image URL</span>
                           <input onChange={(event) => patchBlockData(block.id, 'imageUrl', event.target.value)} type="text" value={String(data.imageUrl ?? '')} />
                         </label>
+                        <div className="admin-products-upload-card page-builder-field--wide">
+                          <div className="admin-products-upload-actions">
+                            <button className="content-secondary-action" disabled={uploadingImageTarget === `block:${block.id}:imageUrl`} onClick={() => openImagePicker(`block:${block.id}:imageUrl`)} type="button">
+                              {uploadingImageTarget === `block:${block.id}:imageUrl` ? 'در حال آپلود...' : 'انتخاب تصویر ادیتوریال'}
+                            </button>
+                          </div>
+                          {getImagePreview(data.imageUrl) ? (
+                            <div className="admin-products-image-preview">
+                              <img alt="Preview editorial image" src={String(data.imageUrl)} />
+                            </div>
+                          ) : null}
+                        </div>
                         <label className="fm-field">
                           <span>Button text</span>
                           <input onChange={(event) => patchBlockData(block.id, 'buttonText', event.target.value)} type="text" value={String(data.buttonText ?? '')} />
@@ -805,6 +919,23 @@ export function PageBuilderWorkspacePage({
                                     value={String(banner.imageUrl ?? '')}
                                   />
                                 </label>
+                                <div className="admin-products-upload-card page-builder-field--wide">
+                                  <div className="admin-products-upload-actions">
+                                    <button
+                                      className="content-secondary-action"
+                                      disabled={uploadingImageTarget === `block:${block.id}:banner:${bannerIndex}:imageUrl`}
+                                      onClick={() => openImagePicker(`block:${block.id}:banner:${bannerIndex}:imageUrl`)}
+                                      type="button"
+                                    >
+                                      {uploadingImageTarget === `block:${block.id}:banner:${bannerIndex}:imageUrl` ? 'در حال آپلود...' : 'انتخاب تصویر بنر'}
+                                    </button>
+                                  </div>
+                                  {getImagePreview(banner.imageUrl) ? (
+                                    <div className="admin-products-image-preview">
+                                      <img alt={`Preview banner ${bannerIndex + 1}`} src={String(banner.imageUrl)} />
+                                    </div>
+                                  ) : null}
+                                </div>
                                 <label className="fm-field">
                                   <span>Link</span>
                                   <input

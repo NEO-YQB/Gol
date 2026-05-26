@@ -2,7 +2,7 @@ import { Pill, SectionCard } from '@flower-marketplace/frontend-core'
 import { useEffect, useMemo, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { useNoticeEffect } from '../components/NoticeCenter'
-import { adminApi, apiConfig } from '../lib/api'
+import { adminApi } from '../lib/api'
 import { readText, toArray } from '../lib/normalize'
 import type { AuthSession } from '../lib/session'
 
@@ -27,12 +27,16 @@ function formatDate(value: string | undefined) {
 }
 
 function getStorefrontHref(slug: string) {
-  const origin =
+  const configuredOrigin =
     import.meta.env.VITE_STOREFRONT_BASE_URL ??
-    import.meta.env.VITE_STOREFRONT_URL ??
-    apiConfig.origin.replace(/\/v1$/, '')
-  if (slug === '/') return origin
-  return `${origin}/${slug.replace(/^\/+/, '')}`
+    import.meta.env.VITE_STOREFRONT_URL
+
+  if (!configuredOrigin) {
+    return slug === '/' ? '/' : `/${slug.replace(/^\/+/, '')}`
+  }
+
+  if (slug === '/') return configuredOrigin
+  return `${configuredOrigin.replace(/\/+$/, '')}/${slug.replace(/^\/+/, '')}`
 }
 
 export function PageBuilderPage({ session, onCreatePage, onEditPage }: PageBuilderPageProps) {
