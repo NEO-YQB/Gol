@@ -33,33 +33,6 @@ export type StorefrontBlock = {
   data: Record<string, unknown>
 }
 
-type HeroHeaderBlock = StorefrontBlock & {
-  type: 'HERO_HEADER'
-}
-
-type CategoryCirclesBlock = StorefrontBlock & {
-  type: 'CATEGORY_CIRCLES'
-  categories: CategorySummary[]
-}
-
-type ProductCarouselBlock = StorefrontBlock & {
-  type: 'PRODUCT_CAROUSEL'
-  products: ProductSummary[]
-}
-
-type EditorialRichBlock = StorefrontBlock & {
-  type: 'EDITORIAL_RICH_BLOCK'
-}
-
-type VendorCarouselBlock = StorefrontBlock & {
-  type: 'VENDOR_CAROUSEL'
-  vendors: StoreSummary[]
-}
-
-type CampaignGridBlock = StorefrontBlock & {
-  type: 'CAMPAIGN_GRID'
-}
-
 export type CategorySummary = {
   id: number
   name: string
@@ -97,6 +70,33 @@ export type StoreSummary = {
   customerRatingCount?: number
 }
 
+type HeroHeaderBlock = StorefrontBlock & {
+  type: 'HERO_HEADER'
+}
+
+type CategoryCirclesBlock = StorefrontBlock & {
+  type: 'CATEGORY_CIRCLES'
+  categories: CategorySummary[]
+}
+
+type ProductCarouselBlock = StorefrontBlock & {
+  type: 'PRODUCT_CAROUSEL'
+  products: ProductSummary[]
+}
+
+type EditorialRichBlock = StorefrontBlock & {
+  type: 'EDITORIAL_RICH_BLOCK'
+}
+
+type VendorCarouselBlock = StorefrontBlock & {
+  type: 'VENDOR_CAROUSEL'
+  vendors: StoreSummary[]
+}
+
+type CampaignGridBlock = StorefrontBlock & {
+  type: 'CAMPAIGN_GRID'
+}
+
 export type EnrichedBlock =
   | HeroHeaderBlock
   | CategoryCirclesBlock
@@ -118,7 +118,7 @@ function toRecord(value: unknown): Record<string, unknown> {
   return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {}
 }
 
-function toArray<T>(value: unknown) {
+function toArray<T>(value: unknown): T[] {
   if (Array.isArray(value)) {
     return value as T[]
   }
@@ -139,7 +139,13 @@ function resolveAssetUrl(path: string | null | undefined) {
   return `${origin}${path}`
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+type NextRequestInit = RequestInit & {
+  next?: {
+    revalidate?: number
+  }
+}
+
+async function request<T>(path: string, init?: NextRequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     next: {
@@ -154,11 +160,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>
 }
 
-const getCategories = cache(async () => {
+const getCategories = cache(async (): Promise<CategorySummary[]> => {
   return request<CategorySummary[]>('/categories')
 })
 
-const getStores = cache(async () => {
+const getStores = cache(async (): Promise<StoreSummary[]> => {
   return request<StoreSummary[]>('/stores')
 })
 
@@ -171,7 +177,7 @@ type ProductQuery = {
   sortBy?: 'newest' | 'most_sold' | 'instant_delivery'
 }
 
-const getProducts = cache(async (queryKey: string, query: ProductQuery) => {
+const getProducts = cache(async (_queryKey: string, query: ProductQuery): Promise<ProductSummary[]> => {
   const params = new URLSearchParams()
 
   params.set('publicationStatus', 'PUBLISHED')
@@ -196,7 +202,7 @@ const getProducts = cache(async (queryKey: string, query: ProductQuery) => {
   return [...products].sort((left, right) => (order.get(left.id) ?? 999) - (order.get(right.id) ?? 999))
 })
 
-const getStorefrontPage = cache(async (slug: string) => {
+const getStorefrontPage = cache(async (slug: string): Promise<StorefrontPage | null> => {
   const params = new URLSearchParams({ slug })
 
   try {
@@ -290,17 +296,19 @@ async function enrichBlock(block: StorefrontBlock): Promise<EnrichedBlock> {
   return block
 }
 
-export const getEnrichedStorefrontPage = cache(async (slugSegments?: string[]) => {
-  const page = await getStorefrontPage(toPageSlug(slugSegments))
-  if (!page) return null
+export const getEnrichedStorefrontPage = cache(
+  async (slugSegments?: string[]): Promise<EnrichedStorefrontPage | null> => {
+    const page = await getStorefrontPage(toPageSlug(slugSegments))
+    if (!page) return null
 
-  const blocks = await Promise.all((page.blocks ?? []).map((block) => enrichBlock(block)))
+    const blocks = await Promise.all((page.blocks ?? []).map((block) => enrichBlock(block)))
 
-  return {
-    ...page,
-    blocks,
-  } satisfies EnrichedStorefrontPage
-})
+    return {
+      ...page,
+      blocks,
+    }
+  },
+)
 
 export async function getStorefrontMetadata(slugSegments?: string[]): Promise<Metadata> {
   const page = await getEnrichedStorefrontPage(slugSegments)
