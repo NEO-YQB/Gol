@@ -225,13 +225,14 @@ export function PageBuilderWorkspacePage({
     }
 
     let active = true
+    const pageIdToLoad = currentPageId
 
     async function loadPage() {
       setLoading(true)
       setError(null)
 
       try {
-        const payload = await adminApi.getStorefrontPageDetail(session, currentPageId)
+        const payload = await adminApi.getStorefrontPageDetail(session, pageIdToLoad)
         if (!active) return
         setForm(mapApiPageToForm(payload as unknown as Record<string, unknown>))
       } catch (requestError) {
@@ -497,7 +498,7 @@ export function PageBuilderWorkspacePage({
         <div className="page-builder-workspace__pills">
           <Pill>{form.pageType}</Pill>
           <Pill tone={form.isActive ? 'success' : 'warning'}>{form.isActive ? 'منتشرشده' : 'غیرفعال'}</Pill>
-          <Pill>{form.blocks.length} بلاک</Pill>
+          <Pill>{`${form.blocks.length} بلاک`}</Pill>
           {currentPageId ? <Pill>{currentPageId}</Pill> : null}
         </div>
       </SectionCard>

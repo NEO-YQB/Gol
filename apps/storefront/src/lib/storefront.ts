@@ -33,6 +33,33 @@ export type StorefrontBlock = {
   data: Record<string, unknown>
 }
 
+type HeroHeaderBlock = StorefrontBlock & {
+  type: 'HERO_HEADER'
+}
+
+type CategoryCirclesBlock = StorefrontBlock & {
+  type: 'CATEGORY_CIRCLES'
+  categories: CategorySummary[]
+}
+
+type ProductCarouselBlock = StorefrontBlock & {
+  type: 'PRODUCT_CAROUSEL'
+  products: ProductSummary[]
+}
+
+type EditorialRichBlock = StorefrontBlock & {
+  type: 'EDITORIAL_RICH_BLOCK'
+}
+
+type VendorCarouselBlock = StorefrontBlock & {
+  type: 'VENDOR_CAROUSEL'
+  vendors: StoreSummary[]
+}
+
+type CampaignGridBlock = StorefrontBlock & {
+  type: 'CAMPAIGN_GRID'
+}
+
 export type CategorySummary = {
   id: number
   name: string
@@ -71,10 +98,12 @@ export type StoreSummary = {
 }
 
 export type EnrichedBlock =
-  | (StorefrontBlock & { type: 'CATEGORY_CIRCLES'; categories: CategorySummary[] })
-  | (StorefrontBlock & { type: 'PRODUCT_CAROUSEL'; products: ProductSummary[] })
-  | (StorefrontBlock & { type: 'VENDOR_CAROUSEL'; vendors: StoreSummary[] })
-  | StorefrontBlock
+  | HeroHeaderBlock
+  | CategoryCirclesBlock
+  | ProductCarouselBlock
+  | EditorialRichBlock
+  | VendorCarouselBlock
+  | CampaignGridBlock
 
 export type EnrichedStorefrontPage = Omit<StorefrontPage, 'blocks'> & {
   blocks: EnrichedBlock[]

@@ -156,7 +156,7 @@ export function PageBuilderPage({ session, onCreatePage, onEditPage }: PageBuild
                       <Pill tone={isActive ? 'success' : 'warning'}>
                         {isActive ? 'فعال' : 'غیرفعال'}
                       </Pill>
-                      <Pill>{blocksCount} بلاک</Pill>
+                      <Pill>{`${blocksCount} بلاک`}</Pill>
                     </div>
                   </div>
 
