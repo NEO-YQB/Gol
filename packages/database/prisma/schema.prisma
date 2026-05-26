@@ -28,6 +28,8 @@ model User {
   notificationDeliveries NotificationDelivery[]
   authoredArticles Article[]
   contentAuthor Author?
+  createdPages Page[] @relation("PageCreatedBy")
+  updatedPages Page[] @relation("PageUpdatedBy")
   vendorOnboardingRequest VendorOnboardingRequest? @relation("VendorOnboardingOwner")
   vendorOnboardingReviewedRequests VendorOnboardingRequest[] @relation("VendorOnboardingReviewedBy")
   vendorOnboardingProductReviewedRequests VendorOnboardingRequest[] @relation("VendorOnboardingProductReviewedBy")
@@ -262,6 +264,37 @@ model Category {
 enum ArticleStatus {
   DRAFT
   PUBLISHED
+}
+
+enum PageType {
+  HOME
+  LANDING
+  CAMPAIGN
+  STATIC
+}
+
+model Page {
+  id              String   @id @default(uuid())
+  title           String
+  slug            String   @unique
+  pageType        PageType @default(LANDING)
+  isActive        Boolean  @default(false)
+  metaTitle       String?
+  metaDescription String?
+  keywords        String[] @default([])
+  ogImage         String?
+  canonicalUrl    String?
+  noIndex         Boolean  @default(false)
+  blocks          Json
+  publishedAt     DateTime?
+  createdByUserId Int?
+  updatedByUserId Int?
+  createdByUser   User?    @relation("PageCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedByUser   User?    @relation("PageUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([isActive, updatedAt])
 }
 
 model Author {

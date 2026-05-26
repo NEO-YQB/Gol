@@ -18,6 +18,7 @@ import { FilesModule } from './modules/files/files.module';
 import { FinanceModule } from './modules/finance/finance.module';
 import { OrderModule } from './modules/order/order.module';
 import { PaymentModule } from './modules/payment/payment.module';
+import { PageBuilderModule } from './modules/page-builder/page-builder.module';
 import { StoreModule } from './modules/store/store.module';
 import { SupportModule } from './modules/support/support.module';
 import { VendorDashboardModule } from './modules/vendor-dashboard/vendor-dashboard.module';
@@ -49,6 +50,7 @@ import { PrismaService } from './prisma/prisma.service';
     OrderModule,
     CartModule,
     PaymentModule,
+    PageBuilderModule,
     DiscountModule,
     FinanceModule,
     SupportModule,
