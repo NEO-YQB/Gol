@@ -24,7 +24,7 @@ RUN npx prisma generate --schema=packages/database/prisma/schema.prisma && \
 
 # 3. Runner Stage
 FROM node:20-slim AS runner
-RUN apt-get update && apt-get install -y openssl curl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y openssl curl wget && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 ENV NODE_ENV=production
