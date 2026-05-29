@@ -95,20 +95,36 @@ export function StorefrontPageView({ page }: { page: EnrichedStorefrontPage }) {
         {page.blocks.map((block, index) => {
           if (block.type === 'HERO_HEADER') {
             const imageUrl = resolveAssetUrl(String(block.data.imageUrl ?? ''))
+            const mobileImageUrl = resolveAssetUrl(String(block.data.mobileImageUrl ?? ''))
             const textColor = String(block.data.textColor ?? '#fff8ef')
 
             return (
               <section
                 className="relative isolate mb-8 overflow-hidden rounded-[40px] border border-white/40 px-6 py-12 shadow-[0_30px_90px_rgba(36,24,6,0.16)] md:px-12 md:py-16"
                 key={block.id}
-                style={{
-                  background:
-                    imageUrl
-                      ? `linear-gradient(110deg, rgba(19, 41, 31, 0.88), rgba(19, 41, 31, 0.42)), url(${imageUrl}) center/cover`
-                      : 'linear-gradient(135deg, #173126 0%, #294f3d 48%, #d06c54 100%)',
-                  color: textColor,
-                }}
+                style={{ color: textColor }}
               >
+                {imageUrl || mobileImageUrl ? (
+                  <picture className="absolute inset-0 -z-10 block h-full w-full">
+                    {mobileImageUrl ? <source media="(max-width: 767px)" srcSet={mobileImageUrl} /> : null}
+                    {imageUrl ? (
+                      <img
+                        alt={String(block.data.title ?? page.title)}
+                        className="h-full w-full object-cover"
+                        src={imageUrl}
+                      />
+                    ) : mobileImageUrl ? (
+                      <img
+                        alt={String(block.data.title ?? page.title)}
+                        className="h-full w-full object-cover"
+                        src={mobileImageUrl}
+                      />
+                    ) : null}
+                  </picture>
+                ) : (
+                  <div className="absolute inset-0 -z-10 bg-[linear-gradient(135deg,#173126_0%,#294f3d_48%,#d06c54_100%)]" />
+                )}
+                <div className="absolute inset-0 -z-10 bg-[linear-gradient(110deg,rgba(19,41,31,0.88),rgba(19,41,31,0.42))]" />
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.18),transparent_34%)]" />
                 <div className="relative z-10 max-w-3xl">
                   <p className="mb-4 inline-flex rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.34em] text-white/85">
