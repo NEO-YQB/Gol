@@ -287,15 +287,34 @@ async function enrichBlock(
         String(filterValue ?? ''),
       )
 
-      products = await (cacheEnabled ? getProducts(`category:${String(filterValue)}:${sortBy}:${limit}`, {
-        categoryIds,
-        sortBy,
-        limit,
-      }) : getProductsNoStore({
-        categoryIds,
-        sortBy,
-        limit,
-      }))
+      products = await (cacheEnabled
+        ? getProducts(
+            `category:${String(filterValue)}:${sortBy}:${limit}:${categoryIds.join(',')}`,
+            categoryIds.length <= 1
+              ? {
+                  categoryId: categoryIds[0],
+                  sortBy,
+                  limit,
+                }
+              : {
+                  categoryIds,
+                  sortBy,
+                  limit,
+                },
+          )
+        : getProductsNoStore(
+            categoryIds.length <= 1
+              ? {
+                  categoryId: categoryIds[0],
+                  sortBy,
+                  limit,
+                }
+              : {
+                  categoryIds,
+                  sortBy,
+                  limit,
+                },
+          ))
     } else if (filterType === 'productType') {
       products = await (cacheEnabled ? getProducts(`productType:${String(filterValue)}:${sortBy}:${limit}`, {
         productTypeId: String(filterValue ?? ''),
