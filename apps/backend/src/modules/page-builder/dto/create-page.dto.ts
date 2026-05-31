@@ -22,6 +22,62 @@ export enum StorefrontPageType {
   STATIC = 'STATIC',
 }
 
+export enum StorefrontHeaderStickyVariant {
+  FULL = 'full',
+  FLOATING = 'floating',
+}
+
+export class HeaderMenuItemDto {
+  @ApiProperty({ example: 'فروشگاه‌ها' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(120)
+  label!: string;
+
+  @ApiProperty({ example: '/stores' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(2000)
+  href!: string;
+}
+
+export class StorefrontHeaderConfigDto {
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  enabled?: boolean;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  transparentOnTop?: boolean;
+
+  @ApiPropertyOptional({ enum: StorefrontHeaderStickyVariant, example: StorefrontHeaderStickyVariant.FLOATING })
+  @IsOptional()
+  @IsEnum(StorefrontHeaderStickyVariant)
+  stickyVariant?: StorefrontHeaderStickyVariant;
+
+  @ApiPropertyOptional({ example: 'گلینو' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  brandLabel?: string;
+
+  @ApiPropertyOptional({ example: '/' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  brandHref?: string;
+
+  @ApiPropertyOptional({ type: [HeaderMenuItemDto] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(12)
+  @ValidateNested({ each: true })
+  @Type(() => HeaderMenuItemDto)
+  menuItems?: HeaderMenuItemDto[];
+}
+
 export class CreatePageDto {
   @ApiProperty({ example: 'صفحه اصلی فرانت‌استور' })
   @IsString()
@@ -63,6 +119,12 @@ export class CreatePageDto {
   @IsString()
   @MaxLength(255)
   metaTitle?: string;
+
+  @ApiPropertyOptional({ type: StorefrontHeaderConfigDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => StorefrontHeaderConfigDto)
+  headerConfig?: StorefrontHeaderConfigDto;
 
   @ApiPropertyOptional({ example: 'خرید گل و هدیه با ارسال سریع از فروشگاه‌های منتخب.' })
   @IsOptional()

@@ -280,6 +280,7 @@ model Page {
   pageType        PageType @default(LANDING)
   isActive        Boolean  @default(false)
   cacheEnabled    Boolean  @default(true)
+  headerConfig    Json?
   metaTitle       String?
   metaDescription String?
   keywords        String[] @default([])

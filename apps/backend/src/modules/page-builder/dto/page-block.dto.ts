@@ -58,6 +58,11 @@ export enum EditorialImagePosition {
   RIGHT = 'right',
 }
 
+export enum HeroHeaderContentAlign {
+  START = 'start',
+  CENTER = 'center',
+}
+
 export class HeroHeaderBlockDataDto {
   @ApiProperty({ example: 'گل‌های خاص برای شب یلدا' })
   @IsString()
@@ -100,6 +105,35 @@ export class HeroHeaderBlockDataDto {
   @IsString()
   @MaxLength(50)
   textColor?: string;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  fullWidth?: boolean;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  flushTop?: boolean;
+
+  @ApiPropertyOptional({ example: 92 })
+  @IsOptional()
+  @IsInt()
+  @Min(40)
+  @Max(140)
+  minHeightVh?: number;
+
+  @ApiPropertyOptional({ example: 0.42 })
+  @IsOptional()
+  @Type(() => Number)
+  @Min(0)
+  @Max(1)
+  overlayOpacity?: number;
+
+  @ApiPropertyOptional({ enum: HeroHeaderContentAlign, example: HeroHeaderContentAlign.START })
+  @IsOptional()
+  @IsEnum(HeroHeaderContentAlign)
+  contentAlign?: HeroHeaderContentAlign;
 }
 
 export class CategoryCirclesBlockDataDto {

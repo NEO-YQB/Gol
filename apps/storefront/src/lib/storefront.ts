@@ -16,6 +16,7 @@ export type StorefrontPage = {
   slug: string
   pageType: 'HOME' | 'LANDING' | 'CAMPAIGN' | 'STATIC'
   cacheEnabled?: boolean
+  headerConfig?: Record<string, unknown> | null
   seo: StorefrontSeo
   blocks: Array<Record<string, unknown>>
   updatedAt?: string

@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   CreatePageDto,
+  StorefrontHeaderStickyVariant,
   StorefrontPageType,
 } from './dto/create-page.dto';
 import { UpdatePageDto } from './dto/update-page.dto';
@@ -25,6 +26,7 @@ type PersistedPageRecord = {
   pageType: string;
   isActive: boolean;
   cacheEnabled: boolean;
+  headerConfig: unknown;
   metaTitle: string | null;
   metaDescription: string | null;
   keywords: string[];
@@ -170,6 +172,7 @@ export class PageBuilderService {
       pageType,
       isActive: dto.isActive ?? false,
       cacheEnabled: dto.cacheEnabled ?? true,
+      headerConfig: this.normalizeHeaderConfig(dto.headerConfig),
       metaTitle: this.normalizeNullableText(dto.metaTitle),
       metaDescription: this.normalizeNullableText(dto.metaDescription),
       keywords: this.normalizeKeywords(dto.keywords),
@@ -214,6 +217,9 @@ export class PageBuilderService {
         : {}),
       ...(dto.isActive !== undefined ? { isActive: nextIsActive } : {}),
       ...(dto.cacheEnabled !== undefined ? { cacheEnabled: dto.cacheEnabled } : {}),
+      ...(dto.headerConfig !== undefined
+        ? { headerConfig: this.normalizeHeaderConfig(dto.headerConfig) }
+        : {}),
       ...(dto.metaTitle !== undefined
         ? { metaTitle: this.normalizeNullableText(dto.metaTitle) }
         : {}),
@@ -308,6 +314,29 @@ export class PageBuilderService {
     }));
   }
 
+  private normalizeHeaderConfig(headerConfig?: CreatePageDto['headerConfig']) {
+    if (!headerConfig) {
+      return null;
+    }
+
+    return {
+      enabled: headerConfig.enabled !== false,
+      transparentOnTop: headerConfig.transparentOnTop !== false,
+      stickyVariant:
+        headerConfig.stickyVariant === StorefrontHeaderStickyVariant.FULL
+          ? StorefrontHeaderStickyVariant.FULL
+          : StorefrontHeaderStickyVariant.FLOATING,
+      brandLabel: this.normalizeNullableText(headerConfig.brandLabel) ?? 'گلینو',
+      brandHref: this.normalizeNullableText(headerConfig.brandHref) ?? '/',
+      menuItems: (headerConfig.menuItems ?? [])
+        .map((item) => ({
+          label: this.normalizeText(item.label),
+          href: this.normalizeText(item.href),
+        }))
+        .filter((item) => item.label.length > 0 && item.href.length > 0),
+    };
+  }
+
   private normalizeText(value: string) {
     return value.trim();
   }
@@ -329,6 +358,7 @@ export class PageBuilderService {
       pageType: page.pageType,
       isActive: page.isActive,
       cacheEnabled: page.cacheEnabled,
+      headerConfig: page.headerConfig,
       metaTitle: page.metaTitle,
       metaDescription: page.metaDescription,
       keywords: page.keywords,
@@ -351,6 +381,7 @@ export class PageBuilderService {
       slug: page.slug,
       pageType: page.pageType,
       cacheEnabled: page.cacheEnabled,
+      headerConfig: page.headerConfig,
       seo: {
         metaTitle: page.metaTitle,
         metaDescription: page.metaDescription,

@@ -45,6 +45,12 @@ type PageForm = {
   pageType: StorefrontPageType
   isActive: boolean
   cacheEnabled: boolean
+  headerEnabled: boolean
+  headerTransparentOnTop: boolean
+  headerStickyVariant: 'full' | 'floating'
+  headerBrandLabel: string
+  headerBrandHref: string
+  headerMenuItems: Array<{ label: string; href: string }>
   metaTitle: string
   metaDescription: string
   keywords: string
@@ -134,6 +140,12 @@ function createEmptyForm(): PageForm {
     pageType: 'HOME',
     isActive: false,
     cacheEnabled: false,
+    headerEnabled: true,
+    headerTransparentOnTop: true,
+    headerStickyVariant: 'floating',
+    headerBrandLabel: 'گلینو',
+    headerBrandHref: '/',
+    headerMenuItems: [],
     metaTitle: '',
     metaDescription: '',
     keywords: '',
@@ -201,12 +213,32 @@ function mapApiPageToForm(page: Record<string, unknown>): PageForm {
     }
   })
 
+  const headerConfig = typeof page.headerConfig === 'object' && page.headerConfig !== null ? (page.headerConfig as Record<string, unknown>) : {}
+  const headerMenuItems = Array.isArray(headerConfig.menuItems)
+    ? headerConfig.menuItems
+        .map((item) =>
+          typeof item === 'object' && item !== null
+            ? {
+                label: readText(item as Record<string, unknown>, ['label'], ''),
+                href: readText(item as Record<string, unknown>, ['href'], ''),
+              }
+            : null,
+        )
+        .filter((item): item is { label: string; href: string } => Boolean(item && item.label && item.href))
+    : []
+
   return {
     title: readText(page, ['title'], ''),
     slug: readText(page, ['slug'], '/'),
     pageType: readText(page, ['pageType'], 'LANDING') as StorefrontPageType,
     isActive: page.isActive === true,
     cacheEnabled: page.cacheEnabled !== false,
+    headerEnabled: headerConfig.enabled !== false,
+    headerTransparentOnTop: headerConfig.transparentOnTop !== false,
+    headerStickyVariant: readText(headerConfig, ['stickyVariant'], 'floating') === 'full' ? 'full' : 'floating',
+    headerBrandLabel: readText(headerConfig, ['brandLabel'], 'گلینو'),
+    headerBrandHref: readText(headerConfig, ['brandHref'], '/'),
+    headerMenuItems,
     metaTitle: readText(page, ['metaTitle'], ''),
     metaDescription: readText(page, ['metaDescription'], ''),
     keywords: toTextArray(page.keywords).join(', '),
@@ -667,6 +699,27 @@ export function PageBuilderWorkspacePage({
     updateForm(field, value)
   }
 
+  function patchHeaderMenuItem(index: number, key: 'label' | 'href', value: string) {
+    setForm((current) => ({
+      ...current,
+      headerMenuItems: current.headerMenuItems.map((item, itemIndex) => (itemIndex === index ? { ...item, [key]: value } : item)),
+    }))
+  }
+
+  function addHeaderMenuItem() {
+    setForm((current) => ({
+      ...current,
+      headerMenuItems: [...current.headerMenuItems, { label: '', href: '' }],
+    }))
+  }
+
+  function removeHeaderMenuItem(index: number) {
+    setForm((current) => ({
+      ...current,
+      headerMenuItems: current.headerMenuItems.filter((_, itemIndex) => itemIndex !== index),
+    }))
+  }
+
   async function handleImageChoose(fileList: FileList | null) {
     const file = fileList?.[0]
     const target = uploadingImageTarget
@@ -727,6 +780,19 @@ export function PageBuilderWorkspacePage({
       pageType: form.pageType,
       isActive: form.isActive,
       cacheEnabled: form.cacheEnabled,
+      headerConfig: {
+        enabled: form.headerEnabled,
+        transparentOnTop: form.headerTransparentOnTop,
+        stickyVariant: form.headerStickyVariant,
+        brandLabel: toOptionalText(form.headerBrandLabel) ?? 'گلینو',
+        brandHref: toOptionalText(form.headerBrandHref) ?? '/',
+        menuItems: form.headerMenuItems
+          .map((item) => ({
+            label: item.label.trim(),
+            href: item.href.trim(),
+          }))
+          .filter((item) => item.label.length > 0 && item.href.length > 0),
+      },
       metaTitle: toOptionalText(form.metaTitle),
       metaDescription: toOptionalText(form.metaDescription),
       keywords: parseCsv(form.keywords),
@@ -895,6 +961,63 @@ export function PageBuilderWorkspacePage({
         </SectionCard>
 
         <SectionCard
+          eyebrow="header controls"
+          title="تنظیمات هدر storefront"
+          description="هدر شفاف روی هیرو، حالت استیکی شیشه‌ای و آیتم‌های منو را از اینجا کنترل کن."
+        >
+          <div className="fm-grid page-builder-form-grid">
+            <label className="fm-field page-builder-checkbox">
+              <span>فعال بودن هدر</span>
+              <input checked={form.headerEnabled} onChange={(event) => updateForm('headerEnabled', event.target.checked)} type="checkbox" />
+            </label>
+            <label className="fm-field page-builder-checkbox">
+              <span>شفاف بودن در ابتدای صفحه</span>
+              <input checked={form.headerTransparentOnTop} onChange={(event) => updateForm('headerTransparentOnTop', event.target.checked)} type="checkbox" />
+            </label>
+            <label className="fm-field">
+              <span>حالت sticky</span>
+              <select onChange={(event) => updateForm('headerStickyVariant', event.target.value as 'full' | 'floating')} value={form.headerStickyVariant}>
+                <option value="floating">floating / کرو و وسط</option>
+                <option value="full">full width</option>
+              </select>
+            </label>
+            <label className="fm-field">
+              <span>عنوان برند</span>
+              <input onChange={(event) => updateForm('headerBrandLabel', event.target.value)} type="text" value={form.headerBrandLabel} />
+            </label>
+            <label className="fm-field">
+              <span>لینک برند</span>
+              <input onChange={(event) => updateForm('headerBrandHref', event.target.value)} type="text" value={form.headerBrandHref} />
+            </label>
+            <div className="page-builder-banner-editor page-builder-field--wide">
+              <div className="page-builder-banner-editor__header">
+                <strong>آیتم‌های منو</strong>
+                <button className="fm-button fm-button--ghost" onClick={() => addHeaderMenuItem()} type="button">
+                  افزودن آیتم منو
+                </button>
+              </div>
+              <div className="page-builder-banner-list">
+                {form.headerMenuItems.map((item, itemIndex) => (
+                  <div className="page-builder-banner-card" key={`header-item-${itemIndex}`}>
+                    <label className="fm-field">
+                      <span>عنوان</span>
+                      <input onChange={(event) => patchHeaderMenuItem(itemIndex, 'label', event.target.value)} type="text" value={item.label} />
+                    </label>
+                    <label className="fm-field">
+                      <span>لینک</span>
+                      <input onChange={(event) => patchHeaderMenuItem(itemIndex, 'href', event.target.value)} type="text" value={item.href} />
+                    </label>
+                    <button className="fm-button fm-button--secondary" onClick={() => removeHeaderMenuItem(itemIndex)} type="button">
+                      حذف آیتم
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </SectionCard>
+
+        <SectionCard
           eyebrow="seo controls"
           title="سئو و متادیتا"
           description="متا، canonical و robots behavior صفحه را از اینجا تنظیم کن."
@@ -1056,6 +1179,29 @@ export function PageBuilderWorkspacePage({
                         <label className="fm-field">
                           <span>Text color</span>
                           <input onChange={(event) => patchBlockData(block.id, 'textColor', event.target.value)} type="text" value={String(data.textColor ?? '')} />
+                        </label>
+                        <label className="fm-field page-builder-checkbox">
+                          <span>تمام‌عرض</span>
+                          <input checked={data.fullWidth !== false} onChange={(event) => patchBlockData(block.id, 'fullWidth', event.target.checked)} type="checkbox" />
+                        </label>
+                        <label className="fm-field page-builder-checkbox">
+                          <span>چسبیده به بالای صفحه</span>
+                          <input checked={data.flushTop !== false} onChange={(event) => patchBlockData(block.id, 'flushTop', event.target.checked)} type="checkbox" />
+                        </label>
+                        <label className="fm-field">
+                          <span>ارتفاع (vh)</span>
+                          <input onChange={(event) => patchBlockData(block.id, 'minHeightVh', Number(event.target.value))} type="number" value={String(data.minHeightVh ?? 92)} />
+                        </label>
+                        <label className="fm-field">
+                          <span>Opacity overlay</span>
+                          <input onChange={(event) => patchBlockData(block.id, 'overlayOpacity', Number(event.target.value))} step="0.05" min="0" max="1" type="number" value={String(data.overlayOpacity ?? 0.42)} />
+                        </label>
+                        <label className="fm-field">
+                          <span>تراز محتوا</span>
+                          <select onChange={(event) => patchBlockData(block.id, 'contentAlign', event.target.value)} value={String(data.contentAlign ?? 'start')}>
+                            <option value="start">start</option>
+                            <option value="center">center</option>
+                          </select>
                         </label>
                       </>
                     ) : null}

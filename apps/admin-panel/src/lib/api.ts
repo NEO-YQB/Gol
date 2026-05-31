@@ -45,6 +45,7 @@ export type StorefrontPagePayload = {
   pageType: 'HOME' | 'LANDING' | 'CAMPAIGN' | 'STATIC'
   isActive: boolean
   cacheEnabled?: boolean
+  headerConfig?: Record<string, unknown> | null
   metaTitle?: string | null
   metaDescription?: string | null
   keywords?: string[]
