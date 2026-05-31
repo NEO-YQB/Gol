@@ -245,6 +245,11 @@ function StorefrontGlassHeader({ page, heroTouchesTop }: { page: EnrichedStorefr
     background: header.actionBackgroundColor,
     color: header.actionTextColor,
   }
+  const userButtonStyle = {
+    color: textColor,
+    background: shouldShowGlass ? header.glassBackgroundColor : 'rgba(255,255,255,0.12)',
+    borderColor: header.glassBorderColor,
+  }
   const mobilePanelStyle = {
     background: header.glassBackgroundColor,
     borderColor: header.glassBorderColor,
@@ -312,18 +317,11 @@ function StorefrontGlassHeader({ page, heroTouchesTop }: { page: EnrichedStorefr
             <span className="hidden md:inline">سبد خرید</span>
           </Link>
           {header.authPreviewMode === 'authenticated' ? (
-            <div
-              className="relative"
-              onMouseEnter={() => setIsUserMenuOpen(true)}
-              onMouseLeave={() => setIsUserMenuOpen(false)}
-            >
+            <div className="relative">
               <button
                 className="inline-flex items-center gap-3 rounded-full border px-4 py-2 text-right text-sm font-bold shadow-[0_14px_30px_rgba(15,32,25,0.12)] transition-all duration-300"
-                style={{
-                  color: textColor,
-                  background: shouldShowGlass ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.12)',
-                  borderColor: header.glassBorderColor,
-                }}
+                onClick={() => setIsUserMenuOpen((current) => !current)}
+                style={userButtonStyle}
                 type="button"
               >
                 <span className="inline-flex h-10 w-10 items-center justify-center rounded-full" style={actionStyle}>
@@ -336,7 +334,7 @@ function StorefrontGlassHeader({ page, heroTouchesTop }: { page: EnrichedStorefr
               </button>
               {isUserMenuOpen ? (
                 <div
-                  className="absolute left-0 top-[calc(100%+10px)] min-w-[220px] rounded-[24px] border p-3 shadow-[0_20px_45px_rgba(20,29,25,0.16)] backdrop-blur-2xl"
+                  className="absolute left-0 top-[calc(100%+8px)] min-w-[220px] rounded-[24px] border p-3 shadow-[0_20px_45px_rgba(20,29,25,0.16)] backdrop-blur-2xl"
                   style={{
                     background: header.glassBackgroundColor,
                     borderColor: header.glassBorderColor,
@@ -351,10 +349,14 @@ function StorefrontGlassHeader({ page, heroTouchesTop }: { page: EnrichedStorefr
                       { label: 'خروج', href: '/logout' },
                     ].map((item) => (
                       <Link
-                        className="rounded-2xl px-4 py-3 text-sm font-bold transition-colors hover:bg-white/35"
+                        className="rounded-2xl border px-4 py-3 text-sm font-bold transition-colors hover:bg-white/20"
                         href={item.href}
                         key={item.href}
-                        style={{ color: textColor }}
+                        style={{
+                          color: textColor,
+                          background: header.glassBackgroundColor,
+                          borderColor: header.glassBorderColor,
+                        }}
                       >
                         {item.label}
                       </Link>
