@@ -1,5 +1,5 @@
 import { IsOptional, IsNumber, IsString, Min, IsBoolean, IsEnum, Matches } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { ProductPublicationStatus } from '@prisma/client';
 
@@ -7,6 +7,24 @@ export enum ProductListingSortBy {
   NEWEST = 'newest',
   MOST_SOLD = 'most_sold',
   INSTANT_DELIVERY = 'instant_delivery',
+}
+
+function toOptionalBoolean(value: unknown) {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'true') return true;
+    if (normalized === 'false') return false;
+  }
+
+  return value;
 }
 
 export class GetProductsQueryDto {
@@ -88,13 +106,13 @@ export class GetProductsQueryDto {
 
   @ApiPropertyOptional({ description: 'فیلتر بر اساس قابل خرید بودن' })
   @IsOptional()
-  @Type(() => Boolean)
+  @Transform(({ value }) => toOptionalBoolean(value))
   @IsBoolean()
   isPurchasable?: boolean;
 
   @ApiPropertyOptional({ description: 'فیلتر بر اساس آرشیوی بودن' })
   @IsOptional()
-  @Type(() => Boolean)
+  @Transform(({ value }) => toOptionalBoolean(value))
   @IsBoolean()
   isArchived?: boolean;
 
