@@ -39,6 +39,8 @@ export type ProductSummary = {
   price: number
   discountPrice?: number | null
   isPurchasable?: boolean
+  isArchived?: boolean
+  publicationStatus?: string
   category?: {
     id: number
     name: string
@@ -113,6 +115,15 @@ function collectCategoryIds(categories: CategorySummary[], targetId: string): st
   return targetId ? [targetId] : []
 }
 
+function filterEligibleProducts(products: ProductSummary[]) {
+  return products.filter(
+    (product) =>
+      product.publicationStatus === 'PUBLISHED' &&
+      product.isPurchasable === true &&
+      product.isArchived !== true,
+  )
+}
+
 function toPageSlug(slugSegments?: string[]) {
   if (!slugSegments || slugSegments.length === 0) return '/'
   return slugSegments.join('/')
@@ -179,8 +190,6 @@ const getProducts = cache(async (_queryKey: string, query: ProductQuery): Promis
   const params = new URLSearchParams()
 
   params.set('publicationStatus', 'PUBLISHED')
-  params.set('isArchived', 'false')
-  params.set('isPurchasable', 'true')
   params.set('limit', String(query.limit ?? 8))
 
   if (query.categoryId) params.set('categoryId', query.categoryId)
@@ -191,7 +200,7 @@ const getProducts = cache(async (_queryKey: string, query: ProductQuery): Promis
   if (query.sortBy) params.set('sortBy', query.sortBy)
 
   const payload = await requestCached<{ data?: ProductSummary[] } | ProductSummary[]>(`/products?${params.toString()}`)
-  const products = toArray<ProductSummary>(payload)
+  const products = filterEligibleProducts(toArray<ProductSummary>(payload))
 
   if (!query.ids?.length) {
     return products
@@ -215,8 +224,6 @@ async function getProductsNoStore(query: ProductQuery): Promise<ProductSummary[]
   const params = new URLSearchParams()
 
   params.set('publicationStatus', 'PUBLISHED')
-  params.set('isArchived', 'false')
-  params.set('isPurchasable', 'true')
   params.set('limit', String(query.limit ?? 8))
 
   if (query.categoryId) params.set('categoryId', query.categoryId)
@@ -227,7 +234,7 @@ async function getProductsNoStore(query: ProductQuery): Promise<ProductSummary[]
   if (query.sortBy) params.set('sortBy', query.sortBy)
 
   const payload = await requestNoStore<{ data?: ProductSummary[] } | ProductSummary[]>(`/products?${params.toString()}`)
-  const products = toArray<ProductSummary>(payload)
+  const products = filterEligibleProducts(toArray<ProductSummary>(payload))
 
   if (!query.ids?.length) {
     return products

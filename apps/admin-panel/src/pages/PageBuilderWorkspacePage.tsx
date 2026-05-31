@@ -184,6 +184,13 @@ function collectCategoryAndChildIds(categories: PreviewRecord[], targetId: strin
   return targetId ? [targetId] : []
 }
 
+function filterEligiblePreviewProducts(products: PreviewRecord[]) {
+  return products.filter((product) => {
+    const publicationStatus = readText(product, ['publicationStatus'], '')
+    return publicationStatus === 'PUBLISHED' && product.isPurchasable === true && product.isArchived !== true
+  })
+}
+
 function mapApiPageToForm(page: Record<string, unknown>): PageForm {
   const blocks = toArray(page.blocks).map((block) => {
     const type = readText(block, ['type'], 'HERO_HEADER') as PageBlockType
@@ -365,19 +372,15 @@ export function PageBuilderWorkspacePage({
                       limit,
                       categoryId: categoryIds[0],
                       publicationStatus: 'PUBLISHED',
-                      isPurchasable: true,
-                      isArchived: false,
                     }
                   : {
                       page: 1,
                       limit,
                       categoryIds,
                       publicationStatus: 'PUBLISHED',
-                      isPurchasable: true,
-                      isArchived: false,
                     },
               )
-              return [block.id, { items: toArray(payload) }] as const
+              return [block.id, { items: filterEligiblePreviewProducts(toArray(payload)) }] as const
             }
 
             if (filterType === 'productType') {
@@ -389,10 +392,8 @@ export function PageBuilderWorkspacePage({
                 limit,
                 productTypeId,
                 publicationStatus: 'PUBLISHED',
-                isPurchasable: true,
-                isArchived: false,
               })
-              return [block.id, { items: toArray(payload) }] as const
+              return [block.id, { items: filterEligiblePreviewProducts(toArray(payload)) }] as const
             }
 
             if (filterType === 'custom_list') {
@@ -408,10 +409,8 @@ export function PageBuilderWorkspacePage({
                 limit,
                 ids,
                 publicationStatus: 'PUBLISHED',
-                isPurchasable: true,
-                isArchived: false,
               })
-              return [block.id, { items: toArray(payload) }] as const
+              return [block.id, { items: filterEligiblePreviewProducts(toArray(payload)) }] as const
             }
 
             const payload = await adminApi.getProducts(session, {
@@ -419,10 +418,8 @@ export function PageBuilderWorkspacePage({
               limit,
               search: String(rawFilterValue ?? '').trim(),
               publicationStatus: 'PUBLISHED',
-              isPurchasable: true,
-              isArchived: false,
             })
-            return [block.id, { items: toArray(payload) }] as const
+            return [block.id, { items: filterEligiblePreviewProducts(toArray(payload)) }] as const
           } catch (error) {
             return [block.id, { items: [], error: error instanceof Error ? error.message : 'خطا در دریافت پیش‌نمایش محصولات' }] as const
           }
