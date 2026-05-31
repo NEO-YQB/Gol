@@ -157,10 +157,13 @@ function buildHeaderDefaults(page: EnrichedStorefrontPage) {
             ? {
                 label: String((item as Record<string, unknown>).label ?? '').trim(),
                 href: String((item as Record<string, unknown>).href ?? '').trim(),
+                highlighted: (item as Record<string, unknown>).highlighted === true,
+                textColor: String((item as Record<string, unknown>).textColor ?? '').trim(),
+                backgroundColor: String((item as Record<string, unknown>).backgroundColor ?? '').trim(),
               }
             : null,
         )
-        .filter((item): item is { label: string; href: string } => Boolean(item && item.label && item.href))
+        .filter((item): item is { label: string; href: string; highlighted: boolean; textColor: string; backgroundColor: string } => Boolean(item && item.label && item.href))
     : []
 
   return {
@@ -169,12 +172,38 @@ function buildHeaderDefaults(page: EnrichedStorefrontPage) {
     stickyVariant: String(headerConfig.stickyVariant ?? 'floating') === 'full' ? 'full' : 'floating',
     brandLabel: String(headerConfig.brandLabel ?? 'گلینو'),
     brandHref: String(headerConfig.brandHref ?? '/'),
+    logoImageUrl: String(headerConfig.logoImageUrl ?? '').trim(),
+    textColor: String(headerConfig.textColor ?? '#173126'),
+    mutedTextColor: String(headerConfig.mutedTextColor ?? '#6e6152'),
+    glassBackgroundColor: String(headerConfig.glassBackgroundColor ?? 'rgba(255,251,245,0.42)'),
+    glassBorderColor: String(headerConfig.glassBorderColor ?? 'rgba(255,255,255,0.2)'),
+    actionBackgroundColor: String(headerConfig.actionBackgroundColor ?? '#1f6a52'),
+    actionTextColor: String(headerConfig.actionTextColor ?? '#ffffff'),
+    authPreviewMode: String(headerConfig.authPreviewMode ?? 'guest') === 'authenticated' ? 'authenticated' : 'guest',
+    authPreviewName: String(headerConfig.authPreviewName ?? '').trim(),
     menuItems,
   }
 }
 
+function CartIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" height="18" viewBox="0 0 24 24" width="18">
+      <path d="M3.5 4.5h1.6c.5 0 .94.33 1.08.82l.42 1.43m0 0 1.45 5.03c.14.49.58.82 1.09.82h7.92c.5 0 .94-.33 1.08-.82l1.34-4.55a1.13 1.13 0 0 0-1.08-1.45H6.6Zm3.3 11.75a1.4 1.4 0 1 1-2.8 0 1.4 1.4 0 0 1 2.8 0Zm8.2 0a1.4 1.4 0 1 1-2.8 0 1.4 1.4 0 0 1 2.8 0Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7" />
+    </svg>
+  )
+}
+
+function UserIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" height="18" viewBox="0 0 24 24" width="18">
+      <path d="M12 12.25a4.13 4.13 0 1 0 0-8.25 4.13 4.13 0 0 0 0 8.25ZM5 19.25c1.57-2.76 4.14-4.13 7-4.13s5.43 1.37 7 4.13" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7" />
+    </svg>
+  )
+}
+
 function StorefrontGlassHeader({ page, heroTouchesTop }: { page: EnrichedStorefrontPage; heroTouchesTop: boolean }) {
   const [isScrolled, setIsScrolled] = useState(false)
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const header = useMemo(() => buildHeaderDefaults(page), [page])
 
   useEffect(() => {
@@ -193,6 +222,18 @@ function StorefrontGlassHeader({ page, heroTouchesTop }: { page: EnrichedStorefr
 
   const shouldFloat = isScrolled && header.stickyVariant === 'floating'
   const shouldShowGlass = isScrolled || !header.transparentOnTop || !heroTouchesTop
+  const textColor = shouldShowGlass ? header.textColor : '#ffffff'
+  const mutedTextColor = shouldShowGlass ? header.mutedTextColor : 'rgba(255,255,255,0.82)'
+  const shellStyle = shouldShowGlass
+    ? {
+        background: header.glassBackgroundColor,
+        borderColor: header.glassBorderColor,
+      }
+    : undefined
+  const actionStyle = {
+    background: header.actionBackgroundColor,
+    color: header.actionTextColor,
+  }
 
   return (
     <header
@@ -206,25 +247,117 @@ function StorefrontGlassHeader({ page, heroTouchesTop }: { page: EnrichedStorefr
             ? 'border border-white/20 bg-[rgba(255,251,245,0.42)] shadow-[0_20px_55px_rgba(24,31,28,0.12)] backdrop-blur-2xl'
             : 'border border-transparent bg-transparent shadow-none backdrop-blur-0'
         }`}
+        style={shellStyle}
       >
-        <Link className={`font-black tracking-[0.14em] transition-all duration-500 ${isScrolled ? 'text-sm md:text-base' : 'text-base md:text-lg'} text-[#173126]`} href={header.brandHref}>
-          {header.brandLabel}
-        </Link>
-        <nav className="flex flex-wrap items-center justify-end gap-2 md:gap-3">
-          {header.menuItems.map((item) => (
-            <Link
-              className={`rounded-full px-4 py-2 text-sm font-bold transition-all duration-300 ${
-                shouldShowGlass
-                  ? 'bg-white/35 text-[#173126] hover:bg-white/55'
-                  : 'bg-white/10 text-white hover:bg-white/20'
-              }`}
-              href={item.href}
-              key={`${item.label}-${item.href}`}
+        <div className="flex min-w-0 flex-1 items-center gap-4 md:gap-8">
+          <Link className={`shrink-0 transition-all duration-500 ${isScrolled ? 'text-sm md:text-base' : 'text-base md:text-lg'}`} href={header.brandHref} style={{ color: textColor }}>
+            {header.logoImageUrl ? (
+              <img alt={header.brandLabel} className="h-10 w-auto object-contain md:h-11" src={resolveAssetUrl(header.logoImageUrl)} />
+            ) : (
+              <span className="font-black tracking-[0.14em]">{header.brandLabel}</span>
+            )}
+          </Link>
+          <nav className="hidden min-w-0 flex-wrap items-center gap-2 md:flex md:gap-3">
+            {header.menuItems.map((item) => (
+              <Link
+                className="rounded-full px-4 py-2 text-sm font-bold transition-all duration-300 hover:translate-y-[-1px]"
+                href={item.href}
+                key={`${item.label}-${item.href}`}
+                style={{
+                  color: item.textColor || (item.highlighted ? header.actionTextColor : textColor),
+                  background: item.backgroundColor || (item.highlighted ? header.actionBackgroundColor : shouldShowGlass ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.1)'),
+                }}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+        </div>
+        <div className="flex shrink-0 items-center gap-2 md:gap-3">
+          <Link
+            className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold shadow-[0_14px_30px_rgba(15,32,25,0.14)] transition-all duration-300 hover:translate-y-[-1px]"
+            href="/cart"
+            style={actionStyle}
+          >
+            <CartIcon />
+            <span className="hidden md:inline">سبد خرید</span>
+          </Link>
+          {header.authPreviewMode === 'authenticated' ? (
+            <div
+              className="relative"
+              onMouseEnter={() => setIsUserMenuOpen(true)}
+              onMouseLeave={() => setIsUserMenuOpen(false)}
             >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+              <button
+                className="inline-flex items-center gap-3 rounded-full border px-4 py-2 text-right text-sm font-bold shadow-[0_14px_30px_rgba(15,32,25,0.12)] transition-all duration-300"
+                style={{
+                  color: textColor,
+                  background: shouldShowGlass ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.12)',
+                  borderColor: header.glassBorderColor,
+                }}
+                type="button"
+              >
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-full" style={actionStyle}>
+                  <UserIcon />
+                </span>
+                <span className="hidden leading-5 md:block">
+                  <strong className="block" style={{ color: textColor }}>سلام {header.authPreviewName || 'دوست گلینو'}</strong>
+                  <span className="block text-xs font-medium" style={{ color: mutedTextColor }}>حساب کاربری</span>
+                </span>
+              </button>
+              {isUserMenuOpen ? (
+                <div
+                  className="absolute left-0 top-[calc(100%+10px)] min-w-[220px] rounded-[24px] border p-3 shadow-[0_20px_45px_rgba(20,29,25,0.16)] backdrop-blur-2xl"
+                  style={{
+                    background: header.glassBackgroundColor,
+                    borderColor: header.glassBorderColor,
+                    color: textColor,
+                  }}
+                >
+                  <div className="grid gap-2">
+                    {[
+                      { label: 'پنل کاربری', href: '/account' },
+                      { label: 'اطلاعات کاربری', href: '/account/profile' },
+                      { label: 'کیف پول', href: '/account/wallet' },
+                      { label: 'خروج', href: '/logout' },
+                    ].map((item) => (
+                      <Link
+                        className="rounded-2xl px-4 py-3 text-sm font-bold transition-colors hover:bg-white/35"
+                        href={item.href}
+                        key={item.href}
+                        style={{ color: textColor }}
+                      >
+                        {item.label}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Link
+                className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold shadow-[0_14px_30px_rgba(15,32,25,0.14)] transition-all duration-300 hover:translate-y-[-1px]"
+                href="/login"
+                style={actionStyle}
+              >
+                <UserIcon />
+                <span className="hidden md:inline">ورود</span>
+              </Link>
+              <Link
+                className="hidden rounded-full border px-4 py-2 text-sm font-bold md:inline-flex"
+                href="/register"
+                style={{
+                  color: textColor,
+                  borderColor: header.glassBorderColor,
+                  background: shouldShowGlass ? 'rgba(255,255,255,0.24)' : 'rgba(255,255,255,0.12)',
+                }}
+              >
+                ثبت نام
+              </Link>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   )

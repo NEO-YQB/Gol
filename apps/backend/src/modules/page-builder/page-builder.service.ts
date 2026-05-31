@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
+  StorefrontHeaderAuthPreviewMode,
   CreatePageDto,
   StorefrontHeaderStickyVariant,
   StorefrontPageType,
@@ -328,10 +329,25 @@ export class PageBuilderService {
           : StorefrontHeaderStickyVariant.FLOATING,
       brandLabel: this.normalizeNullableText(headerConfig.brandLabel) ?? 'گلینو',
       brandHref: this.normalizeNullableText(headerConfig.brandHref) ?? '/',
+      logoImageUrl: this.normalizeNullableText(headerConfig.logoImageUrl),
+      textColor: this.normalizeNullableText(headerConfig.textColor),
+      mutedTextColor: this.normalizeNullableText(headerConfig.mutedTextColor),
+      glassBackgroundColor: this.normalizeNullableText(headerConfig.glassBackgroundColor),
+      glassBorderColor: this.normalizeNullableText(headerConfig.glassBorderColor),
+      actionBackgroundColor: this.normalizeNullableText(headerConfig.actionBackgroundColor),
+      actionTextColor: this.normalizeNullableText(headerConfig.actionTextColor),
+      authPreviewMode:
+        headerConfig.authPreviewMode === StorefrontHeaderAuthPreviewMode.AUTHENTICATED
+          ? StorefrontHeaderAuthPreviewMode.AUTHENTICATED
+          : StorefrontHeaderAuthPreviewMode.GUEST,
+      authPreviewName: this.normalizeNullableText(headerConfig.authPreviewName),
       menuItems: (headerConfig.menuItems ?? [])
         .map((item) => ({
           label: this.normalizeText(item.label),
           href: this.normalizeText(item.href),
+          highlighted: item.highlighted === true,
+          textColor: this.normalizeNullableText(item.textColor),
+          backgroundColor: this.normalizeNullableText(item.backgroundColor),
         }))
         .filter((item) => item.label.length > 0 && item.href.length > 0),
     };

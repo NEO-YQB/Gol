@@ -27,6 +27,11 @@ export enum StorefrontHeaderStickyVariant {
   FLOATING = 'floating',
 }
 
+export enum StorefrontHeaderAuthPreviewMode {
+  GUEST = 'guest',
+  AUTHENTICATED = 'authenticated',
+}
+
 export class HeaderMenuItemDto {
   @ApiProperty({ example: 'فروشگاه‌ها' })
   @IsString()
@@ -39,6 +44,23 @@ export class HeaderMenuItemDto {
   @IsNotEmpty()
   @MaxLength(2000)
   href!: string;
+
+  @ApiPropertyOptional({ example: false })
+  @IsOptional()
+  @IsBoolean()
+  highlighted?: boolean;
+
+  @ApiPropertyOptional({ example: '#ffffff' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  textColor?: string;
+
+  @ApiPropertyOptional({ example: 'rgba(255,255,255,0.16)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  backgroundColor?: string;
 }
 
 export class StorefrontHeaderConfigDto {
@@ -68,6 +90,59 @@ export class StorefrontHeaderConfigDto {
   @IsString()
   @MaxLength(2000)
   brandHref?: string;
+
+  @ApiPropertyOptional({ example: 'https://cdn.example.com/logo.svg' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  logoImageUrl?: string;
+
+  @ApiPropertyOptional({ example: '#173126' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  textColor?: string;
+
+  @ApiPropertyOptional({ example: '#6e6152' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  mutedTextColor?: string;
+
+  @ApiPropertyOptional({ example: 'rgba(255,251,245,0.42)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  glassBackgroundColor?: string;
+
+  @ApiPropertyOptional({ example: 'rgba(255,255,255,0.2)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  glassBorderColor?: string;
+
+  @ApiPropertyOptional({ example: '#1f6a52' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  actionBackgroundColor?: string;
+
+  @ApiPropertyOptional({ example: '#ffffff' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  actionTextColor?: string;
+
+  @ApiPropertyOptional({ enum: StorefrontHeaderAuthPreviewMode, example: StorefrontHeaderAuthPreviewMode.GUEST })
+  @IsOptional()
+  @IsEnum(StorefrontHeaderAuthPreviewMode)
+  authPreviewMode?: StorefrontHeaderAuthPreviewMode;
+
+  @ApiPropertyOptional({ example: 'افشین' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  authPreviewName?: string;
 
   @ApiPropertyOptional({ type: [HeaderMenuItemDto] })
   @IsOptional()

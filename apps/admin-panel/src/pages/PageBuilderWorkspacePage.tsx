@@ -50,7 +50,16 @@ type PageForm = {
   headerStickyVariant: 'full' | 'floating'
   headerBrandLabel: string
   headerBrandHref: string
-  headerMenuItems: Array<{ label: string; href: string }>
+  headerLogoImageUrl: string
+  headerTextColor: string
+  headerMutedTextColor: string
+  headerGlassBackgroundColor: string
+  headerGlassBorderColor: string
+  headerActionBackgroundColor: string
+  headerActionTextColor: string
+  headerAuthPreviewMode: 'guest' | 'authenticated'
+  headerAuthPreviewName: string
+  headerMenuItems: Array<{ label: string; href: string; highlighted: boolean; textColor: string; backgroundColor: string }>
   metaTitle: string
   metaDescription: string
   keywords: string
@@ -145,6 +154,15 @@ function createEmptyForm(): PageForm {
     headerStickyVariant: 'floating',
     headerBrandLabel: 'گلینو',
     headerBrandHref: '/',
+    headerLogoImageUrl: '',
+    headerTextColor: '#173126',
+    headerMutedTextColor: '#6e6152',
+    headerGlassBackgroundColor: 'rgba(255,251,245,0.42)',
+    headerGlassBorderColor: 'rgba(255,255,255,0.2)',
+    headerActionBackgroundColor: '#1f6a52',
+    headerActionTextColor: '#ffffff',
+    headerAuthPreviewMode: 'guest',
+    headerAuthPreviewName: '',
     headerMenuItems: [],
     metaTitle: '',
     metaDescription: '',
@@ -221,10 +239,13 @@ function mapApiPageToForm(page: Record<string, unknown>): PageForm {
             ? {
                 label: readText(item as Record<string, unknown>, ['label'], ''),
                 href: readText(item as Record<string, unknown>, ['href'], ''),
+                highlighted: (item as Record<string, unknown>).highlighted === true,
+                textColor: readText(item as Record<string, unknown>, ['textColor'], ''),
+                backgroundColor: readText(item as Record<string, unknown>, ['backgroundColor'], ''),
               }
             : null,
         )
-        .filter((item): item is { label: string; href: string } => Boolean(item && item.label && item.href))
+        .filter((item): item is { label: string; href: string; highlighted: boolean; textColor: string; backgroundColor: string } => Boolean(item && item.label && item.href))
     : []
 
   return {
@@ -238,6 +259,15 @@ function mapApiPageToForm(page: Record<string, unknown>): PageForm {
     headerStickyVariant: readText(headerConfig, ['stickyVariant'], 'floating') === 'full' ? 'full' : 'floating',
     headerBrandLabel: readText(headerConfig, ['brandLabel'], 'گلینو'),
     headerBrandHref: readText(headerConfig, ['brandHref'], '/'),
+    headerLogoImageUrl: readText(headerConfig, ['logoImageUrl'], ''),
+    headerTextColor: readText(headerConfig, ['textColor'], '#173126'),
+    headerMutedTextColor: readText(headerConfig, ['mutedTextColor'], '#6e6152'),
+    headerGlassBackgroundColor: readText(headerConfig, ['glassBackgroundColor'], 'rgba(255,251,245,0.42)'),
+    headerGlassBorderColor: readText(headerConfig, ['glassBorderColor'], 'rgba(255,255,255,0.2)'),
+    headerActionBackgroundColor: readText(headerConfig, ['actionBackgroundColor'], '#1f6a52'),
+    headerActionTextColor: readText(headerConfig, ['actionTextColor'], '#ffffff'),
+    headerAuthPreviewMode: readText(headerConfig, ['authPreviewMode'], 'guest') === 'authenticated' ? 'authenticated' : 'guest',
+    headerAuthPreviewName: readText(headerConfig, ['authPreviewName'], ''),
     headerMenuItems,
     metaTitle: readText(page, ['metaTitle'], ''),
     metaDescription: readText(page, ['metaDescription'], ''),
@@ -699,7 +729,14 @@ export function PageBuilderWorkspacePage({
     updateForm(field, value)
   }
 
-  function patchHeaderMenuItem(index: number, key: 'label' | 'href', value: string) {
+  function patchHeaderMenuItem(index: number, key: 'label' | 'href' | 'textColor' | 'backgroundColor', value: string) {
+    setForm((current) => ({
+      ...current,
+      headerMenuItems: current.headerMenuItems.map((item, itemIndex) => (itemIndex === index ? { ...item, [key]: value } : item)),
+    }))
+  }
+
+  function patchHeaderMenuItemFlag(index: number, key: 'highlighted', value: boolean) {
     setForm((current) => ({
       ...current,
       headerMenuItems: current.headerMenuItems.map((item, itemIndex) => (itemIndex === index ? { ...item, [key]: value } : item)),
@@ -709,7 +746,7 @@ export function PageBuilderWorkspacePage({
   function addHeaderMenuItem() {
     setForm((current) => ({
       ...current,
-      headerMenuItems: [...current.headerMenuItems, { label: '', href: '' }],
+      headerMenuItems: [...current.headerMenuItems, { label: '', href: '', highlighted: false, textColor: '', backgroundColor: '' }],
     }))
   }
 
@@ -786,10 +823,22 @@ export function PageBuilderWorkspacePage({
         stickyVariant: form.headerStickyVariant,
         brandLabel: toOptionalText(form.headerBrandLabel) ?? 'گلینو',
         brandHref: toOptionalText(form.headerBrandHref) ?? '/',
+        logoImageUrl: toOptionalText(form.headerLogoImageUrl),
+        textColor: toOptionalText(form.headerTextColor),
+        mutedTextColor: toOptionalText(form.headerMutedTextColor),
+        glassBackgroundColor: toOptionalText(form.headerGlassBackgroundColor),
+        glassBorderColor: toOptionalText(form.headerGlassBorderColor),
+        actionBackgroundColor: toOptionalText(form.headerActionBackgroundColor),
+        actionTextColor: toOptionalText(form.headerActionTextColor),
+        authPreviewMode: form.headerAuthPreviewMode,
+        authPreviewName: form.headerAuthPreviewMode === 'authenticated' ? toOptionalText(form.headerAuthPreviewName) : undefined,
         menuItems: form.headerMenuItems
           .map((item) => ({
             label: item.label.trim(),
             href: item.href.trim(),
+            highlighted: item.highlighted,
+            textColor: toOptionalText(item.textColor),
+            backgroundColor: toOptionalText(item.backgroundColor),
           }))
           .filter((item) => item.label.length > 0 && item.href.length > 0),
       },
@@ -989,6 +1038,47 @@ export function PageBuilderWorkspacePage({
               <span>لینک برند</span>
               <input onChange={(event) => updateForm('headerBrandHref', event.target.value)} type="text" value={form.headerBrandHref} />
             </label>
+            <label className="fm-field">
+              <span>لوگوی برند (URL)</span>
+              <input onChange={(event) => updateForm('headerLogoImageUrl', event.target.value)} type="text" value={form.headerLogoImageUrl} />
+            </label>
+            <label className="fm-field">
+              <span>رنگ متن اصلی</span>
+              <input onChange={(event) => updateForm('headerTextColor', event.target.value)} type="text" value={form.headerTextColor} />
+            </label>
+            <label className="fm-field">
+              <span>رنگ متن فرعی</span>
+              <input onChange={(event) => updateForm('headerMutedTextColor', event.target.value)} type="text" value={form.headerMutedTextColor} />
+            </label>
+            <label className="fm-field">
+              <span>رنگ پس‌زمینه glass</span>
+              <input onChange={(event) => updateForm('headerGlassBackgroundColor', event.target.value)} type="text" value={form.headerGlassBackgroundColor} />
+            </label>
+            <label className="fm-field">
+              <span>رنگ border glass</span>
+              <input onChange={(event) => updateForm('headerGlassBorderColor', event.target.value)} type="text" value={form.headerGlassBorderColor} />
+            </label>
+            <label className="fm-field">
+              <span>رنگ پس‌زمینه اکشن‌ها</span>
+              <input onChange={(event) => updateForm('headerActionBackgroundColor', event.target.value)} type="text" value={form.headerActionBackgroundColor} />
+            </label>
+            <label className="fm-field">
+              <span>رنگ متن اکشن‌ها</span>
+              <input onChange={(event) => updateForm('headerActionTextColor', event.target.value)} type="text" value={form.headerActionTextColor} />
+            </label>
+            <label className="fm-field">
+              <span>پیش‌نمایش وضعیت کاربر</span>
+              <select onChange={(event) => updateForm('headerAuthPreviewMode', event.target.value as 'guest' | 'authenticated')} value={form.headerAuthPreviewMode}>
+                <option value="guest">guest</option>
+                <option value="authenticated">authenticated</option>
+              </select>
+            </label>
+            {form.headerAuthPreviewMode === 'authenticated' ? (
+              <label className="fm-field">
+                <span>نام کاربر در پیش‌نمایش</span>
+                <input onChange={(event) => updateForm('headerAuthPreviewName', event.target.value)} type="text" value={form.headerAuthPreviewName} />
+              </label>
+            ) : null}
             <div className="page-builder-banner-editor page-builder-field--wide">
               <div className="page-builder-banner-editor__header">
                 <strong>آیتم‌های منو</strong>
@@ -1006,6 +1096,18 @@ export function PageBuilderWorkspacePage({
                     <label className="fm-field">
                       <span>لینک</span>
                       <input onChange={(event) => patchHeaderMenuItem(itemIndex, 'href', event.target.value)} type="text" value={item.href} />
+                    </label>
+                    <label className="fm-field page-builder-checkbox">
+                      <span>هایلایت شود</span>
+                      <input checked={item.highlighted} onChange={(event) => patchHeaderMenuItemFlag(itemIndex, 'highlighted', event.target.checked)} type="checkbox" />
+                    </label>
+                    <label className="fm-field">
+                      <span>رنگ متن آیتم</span>
+                      <input onChange={(event) => patchHeaderMenuItem(itemIndex, 'textColor', event.target.value)} type="text" value={item.textColor} />
+                    </label>
+                    <label className="fm-field">
+                      <span>رنگ پس‌زمینه آیتم</span>
+                      <input onChange={(event) => patchHeaderMenuItem(itemIndex, 'backgroundColor', event.target.value)} type="text" value={item.backgroundColor} />
                     </label>
                     <button className="fm-button fm-button--secondary" onClick={() => removeHeaderMenuItem(itemIndex)} type="button">
                       حذف آیتم
