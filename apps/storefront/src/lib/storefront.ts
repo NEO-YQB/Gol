@@ -44,6 +44,7 @@ export type ProductSummary = {
   category?: {
     id: number
     name: string
+    slug?: string
   } | null
   store?: {
     id: number

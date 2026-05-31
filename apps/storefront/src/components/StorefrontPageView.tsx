@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { resolveAssetUrl, type CategorySummary, type EnrichedStorefrontPage, type ProductSummary, type StoreSummary } from '../lib/storefront'
 
 function formatPrice(value: number | null | undefined) {
@@ -5,25 +6,55 @@ function formatPrice(value: number | null | undefined) {
   return new Intl.NumberFormat('fa-IR').format(value)
 }
 
+function getProductHref(product: ProductSummary) {
+  return `/products/${product.slug}`
+}
+
+function getCategoryHref(category: Pick<CategorySummary, 'slug'>) {
+  return `/categories/${category.slug}`
+}
+
+function getVendorHref(vendor: Pick<StoreSummary, 'slug'>) {
+  return `/stores/${vendor.slug}`
+}
+
 function ProductCard({ product }: { product: ProductSummary }) {
   const price = formatPrice(product.price)
   const discountPrice = formatPrice(product.discountPrice ?? null)
+  const productHref = getProductHref(product)
+  const vendorHref = product.store?.slug ? getVendorHref(product.store) : null
+  const categoryHref = product.category?.slug ? `/categories/${product.category.slug}` : null
 
   return (
     <article className="group min-w-[240px] rounded-[28px] border border-black/5 bg-white/85 p-4 shadow-[0_20px_50px_rgba(37,24,8,0.08)] backdrop-blur transition duration-300 hover:-translate-y-1 hover:shadow-[0_26px_60px_rgba(37,24,8,0.12)]">
-      <div className="mb-4 overflow-hidden rounded-[24px] bg-[#f4eadc]">
+      <Link className="mb-4 block overflow-hidden rounded-[24px] bg-[#f4eadc]" href={productHref}>
         <img
           alt={product.mainImageAlt || product.name}
           className="h-56 w-full object-cover transition duration-500 group-hover:scale-[1.04]"
           src={resolveAssetUrl(product.mainImage)}
         />
-      </div>
+      </Link>
       <div className="space-y-3">
         <div>
-          <p className="text-xs uppercase tracking-[0.28em] text-[#9e7b52]">
-            {product.store?.name || 'فروشگاه منتخب'}
-          </p>
-          <h3 className="mt-2 text-xl font-black text-[#1e3529]">{product.name}</h3>
+          {vendorHref ? (
+            <Link className="text-xs uppercase tracking-[0.28em] text-[#9e7b52]" href={vendorHref}>
+              {product.store?.name || 'فروشگاه منتخب'}
+            </Link>
+          ) : (
+            <p className="text-xs uppercase tracking-[0.28em] text-[#9e7b52]">{product.store?.name || 'فروشگاه منتخب'}</p>
+          )}
+          <Link className="mt-2 block text-xl font-black text-[#1e3529]" href={productHref}>
+            {product.name}
+          </Link>
+          {product.category?.name ? (
+            categoryHref ? (
+              <Link className="mt-2 block text-sm text-[#6d7a72]" href={categoryHref}>
+                {product.category.name}
+              </Link>
+            ) : (
+              <p className="mt-2 text-sm text-[#6d7a72]">{product.category.name}</p>
+            )
+          ) : null}
         </div>
         <div className="flex items-end justify-between gap-3">
           <div className="space-y-1">
@@ -34,9 +65,14 @@ function ProductCard({ product }: { product: ProductSummary }) {
               {product.discountPrice ? `${discountPrice} تومان` : `${price} تومان`}
             </div>
           </div>
-          <span className="inline-flex items-center rounded-full bg-[#1f6a52] px-4 py-2 text-sm font-bold text-white">
-            انتخاب زنده
-          </span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link className="inline-flex items-center rounded-full bg-[#1f6a52] px-4 py-2 text-sm font-bold text-white" href={`${productHref}?action=add-to-cart`}>
+            افزودن به سبد
+          </Link>
+          <Link className="inline-flex items-center rounded-full border border-[#1f6a52]/18 px-4 py-2 text-sm font-bold text-[#1f6a52]" href={productHref}>
+            مشاهده محصول
+          </Link>
         </div>
       </div>
     </article>
@@ -45,7 +81,7 @@ function ProductCard({ product }: { product: ProductSummary }) {
 
 function CategoryCircle({ category }: { category: CategorySummary }) {
   return (
-    <article className="group flex min-w-[120px] flex-col items-center gap-4 text-center">
+    <Link className="group flex min-w-[120px] flex-col items-center gap-4 text-center" href={getCategoryHref(category)}>
       <div className="relative h-28 w-28 overflow-hidden rounded-full border border-white/70 bg-[#f6eadc] shadow-[0_18px_36px_rgba(52,36,17,0.08)]">
         {category.image ? (
           <img alt={category.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-110" src={resolveAssetUrl(category.image)} />
@@ -54,13 +90,14 @@ function CategoryCircle({ category }: { category: CategorySummary }) {
         )}
       </div>
       <span className="text-sm font-bold text-[#214032]">{category.name}</span>
-    </article>
+    </Link>
   )
 }
 
 function VendorCard({ vendor }: { vendor: StoreSummary }) {
   const rating = Number(vendor.customerRatingAverage ?? 0)
   const ratingLabel = rating > 0 ? rating.toFixed(1) : 'جدید'
+  const vendorHref = getVendorHref(vendor)
 
   return (
     <article className="rounded-[28px] border border-white/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(250,244,234,0.95))] p-5 shadow-[0_20px_40px_rgba(48,33,10,0.08)]">
@@ -73,7 +110,9 @@ function VendorCard({ vendor }: { vendor: StoreSummary }) {
           )}
         </div>
         <div>
-          <h3 className="text-lg font-black text-[#1b3228]">{vendor.name}</h3>
+          <Link className="text-lg font-black text-[#1b3228]" href={vendorHref}>
+            {vendor.name}
+          </Link>
           <p className="mt-1 text-sm text-[#7d6b58]">{vendor.sameDayDelivery ? 'ارسال فوری فعال' : 'ارسال استاندارد'}</p>
         </div>
       </div>
@@ -81,9 +120,9 @@ function VendorCard({ vendor }: { vendor: StoreSummary }) {
         <span className="text-sm text-[#80674a]">رضایت مشتریان</span>
         <strong className="text-lg text-[#d06c54]">{ratingLabel}</strong>
       </div>
-      <span className="inline-flex items-center rounded-full border border-[#1f6a52]/20 px-4 py-2 text-sm font-bold text-[#1f6a52]">
-        فروشگاه منتخب
-      </span>
+      <Link className="inline-flex items-center rounded-full border border-[#1f6a52]/20 px-4 py-2 text-sm font-bold text-[#1f6a52]" href={vendorHref}>
+        مشاهده محصولات فروشگاه
+      </Link>
     </article>
   )
 }
