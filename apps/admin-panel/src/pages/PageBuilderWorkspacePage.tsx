@@ -32,6 +32,8 @@ type BlockForm = {
   data: Record<string, unknown>
 }
 
+type PreviewRecord = Record<string, unknown>
+
 type PageForm = {
   title: string
   slug: string
@@ -211,6 +213,10 @@ export function PageBuilderWorkspacePage({
   const [editorMode, setEditorMode] = useState<'create' | 'edit'>(mode)
   const [currentPageId, setCurrentPageId] = useState<string | null>(pageId)
   const [uploadingImageTarget, setUploadingImageTarget] = useState<string | null>(null)
+  const [referenceCategories, setReferenceCategories] = useState<PreviewRecord[]>([])
+  const [referenceStores, setReferenceStores] = useState<PreviewRecord[]>([])
+  const [referenceProductTypes, setReferenceProductTypes] = useState<PreviewRecord[]>([])
+  const [productPreviewByBlock, setProductPreviewByBlock] = useState<Record<string, PreviewRecord[]>>({})
   const imageInputRef = useRef<HTMLInputElement | null>(null)
 
   useNoticeEffect(error, 'error')
@@ -255,6 +261,127 @@ export function PageBuilderWorkspacePage({
     }
   }, [currentPageId, editorMode, session])
 
+  useEffect(() => {
+    let active = true
+
+    async function loadReferences() {
+      try {
+        const [categoriesPayload, storesPayload, productTypesPayload] = await Promise.all([
+          adminApi.getCategories(session),
+          adminApi.getStores(session),
+          adminApi.getProductTypes(session),
+        ])
+
+        if (!active) return
+
+        setReferenceCategories(toArray(categoriesPayload))
+        setReferenceStores(toArray(storesPayload))
+        setReferenceProductTypes(toArray(productTypesPayload))
+      } catch {
+        if (!active) return
+      }
+    }
+
+    void loadReferences()
+
+    return () => {
+      active = false
+    }
+  }, [session])
+
+  useEffect(() => {
+    const productBlocks = form.blocks.filter((block) => block.type === 'PRODUCT_CAROUSEL')
+
+    if (!productBlocks.length) {
+      setProductPreviewByBlock({})
+      return
+    }
+
+    let active = true
+
+    async function loadProductPreviews() {
+      const entries = await Promise.all(
+        productBlocks.map(async (block) => {
+          const filterType = String(block.data.filterType ?? 'category') as ProductFilterType
+          const rawFilterValue = block.data.filterValue
+          const limit = Math.min(Number(block.data.limit ?? 8) || 8, 12)
+
+          try {
+            if (filterType === 'category') {
+              const categoryId = Number(String(rawFilterValue ?? '').trim())
+              if (!Number.isInteger(categoryId) || categoryId <= 0) return [block.id, []] as const
+
+              const payload = await adminApi.getProducts(session, {
+                page: 1,
+                limit,
+                categoryId,
+                publicationStatus: 'PUBLISHED',
+                isPurchasable: true,
+                isArchived: false,
+              })
+              return [block.id, toArray(payload)] as const
+            }
+
+            if (filterType === 'productType') {
+              const productTypeId = Number(String(rawFilterValue ?? '').trim())
+              if (!Number.isInteger(productTypeId) || productTypeId <= 0) return [block.id, []] as const
+
+              const payload = await adminApi.getProducts(session, {
+                page: 1,
+                limit,
+                productTypeId,
+                publicationStatus: 'PUBLISHED',
+                isPurchasable: true,
+                isArchived: false,
+              })
+              return [block.id, toArray(payload)] as const
+            }
+
+            if (filterType === 'custom_list') {
+              const ids = String(rawFilterValue ?? '')
+                .split(',')
+                .map((item) => Number(item.trim()))
+                .filter((item) => Number.isInteger(item) && item > 0)
+
+              if (!ids.length) return [block.id, []] as const
+
+              const payload = await adminApi.getProducts(session, {
+                page: 1,
+                limit,
+                ids,
+                publicationStatus: 'PUBLISHED',
+                isPurchasable: true,
+                isArchived: false,
+              })
+              return [block.id, toArray(payload)] as const
+            }
+
+            const payload = await adminApi.getProducts(session, {
+              page: 1,
+              limit,
+              search: String(rawFilterValue ?? '').trim(),
+              publicationStatus: 'PUBLISHED',
+              isPurchasable: true,
+              isArchived: false,
+            })
+            return [block.id, toArray(payload)] as const
+          } catch {
+            return [block.id, []] as const
+          }
+        }),
+      )
+
+      if (!active) return
+      setProductPreviewByBlock(Object.fromEntries(entries))
+    }
+
+    void loadProductPreviews()
+
+    return () => {
+      active = false
+    }
+  }, [form.blocks, session])
+
   const blockSummary = useMemo(() => {
     return form.blocks.reduce<Record<PageBlockType, number>>((acc, block) => {
       acc[block.type] = (acc[block.type] ?? 0) + 1
@@ -268,6 +395,24 @@ export function PageBuilderWorkspacePage({
       CAMPAIGN_GRID: 0,
     })
   }, [form.blocks])
+
+  const categoryNameById = useMemo(() => {
+    return new Map(
+      referenceCategories.map((category) => [readText(category, ['id'], ''), readText(category, ['name', 'title'], 'بدون نام')]),
+    )
+  }, [referenceCategories])
+
+  const storeNameById = useMemo(() => {
+    return new Map(
+      referenceStores.map((store) => [readText(store, ['id'], ''), readText(store, ['name', 'title'], 'بدون نام')]),
+    )
+  }, [referenceStores])
+
+  const productTypeNameById = useMemo(() => {
+    return new Map(
+      referenceProductTypes.map((productType) => [readText(productType, ['id'], ''), readText(productType, ['name', 'title'], 'بدون نام')]),
+    )
+  }, [referenceProductTypes])
 
   function updateForm<K extends keyof PageForm>(key: K, value: PageForm[K]) {
     setForm((current) => ({
@@ -374,6 +519,100 @@ export function PageBuilderWorkspacePage({
 
   function getImagePreview(url: unknown) {
     return typeof url === 'string' && url.trim().length > 0 ? url : ''
+  }
+
+  function renderSelectionPreview(block: BlockForm) {
+    if (block.type === 'CATEGORY_CIRCLES') {
+      const rawIds = block.data.categoryIds
+      const categoryIds = Array.isArray(rawIds)
+        ? rawIds.map((item) => String(item).trim()).filter(Boolean)
+        : String(rawIds ?? '')
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean)
+
+      return (
+        <div className="page-builder-preview-card page-builder-field--wide">
+          <strong>پیش‌نمایش انتخاب دسته‌ها</strong>
+          {categoryIds.length ? (
+            <div className="page-builder-preview-tags">
+              {categoryIds.map((id) => (
+                <span className="page-builder-preview-tag" key={id}>
+                  {categoryNameById.get(id) ?? `دسته با شناسه ${id}`}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p>هنوز دسته‌ای انتخاب نشده است.</p>
+          )}
+        </div>
+      )
+    }
+
+    if (block.type === 'PRODUCT_CAROUSEL') {
+      const previewProducts = productPreviewByBlock[block.id] ?? []
+      const filterType = String(block.data.filterType ?? 'category')
+      const filterValue = String(block.data.filterValue ?? '').trim()
+      const resolvedLabel =
+        filterType === 'category'
+          ? categoryNameById.get(filterValue)
+          : filterType === 'productType'
+            ? productTypeNameById.get(filterValue)
+            : undefined
+
+      return (
+        <div className="page-builder-preview-card page-builder-field--wide">
+          <strong>پیش‌نمایش نتیجه کروسل محصولات</strong>
+          <p>
+            فیلتر فعلی: <span>{filterType}</span>
+            {resolvedLabel ? ` - ${resolvedLabel}` : filterValue ? ` - ${filterValue}` : ''}
+          </p>
+          {previewProducts.length ? (
+            <div className="page-builder-preview-list">
+              {previewProducts.map((product) => (
+                <article className="page-builder-preview-item" key={readText(product, ['id'], readText(product, ['slug'], 'item'))}>
+                  <strong>{readText(product, ['name'], 'بدون نام')}</strong>
+                  <span>{readText(product, ['slug'], 'بدون اسلاگ')}</span>
+                  <small>{readText(product, ['publicationStatus'], '—')} / {product.isPurchasable === true ? 'قابل خرید' : 'غیرقابل خرید'}</small>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p>هیچ محصول eligible برای این فیلتر پیدا نشد. فقط محصولات `PUBLISHED` و `isPurchasable=true` نمایش داده می‌شوند.</p>
+          )}
+        </div>
+      )
+    }
+
+    if (block.type === 'VENDOR_CAROUSEL') {
+      const filterType = String(block.data.filterType ?? 'top_rated')
+      const rawIds = block.data.vendorIds
+      const vendorIds = Array.isArray(rawIds)
+        ? rawIds.map((item) => String(item).trim()).filter(Boolean)
+        : String(rawIds ?? '')
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean)
+
+      return (
+        <div className="page-builder-preview-card page-builder-field--wide">
+          <strong>پیش‌نمایش انتخاب فروشگاه‌ها</strong>
+          {filterType === 'handpicked' && vendorIds.length ? (
+            <div className="page-builder-preview-tags">
+              {vendorIds.map((id) => (
+                <span className="page-builder-preview-tag" key={id}>
+                  {storeNameById.get(id) ?? `فروشگاه با شناسه ${id}`}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p>{filterType === 'handpicked' ? 'هنوز فروشگاهی انتخاب نشده است.' : 'این بلوک بر اساس فیلتر پویا رندر می‌شود.'}</p>
+          )}
+        </div>
+      )
+    }
+
+    return null
   }
 
   function setPageImageField(field: 'ogImage', value: string) {
@@ -788,6 +1027,7 @@ export function PageBuilderWorkspacePage({
                           <span>نمایش عنوان دسته‌ها</span>
                           <input checked={data.showTitles !== false} onChange={(event) => patchBlockData(block.id, 'showTitles', event.target.checked)} type="checkbox" />
                         </label>
+                        {renderSelectionPreview(block)}
                       </>
                     ) : null}
 
@@ -822,6 +1062,7 @@ export function PageBuilderWorkspacePage({
                           <span>Limit</span>
                           <input onChange={(event) => patchBlockData(block.id, 'limit', Number(event.target.value))} type="number" value={String(data.limit ?? 8)} />
                         </label>
+                        {renderSelectionPreview(block)}
                       </>
                     ) : null}
 
@@ -895,6 +1136,7 @@ export function PageBuilderWorkspacePage({
                             value={Array.isArray(data.vendorIds) ? (data.vendorIds as string[]).join(', ') : String(data.vendorIds ?? '')}
                           />
                         </label>
+                        {renderSelectionPreview(block)}
                       </>
                     ) : null}
 

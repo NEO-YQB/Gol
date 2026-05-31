@@ -563,6 +563,11 @@ export const adminApi = {
       search?: string
       categoryId?: number
       storeId?: number
+      productTypeId?: number
+      publicationStatus?: string
+      isPurchasable?: boolean
+      isArchived?: boolean
+      ids?: number[]
       minPrice?: number
       maxPrice?: number
     },
@@ -574,6 +579,11 @@ export const adminApi = {
     if (query?.search) params.set('search', query.search)
     if (query?.categoryId) params.set('categoryId', String(query.categoryId))
     if (query?.storeId) params.set('storeId', String(query.storeId))
+    if (query?.productTypeId) params.set('productTypeId', String(query.productTypeId))
+    if (query?.publicationStatus) params.set('publicationStatus', query.publicationStatus)
+    if (typeof query?.isPurchasable === 'boolean') params.set('isPurchasable', String(query.isPurchasable))
+    if (typeof query?.isArchived === 'boolean') params.set('isArchived', String(query.isArchived))
+    if (query?.ids?.length) params.set('ids', query.ids.join(','))
     if (typeof query?.minPrice === 'number') params.set('minPrice', String(query.minPrice))
     if (typeof query?.maxPrice === 'number') params.set('maxPrice', String(query.maxPrice))
 
