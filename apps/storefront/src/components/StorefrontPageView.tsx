@@ -201,9 +201,20 @@ function UserIcon() {
   )
 }
 
+function MenuIcon({ open }: { open: boolean }) {
+  return (
+    <svg aria-hidden="true" fill="none" height="18" viewBox="0 0 24 24" width="18">
+      <path d={open ? 'M6 6L18 18' : 'M4 7h16'} stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
+      <path d={open ? 'M18 6L6 18' : 'M4 12h16'} stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
+      {!open ? <path d="M4 17h16" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" /> : null}
+    </svg>
+  )
+}
+
 function StorefrontGlassHeader({ page, heroTouchesTop }: { page: EnrichedStorefrontPage; heroTouchesTop: boolean }) {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const header = useMemo(() => buildHeaderDefaults(page), [page])
 
   useEffect(() => {
@@ -233,6 +244,11 @@ function StorefrontGlassHeader({ page, heroTouchesTop }: { page: EnrichedStorefr
   const actionStyle = {
     background: header.actionBackgroundColor,
     color: header.actionTextColor,
+  }
+  const mobilePanelStyle = {
+    background: header.glassBackgroundColor,
+    borderColor: header.glassBorderColor,
+    color: textColor,
   }
 
   return (
@@ -274,6 +290,19 @@ function StorefrontGlassHeader({ page, heroTouchesTop }: { page: EnrichedStorefr
           </nav>
         </div>
         <div className="flex shrink-0 items-center gap-2 md:gap-3">
+          <button
+            aria-label="باز کردن منو"
+            className="inline-flex items-center justify-center rounded-full border p-3 md:hidden"
+            onClick={() => setIsMobileMenuOpen((current) => !current)}
+            style={{
+              color: textColor,
+              borderColor: header.glassBorderColor,
+              background: shouldShowGlass ? 'rgba(255,255,255,0.24)' : 'rgba(255,255,255,0.12)',
+            }}
+            type="button"
+          >
+            <MenuIcon open={isMobileMenuOpen} />
+          </button>
           <Link
             className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold shadow-[0_14px_30px_rgba(15,32,25,0.14)] transition-all duration-300 hover:translate-y-[-1px]"
             href="/cart"
@@ -351,6 +380,63 @@ function StorefrontGlassHeader({ page, heroTouchesTop }: { page: EnrichedStorefr
                   color: textColor,
                   borderColor: header.glassBorderColor,
                   background: shouldShowGlass ? 'rgba(255,255,255,0.24)' : 'rgba(255,255,255,0.12)',
+                }}
+              >
+                ثبت نام
+              </Link>
+            </div>
+          )}
+        </div>
+      </div>
+      <div
+        className={`pointer-events-auto mx-4 mt-3 overflow-hidden rounded-[28px] border shadow-[0_20px_45px_rgba(20,29,25,0.16)] backdrop-blur-2xl transition-all duration-300 ease-out md:hidden ${
+          isMobileMenuOpen ? 'max-h-[75vh] translate-y-0 opacity-100' : 'max-h-0 -translate-y-2 opacity-0'
+        }`}
+        style={mobilePanelStyle}
+      >
+        <div className="grid gap-2 p-4">
+          {header.menuItems.map((item) => (
+            <Link
+              className="rounded-2xl px-4 py-3 text-sm font-bold transition-all duration-300"
+              href={item.href}
+              key={`mobile-${item.label}-${item.href}`}
+              style={{
+                color: item.textColor || (item.highlighted ? header.actionTextColor : textColor),
+                background: item.backgroundColor || (item.highlighted ? header.actionBackgroundColor : 'rgba(255,255,255,0.2)'),
+              }}
+            >
+              {item.label}
+            </Link>
+          ))}
+          {header.authPreviewMode === 'authenticated' ? (
+            <>
+              <div className="rounded-2xl px-4 py-3 text-sm" style={{ background: 'rgba(255,255,255,0.18)' }}>
+                <strong className="block" style={{ color: textColor }}>سلام {header.authPreviewName || 'دوست گلینو'}</strong>
+                <span className="block text-xs" style={{ color: mutedTextColor }}>حساب کاربری</span>
+              </div>
+              {[
+                { label: 'پنل کاربری', href: '/account' },
+                { label: 'اطلاعات کاربری', href: '/account/profile' },
+                { label: 'کیف پول', href: '/account/wallet' },
+                { label: 'خروج', href: '/logout' },
+              ].map((item) => (
+                <Link className="rounded-2xl px-4 py-3 text-sm font-bold transition-colors hover:bg-white/30" href={item.href} key={`mobile-user-${item.href}`} style={{ color: textColor }}>
+                  {item.label}
+                </Link>
+              ))}
+            </>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              <Link className="inline-flex items-center justify-center rounded-2xl px-4 py-3 text-sm font-bold" href="/login" style={actionStyle}>
+                ورود
+              </Link>
+              <Link
+                className="inline-flex items-center justify-center rounded-2xl border px-4 py-3 text-sm font-bold"
+                href="/register"
+                style={{
+                  color: textColor,
+                  borderColor: header.glassBorderColor,
+                  background: 'rgba(255,255,255,0.16)',
                 }}
               >
                 ثبت نام

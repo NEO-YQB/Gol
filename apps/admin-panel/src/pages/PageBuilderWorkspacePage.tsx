@@ -772,6 +772,11 @@ export function PageBuilderWorkspacePage({
         return
       }
 
+      if (target === 'page:headerLogoImageUrl') {
+        updateForm('headerLogoImageUrl', uploaded.url)
+        return
+      }
+
       if (target.startsWith('block:')) {
         const parts = target.split(':')
         const blockId = parts[1]
@@ -1042,6 +1047,19 @@ export function PageBuilderWorkspacePage({
               <span>لوگوی برند (URL)</span>
               <input onChange={(event) => updateForm('headerLogoImageUrl', event.target.value)} type="text" value={form.headerLogoImageUrl} />
             </label>
+            <div className="admin-products-upload-card">
+              <div className="admin-products-upload-actions">
+                <button className="content-secondary-action" disabled={uploadingImageTarget === 'page:headerLogoImageUrl'} onClick={() => openImagePicker('page:headerLogoImageUrl')} type="button">
+                  {uploadingImageTarget === 'page:headerLogoImageUrl' ? 'در حال آپلود...' : 'انتخاب لوگو'}
+                </button>
+                <span className="admin-products-upload-hint">می‌توانی لوگوی هدر را همین‌جا آپلود کنی.</span>
+              </div>
+              {getImagePreview(form.headerLogoImageUrl) ? (
+                <div className="admin-products-image-preview">
+                  <img alt="Preview header logo" src={form.headerLogoImageUrl} />
+                </div>
+              ) : null}
+            </div>
             <label className="fm-field">
               <span>رنگ متن اصلی</span>
               <input onChange={(event) => updateForm('headerTextColor', event.target.value)} type="text" value={form.headerTextColor} />
