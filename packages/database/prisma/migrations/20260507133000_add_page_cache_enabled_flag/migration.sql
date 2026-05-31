@@ -1,0 +1,2 @@
+ALTER TABLE "Page"
+ADD COLUMN "cacheEnabled" BOOLEAN NOT NULL DEFAULT true;

@@ -24,6 +24,7 @@ type PersistedPageRecord = {
   slug: string;
   pageType: string;
   isActive: boolean;
+  cacheEnabled: boolean;
   metaTitle: string | null;
   metaDescription: string | null;
   keywords: string[];
@@ -68,6 +69,7 @@ export class PageBuilderService {
       slug: page.slug,
       pageType: page.pageType,
       isActive: page.isActive,
+      cacheEnabled: page.cacheEnabled,
       blocksCount: Array.isArray(page.blocks) ? page.blocks.length : 0,
       metaTitle: page.metaTitle,
       metaDescription: page.metaDescription,
@@ -167,6 +169,7 @@ export class PageBuilderService {
       slug,
       pageType,
       isActive: dto.isActive ?? false,
+      cacheEnabled: dto.cacheEnabled ?? true,
       metaTitle: this.normalizeNullableText(dto.metaTitle),
       metaDescription: this.normalizeNullableText(dto.metaDescription),
       keywords: this.normalizeKeywords(dto.keywords),
@@ -210,6 +213,7 @@ export class PageBuilderService {
         ? { pageType: nextPageType }
         : {}),
       ...(dto.isActive !== undefined ? { isActive: nextIsActive } : {}),
+      ...(dto.cacheEnabled !== undefined ? { cacheEnabled: dto.cacheEnabled } : {}),
       ...(dto.metaTitle !== undefined
         ? { metaTitle: this.normalizeNullableText(dto.metaTitle) }
         : {}),
@@ -324,6 +328,7 @@ export class PageBuilderService {
       slug: page.slug,
       pageType: page.pageType,
       isActive: page.isActive,
+      cacheEnabled: page.cacheEnabled,
       metaTitle: page.metaTitle,
       metaDescription: page.metaDescription,
       keywords: page.keywords,
@@ -345,6 +350,7 @@ export class PageBuilderService {
       title: page.title,
       slug: page.slug,
       pageType: page.pageType,
+      cacheEnabled: page.cacheEnabled,
       seo: {
         metaTitle: page.metaTitle,
         metaDescription: page.metaDescription,

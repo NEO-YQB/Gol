@@ -44,6 +44,7 @@ export type StorefrontPagePayload = {
   slug: string
   pageType: 'HOME' | 'LANDING' | 'CAMPAIGN' | 'STATIC'
   isActive: boolean
+  cacheEnabled?: boolean
   metaTitle?: string | null
   metaDescription?: string | null
   keywords?: string[]

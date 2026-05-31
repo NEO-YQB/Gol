@@ -15,6 +15,7 @@ export type StorefrontPage = {
   title: string
   slug: string
   pageType: 'HOME' | 'LANDING' | 'CAMPAIGN' | 'STATIC'
+  cacheEnabled?: boolean
   seo: StorefrontSeo
   blocks: Array<Record<string, unknown>>
   updatedAt?: string
@@ -110,9 +111,6 @@ type NextRequestInit = RequestInit & {
 async function request<T>(path: string, init?: NextRequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
-    next: {
-      revalidate: 60,
-    },
   })
 
   if (!response.ok) {
@@ -122,12 +120,26 @@ async function request<T>(path: string, init?: NextRequestInit): Promise<T> {
   return response.json() as Promise<T>
 }
 
+function requestCached<T>(path: string): Promise<T> {
+  return request<T>(path, {
+    next: {
+      revalidate: 60,
+    },
+  })
+}
+
+function requestNoStore<T>(path: string): Promise<T> {
+  return request<T>(path, {
+    cache: 'no-store',
+  })
+}
+
 const getCategories = cache(async (): Promise<CategorySummary[]> => {
-  return request<CategorySummary[]>('/categories')
+  return requestCached<CategorySummary[]>('/categories')
 })
 
 const getStores = cache(async (): Promise<StoreSummary[]> => {
-  return request<StoreSummary[]>('/stores')
+  return requestCached<StoreSummary[]>('/stores')
 })
 
 type ProductQuery = {
@@ -153,7 +165,7 @@ const getProducts = cache(async (_queryKey: string, query: ProductQuery): Promis
   if (query.search) params.set('search', query.search)
   if (query.sortBy) params.set('sortBy', query.sortBy)
 
-  const payload = await request<{ data?: ProductSummary[] } | ProductSummary[]>(`/products?${params.toString()}`)
+  const payload = await requestCached<{ data?: ProductSummary[] } | ProductSummary[]>(`/products?${params.toString()}`)
   const products = toArray<ProductSummary>(payload)
 
   if (!query.ids?.length) {
@@ -168,13 +180,51 @@ const getStorefrontPage = cache(async (slug: string): Promise<StorefrontPage | n
   const params = new URLSearchParams({ slug })
 
   try {
-    return await request<StorefrontPage>(`/pages/by-slug?${params.toString()}`)
+    return await requestCached<StorefrontPage>(`/pages/by-slug?${params.toString()}`)
   } catch {
     return null
   }
 })
 
-async function enrichBlock(block: Record<string, unknown>): Promise<EnrichedBlock> {
+async function getProductsNoStore(query: ProductQuery): Promise<ProductSummary[]> {
+  const params = new URLSearchParams()
+
+  params.set('publicationStatus', 'PUBLISHED')
+  params.set('isArchived', 'false')
+  params.set('isPurchasable', 'true')
+  params.set('limit', String(query.limit ?? 8))
+
+  if (query.categoryId) params.set('categoryId', query.categoryId)
+  if (query.productTypeId) params.set('productTypeId', query.productTypeId)
+  if (query.ids?.length) params.set('ids', query.ids.join(','))
+  if (query.search) params.set('search', query.search)
+  if (query.sortBy) params.set('sortBy', query.sortBy)
+
+  const payload = await requestNoStore<{ data?: ProductSummary[] } | ProductSummary[]>(`/products?${params.toString()}`)
+  const products = toArray<ProductSummary>(payload)
+
+  if (!query.ids?.length) {
+    return products
+  }
+
+  const order = new Map(query.ids.map((id, index) => [Number(id), index]))
+  return [...products].sort((left, right) => (order.get(left.id) ?? 999) - (order.get(right.id) ?? 999))
+}
+
+async function getStorefrontPageNoStore(slug: string): Promise<StorefrontPage | null> {
+  const params = new URLSearchParams({ slug })
+
+  try {
+    return await requestNoStore<StorefrontPage>(`/pages/by-slug?${params.toString()}`)
+  } catch {
+    return null
+  }
+}
+
+async function enrichBlock(
+  block: Record<string, unknown>,
+  cacheEnabled: boolean,
+): Promise<EnrichedBlock> {
   const normalizedBlock: EnrichedBlock = {
     id: String(block.id ?? ''),
     type: String(block.type ?? ''),
@@ -185,7 +235,7 @@ async function enrichBlock(block: Record<string, unknown>): Promise<EnrichedBloc
   }
 
   if (normalizedBlock.type === 'CATEGORY_CIRCLES') {
-    const categories = await getCategories()
+    const categories = cacheEnabled ? await getCategories() : await requestNoStore<CategorySummary[]>('/categories')
     const categoryIds = Array.isArray(normalizedBlock.data.categoryIds)
       ? normalizedBlock.data.categoryIds.map((item) => String(item))
       : []
@@ -205,30 +255,46 @@ async function enrichBlock(block: Record<string, unknown>): Promise<EnrichedBloc
     let products: ProductSummary[] = []
 
     if (filterType === 'category') {
-      products = await getProducts(`category:${String(filterValue)}:${sortBy}:${limit}`, {
+      products = await (cacheEnabled ? getProducts(`category:${String(filterValue)}:${sortBy}:${limit}`, {
         categoryId: String(filterValue ?? ''),
         sortBy,
         limit,
-      })
+      }) : getProductsNoStore({
+        categoryId: String(filterValue ?? ''),
+        sortBy,
+        limit,
+      }))
     } else if (filterType === 'productType') {
-      products = await getProducts(`productType:${String(filterValue)}:${sortBy}:${limit}`, {
+      products = await (cacheEnabled ? getProducts(`productType:${String(filterValue)}:${sortBy}:${limit}`, {
         productTypeId: String(filterValue ?? ''),
         sortBy,
         limit,
-      })
+      }) : getProductsNoStore({
+        productTypeId: String(filterValue ?? ''),
+        sortBy,
+        limit,
+      }))
     } else if (filterType === 'custom_list') {
       const ids = Array.isArray(filterValue) ? filterValue.map((item) => String(item)) : []
-      products = await getProducts(`ids:${ids.join(',')}:${sortBy}:${limit}`, {
+      products = await (cacheEnabled ? getProducts(`ids:${ids.join(',')}:${sortBy}:${limit}`, {
         ids,
         sortBy,
         limit,
-      })
+      }) : getProductsNoStore({
+        ids,
+        sortBy,
+        limit,
+      }))
     } else {
-      products = await getProducts(`search:${String(filterValue)}:${sortBy}:${limit}`, {
+      products = await (cacheEnabled ? getProducts(`search:${String(filterValue)}:${sortBy}:${limit}`, {
         search: String(filterValue ?? ''),
         sortBy,
         limit,
-      })
+      }) : getProductsNoStore({
+        search: String(filterValue ?? ''),
+        sortBy,
+        limit,
+      }))
     }
 
     return {
@@ -238,7 +304,7 @@ async function enrichBlock(block: Record<string, unknown>): Promise<EnrichedBloc
   }
 
   if (normalizedBlock.type === 'VENDOR_CAROUSEL') {
-    const stores = await getStores()
+    const stores = cacheEnabled ? await getStores() : await requestNoStore<StoreSummary[]>('/stores')
     const filterType = String(normalizedBlock.data.filterType ?? 'top_rated')
     const vendorIds = Array.isArray(normalizedBlock.data.vendorIds)
       ? normalizedBlock.data.vendorIds.map((item) => Number(item))
@@ -274,10 +340,11 @@ async function enrichBlock(block: Record<string, unknown>): Promise<EnrichedBloc
 export async function getEnrichedStorefrontPage(
   slugSegments?: string[],
 ): Promise<EnrichedStorefrontPage | null> {
-  const page = await getStorefrontPage(toPageSlug(slugSegments))
+  const page = await getStorefrontPageNoStore(toPageSlug(slugSegments))
   if (!page) return null
+  const cacheEnabled = page.cacheEnabled !== false
 
-  const blocks = await Promise.all((page.blocks ?? []).map((block) => enrichBlock(block)))
+  const blocks = await Promise.all((page.blocks ?? []).map((block) => enrichBlock(block, cacheEnabled)))
 
   return {
     ...page,

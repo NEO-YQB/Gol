@@ -50,6 +50,14 @@ export class CreatePageDto {
   @IsBoolean()
   isActive?: boolean;
 
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Enable storefront-side response caching for catalog/category/vendor enrichment.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  cacheEnabled?: boolean;
+
   @ApiPropertyOptional({ example: 'خرید آنلاین گل | صفحه اصلی' })
   @IsOptional()
   @IsString()

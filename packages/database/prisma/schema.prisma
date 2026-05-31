@@ -279,6 +279,7 @@ model Page {
   slug            String   @unique
   pageType        PageType @default(LANDING)
   isActive        Boolean  @default(false)
+  cacheEnabled    Boolean  @default(true)
   metaTitle       String?
   metaDescription String?
   keywords        String[] @default([])

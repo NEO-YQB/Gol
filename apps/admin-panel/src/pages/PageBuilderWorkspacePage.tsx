@@ -37,6 +37,7 @@ type PageForm = {
   slug: string
   pageType: StorefrontPageType
   isActive: boolean
+  cacheEnabled: boolean
   metaTitle: string
   metaDescription: string
   keywords: string
@@ -125,6 +126,7 @@ function createEmptyForm(): PageForm {
     slug: '/',
     pageType: 'HOME',
     isActive: false,
+    cacheEnabled: false,
     metaTitle: '',
     metaDescription: '',
     keywords: '',
@@ -155,6 +157,7 @@ function mapApiPageToForm(page: Record<string, unknown>): PageForm {
     slug: readText(page, ['slug'], '/'),
     pageType: readText(page, ['pageType'], 'LANDING') as StorefrontPageType,
     isActive: page.isActive === true,
+    cacheEnabled: page.cacheEnabled !== false,
     metaTitle: readText(page, ['metaTitle'], ''),
     metaDescription: readText(page, ['metaDescription'], ''),
     keywords: toTextArray(page.keywords).join(', '),
@@ -436,6 +439,7 @@ export function PageBuilderWorkspacePage({
       slug: form.slug.trim() || '/',
       pageType: form.pageType,
       isActive: form.isActive,
+      cacheEnabled: form.cacheEnabled,
       metaTitle: toOptionalText(form.metaTitle),
       metaDescription: toOptionalText(form.metaDescription),
       keywords: parseCsv(form.keywords),
@@ -595,6 +599,10 @@ export function PageBuilderWorkspacePage({
             <label className="fm-field page-builder-checkbox">
               <span>وضعیت انتشار</span>
               <input checked={form.isActive} onChange={(event) => updateForm('isActive', event.target.checked)} type="checkbox" />
+            </label>
+            <label className="fm-field page-builder-checkbox">
+              <span>فعال بودن کش storefront</span>
+              <input checked={form.cacheEnabled} onChange={(event) => updateForm('cacheEnabled', event.target.checked)} type="checkbox" />
             </label>
           </div>
         </SectionCard>
