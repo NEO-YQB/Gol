@@ -337,6 +337,47 @@ async function enrichBlock(
   return normalizedBlock
 }
 
+async function enrichBlockSafely(
+  block: Record<string, unknown>,
+  cacheEnabled: boolean,
+): Promise<EnrichedBlock> {
+  const fallbackBlock: EnrichedBlock = {
+    id: String(block.id ?? ''),
+    type: String(block.type ?? ''),
+    data:
+      typeof block.data === 'object' && block.data !== null
+        ? (block.data as Record<string, unknown>)
+        : {},
+  }
+
+  try {
+    return await enrichBlock(block, cacheEnabled)
+  } catch {
+    if (fallbackBlock.type === 'CATEGORY_CIRCLES') {
+      return {
+        ...fallbackBlock,
+        categories: [],
+      }
+    }
+
+    if (fallbackBlock.type === 'PRODUCT_CAROUSEL') {
+      return {
+        ...fallbackBlock,
+        products: [],
+      }
+    }
+
+    if (fallbackBlock.type === 'VENDOR_CAROUSEL') {
+      return {
+        ...fallbackBlock,
+        vendors: [],
+      }
+    }
+
+    return fallbackBlock
+  }
+}
+
 export async function getEnrichedStorefrontPage(
   slugSegments?: string[],
 ): Promise<EnrichedStorefrontPage | null> {
@@ -344,7 +385,7 @@ export async function getEnrichedStorefrontPage(
   if (!page) return null
   const cacheEnabled = page.cacheEnabled !== false
 
-  const blocks = await Promise.all((page.blocks ?? []).map((block) => enrichBlock(block, cacheEnabled)))
+  const blocks = await Promise.all((page.blocks ?? []).map((block) => enrichBlockSafely(block, cacheEnabled)))
 
   return {
     ...page,
