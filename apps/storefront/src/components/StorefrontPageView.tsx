@@ -1,8 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
 import { resolveAssetUrl, type CategorySummary, type EnrichedStorefrontPage, type ProductSummary, type StoreSummary } from '../lib/storefront'
+import { StorefrontHeader } from './StorefrontHeader'
+import { storefrontStyles } from './storefrontStyles'
 
 function formatPrice(value: number | null | undefined) {
   if (typeof value !== 'number' || Number.isNaN(value)) return '—'
@@ -29,11 +30,11 @@ function ProductCard({ product }: { product: ProductSummary }) {
   const categoryHref = product.category?.slug ? `/categories/${product.category.slug}` : null
 
   return (
-    <article className="group min-w-[240px] rounded-[28px] border border-black/5 bg-white/85 p-4 shadow-[0_20px_50px_rgba(37,24,8,0.08)] backdrop-blur transition duration-300 hover:-translate-y-1 hover:shadow-[0_26px_60px_rgba(37,24,8,0.12)]">
-      <Link className="mb-4 block overflow-hidden rounded-[24px] bg-[#f4eadc]" href={productHref}>
+    <article className={storefrontStyles.productCard}>
+      <Link className={storefrontStyles.productImageWrap} href={productHref}>
         <img
           alt={product.mainImageAlt || product.name}
-          className="h-56 w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+          className={storefrontStyles.productImage}
           src={resolveAssetUrl(product.mainImage)}
         />
       </Link>
@@ -84,8 +85,8 @@ function ProductCard({ product }: { product: ProductSummary }) {
 
 function CategoryCircle({ category }: { category: CategorySummary }) {
   return (
-    <Link className="group flex min-w-[120px] flex-col items-center gap-4 text-center" href={getCategoryHref(category)}>
-      <div className="relative h-28 w-28 overflow-hidden rounded-full border border-white/70 bg-[#f6eadc] shadow-[0_18px_36px_rgba(52,36,17,0.08)]">
+    <Link className={storefrontStyles.categoryCircle} href={getCategoryHref(category)}>
+      <div className={storefrontStyles.categoryCircleMedia}>
         {category.image ? (
           <img alt={category.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-110" src={resolveAssetUrl(category.image)} />
         ) : (
@@ -103,7 +104,7 @@ function VendorCard({ vendor }: { vendor: StoreSummary }) {
   const vendorHref = getVendorHref(vendor)
 
   return (
-    <article className="rounded-[28px] border border-white/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(250,244,234,0.95))] p-5 shadow-[0_20px_40px_rgba(48,33,10,0.08)]">
+    <article className={storefrontStyles.vendorCard}>
       <div className="mb-5 flex items-center gap-4">
         <div className="h-16 w-16 overflow-hidden rounded-[20px] bg-[#efe1d2]">
           {vendor.logo ? (
@@ -148,275 +149,13 @@ function indexSignature(page: EnrichedStorefrontPage) {
   return `آخرین به‌روزرسانی این صفحه: ${updatedAt}`
 }
 
-function buildHeaderDefaults(page: EnrichedStorefrontPage) {
-  const headerConfig = typeof page.headerConfig === 'object' && page.headerConfig !== null ? (page.headerConfig as Record<string, unknown>) : {}
-  const menuItems = Array.isArray(headerConfig.menuItems)
-    ? headerConfig.menuItems
-        .map((item) =>
-          typeof item === 'object' && item !== null
-            ? {
-                label: String((item as Record<string, unknown>).label ?? '').trim(),
-                href: String((item as Record<string, unknown>).href ?? '').trim(),
-                highlighted: (item as Record<string, unknown>).highlighted === true,
-                textColor: String((item as Record<string, unknown>).textColor ?? '').trim(),
-                backgroundColor: String((item as Record<string, unknown>).backgroundColor ?? '').trim(),
-              }
-            : null,
-        )
-        .filter((item): item is { label: string; href: string; highlighted: boolean; textColor: string; backgroundColor: string } => Boolean(item && item.label && item.href))
-    : []
-
-  return {
-    enabled: headerConfig.enabled !== false,
-    transparentOnTop: headerConfig.transparentOnTop !== false,
-    stickyVariant: String(headerConfig.stickyVariant ?? 'floating') === 'full' ? 'full' : 'floating',
-    brandLabel: String(headerConfig.brandLabel ?? 'گلینو'),
-    brandHref: String(headerConfig.brandHref ?? '/'),
-    logoImageUrl: String(headerConfig.logoImageUrl ?? '').trim(),
-    textColor: String(headerConfig.textColor ?? '#173126'),
-    mutedTextColor: String(headerConfig.mutedTextColor ?? '#6e6152'),
-    glassBackgroundColor: String(headerConfig.glassBackgroundColor ?? 'rgba(255,251,245,0.42)'),
-    glassBorderColor: String(headerConfig.glassBorderColor ?? 'rgba(255,255,255,0.2)'),
-    actionBackgroundColor: String(headerConfig.actionBackgroundColor ?? '#1f6a52'),
-    actionTextColor: String(headerConfig.actionTextColor ?? '#ffffff'),
-    authPreviewMode: String(headerConfig.authPreviewMode ?? 'guest') === 'authenticated' ? 'authenticated' : 'guest',
-    authPreviewName: String(headerConfig.authPreviewName ?? '').trim(),
-    menuItems,
-  }
-}
-
-function CartIcon() {
-  return (
-    <svg aria-hidden="true" fill="none" height="18" viewBox="0 0 24 24" width="18">
-      <path d="M3.5 4.5h1.6c.5 0 .94.33 1.08.82l.42 1.43m0 0 1.45 5.03c.14.49.58.82 1.09.82h7.92c.5 0 .94-.33 1.08-.82l1.34-4.55a1.13 1.13 0 0 0-1.08-1.45H6.6Zm3.3 11.75a1.4 1.4 0 1 1-2.8 0 1.4 1.4 0 0 1 2.8 0Zm8.2 0a1.4 1.4 0 1 1-2.8 0 1.4 1.4 0 0 1 2.8 0Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7" />
-    </svg>
-  )
-}
-
-function UserIcon() {
-  return (
-    <svg aria-hidden="true" fill="none" height="18" viewBox="0 0 24 24" width="18">
-      <path d="M12 12.25a4.13 4.13 0 1 0 0-8.25 4.13 4.13 0 0 0 0 8.25ZM5 19.25c1.57-2.76 4.14-4.13 7-4.13s5.43 1.37 7 4.13" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7" />
-    </svg>
-  )
-}
-
-function MenuIcon({ open }: { open: boolean }) {
-  return (
-    <svg aria-hidden="true" fill="none" height="18" viewBox="0 0 24 24" width="18">
-      <path d={open ? 'M6 6L18 18' : 'M4 7h16'} stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
-      <path d={open ? 'M18 6L6 18' : 'M4 12h16'} stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
-      {!open ? <path d="M4 17h16" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" /> : null}
-    </svg>
-  )
-}
-
-function StorefrontGlassHeader({ page, heroTouchesTop }: { page: EnrichedStorefrontPage; heroTouchesTop: boolean }) {
-  const [isScrolled, setIsScrolled] = useState(false)
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const header = useMemo(() => buildHeaderDefaults(page), [page])
-
-  useEffect(() => {
-    function onScroll() {
-      setIsScrolled(window.scrollY > 24)
-    }
-
-    onScroll()
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
-
-  if (!header.enabled) {
-    return null
-  }
-
-  const shouldFloat = isScrolled && header.stickyVariant === 'floating'
-  const shouldShowGlass = isScrolled || !header.transparentOnTop || !heroTouchesTop
-  const headerVars = {
-    '--header-text': shouldShowGlass ? header.textColor : '#ffffff',
-    '--header-muted-text': shouldShowGlass ? header.mutedTextColor : 'rgba(255,255,255,0.82)',
-    '--header-glass-bg': header.glassBackgroundColor,
-    '--header-glass-border': header.glassBorderColor,
-    '--header-action-bg': header.actionBackgroundColor,
-    '--header-action-text': header.actionTextColor,
-    '--header-soft-bg': shouldShowGlass ? 'rgba(255,255,255,0.24)' : 'rgba(255,255,255,0.12)',
-    '--header-nav-bg': shouldShowGlass ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.1)',
-  } as React.CSSProperties
-
-  return (
-    <header
-      className={`pointer-events-none fixed inset-x-0 top-0 z-50 transition-all duration-500 ease-out ${shouldFloat ? 'px-4 pt-4 md:px-8' : 'px-0 pt-0'}`}
-      style={headerVars}
-    >
-      <div
-        className={`pointer-events-auto mx-auto flex items-center justify-between gap-4 transition-all duration-500 ease-out ${
-          shouldFloat ? 'max-w-[1280px] rounded-[28px] px-5 py-3 md:px-7' : 'max-w-[1440px] px-4 py-5 md:px-8'
-        } ${
-          shouldShowGlass
-            ? 'border border-white/20 bg-[rgba(255,251,245,0.42)] shadow-[0_20px_55px_rgba(24,31,28,0.12)] backdrop-blur-2xl'
-            : 'border border-transparent bg-transparent shadow-none backdrop-blur-0'
-        } border-[var(--header-glass-border)] ${shouldShowGlass ? 'bg-[var(--header-glass-bg)]' : ''}`}
-      >
-        <div className="flex min-w-0 flex-1 items-center gap-4 md:gap-8">
-          <Link className={`shrink-0 text-[var(--header-text)] transition-all duration-500 ${isScrolled ? 'text-sm md:text-base' : 'text-base md:text-lg'}`} href={header.brandHref}>
-            {header.logoImageUrl ? (
-              <img alt={header.brandLabel} className="h-10 w-auto object-contain md:h-11" src={resolveAssetUrl(header.logoImageUrl)} />
-            ) : (
-              <span className="font-black tracking-[0.14em]">{header.brandLabel}</span>
-            )}
-          </Link>
-          <nav className="hidden min-w-0 flex-wrap items-center gap-2 md:flex md:gap-3">
-            {header.menuItems.map((item) => (
-              <Link
-                className={`rounded-full px-4 py-2 text-sm font-bold transition-all duration-300 hover:translate-y-[-1px] ${
-                  item.highlighted
-                    ? 'bg-[var(--header-action-bg)] text-[var(--header-action-text)]'
-                    : 'bg-[var(--header-nav-bg)] text-[var(--header-text)]'
-                }`}
-                href={item.href}
-                key={`${item.label}-${item.href}`}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
-        <div className="flex shrink-0 items-center gap-2 md:gap-3">
-          <button
-            aria-label="باز کردن منو"
-            className="inline-flex items-center justify-center rounded-full border border-[var(--header-glass-border)] bg-[var(--header-soft-bg)] p-3 text-[var(--header-text)] md:hidden"
-            onClick={() => setIsMobileMenuOpen((current) => !current)}
-            type="button"
-          >
-            <MenuIcon open={isMobileMenuOpen} />
-          </button>
-          <Link
-            className="inline-flex items-center gap-2 rounded-full bg-[var(--header-action-bg)] px-4 py-2 text-sm font-bold text-[var(--header-action-text)] shadow-[0_14px_30px_rgba(15,32,25,0.14)] transition-all duration-300 hover:translate-y-[-1px]"
-            href="/cart"
-          >
-            <CartIcon />
-            <span className="hidden md:inline">سبد خرید</span>
-          </Link>
-          {header.authPreviewMode === 'authenticated' ? (
-            <div className="relative">
-              <button
-                className="inline-flex items-center gap-3 rounded-full border border-[var(--header-glass-border)] bg-[var(--header-glass-bg)] px-4 py-2 text-right text-sm font-bold text-[var(--header-text)] shadow-[0_14px_30px_rgba(15,32,25,0.12)] transition-all duration-300"
-                onClick={() => setIsUserMenuOpen((current) => !current)}
-                type="button"
-              >
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[var(--header-action-bg)] text-[var(--header-action-text)]">
-                  <UserIcon />
-                </span>
-                <span className="hidden leading-5 md:block">
-                  <strong className="block text-[var(--header-text)]">سلام {header.authPreviewName || 'دوست گلینو'}</strong>
-                  <span className="block text-xs font-medium text-[var(--header-muted-text)]">حساب کاربری</span>
-                </span>
-              </button>
-              {isUserMenuOpen ? (
-                <div
-                  className="absolute left-0 top-[calc(100%+8px)] min-w-[220px] rounded-[24px] border border-[var(--header-glass-border)] bg-[var(--header-glass-bg)] p-3 text-[var(--header-text)] shadow-[0_20px_45px_rgba(20,29,25,0.16)] backdrop-blur-2xl"
-                >
-                  <div className="grid gap-2">
-                    {[
-                      { label: 'پنل کاربری', href: '/account' },
-                      { label: 'اطلاعات کاربری', href: '/account/profile' },
-                      { label: 'کیف پول', href: '/account/wallet' },
-                      { label: 'خروج', href: '/logout' },
-                    ].map((item) => (
-                      <Link
-                        className="rounded-2xl border border-[var(--header-glass-border)] bg-[var(--header-glass-bg)] px-4 py-3 text-sm font-bold text-[var(--header-text)] transition-colors hover:bg-white/20"
-                        href={item.href}
-                        key={item.href}
-                      >
-                        {item.label}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <Link
-                className="inline-flex items-center gap-2 rounded-full bg-[var(--header-action-bg)] px-4 py-2 text-sm font-bold text-[var(--header-action-text)] shadow-[0_14px_30px_rgba(15,32,25,0.14)] transition-all duration-300 hover:translate-y-[-1px]"
-                href="/login"
-              >
-                <UserIcon />
-                <span className="hidden md:inline">ورود</span>
-              </Link>
-              <Link
-                className="hidden rounded-full border border-[var(--header-glass-border)] bg-[var(--header-soft-bg)] px-4 py-2 text-sm font-bold text-[var(--header-text)] md:inline-flex"
-                href="/register"
-              >
-                ثبت نام
-              </Link>
-            </div>
-          )}
-        </div>
-      </div>
-      <div
-        className={`pointer-events-auto mx-4 mt-3 overflow-hidden rounded-[28px] border shadow-[0_20px_45px_rgba(20,29,25,0.16)] backdrop-blur-2xl transition-all duration-300 ease-out md:hidden ${
-          isMobileMenuOpen ? 'max-h-[75vh] translate-y-0 opacity-100' : 'max-h-0 -translate-y-2 opacity-0'
-        } border-[var(--header-glass-border)] bg-[var(--header-glass-bg)] text-[var(--header-text)]`}
-      >
-        <div className="grid gap-2 p-4">
-          {header.menuItems.map((item) => (
-            <Link
-              className={`rounded-2xl px-4 py-3 text-sm font-bold transition-all duration-300 ${
-                item.highlighted
-                  ? 'bg-[var(--header-action-bg)] text-[var(--header-action-text)]'
-                  : 'bg-[var(--header-nav-bg)] text-[var(--header-text)]'
-              }`}
-              href={item.href}
-              key={`mobile-${item.label}-${item.href}`}
-            >
-              {item.label}
-            </Link>
-          ))}
-          {header.authPreviewMode === 'authenticated' ? (
-            <>
-              <div className="rounded-2xl bg-[var(--header-soft-bg)] px-4 py-3 text-sm">
-                <strong className="block text-[var(--header-text)]">سلام {header.authPreviewName || 'دوست گلینو'}</strong>
-                <span className="block text-xs text-[var(--header-muted-text)]">حساب کاربری</span>
-              </div>
-              {[
-                { label: 'پنل کاربری', href: '/account' },
-                { label: 'اطلاعات کاربری', href: '/account/profile' },
-                { label: 'کیف پول', href: '/account/wallet' },
-                { label: 'خروج', href: '/logout' },
-              ].map((item) => (
-                <Link className="rounded-2xl px-4 py-3 text-sm font-bold text-[var(--header-text)] transition-colors hover:bg-white/30" href={item.href} key={`mobile-user-${item.href}`}>
-                  {item.label}
-                </Link>
-              ))}
-            </>
-          ) : (
-            <div className="grid grid-cols-2 gap-2">
-              <Link className="inline-flex items-center justify-center rounded-2xl bg-[var(--header-action-bg)] px-4 py-3 text-sm font-bold text-[var(--header-action-text)]" href="/login">
-                ورود
-              </Link>
-              <Link
-                className="inline-flex items-center justify-center rounded-2xl border border-[var(--header-glass-border)] bg-[var(--header-soft-bg)] px-4 py-3 text-sm font-bold text-[var(--header-text)]"
-                href="/register"
-              >
-                ثبت نام
-              </Link>
-            </div>
-          )}
-        </div>
-      </div>
-    </header>
-  )
-}
-
 export function StorefrontPageView({ page }: { page: EnrichedStorefrontPage }) {
   const firstHeroBlock = page.blocks.find((block) => block.type === 'HERO_HEADER')
   const heroTouchesTop = firstHeroBlock ? firstHeroBlock.data.flushTop !== false : false
 
   return (
     <>
-      <StorefrontGlassHeader heroTouchesTop={heroTouchesTop} page={page} />
+      <StorefrontHeader heroTouchesTop={heroTouchesTop} page={page} />
       <main className="min-h-screen bg-[#f5efe4] text-[#173126]">
         <div className={`mx-auto max-w-[1440px] px-4 pb-20 md:px-8 ${heroTouchesTop ? 'pt-0' : 'pt-4'}`}>
           {page.blocks.map((block, index) => {
@@ -442,17 +181,9 @@ export function StorefrontPageView({ page }: { page: EnrichedStorefrontPage }) {
                     <picture className="absolute inset-0 -z-10 block h-full w-full">
                       {mobileImageUrl ? <source media="(max-width: 767px)" srcSet={mobileImageUrl} /> : null}
                       {imageUrl ? (
-                        <img
-                          alt={String(block.data.title ?? page.title)}
-                          className="h-full w-full object-cover"
-                          src={imageUrl}
-                        />
+                        <img alt={String(block.data.title ?? page.title)} className="h-full w-full object-cover" src={imageUrl} />
                       ) : mobileImageUrl ? (
-                        <img
-                          alt={String(block.data.title ?? page.title)}
-                          className="h-full w-full object-cover"
-                          src={mobileImageUrl}
-                        />
+                        <img alt={String(block.data.title ?? page.title)} className="h-full w-full object-cover" src={mobileImageUrl} />
                       ) : null}
                     </picture>
                   ) : (
@@ -465,19 +196,14 @@ export function StorefrontPageView({ page }: { page: EnrichedStorefrontPage }) {
                       <p className="mb-4 inline-flex rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.34em] text-white/85">
                         {page.pageType === 'HOME' ? 'homepage signature' : 'campaign spotlight'}
                       </p>
-                      <h1 className="text-4xl font-black leading-[1.15] md:text-6xl">
-                        {String(block.data.title ?? page.title)}
-                      </h1>
+                      <h1 className="text-4xl font-black leading-[1.15] md:text-6xl">{String(block.data.title ?? page.title)}</h1>
                       {block.data.subtitle ? (
                         <p className={`mt-6 text-base leading-8 text-white/82 md:text-lg ${contentAlign === 'center' ? 'mx-auto max-w-2xl' : 'max-w-2xl'}`}>
                           {String(block.data.subtitle)}
                         </p>
                       ) : null}
                       {block.data.ctaText && block.data.ctaLink ? (
-                        <a
-                          className="mt-8 inline-flex items-center rounded-full bg-[#fff3e7] px-6 py-3 text-sm font-black text-[#173126] transition hover:bg-white"
-                          href={String(block.data.ctaLink)}
-                        >
+                        <a className="mt-8 inline-flex items-center rounded-full bg-[#fff3e7] px-6 py-3 text-sm font-black text-[#173126] transition hover:bg-white" href={String(block.data.ctaLink)}>
                           {String(block.data.ctaText)}
                         </a>
                       ) : null}
@@ -489,7 +215,6 @@ export function StorefrontPageView({ page }: { page: EnrichedStorefrontPage }) {
 
             if (block.type === 'CATEGORY_CIRCLES') {
               const categories = Array.isArray(block.categories) ? block.categories : []
-
               return (
                 <section className="mb-8 rounded-[36px] bg-[linear-gradient(180deg,rgba(255,253,248,0.96),rgba(248,241,230,0.95))] px-5 py-8 shadow-[0_18px_50px_rgba(40,29,12,0.08)] md:px-8" key={block.id}>
                   <div className="mb-6 flex items-center justify-between gap-4">
@@ -509,7 +234,6 @@ export function StorefrontPageView({ page }: { page: EnrichedStorefrontPage }) {
 
             if (block.type === 'PRODUCT_CAROUSEL') {
               const products = Array.isArray(block.products) ? block.products : []
-
               return (
                 <section className="mb-8" key={block.id}>
                   <div className="mb-6 flex items-end justify-between gap-4">
@@ -530,15 +254,8 @@ export function StorefrontPageView({ page }: { page: EnrichedStorefrontPage }) {
 
             if (block.type === 'EDITORIAL_RICH_BLOCK') {
               const imageOnLeft = String(block.data.imagePosition ?? 'right') === 'left'
-
               return (
-                <section
-                  className="mb-8 grid gap-0 overflow-hidden rounded-[40px] shadow-[0_24px_60px_rgba(38,24,9,0.08)] md:grid-cols-2"
-                  key={block.id}
-                  style={{
-                    background: String(block.data.backgroundColor || '#efe4d3'),
-                  }}
-                >
+                <section className="mb-8 grid gap-0 overflow-hidden rounded-[40px] shadow-[0_24px_60px_rgba(38,24,9,0.08)] md:grid-cols-2" key={block.id} style={{ background: String(block.data.backgroundColor || '#efe4d3') }}>
                   <div className={`${imageOnLeft ? 'md:order-1' : 'md:order-2'} h-full min-h-[320px]`}>
                     <img alt={String(block.data.title ?? 'Editorial block')} className="h-full w-full object-cover" src={resolveAssetUrl(String(block.data.imageUrl ?? ''))} />
                   </div>
@@ -558,7 +275,6 @@ export function StorefrontPageView({ page }: { page: EnrichedStorefrontPage }) {
 
             if (block.type === 'VENDOR_CAROUSEL') {
               const vendors = Array.isArray(block.vendors) ? block.vendors : []
-
               return (
                 <section className="mb-8" key={block.id}>
                   <div className="mb-6 flex items-end justify-between gap-4">
@@ -579,13 +295,8 @@ export function StorefrontPageView({ page }: { page: EnrichedStorefrontPage }) {
 
             if (block.type === 'CAMPAIGN_GRID') {
               const banners = Array.isArray(block.data.banners) ? (block.data.banners as Array<Record<string, unknown>>) : []
-
               return (
-                <section
-                  className="mb-8 rounded-[40px] px-5 py-8 shadow-[0_18px_50px_rgba(40,29,12,0.08)] md:px-8"
-                  key={block.id}
-                  style={{ background: String(block.data.backgroundColor || '#f2e7d8') }}
-                >
+                <section className="mb-8 rounded-[40px] px-5 py-8 shadow-[0_18px_50px_rgba(40,29,12,0.08)] md:px-8" key={block.id} style={{ background: String(block.data.backgroundColor || '#f2e7d8') }}>
                   {block.data.title ? (
                     <div className="mb-6">
                       <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#9f7e56]">campaign grid</p>
@@ -622,9 +333,7 @@ export function StorefrontPageView({ page }: { page: EnrichedStorefrontPage }) {
             </section>
           ) : null}
 
-          <footer className="px-2 pt-6 text-center text-sm text-[#7b6b58]">
-            {indexSignature(page)}
-          </footer>
+          <footer className="px-2 pt-6 text-center text-sm text-[#7b6b58]">{indexSignature(page)}</footer>
         </div>
       </main>
     </>
