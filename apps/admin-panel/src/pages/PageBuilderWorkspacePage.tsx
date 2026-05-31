@@ -33,6 +33,7 @@ type BlockForm = {
 }
 
 type PreviewRecord = Record<string, unknown>
+type CategoryOption = PreviewRecord & { depth: number }
 
 type PageForm = {
   title: string
@@ -142,6 +143,41 @@ function createEmptyForm(): PageForm {
 function toTextArray(value: unknown) {
   if (!Array.isArray(value)) return []
   return value.map((item) => String(item)).filter(Boolean)
+}
+
+function normalizeIdList(value: unknown) {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item).trim()).filter(Boolean)
+  }
+
+  return String(value ?? '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
+function flattenCategoryOptions(categories: PreviewRecord[], depth = 0): CategoryOption[] {
+  return categories.flatMap((category) => {
+    const children = toArray(category.children)
+    return [{ ...category, depth }, ...flattenCategoryOptions(children, depth + 1)]
+  })
+}
+
+function collectCategoryAndChildIds(categories: PreviewRecord[], targetId: string): string[] {
+  for (const category of categories) {
+    const categoryId = readText(category, ['id'], '')
+
+    if (categoryId === targetId) {
+      return flattenCategoryOptions([category]).map((item) => readText(item, ['id'], '')).filter(Boolean)
+    }
+
+    const nestedIds = collectCategoryAndChildIds(toArray(category.children), targetId)
+    if (nestedIds.length) {
+      return nestedIds
+    }
+  }
+
+  return targetId ? [targetId] : []
 }
 
 function mapApiPageToForm(page: Record<string, unknown>): PageForm {
@@ -308,13 +344,19 @@ export function PageBuilderWorkspacePage({
 
           try {
             if (filterType === 'category') {
-              const categoryId = Number(String(rawFilterValue ?? '').trim())
-              if (!Number.isInteger(categoryId) || categoryId <= 0) return [block.id, []] as const
+              const selectedCategoryId = String(rawFilterValue ?? '').trim()
+              if (!selectedCategoryId) return [block.id, []] as const
+
+              const categoryIds = collectCategoryAndChildIds(referenceCategories, selectedCategoryId)
+                .map((item) => Number(item))
+                .filter((item) => Number.isInteger(item) && item > 0)
+
+              if (!categoryIds.length) return [block.id, []] as const
 
               const payload = await adminApi.getProducts(session, {
                 page: 1,
                 limit,
-                categoryId,
+                categoryIds,
                 publicationStatus: 'PUBLISHED',
                 isPurchasable: true,
                 isArchived: false,
@@ -380,7 +422,7 @@ export function PageBuilderWorkspacePage({
     return () => {
       active = false
     }
-  }, [form.blocks, session])
+  }, [form.blocks, referenceCategories, session])
 
   const blockSummary = useMemo(() => {
     return form.blocks.reduce<Record<PageBlockType, number>>((acc, block) => {
@@ -397,10 +439,13 @@ export function PageBuilderWorkspacePage({
   }, [form.blocks])
 
   const categoryNameById = useMemo(() => {
+    const categories = flattenCategoryOptions(referenceCategories)
     return new Map(
-      referenceCategories.map((category) => [readText(category, ['id'], ''), readText(category, ['name', 'title'], 'بدون نام')]),
+      categories.map((category) => [readText(category, ['id'], ''), readText(category, ['name', 'title'], 'بدون نام')]),
     )
   }, [referenceCategories])
+
+  const categoryOptions = useMemo(() => flattenCategoryOptions(referenceCategories), [referenceCategories])
 
   const storeNameById = useMemo(() => {
     return new Map(
@@ -523,13 +568,7 @@ export function PageBuilderWorkspacePage({
 
   function renderSelectionPreview(block: BlockForm) {
     if (block.type === 'CATEGORY_CIRCLES') {
-      const rawIds = block.data.categoryIds
-      const categoryIds = Array.isArray(rawIds)
-        ? rawIds.map((item) => String(item).trim()).filter(Boolean)
-        : String(rawIds ?? '')
-            .split(',')
-            .map((item) => item.trim())
-            .filter(Boolean)
+      const categoryIds = normalizeIdList(block.data.categoryIds)
 
       return (
         <div className="page-builder-preview-card page-builder-field--wide">
@@ -586,13 +625,7 @@ export function PageBuilderWorkspacePage({
 
     if (block.type === 'VENDOR_CAROUSEL') {
       const filterType = String(block.data.filterType ?? 'top_rated')
-      const rawIds = block.data.vendorIds
-      const vendorIds = Array.isArray(rawIds)
-        ? rawIds.map((item) => String(item).trim()).filter(Boolean)
-        : String(rawIds ?? '')
-            .split(',')
-            .map((item) => item.trim())
-            .filter(Boolean)
+      const vendorIds = normalizeIdList(block.data.vendorIds)
 
       return (
         <div className="page-builder-preview-card page-builder-field--wide">
@@ -690,7 +723,7 @@ export function PageBuilderWorkspacePage({
           return {
             ...block,
             data: {
-              categoryIds: parseCsv(String(block.data.categoryIds ?? '')),
+              categoryIds: normalizeIdList(block.data.categoryIds),
               showTitles: block.data.showTitles !== false,
             },
           }
@@ -720,7 +753,7 @@ export function PageBuilderWorkspacePage({
               filterType,
               ...(filterType === 'handpicked'
                 ? {
-                    vendorIds: parseCsv(String(block.data.vendorIds ?? '')),
+                    vendorIds: normalizeIdList(block.data.vendorIds),
                   }
                 : {}),
             },
@@ -1023,6 +1056,33 @@ export function PageBuilderWorkspacePage({
                           />
                           <small>به صورت comma-separated مثل `1, 2, 9`</small>
                         </label>
+                        <label className="fm-field page-builder-field--wide">
+                          <span>انتخاب از لیست دسته‌ها</span>
+                          <select
+                            multiple
+                            onChange={(event) =>
+                              patchBlockData(
+                                block.id,
+                                'categoryIds',
+                                Array.from(event.target.selectedOptions).map((option) => option.value),
+                              )
+                            }
+                            value={normalizeIdList(data.categoryIds)}
+                          >
+                            {categoryOptions.map((category) => {
+                              const categoryId = readText(category, ['id'], '')
+                              const categoryName = readText(category, ['name', 'title'], 'بدون نام')
+                              const prefix = category.depth > 0 ? `${'-- '.repeat(category.depth)}` : ''
+
+                              return (
+                                <option key={categoryId} value={categoryId}>
+                                  {`${prefix}${categoryName}`}
+                                </option>
+                              )
+                            })}
+                          </select>
+                          <small>برای انتخاب چند دسته، `Ctrl/Cmd` را نگه دار.</small>
+                        </label>
                         <label className="fm-field page-builder-checkbox">
                           <span>نمایش عنوان دسته‌ها</span>
                           <input checked={data.showTitles !== false} onChange={(event) => patchBlockData(block.id, 'showTitles', event.target.checked)} type="checkbox" />
@@ -1046,10 +1106,44 @@ export function PageBuilderWorkspacePage({
                             <option value="custom_list">custom_list</option>
                           </select>
                         </label>
-                        <label className="fm-field">
-                          <span>Filter value</span>
-                          <input onChange={(event) => patchBlockData(block.id, 'filterValue', event.target.value)} type="text" value={String(data.filterValue ?? '')} />
-                        </label>
+                        {String(data.filterType ?? 'category') === 'category' ? (
+                          <label className="fm-field">
+                            <span>Category</span>
+                            <select onChange={(event) => patchBlockData(block.id, 'filterValue', event.target.value)} value={String(data.filterValue ?? '')}>
+                              <option value="">انتخاب دسته</option>
+                              {categoryOptions.map((category) => {
+                                const categoryId = readText(category, ['id'], '')
+                                const categoryName = readText(category, ['name', 'title'], 'بدون نام')
+                                const prefix = category.depth > 0 ? `${'-- '.repeat(category.depth)}` : ''
+
+                                return (
+                                  <option key={categoryId} value={categoryId}>
+                                    {`${prefix}${categoryName}`}
+                                  </option>
+                                )
+                              })}
+                            </select>
+                          </label>
+                        ) : null}
+                        {String(data.filterType ?? 'category') === 'productType' ? (
+                          <label className="fm-field">
+                            <span>Product type</span>
+                            <select onChange={(event) => patchBlockData(block.id, 'filterValue', event.target.value)} value={String(data.filterValue ?? '')}>
+                              <option value="">انتخاب نوع محصول</option>
+                              {referenceProductTypes.map((productType) => (
+                                <option key={readText(productType, ['id'], '')} value={readText(productType, ['id'], '')}>
+                                  {readText(productType, ['name', 'title'], 'بدون نام')}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        ) : null}
+                        {String(data.filterType ?? 'category') === 'tag' || String(data.filterType ?? 'category') === 'custom_list' ? (
+                          <label className="fm-field">
+                            <span>Filter value</span>
+                            <input onChange={(event) => patchBlockData(block.id, 'filterValue', event.target.value)} type="text" value={String(data.filterValue ?? '')} />
+                          </label>
+                        ) : null}
                         <label className="fm-field">
                           <span>Sort by</span>
                           <select onChange={(event) => patchBlockData(block.id, 'sortBy', event.target.value)} value={String(data.sortBy ?? 'newest')}>

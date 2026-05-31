@@ -562,6 +562,7 @@ export const adminApi = {
       limit?: number
       search?: string
       categoryId?: number
+      categoryIds?: number[]
       storeId?: number
       productTypeId?: number
       publicationStatus?: string
@@ -578,6 +579,7 @@ export const adminApi = {
     if (query?.limit) params.set('limit', String(query.limit))
     if (query?.search) params.set('search', query.search)
     if (query?.categoryId) params.set('categoryId', String(query.categoryId))
+    if (query?.categoryIds?.length) params.set('categoryIds', query.categoryIds.join(','))
     if (query?.storeId) params.set('storeId', String(query.storeId))
     if (query?.productTypeId) params.set('productTypeId', String(query.productTypeId))
     if (query?.publicationStatus) params.set('publicationStatus', query.publicationStatus)

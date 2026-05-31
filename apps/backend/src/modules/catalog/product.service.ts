@@ -222,6 +222,7 @@ export class ProductService {
       limit = 10,
       search,
       categoryId,
+      categoryIds,
       storeId,
       productTypeId,
       ids,
@@ -239,10 +240,20 @@ export class ProductService {
           .map((value) => Number(value.trim()))
           .filter((value) => Number.isInteger(value) && value > 0)
       : [];
+    const categoryIdList = categoryIds
+      ? categoryIds
+          .split(',')
+          .map((value) => Number(value.trim()))
+          .filter((value) => Number.isInteger(value) && value > 0)
+      : [];
 
     const where: any = {
       ...(search && { name: { contains: search, mode: 'insensitive' } }),
-      ...(categoryId && { categoryId }),
+      ...(categoryIdList.length > 0
+        ? { categoryId: { in: categoryIdList } }
+        : categoryId
+          ? { categoryId }
+          : {}),
       ...(storeId && { storeId }),
       ...(productTypeId && { productTypeId }),
       ...(productIds.length > 0 ? { id: { in: productIds } } : {}),

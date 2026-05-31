@@ -27,6 +27,7 @@ export type CategorySummary = {
   name: string
   slug: string
   image?: string | null
+  children?: CategorySummary[]
 }
 
 export type ProductSummary = {
@@ -90,6 +91,28 @@ function toArray<T>(value: unknown): T[] {
   return Array.isArray(record.data) ? (record.data as T[]) : []
 }
 
+function flattenCategories(categories: CategorySummary[], depth = 0): Array<CategorySummary & { depth: number }> {
+  return categories.flatMap((category) => {
+    const children = Array.isArray(category.children) ? category.children : []
+    return [{ ...category, depth }, ...flattenCategories(children, depth + 1)]
+  })
+}
+
+function collectCategoryIds(categories: CategorySummary[], targetId: string): string[] {
+  for (const category of categories) {
+    if (String(category.id) === targetId) {
+      return flattenCategories([category]).map((item) => String(item.id))
+    }
+
+    const nested = Array.isArray(category.children) ? collectCategoryIds(category.children, targetId) : []
+    if (nested.length) {
+      return nested
+    }
+  }
+
+  return targetId ? [targetId] : []
+}
+
 function toPageSlug(slugSegments?: string[]) {
   if (!slugSegments || slugSegments.length === 0) return '/'
   return slugSegments.join('/')
@@ -145,6 +168,7 @@ const getStores = cache(async (): Promise<StoreSummary[]> => {
 type ProductQuery = {
   limit?: number
   categoryId?: string
+  categoryIds?: string[]
   productTypeId?: string
   ids?: string[]
   search?: string
@@ -160,6 +184,7 @@ const getProducts = cache(async (_queryKey: string, query: ProductQuery): Promis
   params.set('limit', String(query.limit ?? 8))
 
   if (query.categoryId) params.set('categoryId', query.categoryId)
+  if (query.categoryIds?.length) params.set('categoryIds', query.categoryIds.join(','))
   if (query.productTypeId) params.set('productTypeId', query.productTypeId)
   if (query.ids?.length) params.set('ids', query.ids.join(','))
   if (query.search) params.set('search', query.search)
@@ -195,6 +220,7 @@ async function getProductsNoStore(query: ProductQuery): Promise<ProductSummary[]
   params.set('limit', String(query.limit ?? 8))
 
   if (query.categoryId) params.set('categoryId', query.categoryId)
+  if (query.categoryIds?.length) params.set('categoryIds', query.categoryIds.join(','))
   if (query.productTypeId) params.set('productTypeId', query.productTypeId)
   if (query.ids?.length) params.set('ids', query.ids.join(','))
   if (query.search) params.set('search', query.search)
@@ -235,7 +261,8 @@ async function enrichBlock(
   }
 
   if (normalizedBlock.type === 'CATEGORY_CIRCLES') {
-    const categories = cacheEnabled ? await getCategories() : await requestNoStore<CategorySummary[]>('/categories')
+    const categoryTree = cacheEnabled ? await getCategories() : await requestNoStore<CategorySummary[]>('/categories')
+    const categories = flattenCategories(categoryTree)
     const categoryIds = Array.isArray(normalizedBlock.data.categoryIds)
       ? normalizedBlock.data.categoryIds.map((item) => String(item))
       : []
@@ -255,12 +282,17 @@ async function enrichBlock(
     let products: ProductSummary[] = []
 
     if (filterType === 'category') {
+      const categoryIds = collectCategoryIds(
+        cacheEnabled ? await getCategories() : await requestNoStore<CategorySummary[]>('/categories'),
+        String(filterValue ?? ''),
+      )
+
       products = await (cacheEnabled ? getProducts(`category:${String(filterValue)}:${sortBy}:${limit}`, {
-        categoryId: String(filterValue ?? ''),
+        categoryIds,
         sortBy,
         limit,
       }) : getProductsNoStore({
-        categoryId: String(filterValue ?? ''),
+        categoryIds,
         sortBy,
         limit,
       }))

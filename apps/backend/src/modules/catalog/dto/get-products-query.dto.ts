@@ -35,6 +35,17 @@ export class GetProductsQueryDto {
   @IsNumber()
   categoryId?: number;
 
+  @ApiPropertyOptional({
+    description: 'فیلتر بر اساس چند شناسه دسته‌بندی به صورت comma-separated',
+    example: '12,18,24',
+  })
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d+(,\d+)*$/, {
+    message: 'categoryIds باید به صورت comma-separated از اعداد باشد',
+  })
+  categoryIds?: string;
+
   @ApiPropertyOptional({ description: 'فیلتر بر اساس شناسه فروشگاه' })
   @IsOptional()
   @Type(() => Number)
