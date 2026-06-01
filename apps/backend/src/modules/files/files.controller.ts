@@ -13,10 +13,9 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AbilitiesGuard } from '../../common/guards/abilities.guard';
 import { CheckAbilities } from '../../common/decorators/check-abilities.decorator';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname } from 'path';
-import { v4 as uuidv4 } from 'uuid';
 import { ApiTags, ApiOperation, ApiConsumes, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger'; 
+import { memoryStorage } from 'multer';
+import { FilesService } from './files.service';
 
 export const multerOptions = {
   limits: {
@@ -37,14 +36,7 @@ export const multerOptions = {
 
     callback(null, true);
   },
-  storage: diskStorage({
-    destination: './uploads/products',
-    filename: (req, file, callback) => {
-      const uniqueSuffix = uuidv4();
-      const fileExtName = extname(file.originalname);
-      callback(null, `${uniqueSuffix}${fileExtName}`);
-    },
-  }),
+  storage: memoryStorage(),
 };
 
 export const documentMulterOptions = {
@@ -66,19 +58,13 @@ export const documentMulterOptions = {
 
     callback(null, true);
   },
-  storage: diskStorage({
-    destination: './uploads/documents',
-    filename: (req, file, callback) => {
-      const uniqueSuffix = uuidv4();
-      const fileExtName = extname(file.originalname);
-      callback(null, `${uniqueSuffix}${fileExtName}`);
-    },
-  }),
+  storage: memoryStorage(),
 };
 
 @ApiTags('Files')
 @Controller('files')
 export class FilesController {
+  constructor(private readonly filesService: FilesService) {}
 
   @Post('upload-product-image')
   @HttpCode(HttpStatus.CREATED) 
@@ -95,9 +81,7 @@ export class FilesController {
       throw new BadRequestException('هیچ فایلی برای آپلود ارسال نشده است.');
     }
 
-    this.validateUploadedFile(file);
-
-    return { url: `/uploads/products/${file.filename}` };
+    return this.filesService.uploadProductImage(file);
   }
 
   @Post('upload-gallery-images')
@@ -115,9 +99,7 @@ export class FilesController {
       throw new BadRequestException('هیچ فایلی برای آپلود ارسال نشده است.');
     }
 
-    files.forEach((file) => this.validateUploadedFile(file));
-
-    return files.map(file => ({ url: `/uploads/products/${file.filename}` }));
+    return this.filesService.uploadGalleryImages(files);
   }
 
   @Post('upload-document-image')
@@ -134,21 +116,6 @@ export class FilesController {
       throw new BadRequestException('هیچ فایلی برای آپلود ارسال نشده است.');
     }
 
-    this.validateUploadedFile(file);
-
-    return { url: `/uploads/documents/${file.filename}` };
-  }
-
-  private validateUploadedFile(file: Express.Multer.File) {
-    const isAllowed = /\.(png|jpeg|jpg|webp)$/i.test(file.originalname);
-    if (!isAllowed) {
-      throw new BadRequestException(
-        'فرمت فایل مجاز نیست. فقط png, jpeg, jpg, webp',
-      );
-    }
-
-    if (file.size > 1024 * 1024 * 2) {
-      throw new BadRequestException('حجم فایل بیشتر از حد مجاز است');
-    }
+    return this.filesService.uploadDocumentImage(file);
   }
 }
