@@ -233,56 +233,56 @@ export function LatestArticlesShowcaseSection({ block }: { block: { id: string; 
 
   return (
     <section className={storefrontShared.articleShowcase} key={block.id}>
-      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <p className={storefrontShared.sectionEyebrow}>latest stories</p>
-          <h2 className={storefrontShared.sectionTitle}>{String(block.data.title || 'آخرین مقاله‌های مجله')}</h2>
-          {block.data.subtitle ? <p className="mt-3 max-w-2xl text-sm leading-7 text-[#6d7a72] md:text-base">{String(block.data.subtitle)}</p> : null}
+          <h2 className="mt-2 text-[1.8rem] font-black text-[#173126] md:text-[2rem]">{String(block.data.title || 'آخرین مقاله‌های مجله')}</h2>
+          {block.data.subtitle ? <p className="mt-2 max-w-xl text-sm leading-7 text-[#6d7a72]">{String(block.data.subtitle)}</p> : null}
         </div>
         {block.data.ctaText && block.data.ctaLink ? (
-          <Link className="inline-flex w-fit items-center rounded-full border border-[#1f6a52]/15 bg-white/70 px-5 py-3 text-sm font-black text-[#1f6a52] transition hover:bg-white" href={String(block.data.ctaLink)}>
+          <Link className="inline-flex w-fit items-center rounded-full border border-[#1f6a52]/15 bg-white/70 px-4 py-2.5 text-sm font-black text-[#1f6a52] transition hover:bg-white" href={String(block.data.ctaLink)}>
             {String(block.data.ctaText)}
           </Link>
         ) : null}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_380px]">
-        <div className="group relative overflow-hidden rounded-[34px] text-right shadow-[0_24px_60px_rgba(38,24,9,0.1)]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.12fr)_320px]">
+        <div className="group relative overflow-hidden rounded-[30px] text-right shadow-[0_18px_40px_rgba(38,24,9,0.09)]">
           <Link className="block" href={featured.href}>
-            <div className="relative min-h-[360px] overflow-hidden md:min-h-[460px]">
+            <div className="relative h-[300px] overflow-hidden md:h-[360px]">
               {featured.coverImage ? (
                 <img alt={featured.title} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" src={resolveAssetUrl(featured.coverImage)} />
               ) : (
-                <div className="h-full min-h-[360px] w-full bg-[linear-gradient(135deg,#173126_0%,#29513f_55%,#d06c54_100%)] md:min-h-[460px]" />
+                <div className="h-full w-full bg-[linear-gradient(135deg,#173126_0%,#29513f_55%,#d06c54_100%)]" />
               )}
-              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(16,31,24,0.05),rgba(16,31,24,0.78))]" />
-              <div className="absolute inset-x-0 bottom-0 p-6 text-white md:p-8">
+              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(16,31,24,0.03),rgba(16,31,24,0.72))]" />
+              <div className="absolute inset-x-0 bottom-0 p-5 text-white md:p-6">
                 {featured.category?.title ? (
-                  <span className="inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.28em] text-white/90">
+                  <span className="inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.24em] text-white/90">
                     {featured.category.title}
                   </span>
                 ) : null}
-                <h3 className="mt-4 text-2xl font-black leading-tight md:text-4xl">{featured.title}</h3>
-                {featured.excerpt ? <p className="mt-4 max-w-2xl text-sm leading-7 text-white/84 md:text-base">{featured.excerpt}</p> : null}
+                <h3 className="mt-3 text-xl font-black leading-tight md:text-[1.8rem]">{featured.title}</h3>
+                {featured.excerpt ? <p className="mt-3 max-w-xl text-sm leading-6 text-white/84">{featured.excerpt}</p> : null}
               </div>
             </div>
           </Link>
         </div>
 
-        <div className="grid gap-3">
+        <div className="grid gap-2.5">
           {normalizedArticles.map((article, index) => {
             const isActive = index === activeIndex
             return (
               <div
-                className={`group flex items-center gap-4 rounded-[28px] border px-4 py-4 text-right transition ${
+                className={`group flex items-center gap-3 rounded-[24px] border px-3.5 py-3 text-right transition ${
                   isActive
-                    ? 'border-[#1f6a52]/20 bg-white shadow-[0_18px_36px_rgba(35,31,19,0.09)]'
+                    ? 'border-[#1f6a52]/18 bg-white shadow-[0_14px_28px_rgba(35,31,19,0.08)]'
                     : 'border-transparent bg-white/55 hover:border-[#1f6a52]/10 hover:bg-white/80'
                 }`}
                 key={article.id}
                 onClick={() => setActiveIndex(index)}
               >
-                <div className="h-20 w-20 shrink-0 overflow-hidden rounded-[22px] bg-[#efe1d2]">
+                <div className="h-16 w-16 shrink-0 overflow-hidden rounded-[18px] bg-[#efe1d2]">
                   {article.coverImage ? (
                     <img alt={article.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" src={resolveAssetUrl(article.coverImage)} />
                   ) : (
@@ -290,11 +290,11 @@ export function LatestArticlesShowcaseSection({ block }: { block: { id: string; 
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <Link className="line-clamp-2 text-base font-black leading-7 text-[#183226]" href={article.href} onClick={(event) => event.stopPropagation()}>
+                  <Link className="line-clamp-2 text-[0.95rem] font-black leading-6 text-[#183226]" href={article.href} onClick={(event) => event.stopPropagation()}>
                     {article.title}
                   </Link>
                   {article.publishedAt ? (
-                    <p className="mt-2 text-xs font-bold uppercase tracking-[0.22em] text-[#9f7e56]">
+                    <p className="mt-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-[#9f7e56]">
                       {new Intl.DateTimeFormat('fa-IR', { dateStyle: 'medium' }).format(new Date(article.publishedAt))}
                     </p>
                   ) : null}

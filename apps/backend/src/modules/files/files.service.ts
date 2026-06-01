@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { mkdir, writeFile } from 'fs/promises';
@@ -96,24 +100,25 @@ export class FilesService {
   }
 
   async uploadProductImage(file: Express.Multer.File) {
-    return this.uploadImage(file, 'products');
+    return this.uploadImage(file, 'products', true);
   }
 
   async uploadGalleryImages(files: Express.Multer.File[]) {
-    return Promise.all(files.map((file) => this.uploadImage(file, 'products')));
+    return Promise.all(files.map((file) => this.uploadImage(file, 'products', true)));
   }
 
   async uploadDocumentImage(file: Express.Multer.File) {
-    return this.uploadImage(file, 'documents');
+    return this.uploadImage(file, 'documents', false);
   }
 
   private async uploadImage(
     file: Express.Multer.File,
     folder: UploadFolder,
+    requireWebp: boolean,
   ): Promise<UploadedImageResponse> {
     this.validateImageFile(file);
 
-    const imageAsset = await this.prepareImageAsset(file, folder);
+    const imageAsset = await this.prepareImageAsset(file, folder, requireWebp);
     return this.persistImageAsset(imageAsset, folder);
   }
 
@@ -125,7 +130,11 @@ export class FilesService {
     return value === 'true' || value === '1';
   }
 
-  private async prepareImageAsset(file: Express.Multer.File, folder: UploadFolder) {
+  private async prepareImageAsset(
+    file: Express.Multer.File,
+    folder: UploadFolder,
+    requireWebp: boolean,
+  ) {
     try {
       const sharpModule = await import('sharp');
       const sharp = sharpModule.default;
@@ -150,6 +159,12 @@ export class FilesService {
         contentType: 'image/webp',
       };
     } catch {
+      if (requireWebp) {
+        throw new ServiceUnavailableException(
+          'سرویس پردازش تصویر در سرور فعال نیست و تبدیل به webp انجام نشد. ابتدا پشتیبانی sharp روی سرور را فعال کنید.',
+        );
+      }
+
       const fallbackKey = `${folder}/${this.buildFallbackFileName(file.originalname)}`;
       return {
         original: {
