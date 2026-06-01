@@ -3,7 +3,6 @@ import { ConfigService } from '@nestjs/config';
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { mkdir, writeFile } from 'fs/promises';
 import { extname, join } from 'path';
-import sharp from 'sharp';
 import { v4 as uuidv4 } from 'uuid';
 
 type UploadFolder = 'products' | 'documents';
@@ -93,7 +92,7 @@ export class FilesService {
 
     const fileName = this.buildFileName(file.originalname);
     const key = `${folder}/${fileName}`;
-    const buffer = await sharp(file.buffer).webp({ quality: 82 }).toBuffer();
+    const { buffer, contentType } = await this.prepareImageBuffer(file);
 
     if (this.client && this.bucket && this.publicUrl) {
       await this.client.send(
@@ -101,7 +100,7 @@ export class FilesService {
           Bucket: this.bucket,
           Key: key,
           Body: buffer,
-          ContentType: 'image/webp',
+          ContentType: contentType,
         }),
       );
 
@@ -127,5 +126,23 @@ export class FilesService {
 
   private parseBoolean(value?: string | null) {
     return value === 'true' || value === '1';
+  }
+
+  private async prepareImageBuffer(file: Express.Multer.File) {
+    try {
+      const sharpModule = await import('sharp');
+      const sharp = sharpModule.default;
+      const buffer = await sharp(file.buffer).webp({ quality: 82 }).toBuffer();
+
+      return {
+        buffer,
+        contentType: 'image/webp',
+      };
+    } catch {
+      return {
+        buffer: file.buffer,
+        contentType: file.mimetype || 'application/octet-stream',
+      };
+    }
   }
 }
