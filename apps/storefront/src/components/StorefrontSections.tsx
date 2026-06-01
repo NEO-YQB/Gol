@@ -247,13 +247,13 @@ export function LatestArticlesShowcaseSection({ block }: { block: { id: string; 
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.12fr)_320px]">
-        <div className="group relative overflow-hidden rounded-[30px] text-right shadow-[0_18px_40px_rgba(38,24,9,0.09)]">
+        <div className="group relative flex h-[300px] overflow-hidden rounded-[30px] text-right shadow-[0_18px_40px_rgba(38,24,9,0.09)] md:h-[360px]">
           <Link className="block h-full" href={featured.href}>
-            <div className="relative h-[300px] overflow-hidden md:h-[360px]">
+            <div className="relative h-full w-full overflow-hidden">
               {featured.coverImage ? (
                 <img
                   alt={featured.title}
-                  className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
+                  className="absolute inset-0 block h-full w-full object-cover transition duration-700 group-hover:scale-105"
                   src={resolveAssetUrl(featured.coverImage)}
                 />
               ) : (
