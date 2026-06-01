@@ -314,6 +314,7 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
 
     const body = {
       name: productForm.name.trim(),
+      slug: productForm.slug.trim() || undefined,
       shortDescription: toOptionalText(productForm.shortDescription),
       description: toOptionalText(productForm.description),
       price: toOptionalNumber(productForm.price) ?? 0,

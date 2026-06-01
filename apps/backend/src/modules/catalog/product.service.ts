@@ -76,8 +76,12 @@ export class ProductService {
       }
     }
 
-    const slug = slugify(rest.name, { lower: true, strict: true, locale: 'fa' }) 
-                 + '-' + Math.floor(Math.random() * 1000);
+    const requestedSlug =
+      typeof (dto as any).slug === 'string' && (dto as any).slug.trim().length > 0
+        ? (dto as any).slug.trim()
+        : null;
+    const slugBase = requestedSlug ?? slugify(rest.name, { lower: true, strict: true, locale: 'fa' });
+    const slug = await this.buildUniqueProductSlug(slugBase);
 
     try {
       const isAdmin = user.roles.includes('ADMIN');
@@ -194,6 +198,9 @@ export class ProductService {
         where: { id },
         data: {
           ...rest,
+          ...(typeof (dto as any).slug === 'string' && (dto as any).slug.trim().length > 0
+            ? { slug: (dto as any).slug.trim() }
+            : {}),
           mainImageAlt: mainImageAlt ?? existingProduct.mainImageAlt,
           gallery: gallery || images ? this.toGalleryJson(gallery, images) : undefined,
           publicationStatus: nextPublicationStatus,
@@ -214,6 +221,39 @@ export class ProductService {
         },
       });
     });
+  }
+
+  private async buildUniqueProductSlug(baseSlug: string) {
+    const normalizedBase = baseSlug.trim();
+    if (!normalizedBase) {
+      throw new BadRequestException('اسلاگ محصول نامعتبر است');
+    }
+
+    const existing = await this.prisma.product.findUnique({
+      where: { slug: normalizedBase },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      return normalizedBase;
+    }
+
+    let attempt = 1;
+    while (attempt <= 1000) {
+      const candidate = `${normalizedBase}-${attempt}`;
+      const match = await this.prisma.product.findUnique({
+        where: { slug: candidate },
+        select: { id: true },
+      });
+
+      if (!match) {
+        return candidate;
+      }
+
+      attempt += 1;
+    }
+
+    throw new ConflictException('تولید اسلاگ یکتای محصول ممکن نشد');
   }
 
   async findAll(query: GetProductsQueryDto) {
