@@ -27,6 +27,7 @@ type ProductsPageProps = {
   onCreateProduct: () => void
   onEditProduct: (product: Record<string, unknown>) => void
   onOpenCategoryWorkspace: () => void
+  onOpenProductTypeWorkspace: () => void
 }
 
 type ProductRecord = Record<string, unknown>
@@ -44,7 +45,7 @@ const productColumns = [
 
 const selectionPageSize = 8
 
-export function ProductsPage({ session, onCreateProduct, onEditProduct, onOpenCategoryWorkspace }: ProductsPageProps) {
+export function ProductsPage({ session, onCreateProduct, onEditProduct, onOpenCategoryWorkspace, onOpenProductTypeWorkspace }: ProductsPageProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [elementError, setElementError] = useState<string | null>(null)
@@ -307,6 +308,9 @@ export function ProductsPage({ session, onCreateProduct, onEditProduct, onOpenCa
             <div className="products-header-actions">
               <button className="content-secondary-action" onClick={onOpenCategoryWorkspace} type="button">
                 مدیریت دسته‌بندی‌ها
+              </button>
+              <button className="content-secondary-action" onClick={onOpenProductTypeWorkspace} type="button">
+                مدیریت نوع محصول
               </button>
               <button className="content-secondary-action" onClick={onCreateProduct} type="button">
                 تعریف محصول جدید

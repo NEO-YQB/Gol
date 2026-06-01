@@ -665,6 +665,26 @@ export const adminApi = {
   getProductTypes(session: AuthSession) {
     return request<unknown[]>('/product-types', {}, session.accessToken)
   },
+  getProductTypeDetail(session: AuthSession, productTypeId: string) {
+    return request<unknown>(`/product-types/${productTypeId}`, {}, session.accessToken)
+  },
+  createProductType(session: AuthSession, body: Record<string, unknown>) {
+    return request<unknown>('/product-types', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  updateProductType(session: AuthSession, productTypeId: string, body: Record<string, unknown>) {
+    return request<unknown>(`/product-types/${productTypeId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  deleteProductType(session: AuthSession, productTypeId: string) {
+    return request<unknown>(`/product-types/${productTypeId}`, {
+      method: 'DELETE',
+    }, session.accessToken)
+  },
   getCategories(session: AuthSession) {
     return request<unknown[]>('/categories', {}, session.accessToken)
   },
