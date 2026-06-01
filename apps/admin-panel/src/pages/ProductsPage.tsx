@@ -26,6 +26,7 @@ type ProductsPageProps = {
   session: AuthSession
   onCreateProduct: () => void
   onEditProduct: (product: Record<string, unknown>) => void
+  onOpenCategoryWorkspace: () => void
 }
 
 type ProductRecord = Record<string, unknown>
@@ -43,7 +44,7 @@ const productColumns = [
 
 const selectionPageSize = 8
 
-export function ProductsPage({ session, onCreateProduct, onEditProduct }: ProductsPageProps) {
+export function ProductsPage({ session, onCreateProduct, onEditProduct, onOpenCategoryWorkspace }: ProductsPageProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [elementError, setElementError] = useState<string | null>(null)
@@ -304,6 +305,9 @@ export function ProductsPage({ session, onCreateProduct, onEditProduct }: Produc
           description="این صفحه برای اسکن سریع محصول‌ها، تشخیص آمادگی و ورود به workspace کامل ساخت یا ویرایش محصول طراحی شده است."
           actions={
             <div className="products-header-actions">
+              <button className="content-secondary-action" onClick={onOpenCategoryWorkspace} type="button">
+                مدیریت دسته‌بندی‌ها
+              </button>
               <button className="content-secondary-action" onClick={onCreateProduct} type="button">
                 تعریف محصول جدید
               </button>

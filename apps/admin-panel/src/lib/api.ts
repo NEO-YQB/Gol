@@ -668,6 +668,26 @@ export const adminApi = {
   getCategories(session: AuthSession) {
     return request<unknown[]>('/categories', {}, session.accessToken)
   },
+  getCategoryDetail(session: AuthSession, categoryId: string) {
+    return request<unknown>(`/categories/${categoryId}`, {}, session.accessToken)
+  },
+  createCategory(session: AuthSession, body: Record<string, unknown>) {
+    return request<unknown>('/categories', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  updateCategory(session: AuthSession, categoryId: string, body: Record<string, unknown>) {
+    return request<unknown>(`/categories/${categoryId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  deleteCategory(session: AuthSession, categoryId: string) {
+    return request<unknown>(`/categories/${categoryId}`, {
+      method: 'DELETE',
+    }, session.accessToken)
+  },
   getStores(session: AuthSession) {
     return request<unknown[]>('/stores', {}, session.accessToken)
   },

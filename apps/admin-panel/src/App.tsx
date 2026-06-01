@@ -19,6 +19,7 @@ import { AccessControlWorkspacePage } from './pages/AccessControlWorkspacePage'
 import { AlertsPage } from './pages/AlertsPage'
 import { ContentPage } from './pages/ContentPage'
 import { ContentWorkspacePage } from './pages/ContentWorkspacePage'
+import { CategoryWorkspacePage } from './pages/CategoryWorkspacePage'
 import { DashboardPage } from './pages/DashboardPage'
 import { FinanceWorkspacePage } from './pages/FinanceWorkspacePage'
 import { LoginPage } from './pages/LoginPage'
@@ -228,6 +229,8 @@ function renderRoute(
     pageBuilderWorkspaceMode: 'create' | 'edit'
     productWorkspaceSlug: string | null
     productWorkspaceMode: 'create' | 'edit'
+    onOpenCategoryWorkspace: () => void
+    onBackToProductsFromCategories: () => void
     onOpenProductWorkspaceForCreate: () => void
     onOpenProductWorkspaceForEdit: (product: Record<string, unknown>) => void
     onBackToProducts: () => void
@@ -263,9 +266,11 @@ function renderRoute(
     case 'vendorOnboardingWorkspace':
       return <VendorOnboardingWorkspacePage onBack={options.onBackToVendorOnboarding} request={options.vendorOnboardingRequest} session={session} />
     case 'products':
-      return <ProductsPage onCreateProduct={options.onOpenProductWorkspaceForCreate} onEditProduct={options.onOpenProductWorkspaceForEdit} session={session} />
+      return <ProductsPage onCreateProduct={options.onOpenProductWorkspaceForCreate} onEditProduct={options.onOpenProductWorkspaceForEdit} onOpenCategoryWorkspace={options.onOpenCategoryWorkspace} session={session} />
     case 'productWorkspace':
       return <ProductWorkspacePage mode={options.productWorkspaceMode} onBack={options.onBackToProducts} productSlug={options.productWorkspaceSlug} session={session} />
+    case 'categoryWorkspace':
+      return <CategoryWorkspacePage onBack={options.onBackToProductsFromCategories} session={session} />
     case 'content':
       return <ContentPage onCreateArticle={options.onOpenContentWorkspaceForCreate} onEditArticle={options.onOpenContentWorkspaceForEdit} session={session} />
     case 'pageBuilder':
@@ -555,6 +560,10 @@ export default function App() {
     handleNavigate('products')
   }
 
+  function handleOpenCategoryWorkspace() {
+    handleNavigate('categoryWorkspace')
+  }
+
   function handleOpenContentWorkspaceForEdit(articleId: string) {
     setContentWorkspaceMode('edit')
     setContentWorkspaceArticleId(articleId)
@@ -668,8 +677,10 @@ export default function App() {
         onBackToSettlements: handleBackToSettlements,
         productWorkspaceSlug,
         productWorkspaceMode,
-        onOpenProductWorkspaceForCreate: handleOpenProductWorkspaceForCreate,
-        onOpenProductWorkspaceForEdit: handleOpenProductWorkspaceForEdit,
+              onOpenProductWorkspaceForCreate: handleOpenProductWorkspaceForCreate,
+              onOpenCategoryWorkspace: handleOpenCategoryWorkspace,
+              onBackToProductsFromCategories: handleBackToProducts,
+              onOpenProductWorkspaceForEdit: handleOpenProductWorkspaceForEdit,
         onBackToProducts: handleBackToProducts,
         contentWorkspaceArticleId,
         contentWorkspaceMode,
