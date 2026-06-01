@@ -248,12 +248,16 @@ export function LatestArticlesShowcaseSection({ block }: { block: { id: string; 
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.12fr)_320px]">
         <div className="group relative overflow-hidden rounded-[30px] text-right shadow-[0_18px_40px_rgba(38,24,9,0.09)]">
-          <Link className="block" href={featured.href}>
+          <Link className="block h-full" href={featured.href}>
             <div className="relative h-[300px] overflow-hidden md:h-[360px]">
               {featured.coverImage ? (
-                <img alt={featured.title} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" src={resolveAssetUrl(featured.coverImage)} />
+                <img
+                  alt={featured.title}
+                  className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
+                  src={resolveAssetUrl(featured.coverImage)}
+                />
               ) : (
-                <div className="h-full w-full bg-[linear-gradient(135deg,#173126_0%,#29513f_55%,#d06c54_100%)]" />
+                <div className="absolute inset-0 h-full w-full bg-[linear-gradient(135deg,#173126_0%,#29513f_55%,#d06c54_100%)]" />
               )}
               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(16,31,24,0.03),rgba(16,31,24,0.72))]" />
               <div className="absolute inset-x-0 bottom-0 p-5 text-white md:p-6">
