@@ -1,5 +1,7 @@
 'use client'
 
+import Link from 'next/link'
+import { useMemo, useState } from 'react'
 import { resolveAssetUrl, type CategorySummary, type ProductSummary, type StoreSummary } from '../lib/storefront'
 import { CategoryCircle, ProductCard, StorefrontPill, VendorCard } from './storefrontBlocks'
 import { storefrontShared } from './storefrontShared'
@@ -185,6 +187,122 @@ export function CampaignGridSection({ block }: { block: { id: string; data: Reco
             <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/5 to-transparent" />
           </a>
         ))}
+      </div>
+    </section>
+  )
+}
+
+type ArticleSummary = {
+  id: number
+  title: string
+  slug: string
+  excerpt?: string | null
+  coverImage?: string | null
+  publishedAt?: string | null
+  category?: {
+    id: number
+    title: string
+    slug: string
+  } | null
+}
+
+function buildArticleHref(basePath: string, slug: string) {
+  const normalizedBase = `/${basePath}`.replace(/\/{2,}/g, '/').replace(/\/$/, '')
+  return `${normalizedBase}/${slug}`.replace(/\/{2,}/g, '/')
+}
+
+export function LatestArticlesShowcaseSection({ block }: { block: { id: string; data: Record<string, unknown>; articles?: ArticleSummary[] } }) {
+  const articles = Array.isArray(block.articles) ? block.articles : []
+  const [activeIndex, setActiveIndex] = useState(0)
+  const basePath = String(block.data.articleBasePath ?? '/mag/articles')
+
+  const normalizedArticles = useMemo(
+    () =>
+      articles.map((article) => ({
+        ...article,
+        href: buildArticleHref(basePath, article.slug),
+      })),
+    [articles, basePath],
+  )
+
+  const featured = normalizedArticles[activeIndex] ?? normalizedArticles[0] ?? null
+
+  if (!featured) {
+    return null
+  }
+
+  return (
+    <section className={storefrontShared.articleShowcase} key={block.id}>
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className={storefrontShared.sectionEyebrow}>latest stories</p>
+          <h2 className={storefrontShared.sectionTitle}>{String(block.data.title || 'آخرین مقاله‌های مجله')}</h2>
+          {block.data.subtitle ? <p className="mt-3 max-w-2xl text-sm leading-7 text-[#6d7a72] md:text-base">{String(block.data.subtitle)}</p> : null}
+        </div>
+        {block.data.ctaText && block.data.ctaLink ? (
+          <Link className="inline-flex w-fit items-center rounded-full border border-[#1f6a52]/15 bg-white/70 px-5 py-3 text-sm font-black text-[#1f6a52] transition hover:bg-white" href={String(block.data.ctaLink)}>
+            {String(block.data.ctaText)}
+          </Link>
+        ) : null}
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_380px]">
+        <div className="group relative overflow-hidden rounded-[34px] text-right shadow-[0_24px_60px_rgba(38,24,9,0.1)]">
+          <Link className="block" href={featured.href}>
+            <div className="relative min-h-[360px] overflow-hidden md:min-h-[460px]">
+              {featured.coverImage ? (
+                <img alt={featured.title} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" src={resolveAssetUrl(featured.coverImage)} />
+              ) : (
+                <div className="h-full min-h-[360px] w-full bg-[linear-gradient(135deg,#173126_0%,#29513f_55%,#d06c54_100%)] md:min-h-[460px]" />
+              )}
+              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(16,31,24,0.05),rgba(16,31,24,0.78))]" />
+              <div className="absolute inset-x-0 bottom-0 p-6 text-white md:p-8">
+                {featured.category?.title ? (
+                  <span className="inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.28em] text-white/90">
+                    {featured.category.title}
+                  </span>
+                ) : null}
+                <h3 className="mt-4 text-2xl font-black leading-tight md:text-4xl">{featured.title}</h3>
+                {featured.excerpt ? <p className="mt-4 max-w-2xl text-sm leading-7 text-white/84 md:text-base">{featured.excerpt}</p> : null}
+              </div>
+            </div>
+          </Link>
+        </div>
+
+        <div className="grid gap-3">
+          {normalizedArticles.map((article, index) => {
+            const isActive = index === activeIndex
+            return (
+              <div
+                className={`group flex items-center gap-4 rounded-[28px] border px-4 py-4 text-right transition ${
+                  isActive
+                    ? 'border-[#1f6a52]/20 bg-white shadow-[0_18px_36px_rgba(35,31,19,0.09)]'
+                    : 'border-transparent bg-white/55 hover:border-[#1f6a52]/10 hover:bg-white/80'
+                }`}
+                key={article.id}
+                onClick={() => setActiveIndex(index)}
+              >
+                <div className="h-20 w-20 shrink-0 overflow-hidden rounded-[22px] bg-[#efe1d2]">
+                  {article.coverImage ? (
+                    <img alt={article.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" src={resolveAssetUrl(article.coverImage)} />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_top,_#f4cab6,_#e6d6bf_72%)] text-xl">✦</div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <Link className="line-clamp-2 text-base font-black leading-7 text-[#183226]" href={article.href} onClick={(event) => event.stopPropagation()}>
+                    {article.title}
+                  </Link>
+                  {article.publishedAt ? (
+                    <p className="mt-2 text-xs font-bold uppercase tracking-[0.22em] text-[#9f7e56]">
+                      {new Intl.DateTimeFormat('fa-IR', { dateStyle: 'medium' }).format(new Date(article.publishedAt))}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            )
+          })}
+        </div>
       </div>
     </section>
   )

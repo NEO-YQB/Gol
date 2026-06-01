@@ -32,6 +32,7 @@ export enum PageBlockType {
   EDITORIAL_RICH_BLOCK = 'EDITORIAL_RICH_BLOCK',
   VENDOR_CAROUSEL = 'VENDOR_CAROUSEL',
   CAMPAIGN_GRID = 'CAMPAIGN_GRID',
+  LATEST_ARTICLES_SHOWCASE = 'LATEST_ARTICLES_SHOWCASE',
 }
 
 export enum ProductCarouselFilterType {
@@ -342,6 +343,45 @@ export class CampaignGridBlockDataDto {
   banners!: CampaignGridBannerDto[];
 }
 
+export class LatestArticlesShowcaseBlockDataDto {
+  @ApiPropertyOptional({ example: 'از مجله گلینو' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  title?: string;
+
+  @ApiPropertyOptional({ example: 'آخرین مقاله‌ها، راهنماها و الهام‌های جدید برای انتخاب بهتر.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  subtitle?: string;
+
+  @ApiPropertyOptional({ example: 5 })
+  @IsOptional()
+  @IsInt()
+  @Min(2)
+  @Max(10)
+  limit?: number;
+
+  @ApiPropertyOptional({ example: '/mag' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  articleBasePath?: string;
+
+  @ApiPropertyOptional({ example: 'مشاهده همه مقاله‌ها' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  ctaText?: string;
+
+  @ApiPropertyOptional({ example: '/mag' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  ctaLink?: string;
+}
+
 const blockDataDtoMap: Record<PageBlockType, new () => object> = {
   [PageBlockType.HERO_HEADER]: HeroHeaderBlockDataDto,
   [PageBlockType.CATEGORY_CIRCLES]: CategoryCirclesBlockDataDto,
@@ -349,6 +389,7 @@ const blockDataDtoMap: Record<PageBlockType, new () => object> = {
   [PageBlockType.EDITORIAL_RICH_BLOCK]: EditorialRichBlockDataDto,
   [PageBlockType.VENDOR_CAROUSEL]: VendorCarouselBlockDataDto,
   [PageBlockType.CAMPAIGN_GRID]: CampaignGridBlockDataDto,
+  [PageBlockType.LATEST_ARTICLES_SHOWCASE]: LatestArticlesShowcaseBlockDataDto,
 };
 
 @ValidatorConstraint({ name: 'pageBlockDataMatchesType', async: false })

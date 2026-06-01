@@ -21,6 +21,7 @@ type PageBlockType =
   | 'EDITORIAL_RICH_BLOCK'
   | 'VENDOR_CAROUSEL'
   | 'CAMPAIGN_GRID'
+  | 'LATEST_ARTICLES_SHOWCASE'
 
 type ProductFilterType = 'category' | 'tag' | 'productType' | 'custom_list'
 type ProductSortBy = 'newest' | 'most_sold' | 'instant_delivery'
@@ -119,6 +120,15 @@ function getDefaultBlockData(type: PageBlockType): Record<string, unknown> {
             colSpan: 1,
           },
         ],
+      }
+    case 'LATEST_ARTICLES_SHOWCASE':
+      return {
+        title: '',
+        subtitle: '',
+        limit: 5,
+        articleBasePath: '/mag/articles',
+        ctaText: 'مشاهده همه مقاله‌ها',
+        ctaLink: '/mag',
       }
     case 'HERO_HEADER':
     default:
@@ -307,6 +317,8 @@ function getBlockLabel(type: PageBlockType) {
       return 'کروسل فروشگاه‌ها'
     case 'CAMPAIGN_GRID':
       return 'گرید کمپین'
+    case 'LATEST_ARTICLES_SHOWCASE':
+      return 'ویترین آخرین مقالات'
   }
 }
 
@@ -512,6 +524,7 @@ export function PageBuilderWorkspacePage({
       EDITORIAL_RICH_BLOCK: 0,
       VENDOR_CAROUSEL: 0,
       CAMPAIGN_GRID: 0,
+      LATEST_ARTICLES_SHOWCASE: 0,
     })
   }, [form.blocks])
 
@@ -915,6 +928,20 @@ export function PageBuilderWorkspacePage({
           }
         }
 
+        if (block.type === 'LATEST_ARTICLES_SHOWCASE') {
+          return {
+            ...block,
+            data: {
+              title: toOptionalText(String(block.data.title ?? '')),
+              subtitle: toOptionalText(String(block.data.subtitle ?? '')),
+              limit: Number(block.data.limit ?? 5) || 5,
+              articleBasePath: toOptionalText(String(block.data.articleBasePath ?? '/mag/articles')) ?? '/mag/articles',
+              ctaText: toOptionalText(String(block.data.ctaText ?? '')),
+              ctaLink: toOptionalText(String(block.data.ctaLink ?? '')),
+            },
+          }
+        }
+
         return {
           ...block,
           data: Object.fromEntries(
@@ -1192,7 +1219,7 @@ export function PageBuilderWorkspacePage({
           description="ترتیب هر بلاک همان ترتیب نمایش در storefront است. می‌توانی بلاک اضافه، حذف یا جابه‌جا کنی."
           actions={
             <div className="page-builder-add-actions">
-              {(['HERO_HEADER', 'CATEGORY_CIRCLES', 'PRODUCT_CAROUSEL', 'EDITORIAL_RICH_BLOCK', 'VENDOR_CAROUSEL', 'CAMPAIGN_GRID'] as PageBlockType[]).map((type) => (
+              {(['HERO_HEADER', 'CATEGORY_CIRCLES', 'PRODUCT_CAROUSEL', 'EDITORIAL_RICH_BLOCK', 'VENDOR_CAROUSEL', 'CAMPAIGN_GRID', 'LATEST_ARTICLES_SHOWCASE'] as PageBlockType[]).map((type) => (
                 <button className="fm-button fm-button--ghost" key={type} onClick={() => addBlock(type)} type="button">
                   {getBlockLabel(type)}
                 </button>
@@ -1245,6 +1272,7 @@ export function PageBuilderWorkspacePage({
                         <option value="EDITORIAL_RICH_BLOCK">EDITORIAL_RICH_BLOCK</option>
                         <option value="VENDOR_CAROUSEL">VENDOR_CAROUSEL</option>
                         <option value="CAMPAIGN_GRID">CAMPAIGN_GRID</option>
+                        <option value="LATEST_ARTICLES_SHOWCASE">LATEST_ARTICLES_SHOWCASE</option>
                       </select>
                     </label>
 
@@ -1604,6 +1632,35 @@ export function PageBuilderWorkspacePage({
                             ))}
                           </div>
                         </div>
+                      </>
+                    ) : null}
+
+                    {block.type === 'LATEST_ARTICLES_SHOWCASE' ? (
+                      <>
+                        <label className="fm-field">
+                          <span>عنوان بلوک</span>
+                          <input onChange={(event) => patchBlockData(block.id, 'title', event.target.value)} type="text" value={String(data.title ?? '')} />
+                        </label>
+                        <label className="fm-field">
+                          <span>تعداد مقاله‌ها</span>
+                          <input onChange={(event) => patchBlockData(block.id, 'limit', Number(event.target.value))} type="number" value={String(data.limit ?? 5)} />
+                        </label>
+                        <label className="fm-field page-builder-field--wide">
+                          <span>زیرعنوان</span>
+                          <textarea onChange={(event) => patchBlockData(block.id, 'subtitle', event.target.value)} rows={3} value={String(data.subtitle ?? '')} />
+                        </label>
+                        <label className="fm-field">
+                          <span>مسیر پایه مقاله</span>
+                          <input onChange={(event) => patchBlockData(block.id, 'articleBasePath', event.target.value)} type="text" value={String(data.articleBasePath ?? '/mag/articles')} />
+                        </label>
+                        <label className="fm-field">
+                          <span>متن CTA</span>
+                          <input onChange={(event) => patchBlockData(block.id, 'ctaText', event.target.value)} type="text" value={String(data.ctaText ?? '')} />
+                        </label>
+                        <label className="fm-field">
+                          <span>لینک CTA</span>
+                          <input onChange={(event) => patchBlockData(block.id, 'ctaLink', event.target.value)} type="text" value={String(data.ctaLink ?? '')} />
+                        </label>
                       </>
                     ) : null}
                   </div>

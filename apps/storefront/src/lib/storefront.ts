@@ -64,6 +64,20 @@ export type StoreSummary = {
   customerRatingCount?: number
 }
 
+export type ArticleSummary = {
+  id: number
+  title: string
+  slug: string
+  excerpt?: string | null
+  coverImage?: string | null
+  publishedAt?: string | null
+  category?: {
+    id: number
+    title: string
+    slug: string
+  } | null
+}
+
 export type EnrichedBlock = Record<string, unknown> & {
   id: string
   type: string
@@ -71,6 +85,7 @@ export type EnrichedBlock = Record<string, unknown> & {
   categories?: CategorySummary[]
   products?: ProductSummary[]
   vendors?: StoreSummary[]
+  articles?: ArticleSummary[]
 }
 
 export type EnrichedStorefrontPage = Omit<StorefrontPage, 'blocks'> & {
@@ -176,6 +191,16 @@ const getCategories = cache(async (): Promise<CategorySummary[]> => {
 
 const getStores = cache(async (): Promise<StoreSummary[]> => {
   return requestCached<StoreSummary[]>('/stores')
+})
+
+const getArticles = cache(async (limit: number): Promise<ArticleSummary[]> => {
+  const params = new URLSearchParams()
+  params.set('limit', String(limit))
+  params.set('page', '1')
+  params.set('sort', 'NEWEST')
+
+  const payload = await requestCached<{ data?: ArticleSummary[] } | ArticleSummary[]>(`/content/public/articles?${params.toString()}`)
+  return toArray<ArticleSummary>(payload)
 })
 
 type ProductQuery = {
@@ -394,6 +419,18 @@ async function enrichBlock(
     }
   }
 
+  if (normalizedBlock.type === 'LATEST_ARTICLES_SHOWCASE') {
+    const limit = Math.min(Math.max(Number(normalizedBlock.data.limit ?? 5) || 5, 2), 10)
+    const articles = cacheEnabled
+      ? await getArticles(limit)
+      : toArray<ArticleSummary>(await requestNoStore<{ data?: ArticleSummary[] } | ArticleSummary[]>(`/content/public/articles?limit=${limit}&page=1&sort=NEWEST`))
+
+    return {
+      ...normalizedBlock,
+      articles: articles.slice(0, limit),
+    }
+  }
+
   return normalizedBlock
 }
 
@@ -431,6 +468,13 @@ async function enrichBlockSafely(
       return {
         ...fallbackBlock,
         vendors: [],
+      }
+    }
+
+    if (fallbackBlock.type === 'LATEST_ARTICLES_SHOWCASE') {
+      return {
+        ...fallbackBlock,
+        articles: [],
       }
     }
 

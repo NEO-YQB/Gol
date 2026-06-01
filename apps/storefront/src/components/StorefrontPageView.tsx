@@ -7,6 +7,7 @@ import {
   CategoryCirclesSection,
   EditorialSection,
   HeroSection,
+  LatestArticlesShowcaseSection,
   ProductCarouselSection,
   VendorCarouselSection,
 } from './StorefrontSections'
@@ -54,6 +55,10 @@ export function StorefrontPageView({ page }: { page: EnrichedStorefrontPage }) {
 
             if (block.type === 'CAMPAIGN_GRID') {
               return <CampaignGridSection block={block} />
+            }
+
+            if (block.type === 'LATEST_ARTICLES_SHOWCASE') {
+              return <LatestArticlesShowcaseSection block={block} />
             }
 
             return null
