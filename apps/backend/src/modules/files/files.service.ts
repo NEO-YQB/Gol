@@ -7,6 +7,26 @@ import { v4 as uuidv4 } from 'uuid';
 
 type UploadFolder = 'products' | 'documents';
 
+type UploadedImageVariant = {
+  url: string;
+  width: number;
+  height: number;
+  key: string;
+};
+
+type UploadedImageResponse = {
+  url: string;
+  width: number | null;
+  height: number | null;
+  contentType: string;
+  variants: {
+    original: UploadedImageVariant;
+    large: UploadedImageVariant | null;
+    medium: UploadedImageVariant | null;
+    thumbnail: UploadedImageVariant | null;
+  };
+};
+
 @Injectable()
 export class FilesService {
   private readonly client: S3Client | null;
@@ -87,62 +107,179 @@ export class FilesService {
     return this.uploadImage(file, 'documents');
   }
 
-  private async uploadImage(file: Express.Multer.File, folder: UploadFolder) {
+  private async uploadImage(
+    file: Express.Multer.File,
+    folder: UploadFolder,
+  ): Promise<UploadedImageResponse> {
     this.validateImageFile(file);
 
-    const fileName = this.buildFileName(file.originalname);
-    const key = `${folder}/${fileName}`;
-    const { buffer, contentType } = await this.prepareImageBuffer(file);
-
-    if (this.client && this.bucket && this.publicUrl) {
-      await this.client.send(
-        new PutObjectCommand({
-          Bucket: this.bucket,
-          Key: key,
-          Body: buffer,
-          ContentType: contentType,
-        }),
-      );
-
-      return {
-        url: `${this.publicUrl}/${key}`,
-      };
-    }
-
-    const targetDirectory = join(this.uploadsRoot, folder);
-    await mkdir(targetDirectory, { recursive: true });
-    await writeFile(join(targetDirectory, fileName), buffer);
-
-    return {
-      url: `/uploads/${key}`,
-    };
+    const imageAsset = await this.prepareImageAsset(file, folder);
+    return this.persistImageAsset(imageAsset, folder);
   }
 
-  private buildFileName(originalName: string) {
-    const extension = extname(originalName).toLowerCase();
-    const normalized = extension === '.webp' ? 'webp' : 'webp';
-    return `${uuidv4()}.${normalized}`;
+  private buildFileName() {
+    return `${uuidv4()}.webp`;
   }
 
   private parseBoolean(value?: string | null) {
     return value === 'true' || value === '1';
   }
 
-  private async prepareImageBuffer(file: Express.Multer.File) {
+  private async prepareImageAsset(file: Express.Multer.File, folder: UploadFolder) {
     try {
       const sharpModule = await import('sharp');
       const sharp = sharpModule.default;
-      const buffer = await sharp(file.buffer).webp({ quality: 82 }).toBuffer();
+      const metadata = await sharp(file.buffer).metadata();
+      const baseName = this.buildFileName();
+      const originalKey = `${folder}/${baseName}`;
+      const originalBuffer = await sharp(file.buffer).webp({ quality: 82 }).toBuffer();
+      const large = await this.buildVariant(sharp, file.buffer, folder, 'lg', 1440);
+      const medium = await this.buildVariant(sharp, file.buffer, folder, 'md', 960);
+      const thumbnail = await this.buildVariant(sharp, file.buffer, folder, 'thumb', 480);
 
       return {
-        buffer,
+        original: {
+          key: originalKey,
+          buffer: originalBuffer,
+          width: metadata.width ?? null,
+          height: metadata.height ?? null,
+        },
+        large,
+        medium,
+        thumbnail,
         contentType: 'image/webp',
       };
     } catch {
+      const fallbackKey = `${folder}/${this.buildFallbackFileName(file.originalname)}`;
       return {
-        buffer: file.buffer,
+        original: {
+          key: fallbackKey,
+          buffer: file.buffer,
+          width: null,
+          height: null,
+        },
+        large: null,
+        medium: null,
+        thumbnail: null,
         contentType: file.mimetype || 'application/octet-stream',
       };
     }
+  }
+
+  private async buildVariant(
+    sharp: (input?: Buffer) => any,
+    sourceBuffer: Buffer,
+    folder: UploadFolder,
+    suffix: string,
+    width: number,
+  ) {
+    const instance = sharp(sourceBuffer);
+    const metadata = await instance.metadata();
+
+    if (!metadata.width || metadata.width <= width) {
+      return null;
+    }
+
+    const resized = await sharp(sourceBuffer)
+      .resize({ width, withoutEnlargement: true })
+      .webp({ quality: 82 })
+      .toBuffer();
+
+    const resizedMetadata = await sharp(resized).metadata();
+
+    return {
+      key: `${folder}/${uuidv4()}-${suffix}.webp`,
+      buffer: resized,
+      width: resizedMetadata.width ?? width,
+      height: resizedMetadata.height ?? null,
+    };
+  }
+
+  private async persistImageAsset(
+    asset: {
+      original: { key: string; buffer: Buffer; width: number | null; height: number | null };
+      large: { key: string; buffer: Buffer; width: number | null; height: number | null } | null;
+      medium: { key: string; buffer: Buffer; width: number | null; height: number | null } | null;
+      thumbnail: { key: string; buffer: Buffer; width: number | null; height: number | null } | null;
+      contentType: string;
+    },
+    folder: UploadFolder,
+  ): Promise<UploadedImageResponse> {
+    if (this.client && this.bucket && this.publicUrl) {
+      await Promise.all(
+        [asset.original, asset.large, asset.medium, asset.thumbnail]
+          .filter(Boolean)
+          .map((item) =>
+            this.client!.send(
+              new PutObjectCommand({
+                Bucket: this.bucket!,
+                Key: item!.key,
+                Body: item!.buffer,
+                ContentType: asset.contentType,
+              }),
+            ),
+          ),
+      );
+
+      return {
+        url: `${this.publicUrl}/${asset.original.key}`,
+        width: asset.original.width,
+        height: asset.original.height,
+        contentType: asset.contentType,
+        variants: {
+          original: this.toUploadedVariant(asset.original, this.publicUrl),
+          large: this.toUploadedVariantNullable(asset.large, this.publicUrl),
+          medium: this.toUploadedVariantNullable(asset.medium, this.publicUrl),
+          thumbnail: this.toUploadedVariantNullable(asset.thumbnail, this.publicUrl),
+        },
+      };
+    }
+
+    const targetDirectory = join(this.uploadsRoot, folder);
+    await mkdir(targetDirectory, { recursive: true });
+
+    await Promise.all(
+      [asset.original, asset.large, asset.medium, asset.thumbnail]
+        .filter(Boolean)
+        .map((item) => writeFile(join(this.uploadsRoot, item!.key), item!.buffer)),
+    );
+
+    return {
+      url: `/uploads/${asset.original.key}`,
+      width: asset.original.width,
+      height: asset.original.height,
+      contentType: asset.contentType,
+      variants: {
+        original: this.toUploadedVariant(asset.original, '/uploads'),
+        large: this.toUploadedVariantNullable(asset.large, '/uploads'),
+        medium: this.toUploadedVariantNullable(asset.medium, '/uploads'),
+        thumbnail: this.toUploadedVariantNullable(asset.thumbnail, '/uploads'),
+      },
+    };
+  }
+
+  private toUploadedVariant(
+    asset: { key: string; width: number | null; height: number | null },
+    baseUrl: string,
+  ): UploadedImageVariant {
+    return {
+      url: `${baseUrl.replace(/\/+$/, '')}/${asset.key}`,
+      width: asset.width ?? 0,
+      height: asset.height ?? 0,
+      key: asset.key,
+    };
+  }
+
+  private toUploadedVariantNullable(
+    asset: { key: string; width: number | null; height: number | null } | null,
+    baseUrl: string,
+  ) {
+    return asset ? this.toUploadedVariant(asset, baseUrl) : null;
+  }
+
+  private buildFallbackFileName(originalName: string) {
+    const extension = extname(originalName).toLowerCase();
+    const normalizedExtension = extension || '.bin';
+    return `${uuidv4()}${normalizedExtension}`;
   }
 }

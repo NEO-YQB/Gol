@@ -1,5 +1,5 @@
 import { FormatTextarea, Pill, SectionCard } from '@flower-marketplace/frontend-core'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { useNoticeEffect } from '../components/NoticeCenter'
 import { adminApi } from '../lib/api'
@@ -310,6 +310,8 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
   const [tagForm, setTagForm] = useState<TagFormState>(() => createEmptyTagForm())
   const [selectedAuthorId, setSelectedAuthorId] = useState<string>('new')
   const [authorForm, setAuthorForm] = useState<AuthorFormState>(() => createEmptyAuthorForm())
+  const [uploadingImageTarget, setUploadingImageTarget] = useState<string | null>(null)
+  const imageInputRef = useRef<HTMLInputElement | null>(null)
   const [openSections, setOpenSections] = useState<Record<ContentAccordionKey, boolean>>({
     taxonomy: false,
     seo: false,
@@ -597,6 +599,48 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
     setAuthorForm((current) => ({ ...current, [key]: value }))
   }
 
+  function openImagePicker(target: string) {
+    setUploadingImageTarget(target)
+    imageInputRef.current?.click()
+  }
+
+  function getImagePreview(url: string) {
+    return url.trim()
+  }
+
+  async function handleImageChoose(fileList: FileList | null) {
+    const file = fileList?.[0]
+    const target = uploadingImageTarget
+    if (!file || !target) return
+
+    setError(null)
+
+    try {
+      const uploaded = await adminApi.uploadProductImage(session, file)
+      const originalUrl = uploaded.url
+      const thumbUrl = uploaded.variants?.thumbnail?.url ?? uploaded.variants?.medium?.url ?? originalUrl
+
+      if (target === 'article:coverImage') {
+        updateArticleForm('coverImage', originalUrl)
+      }
+
+      if (target === 'article:ogImage') {
+        updateArticleForm('ogImage', originalUrl)
+      }
+
+      if (target === 'article:excerptPreviewImage') {
+        updateArticleForm('ogImage', thumbUrl)
+      }
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : 'آپلود تصویر ناموفق بود')
+    } finally {
+      setUploadingImageTarget(null)
+      if (imageInputRef.current) {
+        imageInputRef.current.value = ''
+      }
+    }
+  }
+
   function toggleTag(tagId: string) {
     setArticleForm((current) => ({
       ...current,
@@ -801,6 +845,13 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
   return (
     <div className="fm-stack">
       <LoadableState error={error} loading={loading}>
+        <input
+          ref={imageInputRef}
+          accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+          className="admin-products-file-input"
+          onChange={(event) => void handleImageChoose(event.target.files)}
+          type="file"
+        />
         <SectionCard
           eyebrow="میزکار نگارش"
           title={editorMode === 'edit' ? `ویرایشگر مقاله #${currentArticleId ?? '—'}` : 'ساخت مقاله جدید'}
@@ -914,6 +965,19 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                       value={articleForm.coverImage}
                     />
                   </label>
+                  <div className="admin-products-upload-card content-editor-field--wide">
+                    <div className="admin-products-upload-actions">
+                      <button className="content-secondary-action" disabled={uploadingImageTarget === 'article:coverImage'} onClick={() => openImagePicker('article:coverImage')} type="button">
+                        {uploadingImageTarget === 'article:coverImage' ? 'در حال آپلود...' : 'آپلود تصویر کاور'}
+                      </button>
+                      <span className="admin-products-upload-hint">برای هدر خود مقاله و تصویر اصلی listing استفاده می‌شود.</span>
+                    </div>
+                    {getImagePreview(articleForm.coverImage) ? (
+                      <div className="admin-products-image-preview">
+                        <img alt="Preview article cover" src={articleForm.coverImage} />
+                      </div>
+                    ) : null}
+                  </div>
 
                   <label className="fm-field content-editor-field--wide">
                     <span>خلاصه کوتاه</span>
@@ -1043,6 +1107,19 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                     <span>تصویر پیش‌نمایش</span>
                     <input onChange={(event) => updateArticleForm('ogImage', event.target.value)} placeholder="https://..." value={articleForm.ogImage} />
                   </label>
+                  <div className="admin-products-upload-card content-editor-field--wide">
+                    <div className="admin-products-upload-actions">
+                      <button className="content-secondary-action" disabled={uploadingImageTarget === 'article:ogImage'} onClick={() => openImagePicker('article:ogImage')} type="button">
+                        {uploadingImageTarget === 'article:ogImage' ? 'در حال آپلود...' : 'آپلود تصویر پیش‌نمایش'}
+                      </button>
+                      <span className="admin-products-upload-hint">برای Open Graph، اشتراک‌گذاری و preview شبکه‌های اجتماعی استفاده می‌شود.</span>
+                    </div>
+                    {getImagePreview(articleForm.ogImage) ? (
+                      <div className="admin-products-image-preview">
+                        <img alt="Preview article og image" src={articleForm.ogImage} />
+                      </div>
+                    ) : null}
+                  </div>
 
                   <label className="fm-field content-editor-field--wide">
                     <span>یادداشت سئو</span>

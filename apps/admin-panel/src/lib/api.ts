@@ -57,6 +57,19 @@ export type StorefrontPagePayload = {
   publishedAt?: string | null
 }
 
+export type UploadedImagePayload = {
+  url: string
+  width?: number | null
+  height?: number | null
+  contentType?: string
+  variants?: {
+    original?: { url: string; width?: number; height?: number; key?: string } | null
+    large?: { url: string; width?: number; height?: number; key?: string } | null
+    medium?: { url: string; width?: number; height?: number; key?: string } | null
+    thumbnail?: { url: string; width?: number; height?: number; key?: string } | null
+  }
+}
+
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ??
   import.meta.env.VITE_API_URL ??
@@ -629,8 +642,19 @@ export const adminApi = {
   async uploadProductImage(session: AuthSession, file: File) {
     const formData = new FormData()
     formData.append('file', file)
-    const payload = await uploadRequest<{ url: string }>('/files/upload-product-image', formData, session.accessToken)
-    return { ...payload, url: resolveAssetUrl(payload.url) }
+    const payload = await uploadRequest<UploadedImagePayload>('/files/upload-product-image', formData, session.accessToken)
+    return {
+      ...payload,
+      url: resolveAssetUrl(payload.url),
+      variants: payload.variants
+        ? {
+            original: payload.variants.original ? { ...payload.variants.original, url: resolveAssetUrl(payload.variants.original.url) } : null,
+            large: payload.variants.large ? { ...payload.variants.large, url: resolveAssetUrl(payload.variants.large.url) } : null,
+            medium: payload.variants.medium ? { ...payload.variants.medium, url: resolveAssetUrl(payload.variants.medium.url) } : null,
+            thumbnail: payload.variants.thumbnail ? { ...payload.variants.thumbnail, url: resolveAssetUrl(payload.variants.thumbnail.url) } : null,
+          }
+        : undefined,
+    }
   },
   async uploadGalleryImages(session: AuthSession, files: File[]) {
     const formData = new FormData()
