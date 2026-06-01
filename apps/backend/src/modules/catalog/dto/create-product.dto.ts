@@ -47,6 +47,11 @@ export class CreateProductDto {
   @IsNotEmpty({ message: 'نام محصول اجباری است' })
   name!: string;
 
+  @ApiPropertyOptional({ description: 'اسلاگ یکتا برای URL محصول', example: 'flower-bouquet-red-roses' })
+  @IsOptional()
+  @IsString()
+  slug?: string;
+
   @ApiProperty({ description: 'توضیحات', example: 'توضیحات کامل درباره محصول' })
   @IsString()
   @IsOptional()
