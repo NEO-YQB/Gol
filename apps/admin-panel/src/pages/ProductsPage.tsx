@@ -371,9 +371,9 @@ export function ProductsPage({ session, onCreateProduct, onEditProduct, onOpenCa
         title="تعریف گل، پرکننده، اکسسوری و بیس"
         description="این بخش سراسری است و به یک محصول خاص وابسته نیست. هر موردی که اینجا بسازی، بعداً در composition همه محصولات قابل انتخاب می‌شود."
       >
-        <div className="products-elements-layout">
+        <div className="products-elements-layout product-workspace-page">
           <div className="products-elements-form">
-            <label className="content-select-field">
+            <label className="fm-field">
               <span>نام جزء</span>
               <input
                 className="fm-input"
@@ -382,7 +382,7 @@ export function ProductsPage({ session, onCreateProduct, onEditProduct, onOpenCa
                 value={elementForm.name}
               />
             </label>
-            <label className="content-select-field">
+            <label className="fm-field">
               <span>نوع</span>
               <select className="fm-input" onChange={(event) => setElementForm((current) => ({ ...current, type: event.target.value as typeof current.type }))} value={elementForm.type}>
                 <option value="FLOWER">FLOWER</option>
@@ -391,7 +391,7 @@ export function ProductsPage({ session, onCreateProduct, onEditProduct, onOpenCa
                 <option value="BASE">BASE</option>
               </select>
             </label>
-            <label className="content-select-field">
+            <label className="fm-field">
               <span>واحد</span>
               <input
                 className="fm-input"
@@ -400,7 +400,7 @@ export function ProductsPage({ session, onCreateProduct, onEditProduct, onOpenCa
                 value={elementForm.unit}
               />
             </label>
-            <label className="content-select-field">
+            <label className="fm-field">
               <span>تصویر مرجع</span>
               <input
                 className="fm-input"
