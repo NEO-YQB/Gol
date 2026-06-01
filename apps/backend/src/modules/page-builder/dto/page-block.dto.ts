@@ -63,6 +63,17 @@ export enum HeroHeaderContentAlign {
   CENTER = 'center',
 }
 
+export enum HeroHeaderImageFit {
+  COVER = 'cover',
+  CONTAIN = 'contain',
+}
+
+export enum HeroHeaderImagePosition {
+  CENTER = 'center',
+  TOP = 'top',
+  BOTTOM = 'bottom',
+}
+
 export class HeroHeaderBlockDataDto {
   @ApiProperty({ example: 'گل‌های خاص برای شب یلدا' })
   @IsString()
@@ -119,7 +130,7 @@ export class HeroHeaderBlockDataDto {
   @ApiPropertyOptional({ example: 92 })
   @IsOptional()
   @IsInt()
-  @Min(40)
+  @Min(10)
   @Max(140)
   minHeightVh?: number;
 
@@ -134,6 +145,16 @@ export class HeroHeaderBlockDataDto {
   @IsOptional()
   @IsEnum(HeroHeaderContentAlign)
   contentAlign?: HeroHeaderContentAlign;
+
+  @ApiPropertyOptional({ enum: HeroHeaderImageFit, example: HeroHeaderImageFit.COVER })
+  @IsOptional()
+  @IsEnum(HeroHeaderImageFit)
+  imageFit?: HeroHeaderImageFit;
+
+  @ApiPropertyOptional({ enum: HeroHeaderImagePosition, example: HeroHeaderImagePosition.CENTER })
+  @IsOptional()
+  @IsEnum(HeroHeaderImagePosition)
+  imagePosition?: HeroHeaderImagePosition;
 }
 
 export class CategoryCirclesBlockDataDto {

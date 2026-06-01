@@ -130,6 +130,8 @@ function getDefaultBlockData(type: PageBlockType): Record<string, unknown> {
         ctaText: '',
         ctaLink: '',
         textColor: '',
+        imageFit: 'cover',
+        imagePosition: 'center',
       }
   }
 }
@@ -1321,6 +1323,21 @@ export function PageBuilderWorkspacePage({
                           <select onChange={(event) => patchBlockData(block.id, 'contentAlign', event.target.value)} value={String(data.contentAlign ?? 'start')}>
                             <option value="start">start</option>
                             <option value="center">center</option>
+                          </select>
+                        </label>
+                        <label className="fm-field">
+                          <span>حالت تصویر</span>
+                          <select onChange={(event) => patchBlockData(block.id, 'imageFit', event.target.value)} value={String(data.imageFit ?? 'cover')}>
+                            <option value="cover">cover</option>
+                            <option value="contain">contain</option>
+                          </select>
+                        </label>
+                        <label className="fm-field">
+                          <span>جایگاه تصویر</span>
+                          <select onChange={(event) => patchBlockData(block.id, 'imagePosition', event.target.value)} value={String(data.imagePosition ?? 'center')}>
+                            <option value="center">center</option>
+                            <option value="top">top</option>
+                            <option value="bottom">bottom</option>
                           </select>
                         </label>
                       </>

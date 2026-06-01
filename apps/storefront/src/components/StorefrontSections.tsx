@@ -20,9 +20,12 @@ export function HeroSection({
   const textColor = String(block.data.textColor ?? '#fff8ef')
   const fullWidth = block.data.fullWidth !== false
   const flushTop = block.data.flushTop !== false
-  const minHeightVh = Math.min(Math.max(Number(block.data.minHeightVh ?? 92) || 92, 40), 140)
+  const minHeightVh = Math.min(Math.max(Number(block.data.minHeightVh ?? 92) || 92, 10), 140)
   const overlayOpacity = Math.min(Math.max(Number(block.data.overlayOpacity ?? 0.42) || 0.42, 0), 1)
   const contentAlign = String(block.data.contentAlign ?? 'start') === 'center' ? 'center' : 'start'
+  const imageFit = String(block.data.imageFit ?? 'cover') === 'contain' ? 'contain' : 'cover'
+  const imagePosition = String(block.data.imagePosition ?? 'center')
+  const imageObjectPosition = imagePosition === 'top' ? 'top' : imagePosition === 'bottom' ? 'bottom' : 'center'
 
   return (
     <section
@@ -35,7 +38,21 @@ export function HeroSection({
       {imageUrl || mobileImageUrl ? (
         <picture className="absolute inset-0 -z-10 block h-full w-full">
           {mobileImageUrl ? <source media="(max-width: 767px)" srcSet={mobileImageUrl} /> : null}
-          {imageUrl ? <img alt={String(block.data.title ?? pageTitle)} className="h-full w-full object-cover" src={imageUrl} /> : mobileImageUrl ? <img alt={String(block.data.title ?? pageTitle)} className="h-full w-full object-cover" src={mobileImageUrl} /> : null}
+          {imageUrl ? (
+            <img
+              alt={String(block.data.title ?? pageTitle)}
+              className={imageFit === 'contain' ? 'h-full w-full object-contain' : 'h-full w-full object-cover'}
+              src={imageUrl}
+              style={{ objectPosition: imageObjectPosition }}
+            />
+          ) : mobileImageUrl ? (
+            <img
+              alt={String(block.data.title ?? pageTitle)}
+              className={imageFit === 'contain' ? 'h-full w-full object-contain' : 'h-full w-full object-cover'}
+              src={mobileImageUrl}
+              style={{ objectPosition: imageObjectPosition }}
+            />
+          ) : null}
         </picture>
       ) : (
         <div className="absolute inset-0 -z-10 bg-[linear-gradient(135deg,#173126_0%,#294f3d_48%,#d06c54_100%)]" />
