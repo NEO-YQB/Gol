@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { mkdir, writeFile } from 'fs/promises';
@@ -100,11 +96,11 @@ export class FilesService {
   }
 
   async uploadProductImage(file: Express.Multer.File) {
-    return this.uploadImage(file, 'products', true);
+    return this.uploadImage(file, 'products', false);
   }
 
   async uploadGalleryImages(files: Express.Multer.File[]) {
-    return Promise.all(files.map((file) => this.uploadImage(file, 'products', true)));
+    return Promise.all(files.map((file) => this.uploadImage(file, 'products', false)));
   }
 
   async uploadDocumentImage(file: Express.Multer.File) {
@@ -159,12 +155,6 @@ export class FilesService {
         contentType: 'image/webp',
       };
     } catch {
-      if (requireWebp) {
-        throw new ServiceUnavailableException(
-          'سرویس پردازش تصویر در سرور فعال نیست و تبدیل به webp انجام نشد. ابتدا پشتیبانی sharp روی سرور را فعال کنید.',
-        );
-      }
-
       const fallbackKey = `${folder}/${this.buildFallbackFileName(file.originalname)}`;
       return {
         original: {
