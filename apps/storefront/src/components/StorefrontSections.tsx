@@ -63,9 +63,6 @@ export function HeroSection({
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.18),transparent_34%)]" />
       <div className={`relative z-10 flex min-h-[inherit] ${contentAlign === 'center' ? 'items-center justify-center text-center' : 'items-end'}`}>
         <div className={`w-full ${contentAlign === 'center' ? 'max-w-4xl' : 'max-w-3xl'}`}>
-          <p className="mb-4 inline-flex rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.34em] text-white/85">
-            {pageType === 'HOME' ? 'homepage signature' : 'campaign spotlight'}
-          </p>
           <h1 className="text-4xl font-black leading-[1.15] md:text-6xl">{String(block.data.title ?? pageTitle)}</h1>
           {block.data.subtitle ? (
             <p className={`mt-6 text-base leading-8 text-white/82 md:text-lg ${contentAlign === 'center' ? 'mx-auto max-w-2xl' : 'max-w-2xl'}`}>
@@ -87,12 +84,6 @@ export function CategoryCirclesSection({ block }: { block: { id: string; categor
   const categories = Array.isArray(block.categories) ? block.categories : []
   return (
     <section className={storefrontShared.sectionCard} key={block.id}>
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <div>
-          <p className={storefrontShared.sectionEyebrow}>category edit</p>
-          <h2 className="mt-2 text-2xl font-black text-[#183226]">چیدمان سریع مسیرهای خرید</h2>
-        </div>
-      </div>
       <div className="flex gap-5 overflow-x-auto pb-2">
         {categories.map((category) => (
           <CategoryCircle category={category} key={category.id} />
@@ -104,13 +95,11 @@ export function CategoryCirclesSection({ block }: { block: { id: string; categor
 
 export function ProductCarouselSection({ block }: { block: { id: string; data: Record<string, unknown>; products?: ProductSummary[] } }) {
   const products = Array.isArray(block.products) ? block.products : []
+  const title = String(block.data.title ?? '').trim()
   return (
     <section className="mb-8" key={block.id}>
       <div className="mb-6 flex items-end justify-between gap-4">
-        <div>
-          <p className={storefrontShared.sectionEyebrow}>live catalog</p>
-          <h2 className={storefrontShared.sectionTitle}>{String(block.data.title || 'انتخاب‌های ویژه')}</h2>
-        </div>
+        {title ? <h2 className="text-3xl font-black text-[#173126]">{title}</h2> : <div />}
         <StorefrontPill text={`${products.length} محصول`} />
       </div>
       <div className="flex gap-5 overflow-x-auto pb-2">
@@ -148,8 +137,7 @@ export function EditorialSection({ block }: { block: { id: string; data: Record<
         />
       </div>
       <div className={`${imageOnLeft ? 'md:order-2' : 'md:order-1'} flex flex-col justify-center px-6 py-8 md:px-10 md:py-8`}>
-        <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#926b46]">editorial mood</p>
-        <h2 className="mt-3 text-[1.8rem] font-black leading-tight text-[#173126] md:text-[2rem]">{String(block.data.title ?? '')}</h2>
+        <h2 className="text-[1.8rem] font-black leading-tight text-[#173126] md:text-[2rem]">{String(block.data.title ?? '')}</h2>
         <p className="mt-4 max-w-fit text-[0.98rem] leading-7 md:text-base md:leading-8" style={{ color: descriptionColor }}>
           {String(block.data.description ?? '')}
         </p>
@@ -165,14 +153,11 @@ export function EditorialSection({ block }: { block: { id: string; data: Record<
 
 export function VendorCarouselSection({ block }: { block: { id: string; data: Record<string, unknown>; vendors?: StoreSummary[] } }) {
   const vendors = Array.isArray(block.vendors) ? block.vendors : []
+  const title = String(block.data.title ?? '').trim()
   return (
     <section className="mb-8" key={block.id}>
       <div className="mb-6 flex items-end justify-between gap-4">
-        <div>
-          {/* <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#9f7e56]">vendor selection</p> */}
-          <h2 className="text-xs font-bold uppercase tracking-[0.3em] text-[#9f7e56]">{String(block.data.title || 'فروشگاه‌های برتر')}</h2>
-          <h2 className={storefrontShared.sectionTitle}>{String(block.data.title || 'فروشگاه‌های برتر')}</h2>
-        </div>
+        {title ? <h2 className="text-3xl font-black text-[#173126]">{title}</h2> : <div />}
         <StorefrontPill text={`${vendors.length} فروشگاه`} />
       </div>
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
@@ -190,8 +175,7 @@ export function CampaignGridSection({ block }: { block: { id: string; data: Reco
     <section className={storefrontShared.campaignSection} key={block.id} style={{ background: String(block.data.backgroundColor || '#f2e7d8') }}>
       {block.data.title ? (
         <div className="mb-6">
-          <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#9f7e56]">campaign grid</p>
-          <h2 className={storefrontShared.sectionTitle}>{String(block.data.title)}</h2>
+          <h2 className="text-3xl font-black text-[#173126]">{String(block.data.title)}</h2>
         </div>
       ) : null}
       <div className="grid auto-rows-[180px] grid-cols-1 gap-4 md:grid-cols-3">
@@ -236,6 +220,7 @@ export function LatestArticlesShowcaseSection({ block }: { block: { id: string; 
   const articles = Array.isArray(block.articles) ? block.articles : []
   const [activeIndex, setActiveIndex] = useState(0)
   const basePath = String(block.data.articleBasePath ?? '/mag/articles')
+  const title = String(block.data.title ?? '').trim()
 
   const normalizedArticles = useMemo(
     () =>
@@ -256,8 +241,7 @@ export function LatestArticlesShowcaseSection({ block }: { block: { id: string; 
     <section className={storefrontShared.articleShowcase} key={block.id}>
       <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className={storefrontShared.sectionEyebrow}>latest stories</p>
-          <h2 className="mt-2 text-[1.8rem] font-black text-[#173126] md:text-[2rem]">{String(block.data.title || 'آخرین مقاله‌های مجله')}</h2>
+          {title ? <h2 className="text-[1.8rem] font-black text-[#173126] md:text-[2rem]">{title}</h2> : null}
           {block.data.subtitle ? <p className="mt-2 max-w-xl text-sm leading-7 text-[#6d7a72]">{String(block.data.subtitle)}</p> : null}
         </div>
         {block.data.ctaText && block.data.ctaLink ? (
