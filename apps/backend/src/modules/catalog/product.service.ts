@@ -60,14 +60,13 @@ export class ProductService {
       throw new NotFoundException('نوع محصول مورد نظر یافت نشد');
     }
 
-    const allowedElements = productType.allowedElements as Prisma.JsonArray | null;
-    const allowedElementIds = allowedElements?.map((el: any) => el.id) || [];
+    const allowedElementIds = this.extractAllowedElementIds(productType.allowedElements);
 
-    if (compositions && compositions.length > 0) {
+    if (compositions && compositions.length > 0 && allowedElementIds.length > 0) {
       for (const comp of compositions) {
-        if (!allowedElementIds.includes(comp.elementId)) {
+        if (!allowedElementIds.includes(Number(comp.elementId))) {
           const forbiddenElement = await this.prisma.productElement.findUnique({
-            where: { id: comp.elementId }
+            where: { id: Number(comp.elementId) }
           });
           throw new BadRequestException(
             `المان "${forbiddenElement?.name || comp.elementId}" برای نوع "${productType.name}" مجاز نیست.`
@@ -159,12 +158,11 @@ export class ProductService {
         where: { id: typeId },
       });
 
-      const allowedElementsForUpdate = targetType?.allowedElements as Prisma.JsonArray | null;
-      const allowedIds = allowedElementsForUpdate?.map((el: any) => el.id) || [];
+      const allowedIds = this.extractAllowedElementIds(targetType?.allowedElements);
       
-      if (compositions) {
+      if (compositions && allowedIds.length > 0) {
         for (const comp of compositions) {
-          if (!allowedIds.includes(comp.elementId)) {
+          if (!allowedIds.includes(Number(comp.elementId))) {
             throw new BadRequestException(`المان انتخاب شده در این نوع محصول مجاز نیست`);
           }
         }
@@ -254,6 +252,32 @@ export class ProductService {
     }
 
     throw new ConflictException('تولید اسلاگ یکتای محصول ممکن نشد');
+  }
+
+  private extractAllowedElementIds(allowedElements: Prisma.JsonValue | null | undefined) {
+    if (!Array.isArray(allowedElements)) {
+      return [];
+    }
+
+    return allowedElements
+      .map((item) => {
+        if (typeof item === 'number') {
+          return item;
+        }
+
+        if (typeof item === 'string') {
+          const parsed = Number(item);
+          return Number.isInteger(parsed) ? parsed : null;
+        }
+
+        if (item && typeof item === 'object' && 'id' in item) {
+          const parsed = Number((item as { id?: unknown }).id);
+          return Number.isInteger(parsed) ? parsed : null;
+        }
+
+        return null;
+      })
+      .filter((item): item is number => Number.isInteger(item) && item > 0);
   }
 
   async findAll(query: GetProductsQueryDto) {
