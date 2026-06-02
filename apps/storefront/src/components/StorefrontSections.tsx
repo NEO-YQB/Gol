@@ -125,17 +125,27 @@ export function ProductCarouselSection({ block }: { block: { id: string; data: R
 export function EditorialSection({ block }: { block: { id: string; data: Record<string, unknown> } }) {
   const imageOnLeft = String(block.data.imagePosition ?? 'right') === 'left'
   const descriptionColor = String(block.data.descriptionColor ?? '#355045')
+  const sectionLayoutClassName = imageOnLeft
+    ? 'md:grid-cols-[220px_minmax(0,1fr)]'
+    : 'md:grid-cols-[minmax(0,1fr)_220px]'
+
   return (
-    <section className={storefrontShared.editorialSection} key={block.id} style={{ background: String(block.data.backgroundColor || '#efe4d3') }}>
-      <div className={`${imageOnLeft ? 'md:order-1' : 'md:order-2'} flex items-center justify-center md:justify-center`}>
-        <div className="h-[220px] w-[220px] overflow-hidden rounded-[28px] bg-[#e9dccb] shadow-[0_12px_28px_rgba(38,24,9,0.10)] md:h-[280px] md:w-[280px]">
-          <img alt={String(block.data.title ?? 'Editorial block')} className="h-full w-full object-cover" src={resolveAssetUrl(String(block.data.imageUrl ?? ''))} />
-        </div>
+    <section
+      className={`${storefrontShared.editorialSection} ${sectionLayoutClassName}`}
+      key={block.id}
+      style={{ background: String(block.data.backgroundColor || '#efe4d3') }}
+    >
+      <div className={`${imageOnLeft ? 'md:order-1' : 'md:order-2'} overflow-hidden bg-[#e9dccb]`}>
+        <img
+          alt={String(block.data.title ?? 'Editorial block')}
+          className="aspect-square h-[220px] w-full object-cover md:h-auto"
+          src={resolveAssetUrl(String(block.data.imageUrl ?? ''))}
+        />
       </div>
-      <div className={`${imageOnLeft ? 'md:order-2' : 'md:order-1'} flex flex-col justify-center px-6 py-8 md:px-8 md:py-8`}>
+      <div className={`${imageOnLeft ? 'md:order-2' : 'md:order-1'} flex flex-col justify-center px-6 py-8 md:px-10 md:py-8`}>
         <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#926b46]">editorial mood</p>
         <h2 className="mt-3 text-[1.8rem] font-black leading-tight text-[#173126] md:text-[2rem]">{String(block.data.title ?? '')}</h2>
-        <p className="mt-4 text-[0.98rem] leading-7" style={{ color: descriptionColor }}>
+        <p className="mt-4 max-w-3xl text-[0.98rem] leading-7 md:text-base md:leading-8" style={{ color: descriptionColor }}>
           {String(block.data.description ?? '')}
         </p>
         {block.data.buttonText && block.data.buttonLink ? (
