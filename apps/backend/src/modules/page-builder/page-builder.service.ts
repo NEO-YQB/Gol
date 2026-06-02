@@ -29,6 +29,7 @@ type PersistedPageRecord = {
   isActive: boolean;
   cacheEnabled: boolean;
   headerConfig: unknown;
+  footerConfig: unknown;
   metaTitle: string | null;
   metaDescription: string | null;
   keywords: string[];
@@ -175,6 +176,7 @@ export class PageBuilderService {
       isActive: dto.isActive ?? false,
       cacheEnabled: dto.cacheEnabled ?? true,
       headerConfig: this.normalizeHeaderConfig(dto.headerConfig),
+      footerConfig: this.normalizeFooterConfig(dto.footerConfig),
       metaTitle: this.normalizeNullableText(dto.metaTitle),
       metaDescription: this.normalizeNullableText(dto.metaDescription),
       keywords: this.normalizeKeywords(dto.keywords),
@@ -221,6 +223,9 @@ export class PageBuilderService {
       ...(dto.cacheEnabled !== undefined ? { cacheEnabled: dto.cacheEnabled } : {}),
       ...(dto.headerConfig !== undefined
         ? { headerConfig: this.normalizeHeaderConfig(dto.headerConfig) }
+        : {}),
+      ...(dto.footerConfig !== undefined
+        ? { footerConfig: this.normalizeFooterConfig(dto.footerConfig) }
         : {}),
       ...(dto.metaTitle !== undefined
         ? { metaTitle: this.normalizeNullableText(dto.metaTitle) }
@@ -374,6 +379,69 @@ export class PageBuilderService {
     };
   }
 
+  private normalizeFooterConfig(footerConfig?: CreatePageDto['footerConfig']) {
+    if (!footerConfig) {
+      return null;
+    }
+
+    return {
+      enabled: footerConfig.enabled !== false,
+      backgroundColor: this.normalizeNullableText(footerConfig.backgroundColor),
+      textColor: this.normalizeNullableText(footerConfig.textColor),
+      mutedTextColor: this.normalizeNullableText(footerConfig.mutedTextColor),
+      accentColor: this.normalizeNullableText(footerConfig.accentColor),
+      borderColor: this.normalizeNullableText(footerConfig.borderColor),
+      brandEnabled: footerConfig.brandEnabled !== false,
+      brandWidthPercent: this.normalizePercent(footerConfig.brandWidthPercent, 34, 15, 60),
+      brandLogoImageUrl: this.normalizeNullableText(footerConfig.brandLogoImageUrl),
+      brandLogoHref: this.normalizeNullableText(footerConfig.brandLogoHref),
+      brandDescription: this.normalizeNullableText(footerConfig.brandDescription),
+      linksEnabled: footerConfig.linksEnabled !== false,
+      linksWidthPercent: this.normalizePercent(footerConfig.linksWidthPercent, 36, 15, 60),
+      linkColumns: (footerConfig.linkColumns ?? [])
+        .map((column) => ({
+          enabled: column.enabled !== false,
+          title: this.normalizeNullableText(column.title),
+          items: (column.items ?? [])
+            .map((item) => ({
+              label: this.normalizeText(item.label),
+              href: this.normalizeText(item.href),
+            }))
+            .filter((item) => item.label.length > 0 && item.href.length > 0),
+        }))
+        .filter((column) => (column.title ?? '').length > 0 || column.items.length > 0),
+      trustEnabled: footerConfig.trustEnabled !== false,
+      trustWidthPercent: this.normalizePercent(footerConfig.trustWidthPercent, 30, 15, 60),
+      trustTitle: this.normalizeNullableText(footerConfig.trustTitle),
+      badges: (footerConfig.badges ?? [])
+        .map((badge) => ({
+          enabled: badge.enabled !== false,
+          title: this.normalizeNullableText(badge.title),
+          imageUrl: this.normalizeNullableText(badge.imageUrl),
+          href: this.normalizeNullableText(badge.href),
+        }))
+        .filter((badge) => badge.imageUrl),
+      socials: (footerConfig.socials ?? [])
+        .map((social) => ({
+          enabled: social.enabled !== false,
+          label: this.normalizeText(social.label),
+          imageUrl: this.normalizeNullableText(social.imageUrl),
+          href: this.normalizeText(social.href),
+        }))
+        .filter((social) => social.label.length > 0 && social.href.length > 0),
+      legalEnabled: footerConfig.legalEnabled !== false,
+      legalText: this.normalizeNullableText(footerConfig.legalText),
+    };
+  }
+
+  private normalizePercent(value: number | undefined, fallback: number, min: number, max: number) {
+    if (typeof value !== 'number' || Number.isNaN(value)) {
+      return fallback;
+    }
+
+    return Math.min(Math.max(Math.round(value), min), max);
+  }
+
   private normalizeText(value: string) {
     return value.trim();
   }
@@ -396,6 +464,7 @@ export class PageBuilderService {
       isActive: page.isActive,
       cacheEnabled: page.cacheEnabled,
       headerConfig: page.headerConfig,
+      footerConfig: page.footerConfig,
       metaTitle: page.metaTitle,
       metaDescription: page.metaDescription,
       keywords: page.keywords,
@@ -419,6 +488,7 @@ export class PageBuilderService {
       pageType: page.pageType,
       cacheEnabled: page.cacheEnabled,
       headerConfig: page.headerConfig,
+      footerConfig: page.footerConfig,
       seo: {
         metaTitle: page.metaTitle,
         metaDescription: page.metaDescription,

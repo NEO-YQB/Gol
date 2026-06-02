@@ -281,6 +281,7 @@ model Page {
   isActive        Boolean  @default(false)
   cacheEnabled    Boolean  @default(true)
   headerConfig    Json?
+  footerConfig    Json?
   metaTitle       String?
   metaDescription String?
   keywords        String[] @default([])

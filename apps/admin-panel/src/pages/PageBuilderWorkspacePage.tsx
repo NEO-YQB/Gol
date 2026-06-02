@@ -42,6 +42,31 @@ type ProductPreviewState = {
   error?: string
 }
 
+type FooterLinkItemForm = {
+  label: string
+  href: string
+}
+
+type FooterLinkColumnForm = {
+  enabled: boolean
+  title: string
+  items: FooterLinkItemForm[]
+}
+
+type FooterBadgeForm = {
+  enabled: boolean
+  title: string
+  imageUrl: string
+  href: string
+}
+
+type FooterSocialForm = {
+  enabled: boolean
+  label: string
+  imageUrl: string
+  href: string
+}
+
 type ColorFieldProps = {
   label: string
   value: string
@@ -51,7 +76,7 @@ type ColorFieldProps = {
   pickerFallback?: string
 }
 
-type BuilderPanelKey = 'pageSettings' | 'header' | 'seo' | 'blocks'
+type BuilderPanelKey = 'pageSettings' | 'header' | 'footer' | 'seo' | 'blocks'
 
 type CollapsibleSectionCardProps = {
   eyebrow: string
@@ -84,6 +109,27 @@ type PageForm = {
   headerAuthPreviewMode: 'guest' | 'authenticated'
   headerAuthPreviewName: string
   headerMenuItems: Array<{ label: string; href: string; highlighted: boolean; textColor: string; backgroundColor: string }>
+  footerEnabled: boolean
+  footerBackgroundColor: string
+  footerTextColor: string
+  footerMutedTextColor: string
+  footerAccentColor: string
+  footerBorderColor: string
+  footerBrandEnabled: boolean
+  footerBrandWidthPercent: string
+  footerBrandLogoImageUrl: string
+  footerBrandLogoHref: string
+  footerBrandDescription: string
+  footerLinksEnabled: boolean
+  footerLinksWidthPercent: string
+  footerLinkColumns: FooterLinkColumnForm[]
+  footerTrustEnabled: boolean
+  footerTrustWidthPercent: string
+  footerTrustTitle: string
+  footerBadges: FooterBadgeForm[]
+  footerSocials: FooterSocialForm[]
+  footerLegalEnabled: boolean
+  footerLegalText: string
   metaTitle: string
   metaDescription: string
   keywords: string
@@ -210,6 +256,31 @@ function createEmptyForm(): PageForm {
     headerAuthPreviewMode: 'guest',
     headerAuthPreviewName: '',
     headerMenuItems: [],
+    footerEnabled: true,
+    footerBackgroundColor: '#173126',
+    footerTextColor: '#f5efe4',
+    footerMutedTextColor: '#d8c9b4',
+    footerAccentColor: '#2a5d49',
+    footerBorderColor: 'rgba(255,255,255,0.12)',
+    footerBrandEnabled: true,
+    footerBrandWidthPercent: '34',
+    footerBrandLogoImageUrl: '',
+    footerBrandLogoHref: '/',
+    footerBrandDescription: '',
+    footerLinksEnabled: true,
+    footerLinksWidthPercent: '36',
+    footerLinkColumns: [
+      { enabled: true, title: '', items: [] },
+      { enabled: true, title: '', items: [] },
+      { enabled: false, title: '', items: [] },
+    ],
+    footerTrustEnabled: true,
+    footerTrustWidthPercent: '30',
+    footerTrustTitle: '',
+    footerBadges: [],
+    footerSocials: [],
+    footerLegalEnabled: true,
+    footerLegalText: 'تمامی حقوق برای گلینو محفوظ است',
     metaTitle: '',
     metaDescription: '',
     keywords: '',
@@ -218,6 +289,18 @@ function createEmptyForm(): PageForm {
     noIndex: false,
     blocks: [],
   }
+}
+
+function createFooterLinkItem(): FooterLinkItemForm {
+  return { label: '', href: '' }
+}
+
+function createFooterBadge(): FooterBadgeForm {
+  return { enabled: true, title: '', imageUrl: '', href: '' }
+}
+
+function createFooterSocial(): FooterSocialForm {
+  return { enabled: true, label: '', imageUrl: '', href: '' }
 }
 
 function normalizeColorPickerValue(value: string, fallback = '#173126') {
@@ -339,6 +422,7 @@ function mapApiPageToForm(page: Record<string, unknown>): PageForm {
   })
 
   const headerConfig = typeof page.headerConfig === 'object' && page.headerConfig !== null ? (page.headerConfig as Record<string, unknown>) : {}
+  const footerConfig = typeof page.footerConfig === 'object' && page.footerConfig !== null ? (page.footerConfig as Record<string, unknown>) : {}
   const headerMenuItems = Array.isArray(headerConfig.menuItems)
     ? headerConfig.menuItems
         .map((item) =>
@@ -353,6 +437,55 @@ function mapApiPageToForm(page: Record<string, unknown>): PageForm {
             : null,
         )
         .filter((item): item is { label: string; href: string; highlighted: boolean; textColor: string; backgroundColor: string } => Boolean(item && item.label && item.href))
+    : []
+
+  const footerLinkColumns = Array.isArray(footerConfig.linkColumns)
+    ? footerConfig.linkColumns
+        .map((column) =>
+          typeof column === 'object' && column !== null
+            ? {
+                enabled: (column as Record<string, unknown>).enabled !== false,
+                title: readText(column as Record<string, unknown>, ['title'], ''),
+                items: Array.isArray((column as Record<string, unknown>).items)
+                  ? ((column as Record<string, unknown>).items as Array<Record<string, unknown>>).map((item) => ({
+                      label: readText(item, ['label'], ''),
+                      href: readText(item, ['href'], ''),
+                    }))
+                  : [],
+              }
+            : null,
+        )
+        .filter((column): column is FooterLinkColumnForm => Boolean(column))
+    : []
+
+  const footerBadges = Array.isArray(footerConfig.badges)
+    ? footerConfig.badges
+        .map((badge) =>
+          typeof badge === 'object' && badge !== null
+            ? {
+                enabled: (badge as Record<string, unknown>).enabled !== false,
+                title: readText(badge as Record<string, unknown>, ['title'], ''),
+                imageUrl: readText(badge as Record<string, unknown>, ['imageUrl'], ''),
+                href: readText(badge as Record<string, unknown>, ['href'], ''),
+              }
+            : null,
+        )
+        .filter((badge): badge is FooterBadgeForm => Boolean(badge))
+    : []
+
+  const footerSocials = Array.isArray(footerConfig.socials)
+    ? footerConfig.socials
+        .map((social) =>
+          typeof social === 'object' && social !== null
+            ? {
+                enabled: (social as Record<string, unknown>).enabled !== false,
+                label: readText(social as Record<string, unknown>, ['label'], ''),
+                imageUrl: readText(social as Record<string, unknown>, ['imageUrl'], ''),
+                href: readText(social as Record<string, unknown>, ['href'], ''),
+              }
+            : null,
+        )
+        .filter((social): social is FooterSocialForm => Boolean(social))
     : []
 
   return {
@@ -376,6 +509,34 @@ function mapApiPageToForm(page: Record<string, unknown>): PageForm {
     headerAuthPreviewMode: readText(headerConfig, ['authPreviewMode'], 'guest') === 'authenticated' ? 'authenticated' : 'guest',
     headerAuthPreviewName: readText(headerConfig, ['authPreviewName'], ''),
     headerMenuItems,
+    footerEnabled: footerConfig.enabled !== false,
+    footerBackgroundColor: readText(footerConfig, ['backgroundColor'], '#173126'),
+    footerTextColor: readText(footerConfig, ['textColor'], '#f5efe4'),
+    footerMutedTextColor: readText(footerConfig, ['mutedTextColor'], '#d8c9b4'),
+    footerAccentColor: readText(footerConfig, ['accentColor'], '#2a5d49'),
+    footerBorderColor: readText(footerConfig, ['borderColor'], 'rgba(255,255,255,0.12)'),
+    footerBrandEnabled: footerConfig.brandEnabled !== false,
+    footerBrandWidthPercent: readText(footerConfig, ['brandWidthPercent'], '34'),
+    footerBrandLogoImageUrl: readText(footerConfig, ['brandLogoImageUrl'], ''),
+    footerBrandLogoHref: readText(footerConfig, ['brandLogoHref'], '/'),
+    footerBrandDescription: readText(footerConfig, ['brandDescription'], ''),
+    footerLinksEnabled: footerConfig.linksEnabled !== false,
+    footerLinksWidthPercent: readText(footerConfig, ['linksWidthPercent'], '36'),
+    footerLinkColumns:
+      footerLinkColumns.length > 0
+        ? footerLinkColumns
+        : [
+            { enabled: true, title: '', items: [] },
+            { enabled: true, title: '', items: [] },
+            { enabled: false, title: '', items: [] },
+          ],
+    footerTrustEnabled: footerConfig.trustEnabled !== false,
+    footerTrustWidthPercent: readText(footerConfig, ['trustWidthPercent'], '30'),
+    footerTrustTitle: readText(footerConfig, ['trustTitle'], ''),
+    footerBadges,
+    footerSocials,
+    footerLegalEnabled: footerConfig.legalEnabled !== false,
+    footerLegalText: readText(footerConfig, ['legalText'], 'تمامی حقوق برای گلینو محفوظ است'),
     metaTitle: readText(page, ['metaTitle'], ''),
     metaDescription: readText(page, ['metaDescription'], ''),
     keywords: toTextArray(page.keywords).join(', '),
@@ -450,6 +611,7 @@ export function PageBuilderWorkspacePage({
   const [sectionOpen, setSectionOpen] = useState<Record<BuilderPanelKey, boolean>>({
     pageSettings: true,
     header: false,
+    footer: false,
     seo: false,
     blocks: true,
   })
@@ -913,6 +1075,87 @@ export function PageBuilderWorkspacePage({
     }))
   }
 
+  function patchFooterLinkColumn(index: number, patch: Partial<FooterLinkColumnForm>) {
+    setForm((current) => ({
+      ...current,
+      footerLinkColumns: current.footerLinkColumns.map((column, columnIndex) => (columnIndex === index ? { ...column, ...patch } : column)),
+    }))
+  }
+
+  function patchFooterLinkItem(columnIndex: number, itemIndex: number, patch: Partial<FooterLinkItemForm>) {
+    setForm((current) => ({
+      ...current,
+      footerLinkColumns: current.footerLinkColumns.map((column, currentColumnIndex) =>
+        currentColumnIndex === columnIndex
+          ? {
+              ...column,
+              items: column.items.map((item, currentItemIndex) => (currentItemIndex === itemIndex ? { ...item, ...patch } : item)),
+            }
+          : column,
+      ),
+    }))
+  }
+
+  function addFooterLinkItem(columnIndex: number) {
+    setForm((current) => ({
+      ...current,
+      footerLinkColumns: current.footerLinkColumns.map((column, currentColumnIndex) =>
+        currentColumnIndex === columnIndex ? { ...column, items: [...column.items, createFooterLinkItem()] } : column,
+      ),
+    }))
+  }
+
+  function removeFooterLinkItem(columnIndex: number, itemIndex: number) {
+    setForm((current) => ({
+      ...current,
+      footerLinkColumns: current.footerLinkColumns.map((column, currentColumnIndex) =>
+        currentColumnIndex === columnIndex ? { ...column, items: column.items.filter((_, index) => index !== itemIndex) } : column,
+      ),
+    }))
+  }
+
+  function patchFooterBadge(index: number, patch: Partial<FooterBadgeForm>) {
+    setForm((current) => ({
+      ...current,
+      footerBadges: current.footerBadges.map((badge, badgeIndex) => (badgeIndex === index ? { ...badge, ...patch } : badge)),
+    }))
+  }
+
+  function addFooterBadge() {
+    setForm((current) => ({
+      ...current,
+      footerBadges: [...current.footerBadges, createFooterBadge()],
+    }))
+  }
+
+  function removeFooterBadge(index: number) {
+    setForm((current) => ({
+      ...current,
+      footerBadges: current.footerBadges.filter((_, badgeIndex) => badgeIndex !== index),
+    }))
+  }
+
+  function patchFooterSocial(index: number, patch: Partial<FooterSocialForm>) {
+    setForm((current) => ({
+      ...current,
+      footerSocials: current.footerSocials.map((social, socialIndex) => (socialIndex === index ? { ...social, ...patch } : social)),
+    }))
+  }
+
+  function addFooterSocial() {
+    setForm((current) => ({
+      ...current,
+      footerSocials: [...current.footerSocials, createFooterSocial()],
+    }))
+  }
+
+  function removeFooterSocial(index: number) {
+    setForm((current) => ({
+      ...current,
+      footerSocials: current.footerSocials.filter((_, socialIndex) => socialIndex !== index),
+    }))
+  }
+
   async function handleImageChoose(fileList: FileList | null) {
     const file = fileList?.[0]
     const target = uploadingImageTarget
@@ -930,6 +1173,27 @@ export function PageBuilderWorkspacePage({
 
       if (target === 'page:headerLogoImageUrl') {
         updateForm('headerLogoImageUrl', uploaded.url)
+        return
+      }
+
+      if (target === 'page:footerBrandLogoImageUrl') {
+        updateForm('footerBrandLogoImageUrl', uploaded.url)
+        return
+      }
+
+      if (target.startsWith('page:footerBadge:')) {
+        const badgeIndex = Number(target.split(':')[2])
+        if (Number.isInteger(badgeIndex)) {
+          patchFooterBadge(badgeIndex, { imageUrl: uploaded.url })
+        }
+        return
+      }
+
+      if (target.startsWith('page:footerSocial:')) {
+        const socialIndex = Number(target.split(':')[2])
+        if (Number.isInteger(socialIndex)) {
+          patchFooterSocial(socialIndex, { imageUrl: uploaded.url })
+        }
         return
       }
 
@@ -1002,6 +1266,54 @@ export function PageBuilderWorkspacePage({
             backgroundColor: toOptionalText(item.backgroundColor),
           }))
           .filter((item) => item.label.length > 0 && item.href.length > 0),
+      },
+      footerConfig: {
+        enabled: form.footerEnabled,
+        backgroundColor: toOptionalText(form.footerBackgroundColor),
+        textColor: toOptionalText(form.footerTextColor),
+        mutedTextColor: toOptionalText(form.footerMutedTextColor),
+        accentColor: toOptionalText(form.footerAccentColor),
+        borderColor: toOptionalText(form.footerBorderColor),
+        brandEnabled: form.footerBrandEnabled,
+        brandWidthPercent: Number(form.footerBrandWidthPercent) || 34,
+        brandLogoImageUrl: toOptionalText(form.footerBrandLogoImageUrl),
+        brandLogoHref: toOptionalText(form.footerBrandLogoHref),
+        brandDescription: toOptionalText(form.footerBrandDescription),
+        linksEnabled: form.footerLinksEnabled,
+        linksWidthPercent: Number(form.footerLinksWidthPercent) || 36,
+        linkColumns: form.footerLinkColumns
+          .map((column) => ({
+            enabled: column.enabled,
+            title: toOptionalText(column.title),
+            items: column.items
+              .map((item) => ({
+                label: item.label.trim(),
+                href: item.href.trim(),
+              }))
+              .filter((item) => item.label.length > 0 && item.href.length > 0),
+          }))
+          .filter((column) => column.enabled || (column.title ?? '').length > 0 || column.items.length > 0),
+        trustEnabled: form.footerTrustEnabled,
+        trustWidthPercent: Number(form.footerTrustWidthPercent) || 30,
+        trustTitle: toOptionalText(form.footerTrustTitle),
+        badges: form.footerBadges
+          .map((badge) => ({
+            enabled: badge.enabled,
+            title: toOptionalText(badge.title),
+            imageUrl: toOptionalText(badge.imageUrl),
+            href: toOptionalText(badge.href),
+          }))
+          .filter((badge) => badge.imageUrl),
+        socials: form.footerSocials
+          .map((social) => ({
+            enabled: social.enabled,
+            label: social.label.trim(),
+            imageUrl: toOptionalText(social.imageUrl),
+            href: social.href.trim(),
+          }))
+          .filter((social) => social.label.length > 0 && social.href.length > 0 && social.imageUrl),
+        legalEnabled: form.footerLegalEnabled,
+        legalText: toOptionalText(form.footerLegalText),
       },
       metaTitle: toOptionalText(form.metaTitle),
       metaDescription: toOptionalText(form.metaDescription),
@@ -1357,6 +1669,246 @@ export function PageBuilderWorkspacePage({
               <span>No index</span>
               <input checked={form.noIndex} onChange={(event) => updateForm('noIndex', event.target.checked)} type="checkbox" />
             </label>
+          </div>
+        </CollapsibleSectionCard>
+
+        <CollapsibleSectionCard
+          eyebrow="footer controls"
+          description="فوتر مینیمال و حرفه‌ای را از اینجا با ستون‌های لینک، بخش مجوزها، سوشال و متن پایانی کنترل کن."
+          onToggle={() => toggleSection('footer')}
+          open={sectionOpen.footer}
+          title="تنظیمات فوتر storefront"
+        >
+          <div className="fm-grid page-builder-form-grid">
+            <label className="fm-field page-builder-checkbox">
+              <span>فعال بودن فوتر</span>
+              <input checked={form.footerEnabled} onChange={(event) => updateForm('footerEnabled', event.target.checked)} type="checkbox" />
+            </label>
+            <ColorField label="رنگ پس‌زمینه" onChange={(value) => updateForm('footerBackgroundColor', value)} pickerFallback="#173126" value={form.footerBackgroundColor} />
+            <ColorField label="رنگ متن" onChange={(value) => updateForm('footerTextColor', value)} pickerFallback="#f5efe4" value={form.footerTextColor} />
+            <ColorField label="رنگ متن فرعی" onChange={(value) => updateForm('footerMutedTextColor', value)} pickerFallback="#d8c9b4" value={form.footerMutedTextColor} />
+            <ColorField label="رنگ تاکیدی" onChange={(value) => updateForm('footerAccentColor', value)} pickerFallback="#2a5d49" value={form.footerAccentColor} />
+            <ColorField hint="برای rgba می‌توانی دستی هم مقدار بدهی." label="رنگ border" onChange={(value) => updateForm('footerBorderColor', value)} pickerFallback="#ffffff" value={form.footerBorderColor} />
+
+            <div className="page-builder-banner-editor page-builder-field--wide">
+              <div className="page-builder-banner-editor__header">
+                <strong>بخش برند</strong>
+              </div>
+              <div className="fm-grid page-builder-form-grid">
+                <label className="fm-field page-builder-checkbox">
+                  <span>فعال</span>
+                  <input checked={form.footerBrandEnabled} onChange={(event) => updateForm('footerBrandEnabled', event.target.checked)} type="checkbox" />
+                </label>
+                <label className="fm-field">
+                  <span>درصد عرض</span>
+                  <input max={60} min={15} onChange={(event) => updateForm('footerBrandWidthPercent', event.target.value)} type="number" value={form.footerBrandWidthPercent} />
+                </label>
+                <label className="fm-field">
+                  <span>لینک لوگو</span>
+                  <input onChange={(event) => updateForm('footerBrandLogoHref', event.target.value)} type="text" value={form.footerBrandLogoHref} />
+                </label>
+                <label className="fm-field page-builder-field--wide">
+                  <span>لوگوی برند (URL)</span>
+                  <input onChange={(event) => updateForm('footerBrandLogoImageUrl', event.target.value)} type="text" value={form.footerBrandLogoImageUrl} />
+                </label>
+                <div className="admin-products-upload-card page-builder-field--wide">
+                  <div className="admin-products-upload-actions">
+                    <button className="content-secondary-action" disabled={uploadingImageTarget === 'page:footerBrandLogoImageUrl'} onClick={() => openImagePicker('page:footerBrandLogoImageUrl')} type="button">
+                      {uploadingImageTarget === 'page:footerBrandLogoImageUrl' ? 'در حال آپلود...' : 'انتخاب لوگوی فوتر'}
+                    </button>
+                  </div>
+                  {getImagePreview(form.footerBrandLogoImageUrl) ? (
+                    <div className="admin-products-image-preview">
+                      <img alt="Preview footer logo" src={form.footerBrandLogoImageUrl} />
+                    </div>
+                  ) : null}
+                </div>
+                <label className="fm-field page-builder-field--wide">
+                  <span>توضیح کوتاه برند</span>
+                  <textarea onChange={(event) => updateForm('footerBrandDescription', event.target.value)} rows={4} value={form.footerBrandDescription} />
+                </label>
+              </div>
+            </div>
+
+            <div className="page-builder-banner-editor page-builder-field--wide">
+              <div className="page-builder-banner-editor__header">
+                <strong>ستون‌های لینک</strong>
+              </div>
+              <div className="fm-grid page-builder-form-grid">
+                <label className="fm-field page-builder-checkbox">
+                  <span>فعال</span>
+                  <input checked={form.footerLinksEnabled} onChange={(event) => updateForm('footerLinksEnabled', event.target.checked)} type="checkbox" />
+                </label>
+                <label className="fm-field">
+                  <span>درصد عرض</span>
+                  <input max={60} min={15} onChange={(event) => updateForm('footerLinksWidthPercent', event.target.value)} type="number" value={form.footerLinksWidthPercent} />
+                </label>
+              </div>
+              <div className="page-builder-banner-list">
+                {form.footerLinkColumns.map((column, columnIndex) => (
+                  <div className="page-builder-banner-card" key={`footer-column-${columnIndex}`}>
+                    <label className="fm-field page-builder-checkbox">
+                      <span>فعال</span>
+                      <input checked={column.enabled} onChange={(event) => patchFooterLinkColumn(columnIndex, { enabled: event.target.checked })} type="checkbox" />
+                    </label>
+                    <label className="fm-field">
+                      <span>عنوان ستون</span>
+                      <input onChange={(event) => patchFooterLinkColumn(columnIndex, { title: event.target.value })} type="text" value={column.title} />
+                    </label>
+                    <div className="page-builder-field--wide">
+                      <div className="page-builder-banner-editor__header">
+                        <strong>لینک‌ها</strong>
+                        <button className="fm-button fm-button--ghost" onClick={() => addFooterLinkItem(columnIndex)} type="button">
+                          افزودن لینک
+                        </button>
+                      </div>
+                      <div className="page-builder-banner-list">
+                        {column.items.map((item, itemIndex) => (
+                          <div className="page-builder-banner-card" key={`footer-link-${columnIndex}-${itemIndex}`}>
+                            <label className="fm-field">
+                              <span>عنوان</span>
+                              <input onChange={(event) => patchFooterLinkItem(columnIndex, itemIndex, { label: event.target.value })} type="text" value={item.label} />
+                            </label>
+                            <label className="fm-field">
+                              <span>لینک</span>
+                              <input onChange={(event) => patchFooterLinkItem(columnIndex, itemIndex, { href: event.target.value })} type="text" value={item.href} />
+                            </label>
+                            <button className="fm-button fm-button--secondary" onClick={() => removeFooterLinkItem(columnIndex, itemIndex)} type="button">
+                              حذف لینک
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="page-builder-banner-editor page-builder-field--wide">
+              <div className="page-builder-banner-editor__header">
+                <strong>مجوزها و شبکه‌های اجتماعی</strong>
+              </div>
+              <div className="fm-grid page-builder-form-grid">
+                <label className="fm-field page-builder-checkbox">
+                  <span>فعال</span>
+                  <input checked={form.footerTrustEnabled} onChange={(event) => updateForm('footerTrustEnabled', event.target.checked)} type="checkbox" />
+                </label>
+                <label className="fm-field">
+                  <span>درصد عرض</span>
+                  <input max={60} min={15} onChange={(event) => updateForm('footerTrustWidthPercent', event.target.value)} type="number" value={form.footerTrustWidthPercent} />
+                </label>
+                <label className="fm-field">
+                  <span>عنوان بخش</span>
+                  <input onChange={(event) => updateForm('footerTrustTitle', event.target.value)} type="text" value={form.footerTrustTitle} />
+                </label>
+              </div>
+
+              <div className="page-builder-banner-editor__header">
+                <strong>مجوزها</strong>
+                <button className="fm-button fm-button--ghost" onClick={() => addFooterBadge()} type="button">
+                  افزودن مجوز
+                </button>
+              </div>
+              <div className="page-builder-banner-list">
+                {form.footerBadges.map((badge, badgeIndex) => (
+                  <div className="page-builder-banner-card" key={`footer-badge-${badgeIndex}`}>
+                    <label className="fm-field page-builder-checkbox">
+                      <span>فعال</span>
+                      <input checked={badge.enabled} onChange={(event) => patchFooterBadge(badgeIndex, { enabled: event.target.checked })} type="checkbox" />
+                    </label>
+                    <label className="fm-field">
+                      <span>عنوان</span>
+                      <input onChange={(event) => patchFooterBadge(badgeIndex, { title: event.target.value })} type="text" value={badge.title} />
+                    </label>
+                    <label className="fm-field">
+                      <span>لینک</span>
+                      <input onChange={(event) => patchFooterBadge(badgeIndex, { href: event.target.value })} type="text" value={badge.href} />
+                    </label>
+                    <label className="fm-field page-builder-field--wide">
+                      <span>تصویر (URL)</span>
+                      <input onChange={(event) => patchFooterBadge(badgeIndex, { imageUrl: event.target.value })} type="text" value={badge.imageUrl} />
+                    </label>
+                    <div className="admin-products-upload-card page-builder-field--wide">
+                      <div className="admin-products-upload-actions">
+                        <button className="content-secondary-action" disabled={uploadingImageTarget === `page:footerBadge:${badgeIndex}`} onClick={() => openImagePicker(`page:footerBadge:${badgeIndex}`)} type="button">
+                          {uploadingImageTarget === `page:footerBadge:${badgeIndex}` ? 'در حال آپلود...' : 'آپلود تصویر مجوز'}
+                        </button>
+                      </div>
+                      {getImagePreview(badge.imageUrl) ? (
+                        <div className="admin-products-image-preview">
+                          <img alt={`Preview badge ${badgeIndex + 1}`} src={badge.imageUrl} />
+                        </div>
+                      ) : null}
+                    </div>
+                    <button className="fm-button fm-button--secondary" onClick={() => removeFooterBadge(badgeIndex)} type="button">
+                      حذف مجوز
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="page-builder-banner-editor__header">
+                <strong>شبکه‌های اجتماعی</strong>
+                <button className="fm-button fm-button--ghost" onClick={() => addFooterSocial()} type="button">
+                  افزودن شبکه اجتماعی
+                </button>
+              </div>
+              <div className="page-builder-banner-list">
+                {form.footerSocials.map((social, socialIndex) => (
+                  <div className="page-builder-banner-card" key={`footer-social-${socialIndex}`}>
+                    <label className="fm-field page-builder-checkbox">
+                      <span>فعال</span>
+                      <input checked={social.enabled} onChange={(event) => patchFooterSocial(socialIndex, { enabled: event.target.checked })} type="checkbox" />
+                    </label>
+                    <label className="fm-field">
+                      <span>نام</span>
+                      <input onChange={(event) => patchFooterSocial(socialIndex, { label: event.target.value })} type="text" value={social.label} />
+                    </label>
+                    <label className="fm-field">
+                      <span>لینک</span>
+                      <input onChange={(event) => patchFooterSocial(socialIndex, { href: event.target.value })} type="text" value={social.href} />
+                    </label>
+                    <label className="fm-field page-builder-field--wide">
+                      <span>آیکون (URL)</span>
+                      <input onChange={(event) => patchFooterSocial(socialIndex, { imageUrl: event.target.value })} type="text" value={social.imageUrl} />
+                    </label>
+                    <div className="admin-products-upload-card page-builder-field--wide">
+                      <div className="admin-products-upload-actions">
+                        <button className="content-secondary-action" disabled={uploadingImageTarget === `page:footerSocial:${socialIndex}`} onClick={() => openImagePicker(`page:footerSocial:${socialIndex}`)} type="button">
+                          {uploadingImageTarget === `page:footerSocial:${socialIndex}` ? 'در حال آپلود...' : 'آپلود آیکون شبکه'}
+                        </button>
+                      </div>
+                      {getImagePreview(social.imageUrl) ? (
+                        <div className="admin-products-image-preview">
+                          <img alt={`Preview social ${socialIndex + 1}`} src={social.imageUrl} />
+                        </div>
+                      ) : null}
+                    </div>
+                    <button className="fm-button fm-button--secondary" onClick={() => removeFooterSocial(socialIndex)} type="button">
+                      حذف شبکه
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="page-builder-banner-editor page-builder-field--wide">
+              <div className="page-builder-banner-editor__header">
+                <strong>متن پایانی</strong>
+              </div>
+              <div className="fm-grid page-builder-form-grid">
+                <label className="fm-field page-builder-checkbox">
+                  <span>فعال</span>
+                  <input checked={form.footerLegalEnabled} onChange={(event) => updateForm('footerLegalEnabled', event.target.checked)} type="checkbox" />
+                </label>
+                <label className="fm-field page-builder-field--wide">
+                  <span>متن کپی‌رایت</span>
+                  <input onChange={(event) => updateForm('footerLegalText', event.target.value)} type="text" value={form.footerLegalText} />
+                  <small>سال جاری به‌صورت خودکار به انتهای این متن اضافه می‌شود.</small>
+                </label>
+              </div>
+            </div>
           </div>
         </CollapsibleSectionCard>
 

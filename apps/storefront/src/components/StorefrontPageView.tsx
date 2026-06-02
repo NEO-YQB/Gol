@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic'
 import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { type EnrichedStorefrontPage } from '../lib/storefront'
+import { StorefrontFooter } from './StorefrontFooter'
 import { StorefrontHeader } from './StorefrontHeader'
 import { CategoryCirclesSection, HeroSection } from './StorefrontSections'
 import { storefrontShared } from './storefrontShared'
@@ -86,16 +87,6 @@ function resolveBlockLoadingMode(block: EnrichedStorefrontPage['blocks'][number]
     : 'viewport'
 }
 
-function indexSignature(page: EnrichedStorefrontPage) {
-  const updatedAt = page.updatedAt
-    ? new Intl.DateTimeFormat('fa-IR', {
-        dateStyle: 'medium',
-      }).format(new Date(page.updatedAt))
-    : 'نامشخص'
-
-  return `آخرین به‌روزرسانی این صفحه: ${updatedAt}`
-}
-
 export function StorefrontPageView({ page }: { page: EnrichedStorefrontPage }) {
   const firstHeroBlock = page.blocks.find((block) => block.type === 'HERO_HEADER')
   const heroTouchesTop = firstHeroBlock ? firstHeroBlock.data.flushTop !== false : false
@@ -161,13 +152,12 @@ export function StorefrontPageView({ page }: { page: EnrichedStorefrontPage }) {
 
           {page.blocks.length === 0 ? (
             <section className={storefrontShared.emptyState}>
-              <p className="text-xs font-bold uppercase tracking-[0.32em] text-[#a47c54]">empty builder</p>
               <h2 className="mt-3 text-3xl font-black text-[#173126]">{page.title}</h2>
               <p className="mt-4 text-[#6e6152]">این صفحه هنوز هیچ بلاکی برای نمایش ندارد.</p>
             </section>
           ) : null}
 
-          <footer className={storefrontShared.footer}>{indexSignature(page)}</footer>
+          <StorefrontFooter page={page} />
         </div>
       </main>
     </>

@@ -6,11 +6,14 @@ import {
   IsArray,
   IsBoolean,
   IsEnum,
+  IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
   Matches,
+  Max,
   MaxLength,
+  Min,
   ValidateNested,
 } from 'class-validator';
 import { PageBlockDto } from './page-block.dto';
@@ -153,6 +156,226 @@ export class StorefrontHeaderConfigDto {
   menuItems?: HeaderMenuItemDto[];
 }
 
+export class FooterLinkItemDto {
+  @ApiProperty({ example: 'درباره ما' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(120)
+  label!: string;
+
+  @ApiProperty({ example: '/about' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(2000)
+  href!: string;
+}
+
+export class FooterLinkColumnDto {
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  enabled?: boolean;
+
+  @ApiPropertyOptional({ example: 'راهنما' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  title?: string;
+
+  @ApiPropertyOptional({ type: [FooterLinkItemDto] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(12)
+  @ValidateNested({ each: true })
+  @Type(() => FooterLinkItemDto)
+  items?: FooterLinkItemDto[];
+}
+
+export class FooterBadgeItemDto {
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  enabled?: boolean;
+
+  @ApiPropertyOptional({ example: 'ای‌نماد' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  title?: string;
+
+  @ApiPropertyOptional({ example: 'https://cdn.example.com/trust/enamad.png' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  imageUrl?: string;
+
+  @ApiPropertyOptional({ example: 'https://example.com/licenses' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  href?: string;
+}
+
+export class FooterSocialItemDto {
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  enabled?: boolean;
+
+  @ApiProperty({ example: 'Instagram' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(120)
+  label!: string;
+
+  @ApiPropertyOptional({ example: 'https://cdn.example.com/socials/instagram.png' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  imageUrl?: string;
+
+  @ApiProperty({ example: 'https://instagram.com/brand' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(2000)
+  href!: string;
+}
+
+export class StorefrontFooterConfigDto {
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  enabled?: boolean;
+
+  @ApiPropertyOptional({ example: '#173126' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  backgroundColor?: string;
+
+  @ApiPropertyOptional({ example: '#f5efe4' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  textColor?: string;
+
+  @ApiPropertyOptional({ example: '#d8c9b4' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  mutedTextColor?: string;
+
+  @ApiPropertyOptional({ example: '#2a5d49' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  accentColor?: string;
+
+  @ApiPropertyOptional({ example: 'rgba(255,255,255,0.12)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  borderColor?: string;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  brandEnabled?: boolean;
+
+  @ApiPropertyOptional({ example: 34 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(15)
+  @Max(60)
+  brandWidthPercent?: number;
+
+  @ApiPropertyOptional({ example: 'https://cdn.example.com/logo-footer.png' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  brandLogoImageUrl?: string;
+
+  @ApiPropertyOptional({ example: '/' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  brandLogoHref?: string;
+
+  @ApiPropertyOptional({ example: 'گلینو، انتخابی برای ارسال گل و هدیه با تجربه‌ای لوکس و ساده.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(1200)
+  brandDescription?: string;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  linksEnabled?: boolean;
+
+  @ApiPropertyOptional({ example: 36 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(15)
+  @Max(60)
+  linksWidthPercent?: number;
+
+  @ApiPropertyOptional({ type: [FooterLinkColumnDto] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(3)
+  @ValidateNested({ each: true })
+  @Type(() => FooterLinkColumnDto)
+  linkColumns?: FooterLinkColumnDto[];
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  trustEnabled?: boolean;
+
+  @ApiPropertyOptional({ example: 30 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(15)
+  @Max(60)
+  trustWidthPercent?: number;
+
+  @ApiPropertyOptional({ example: 'مجوزها و شبکه‌های اجتماعی' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  trustTitle?: string;
+
+  @ApiPropertyOptional({ type: [FooterBadgeItemDto] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(6)
+  @ValidateNested({ each: true })
+  @Type(() => FooterBadgeItemDto)
+  badges?: FooterBadgeItemDto[];
+
+  @ApiPropertyOptional({ type: [FooterSocialItemDto] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(8)
+  @ValidateNested({ each: true })
+  @Type(() => FooterSocialItemDto)
+  socials?: FooterSocialItemDto[];
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  legalEnabled?: boolean;
+
+  @ApiPropertyOptional({ example: 'تمامی حقوق برای گلینو محفوظ است' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  legalText?: string;
+}
+
 export class CreatePageDto {
   @ApiProperty({ example: 'صفحه اصلی فرانت‌استور' })
   @IsString()
@@ -200,6 +423,12 @@ export class CreatePageDto {
   @ValidateNested()
   @Type(() => StorefrontHeaderConfigDto)
   headerConfig?: StorefrontHeaderConfigDto;
+
+  @ApiPropertyOptional({ type: StorefrontFooterConfigDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => StorefrontFooterConfigDto)
+  footerConfig?: StorefrontFooterConfigDto;
 
   @ApiPropertyOptional({ example: 'خرید گل و هدیه با ارسال سریع از فروشگاه‌های منتخب.' })
   @IsOptional()
