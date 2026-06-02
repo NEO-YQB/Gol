@@ -127,20 +127,23 @@ export function EditorialSection({ block }: { block: { id: string; data: Record<
   const descriptionColor = String(block.data.descriptionColor ?? '#355045')
   const imageWidthPercent = Math.min(Math.max(Number(block.data.imageWidthPercent ?? 25) || 25, 15), 45)
   const textWidthPercent = 100 - imageWidthPercent
-  const sectionLayoutClassName = imageOnLeft
-    ? `md:grid-cols-[${imageWidthPercent}%_${textWidthPercent}%]`
-    : `md:grid-cols-[${textWidthPercent}%_${imageWidthPercent}%]`
+  const desktopGridTemplateColumns = imageOnLeft
+    ? `${imageWidthPercent}% ${textWidthPercent}%`
+    : `${textWidthPercent}% ${imageWidthPercent}%`
 
   return (
     <section
-      className={`${storefrontShared.editorialSection} ${sectionLayoutClassName}`}
+      className={storefrontShared.editorialSection}
       key={block.id}
-      style={{ background: String(block.data.backgroundColor || '#efe4d3') }}
+      style={{
+        background: String(block.data.backgroundColor || '#efe4d3'),
+        gridTemplateColumns: desktopGridTemplateColumns,
+      }}
     >
       <div className={`${imageOnLeft ? 'md:order-1' : 'md:order-2'} overflow-hidden bg-[#e9dccb]`}>
         <img
           alt={String(block.data.title ?? 'Editorial block')}
-          className="h-[240px] w-full object-cover md:h-full"
+          className="h-[240px] w-full object-cover md:h-full md:min-h-[260px]"
           src={resolveAssetUrl(String(block.data.imageUrl ?? ''))}
         />
       </div>
