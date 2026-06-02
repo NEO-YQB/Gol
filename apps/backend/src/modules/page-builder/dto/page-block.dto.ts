@@ -279,6 +279,12 @@ export class EditorialRichBlockDataDto {
   @IsString()
   @MaxLength(50)
   backgroundColor?: string;
+
+  @ApiPropertyOptional({ example: '#355045' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  descriptionColor?: string;
 }
 
 export class VendorCarouselBlockDataDto {

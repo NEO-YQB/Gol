@@ -42,6 +42,15 @@ type ProductPreviewState = {
   error?: string
 }
 
+type ColorFieldProps = {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  className?: string
+  hint?: string
+  pickerFallback?: string
+}
+
 type PageForm = {
   title: string
   slug: string
@@ -104,6 +113,7 @@ function getDefaultBlockData(type: PageBlockType): Record<string, unknown> {
         buttonText: '',
         buttonLink: '',
         backgroundColor: '',
+        descriptionColor: '',
       }
     case 'VENDOR_CAROUSEL':
       return {
@@ -195,6 +205,38 @@ function createEmptyForm(): PageForm {
     noIndex: false,
     blocks: [],
   }
+}
+
+function normalizeColorPickerValue(value: string, fallback = '#173126') {
+  const trimmed = value.trim()
+
+  if (/^#([0-9a-f]{6})$/i.test(trimmed)) return trimmed
+
+  const shortHexMatch = trimmed.match(/^#([0-9a-f]{3})$/i)
+  if (shortHexMatch) {
+    return `#${shortHexMatch[1].split('').map((char) => `${char}${char}`).join('')}`
+  }
+
+  return fallback
+}
+
+function ColorField({ label, value, onChange, className, hint, pickerFallback = '#173126' }: ColorFieldProps) {
+  return (
+    <label className={`fm-field${className ? ` ${className}` : ''}`}>
+      <span>{label}</span>
+      <div className="flex items-center gap-3">
+        <input onChange={(event) => onChange(event.target.value)} type="text" value={value} />
+        <input
+          aria-label={`${label} color picker`}
+          className="h-11 w-14 cursor-pointer rounded-xl border border-[rgba(15,23,42,0.12)] bg-white p-1"
+          onChange={(event) => onChange(event.target.value)}
+          type="color"
+          value={normalizeColorPickerValue(value, pickerFallback)}
+        />
+      </div>
+      {hint ? <small>{hint}</small> : null}
+    </label>
+  )
 }
 
 function toTextArray(value: unknown) {
@@ -938,6 +980,23 @@ export function PageBuilderWorkspacePage({
           }
         }
 
+        if (block.type === 'EDITORIAL_RICH_BLOCK') {
+          return {
+            ...block,
+            loadingMode: block.loadingMode,
+            data: {
+              title: String(block.data.title ?? '').trim(),
+              description: String(block.data.description ?? '').trim(),
+              imageUrl: String(block.data.imageUrl ?? '').trim(),
+              imagePosition: String(block.data.imagePosition ?? 'right'),
+              buttonText: toOptionalText(String(block.data.buttonText ?? '')),
+              buttonLink: toOptionalText(String(block.data.buttonLink ?? '')),
+              backgroundColor: toOptionalText(String(block.data.backgroundColor ?? '')),
+              descriptionColor: toOptionalText(String(block.data.descriptionColor ?? '')),
+            },
+          }
+        }
+
         if (block.type === 'CAMPAIGN_GRID') {
           return {
             ...block,
@@ -1120,30 +1179,12 @@ export function PageBuilderWorkspacePage({
                 </div>
               ) : null}
             </div>
-            <label className="fm-field">
-              <span>رنگ متن اصلی</span>
-              <input onChange={(event) => updateForm('headerTextColor', event.target.value)} type="text" value={form.headerTextColor} />
-            </label>
-            <label className="fm-field">
-              <span>رنگ متن فرعی</span>
-              <input onChange={(event) => updateForm('headerMutedTextColor', event.target.value)} type="text" value={form.headerMutedTextColor} />
-            </label>
-            <label className="fm-field">
-              <span>رنگ پس‌زمینه glass</span>
-              <input onChange={(event) => updateForm('headerGlassBackgroundColor', event.target.value)} type="text" value={form.headerGlassBackgroundColor} />
-            </label>
-            <label className="fm-field">
-              <span>رنگ border glass</span>
-              <input onChange={(event) => updateForm('headerGlassBorderColor', event.target.value)} type="text" value={form.headerGlassBorderColor} />
-            </label>
-            <label className="fm-field">
-              <span>رنگ پس‌زمینه اکشن‌ها</span>
-              <input onChange={(event) => updateForm('headerActionBackgroundColor', event.target.value)} type="text" value={form.headerActionBackgroundColor} />
-            </label>
-            <label className="fm-field">
-              <span>رنگ متن اکشن‌ها</span>
-              <input onChange={(event) => updateForm('headerActionTextColor', event.target.value)} type="text" value={form.headerActionTextColor} />
-            </label>
+            <ColorField label="رنگ متن اصلی" onChange={(value) => updateForm('headerTextColor', value)} value={form.headerTextColor} />
+            <ColorField label="رنگ متن فرعی" onChange={(value) => updateForm('headerMutedTextColor', value)} value={form.headerMutedTextColor} />
+            <ColorField hint="برای rgba همچنان می‌توانی مقدار را دستی وارد کنی." label="رنگ پس‌زمینه glass" onChange={(value) => updateForm('headerGlassBackgroundColor', value)} pickerFallback="#f5efe4" value={form.headerGlassBackgroundColor} />
+            <ColorField hint="برای شفافیت، rgba دستی هم پشتیبانی می‌شود." label="رنگ border glass" onChange={(value) => updateForm('headerGlassBorderColor', value)} pickerFallback="#ffffff" value={form.headerGlassBorderColor} />
+            <ColorField label="رنگ پس‌زمینه اکشن‌ها" onChange={(value) => updateForm('headerActionBackgroundColor', value)} value={form.headerActionBackgroundColor} />
+            <ColorField label="رنگ متن اکشن‌ها" onChange={(value) => updateForm('headerActionTextColor', value)} pickerFallback="#ffffff" value={form.headerActionTextColor} />
             <label className="fm-field">
               <span>پیش‌نمایش وضعیت کاربر</span>
               <select onChange={(event) => updateForm('headerAuthPreviewMode', event.target.value as 'guest' | 'authenticated')} value={form.headerAuthPreviewMode}>
@@ -1179,14 +1220,8 @@ export function PageBuilderWorkspacePage({
                       <span>هایلایت شود</span>
                       <input checked={item.highlighted} onChange={(event) => patchHeaderMenuItemFlag(itemIndex, 'highlighted', event.target.checked)} type="checkbox" />
                     </label>
-                    <label className="fm-field">
-                      <span>رنگ متن آیتم</span>
-                      <input onChange={(event) => patchHeaderMenuItem(itemIndex, 'textColor', event.target.value)} type="text" value={item.textColor} />
-                    </label>
-                    <label className="fm-field">
-                      <span>رنگ پس‌زمینه آیتم</span>
-                      <input onChange={(event) => patchHeaderMenuItem(itemIndex, 'backgroundColor', event.target.value)} type="text" value={item.backgroundColor} />
-                    </label>
+                    <ColorField label="رنگ متن آیتم" onChange={(value) => patchHeaderMenuItem(itemIndex, 'textColor', value)} value={item.textColor} />
+                    <ColorField label="رنگ پس‌زمینه آیتم" onChange={(value) => patchHeaderMenuItem(itemIndex, 'backgroundColor', value)} value={item.backgroundColor} />
                     <button className="fm-button fm-button--secondary" onClick={() => removeHeaderMenuItem(itemIndex)} type="button">
                       حذف آیتم
                     </button>
@@ -1374,10 +1409,7 @@ export function PageBuilderWorkspacePage({
                           <span>CTA link</span>
                           <input onChange={(event) => patchBlockData(block.id, 'ctaLink', event.target.value)} type="text" value={String(data.ctaLink ?? '')} />
                         </label>
-                        <label className="fm-field">
-                          <span>Text color</span>
-                          <input onChange={(event) => patchBlockData(block.id, 'textColor', event.target.value)} type="text" value={String(data.textColor ?? '')} />
-                        </label>
+                        <ColorField label="Text color" onChange={(value) => patchBlockData(block.id, 'textColor', value)} pickerFallback="#fff8ef" value={String(data.textColor ?? '')} />
                         <label className="fm-field page-builder-checkbox">
                           <span>تمام‌عرض</span>
                           <input checked={data.fullWidth !== false} onChange={(event) => patchBlockData(block.id, 'fullWidth', event.target.checked)} type="checkbox" />
@@ -1575,10 +1607,8 @@ export function PageBuilderWorkspacePage({
                           <span>Button link</span>
                           <input onChange={(event) => patchBlockData(block.id, 'buttonLink', event.target.value)} type="text" value={String(data.buttonLink ?? '')} />
                         </label>
-                        <label className="fm-field">
-                          <span>Background color</span>
-                          <input onChange={(event) => patchBlockData(block.id, 'backgroundColor', event.target.value)} type="text" value={String(data.backgroundColor ?? '')} />
-                        </label>
+                        <ColorField label="Background color" onChange={(value) => patchBlockData(block.id, 'backgroundColor', value)} pickerFallback="#efe4d3" value={String(data.backgroundColor ?? '')} />
+                        <ColorField label="Description color" onChange={(value) => patchBlockData(block.id, 'descriptionColor', value)} pickerFallback="#355045" value={String(data.descriptionColor ?? '')} />
                       </>
                     ) : null}
 
@@ -1614,10 +1644,7 @@ export function PageBuilderWorkspacePage({
                           <span>Title</span>
                           <input onChange={(event) => patchBlockData(block.id, 'title', event.target.value)} type="text" value={String(data.title ?? '')} />
                         </label>
-                        <label className="fm-field">
-                          <span>Background color</span>
-                          <input onChange={(event) => patchBlockData(block.id, 'backgroundColor', event.target.value)} type="text" value={String(data.backgroundColor ?? '')} />
-                        </label>
+                        <ColorField label="Background color" onChange={(value) => patchBlockData(block.id, 'backgroundColor', value)} pickerFallback="#f2e7d8" value={String(data.backgroundColor ?? '')} />
 
                         <div className="page-builder-banner-editor page-builder-field--wide">
                           <div className="page-builder-banner-editor__header">

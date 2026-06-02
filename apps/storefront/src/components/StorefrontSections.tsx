@@ -124,17 +124,20 @@ export function ProductCarouselSection({ block }: { block: { id: string; data: R
 
 export function EditorialSection({ block }: { block: { id: string; data: Record<string, unknown> } }) {
   const imageOnLeft = String(block.data.imagePosition ?? 'right') === 'left'
+  const descriptionColor = String(block.data.descriptionColor ?? '#355045')
   return (
     <section className={storefrontShared.editorialSection} key={block.id} style={{ background: String(block.data.backgroundColor || '#efe4d3') }}>
-      <div className={`${imageOnLeft ? 'md:order-1' : 'md:order-2'} h-full min-h-[320px]`}>
+      <div className={`${imageOnLeft ? 'md:order-1' : 'md:order-2'} aspect-square min-h-[240px] bg-[#e9dccb] md:min-h-0`}>
         <img alt={String(block.data.title ?? 'Editorial block')} className="h-full w-full object-cover" src={resolveAssetUrl(String(block.data.imageUrl ?? ''))} />
       </div>
-      <div className={`${imageOnLeft ? 'md:order-2' : 'md:order-1'} flex flex-col justify-center px-7 py-10 md:px-10`}>
+      <div className={`${imageOnLeft ? 'md:order-2' : 'md:order-1'} flex flex-col justify-center px-6 py-8 md:px-8 md:py-8`}>
         <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#926b46]">editorial mood</p>
-        <h2 className="mt-3 text-3xl font-black leading-tight text-[#173126]">{String(block.data.title ?? '')}</h2>
-        <p className="mt-5 text-base leading-8 text-[#4d5c53]">{String(block.data.description ?? '')}</p>
+        <h2 className="mt-3 text-[1.8rem] font-black leading-tight text-[#173126] md:text-[2rem]">{String(block.data.title ?? '')}</h2>
+        <p className="mt-4 text-[0.98rem] leading-7" style={{ color: descriptionColor }}>
+          {String(block.data.description ?? '')}
+        </p>
         {block.data.buttonText && block.data.buttonLink ? (
-          <a className="mt-8 inline-flex w-fit items-center rounded-full border border-[#173126]/10 bg-white/70 px-5 py-3 text-sm font-black text-[#173126] transition hover:bg-white" href={String(block.data.buttonLink)}>
+          <a className="mt-6 inline-flex w-fit items-center rounded-full border border-[#173126]/10 bg-white/70 px-5 py-3 text-sm font-black text-[#173126] transition hover:bg-white" href={String(block.data.buttonLink)}>
             {String(block.data.buttonText)}
           </a>
         ) : null}
