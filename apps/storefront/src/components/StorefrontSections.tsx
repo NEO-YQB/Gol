@@ -127,9 +127,9 @@ export function EditorialSection({ block }: { block: { id: string; data: Record<
   const descriptionColor = String(block.data.descriptionColor ?? '#355045')
   return (
     <section className={storefrontShared.editorialSection} key={block.id} style={{ background: String(block.data.backgroundColor || '#efe4d3') }}>
-      <div className={`${imageOnLeft ? 'md:order-1' : 'md:order-2'} flex items-center justify-center bg-[#e9dccb] px-5 py-5 md:px-0 md:py-0`}>
-        <div className="h-[220px] w-[220px] overflow-hidden rounded-[28px] shadow-[0_12px_28px_rgba(38,24,9,0.10)] md:h-[280px] md:w-[280px] md:rounded-none md:shadow-none">
-        <img alt={String(block.data.title ?? 'Editorial block')} className="h-full w-full object-cover" src={resolveAssetUrl(String(block.data.imageUrl ?? ''))} />
+      <div className={`${imageOnLeft ? 'md:order-1' : 'md:order-2'} flex items-center justify-center md:justify-center`}>
+        <div className="h-[220px] w-[220px] overflow-hidden rounded-[28px] bg-[#e9dccb] shadow-[0_12px_28px_rgba(38,24,9,0.10)] md:h-[280px] md:w-[280px]">
+          <img alt={String(block.data.title ?? 'Editorial block')} className="h-full w-full object-cover" src={resolveAssetUrl(String(block.data.imageUrl ?? ''))} />
         </div>
       </div>
       <div className={`${imageOnLeft ? 'md:order-2' : 'md:order-1'} flex flex-col justify-center px-6 py-8 md:px-8 md:py-8`}>
