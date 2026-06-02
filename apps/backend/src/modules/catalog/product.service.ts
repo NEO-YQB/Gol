@@ -277,7 +277,7 @@ export class ProductService {
 
         return null;
       })
-      .filter((item): item is number => Number.isInteger(item) && item > 0);
+      .filter((item): item is number => typeof item === 'number' && Number.isInteger(item) && item > 0);
   }
 
   async findAll(query: GetProductsQueryDto) {
