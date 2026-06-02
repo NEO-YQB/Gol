@@ -169,7 +169,8 @@ export function VendorCarouselSection({ block }: { block: { id: string; data: Re
     <section className="mb-8" key={block.id}>
       <div className="mb-6 flex items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#9f7e56]">vendor selection</p>
+          {/* <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#9f7e56]">vendor selection</p> */}
+          <h2 className="text-xs font-bold uppercase tracking-[0.3em] text-[#9f7e56]">{String(block.data.title || 'فروشگاه‌های برتر')}</h2>
           <h2 className={storefrontShared.sectionTitle}>{String(block.data.title || 'فروشگاه‌های برتر')}</h2>
         </div>
         <StorefrontPill text={`${vendors.length} فروشگاه`} />
