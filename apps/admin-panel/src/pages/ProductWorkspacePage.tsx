@@ -511,6 +511,28 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
     }
   }
 
+  async function handleArchiveToggle(nextArchived: boolean) {
+    if (!productDetail) return
+    setSubmitting(true)
+    setError(null)
+    try {
+      await adminApi.updateProduct(session, readText(productDetail, ['id'], ''), {
+        isArchived: nextArchived,
+        isPurchasable: nextArchived ? false : productForm.isPurchasable,
+      })
+      setSubmitMessage(nextArchived ? 'محصول آرشیو شد.' : 'محصول از آرشیو خارج شد.')
+      setProductForm((current) => ({
+        ...current,
+        isArchived: nextArchived,
+        isPurchasable: nextArchived ? false : current.isPurchasable,
+      }))
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'تغییر وضعیت آرشیو ناموفق بود')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   function addCompositionRow() {
     setProductForm((current) => ({
       ...current,
@@ -628,6 +650,11 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
             {productDetail ? (
               <button className="content-secondary-action" disabled={submitting} onClick={() => void handlePurchasableToggle(!productForm.isPurchasable)} type="button">
                 {productForm.isPurchasable ? 'غیرقابل‌خرید کردن' : 'قابل‌خرید کردن'}
+              </button>
+            ) : null}
+            {productDetail ? (
+              <button className="content-secondary-action" disabled={submitting} onClick={() => void handleArchiveToggle(!productForm.isArchived)} type="button">
+                {productForm.isArchived ? 'خروج از آرشیو' : 'آرشیو کردن'}
               </button>
             ) : null}
           </div>
