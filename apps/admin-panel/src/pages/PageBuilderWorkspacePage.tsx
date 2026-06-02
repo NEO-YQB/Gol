@@ -1,5 +1,5 @@
 import { Pill, SectionCard } from '@flower-marketplace/frontend-core'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { useNoticeEffect } from '../components/NoticeCenter'
 import { adminApi } from '../lib/api'
@@ -49,6 +49,18 @@ type ColorFieldProps = {
   className?: string
   hint?: string
   pickerFallback?: string
+}
+
+type BuilderPanelKey = 'pageSettings' | 'header' | 'seo' | 'blocks'
+
+type CollapsibleSectionCardProps = {
+  eyebrow: string
+  title: string
+  description: string
+  open: boolean
+  onToggle: () => void
+  actions?: ReactNode
+  children: ReactNode
 }
 
 type PageForm = {
@@ -240,6 +252,34 @@ function ColorField({ label, value, onChange, className, hint, pickerFallback = 
   )
 }
 
+function CollapsibleSectionCard({
+  eyebrow,
+  title,
+  description,
+  open,
+  onToggle,
+  actions,
+  children,
+}: CollapsibleSectionCardProps) {
+  return (
+    <SectionCard
+      actions={
+        <div className="page-builder-workspace__actions">
+          {actions}
+          <button className="fm-button fm-button--ghost" onClick={onToggle} type="button">
+            {open ? 'جمع کردن' : 'باز کردن'}
+          </button>
+        </div>
+      }
+      description={description}
+      eyebrow={eyebrow}
+      title={title}
+    >
+      {open ? children : null}
+    </SectionCard>
+  )
+}
+
 function toTextArray(value: unknown) {
   if (!Array.isArray(value)) return []
   return value.map((item) => String(item)).filter(Boolean)
@@ -407,6 +447,13 @@ export function PageBuilderWorkspacePage({
   const [referenceStores, setReferenceStores] = useState<PreviewRecord[]>([])
   const [referenceProductTypes, setReferenceProductTypes] = useState<PreviewRecord[]>([])
   const [productPreviewByBlock, setProductPreviewByBlock] = useState<Record<string, ProductPreviewState>>({})
+  const [sectionOpen, setSectionOpen] = useState<Record<BuilderPanelKey, boolean>>({
+    pageSettings: true,
+    header: false,
+    seo: false,
+    blocks: true,
+  })
+  const [blockOpenById, setBlockOpenById] = useState<Record<string, boolean>>({})
   const imageInputRef = useRef<HTMLInputElement | null>(null)
 
   useNoticeEffect(error, 'error')
@@ -580,6 +627,18 @@ export function PageBuilderWorkspacePage({
     }
   }, [form.blocks, referenceCategories, session])
 
+  useEffect(() => {
+    setBlockOpenById((current) => {
+      const next: Record<string, boolean> = {}
+
+      form.blocks.forEach((block, index) => {
+        next[block.id] = current[block.id] ?? index === 0
+      })
+
+      return next
+    })
+  }, [form.blocks])
+
   const blockSummary = useMemo(() => {
     return form.blocks.reduce<Record<PageBlockType, number>>((acc, block) => {
       acc[block.type] = (acc[block.type] ?? 0) + 1
@@ -620,6 +679,20 @@ export function PageBuilderWorkspacePage({
     setForm((current) => ({
       ...current,
       [key]: value,
+    }))
+  }
+
+  function toggleSection(sectionKey: BuilderPanelKey) {
+    setSectionOpen((current) => ({
+      ...current,
+      [sectionKey]: !current[sectionKey],
+    }))
+  }
+
+  function toggleBlockOpen(blockId: string) {
+    setBlockOpenById((current) => ({
+      ...current,
+      [blockId]: !current[blockId],
     }))
   }
 
@@ -1101,10 +1174,12 @@ export function PageBuilderWorkspacePage({
           onChange={(event) => void handleImageChoose(event.target.files)}
           type="file"
         />
-        <SectionCard
+        <CollapsibleSectionCard
           eyebrow="page settings"
-          title="تنظیمات پایه صفحه"
           description="title، slug، نوع صفحه و وضعیت انتشار را از این بخش مدیریت کن."
+          onToggle={() => toggleSection('pageSettings')}
+          open={sectionOpen.pageSettings}
+          title="تنظیمات پایه صفحه"
         >
           <div className="fm-grid page-builder-form-grid">
             <label className="fm-field">
@@ -1133,12 +1208,14 @@ export function PageBuilderWorkspacePage({
               <input checked={form.cacheEnabled} onChange={(event) => updateForm('cacheEnabled', event.target.checked)} type="checkbox" />
             </label>
           </div>
-        </SectionCard>
+        </CollapsibleSectionCard>
 
-        <SectionCard
+        <CollapsibleSectionCard
           eyebrow="header controls"
-          title="تنظیمات هدر storefront"
           description="هدر شفاف روی هیرو، حالت استیکی شیشه‌ای و آیتم‌های منو را از اینجا کنترل کن."
+          onToggle={() => toggleSection('header')}
+          open={sectionOpen.header}
+          title="تنظیمات هدر storefront"
         >
           <div className="fm-grid page-builder-form-grid">
             <label className="fm-field page-builder-checkbox">
@@ -1232,12 +1309,14 @@ export function PageBuilderWorkspacePage({
               </div>
             </div>
           </div>
-        </SectionCard>
+        </CollapsibleSectionCard>
 
-        <SectionCard
+        <CollapsibleSectionCard
           eyebrow="seo controls"
-          title="سئو و متادیتا"
           description="متا، canonical و robots behavior صفحه را از اینجا تنظیم کن."
+          onToggle={() => toggleSection('seo')}
+          open={sectionOpen.seo}
+          title="سئو و متادیتا"
         >
           <div className="fm-grid page-builder-form-grid">
             <label className="fm-field">
@@ -1279,12 +1358,14 @@ export function PageBuilderWorkspacePage({
               <input checked={form.noIndex} onChange={(event) => updateForm('noIndex', event.target.checked)} type="checkbox" />
             </label>
           </div>
-        </SectionCard>
+        </CollapsibleSectionCard>
 
-        <SectionCard
+        <CollapsibleSectionCard
           eyebrow="block manager"
-          title="چیدمان و محتوای بلاک‌ها"
           description="ترتیب هر بلاک همان ترتیب نمایش در storefront است. می‌توانی بلاک اضافه، حذف یا جابه‌جا کنی."
+          onToggle={() => toggleSection('blocks')}
+          open={sectionOpen.blocks}
+          title="چیدمان و محتوای بلاک‌ها"
           actions={
             <div className="page-builder-add-actions">
               {(['HERO_HEADER', 'CATEGORY_CIRCLES', 'PRODUCT_CAROUSEL', 'EDITORIAL_RICH_BLOCK', 'VENDOR_CAROUSEL', 'CAMPAIGN_GRID', 'LATEST_ARTICLES_SHOWCASE'] as PageBlockType[]).map((type) => (
@@ -1318,6 +1399,9 @@ export function PageBuilderWorkspacePage({
                       <p className="page-builder-card__slug">{block.id}</p>
                     </div>
                     <div className="page-builder-block-card__actions">
+                      <button className="fm-button fm-button--ghost" onClick={() => toggleBlockOpen(block.id)} type="button">
+                        {blockOpenById[block.id] ? 'جمع' : 'باز'}
+                      </button>
                       <button className="fm-button fm-button--ghost" onClick={() => moveBlock(block.id, -1)} type="button">
                         بالا
                       </button>
@@ -1330,6 +1414,7 @@ export function PageBuilderWorkspacePage({
                     </div>
                   </div>
 
+                  {blockOpenById[block.id] ? (
                   <div className="fm-grid page-builder-form-grid">
                     <label className="fm-field">
                       <span>نوع بلاک</span>
@@ -1752,11 +1837,12 @@ export function PageBuilderWorkspacePage({
                       </>
                     ) : null}
                   </div>
+                  ) : null}
                 </article>
               )
             })}
           </div>
-        </SectionCard>
+        </CollapsibleSectionCard>
       </LoadableState>
     </div>
   )
