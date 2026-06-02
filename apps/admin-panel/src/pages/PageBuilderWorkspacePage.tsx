@@ -26,10 +26,12 @@ type PageBlockType =
 type ProductFilterType = 'category' | 'tag' | 'productType' | 'custom_list'
 type ProductSortBy = 'newest' | 'most_sold' | 'instant_delivery'
 type VendorFilterType = 'top_rated' | 'nearest_to_user' | 'handpicked'
+type BlockLoadingMode = 'eager' | 'lazy' | 'viewport'
 
 type BlockForm = {
   id: string
   type: PageBlockType
+  loadingMode: BlockLoadingMode
   data: Record<string, unknown>
 }
 
@@ -150,8 +152,17 @@ function createBlock(type: PageBlockType = 'HERO_HEADER'): BlockForm {
   return {
     id: makeId(),
     type,
+    loadingMode: getDefaultLoadingMode(type),
     data: getDefaultBlockData(type),
   }
+}
+
+function getDefaultLoadingMode(type: PageBlockType): BlockLoadingMode {
+  if (type === 'HERO_HEADER' || type === 'CATEGORY_CIRCLES') {
+    return 'eager'
+  }
+
+  return 'viewport'
 }
 
 function createEmptyForm(): PageForm {
@@ -239,6 +250,7 @@ function mapApiPageToForm(page: Record<string, unknown>): PageForm {
     return {
       id: readText(block, ['id'], makeId()),
       type,
+      loadingMode: normalizeBlockLoadingMode(readText(block, ['loadingMode'], ''), type),
       data: typeof block.data === 'object' && block.data !== null ? (block.data as Record<string, unknown>) : getDefaultBlockData(type),
     }
   })
@@ -294,6 +306,18 @@ function mapApiPageToForm(page: Record<string, unknown>): PageForm {
 function toOptionalText(value: string) {
   const normalized = value.trim()
   return normalized.length > 0 ? normalized : undefined
+}
+
+function normalizeBlockLoadingMode(value: string, type: PageBlockType): BlockLoadingMode {
+  if (type === 'HERO_HEADER' || type === 'CATEGORY_CIRCLES') {
+    return 'eager'
+  }
+
+  if (value === 'eager' || value === 'lazy' || value === 'viewport') {
+    return value
+  }
+
+  return 'viewport'
 }
 
 function parseCsv(value: string) {
@@ -600,6 +624,7 @@ export function PageBuilderWorkspacePage({
     updateBlock(blockId, (block) => ({
       ...block,
       type,
+      loadingMode: getDefaultLoadingMode(type),
       data: getDefaultBlockData(type),
     }))
   }
@@ -872,6 +897,7 @@ export function PageBuilderWorkspacePage({
         if (block.type === 'CATEGORY_CIRCLES') {
           return {
             ...block,
+            loadingMode: 'eager',
             data: {
               categoryIds: normalizeIdList(block.data.categoryIds),
               showTitles: block.data.showTitles !== false,
@@ -884,6 +910,7 @@ export function PageBuilderWorkspacePage({
           const rawValue = String(block.data.filterValue ?? '')
           return {
             ...block,
+            loadingMode: block.loadingMode,
             data: {
               title: String(block.data.title ?? '').trim(),
               filterType,
@@ -898,6 +925,7 @@ export function PageBuilderWorkspacePage({
           const filterType = String(block.data.filterType ?? 'top_rated') as VendorFilterType
           return {
             ...block,
+            loadingMode: block.loadingMode,
             data: {
               title: String(block.data.title ?? '').trim(),
               filterType,
@@ -913,6 +941,7 @@ export function PageBuilderWorkspacePage({
         if (block.type === 'CAMPAIGN_GRID') {
           return {
             ...block,
+            loadingMode: block.loadingMode,
             data: {
               title: toOptionalText(String(block.data.title ?? '')),
               backgroundColor: toOptionalText(String(block.data.backgroundColor ?? '')),
@@ -931,6 +960,7 @@ export function PageBuilderWorkspacePage({
         if (block.type === 'LATEST_ARTICLES_SHOWCASE') {
           return {
             ...block,
+            loadingMode: block.loadingMode,
             data: {
               title: toOptionalText(String(block.data.title ?? '')),
               subtitle: toOptionalText(String(block.data.subtitle ?? '')),
@@ -944,6 +974,7 @@ export function PageBuilderWorkspacePage({
 
         return {
           ...block,
+          loadingMode: block.type === 'HERO_HEADER' ? 'eager' : block.loadingMode,
           data: Object.fromEntries(
             Object.entries(block.data).map(([key, value]) => [key, typeof value === 'string' ? value.trim() : value]),
           ),
@@ -1274,6 +1305,23 @@ export function PageBuilderWorkspacePage({
                         <option value="CAMPAIGN_GRID">CAMPAIGN_GRID</option>
                         <option value="LATEST_ARTICLES_SHOWCASE">LATEST_ARTICLES_SHOWCASE</option>
                       </select>
+                    </label>
+                    <label className="fm-field">
+                      <span>حالت بارگذاری</span>
+                      <select
+                        disabled={block.type === 'HERO_HEADER' || block.type === 'CATEGORY_CIRCLES'}
+                        onChange={(event) => updateBlock(block.id, (current) => ({ ...current, loadingMode: event.target.value as BlockLoadingMode }))}
+                        value={block.type === 'HERO_HEADER' || block.type === 'CATEGORY_CIRCLES' ? 'eager' : block.loadingMode}
+                      >
+                        <option value="eager">eager / فوری</option>
+                        <option value="lazy">lazy / با تأخیر</option>
+                        <option value="viewport">viewport / نزدیک دید کاربر</option>
+                      </select>
+                      <small>
+                        {block.type === 'HERO_HEADER' || block.type === 'CATEGORY_CIRCLES'
+                          ? 'برای این بلاک، برای حفظ نمای اولیه، حالت همیشه eager است.'
+                          : 'برای بلوک‌های پایین صفحه معمولاً viewport انتخاب بهتری است.'}
+                      </small>
                     </label>
 
                     {block.type === 'HERO_HEADER' ? (

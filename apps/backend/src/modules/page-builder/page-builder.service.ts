@@ -14,6 +14,7 @@ import {
 import { UpdatePageDto } from './dto/update-page.dto';
 import { GetPageBySlugQueryDto } from './dto/get-page-by-slug-query.dto';
 import { PageBuilderCacheService } from './page-builder-cache.service';
+import { PageBlockLoadingMode, PageBlockType } from './dto/page-block.dto';
 
 type AuthenticatedUser = {
   id: number;
@@ -311,8 +312,28 @@ export class PageBuilderService {
     return blocks.map((block) => ({
       id: block.id,
       type: block.type,
+      loadingMode: this.normalizeBlockLoadingMode(block.type, block.loadingMode),
       data: block.data,
     }));
+  }
+
+  private normalizeBlockLoadingMode(
+    type: PageBlockType,
+    loadingMode?: PageBlockLoadingMode | null,
+  ) {
+    if (type === PageBlockType.HERO_HEADER || type === PageBlockType.CATEGORY_CIRCLES) {
+      return PageBlockLoadingMode.EAGER;
+    }
+
+    if (
+      loadingMode === PageBlockLoadingMode.EAGER ||
+      loadingMode === PageBlockLoadingMode.LAZY ||
+      loadingMode === PageBlockLoadingMode.VIEWPORT
+    ) {
+      return loadingMode;
+    }
+
+    return PageBlockLoadingMode.VIEWPORT;
   }
 
   private normalizeHeaderConfig(headerConfig?: CreatePageDto['headerConfig']) {

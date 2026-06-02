@@ -81,6 +81,7 @@ export type ArticleSummary = {
 export type EnrichedBlock = Record<string, unknown> & {
   id: string
   type: string
+  loadingMode?: 'eager' | 'lazy' | 'viewport'
   data: Record<string, unknown>
   categories?: CategorySummary[]
   products?: ProductSummary[]

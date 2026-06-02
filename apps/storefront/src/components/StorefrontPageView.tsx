@@ -1,6 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { type EnrichedStorefrontPage } from '../lib/storefront'
 import { StorefrontHeader } from './StorefrontHeader'
 import { CategoryCirclesSection, HeroSection } from './StorefrontSections'
@@ -37,6 +38,54 @@ const LatestArticlesShowcaseSection = dynamic(
   { loading: DeferredSectionFallback },
 )
 
+type DeferredSectionProps = {
+  children: ReactNode
+  mode: 'eager' | 'lazy' | 'viewport'
+}
+
+function ViewportSection({ children, mode }: DeferredSectionProps) {
+  const [isVisible, setIsVisible] = useState(mode !== 'viewport')
+  const containerRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (mode !== 'viewport') {
+      setIsVisible(true)
+      return
+    }
+
+    const element = containerRef.current
+    if (!element || typeof IntersectionObserver === 'undefined') {
+      setIsVisible(true)
+      return
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setIsVisible(true)
+          observer.disconnect()
+        }
+      },
+      { rootMargin: '240px 0px' },
+    )
+
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [mode])
+
+  return <div ref={containerRef}>{isVisible ? children : <DeferredSectionFallback />}</div>
+}
+
+function resolveBlockLoadingMode(block: EnrichedStorefrontPage['blocks'][number]) {
+  if (block.type === 'HERO_HEADER' || block.type === 'CATEGORY_CIRCLES') {
+    return 'eager'
+  }
+
+  return block.loadingMode === 'eager' || block.loadingMode === 'lazy' || block.loadingMode === 'viewport'
+    ? block.loadingMode
+    : 'viewport'
+}
+
 function indexSignature(page: EnrichedStorefrontPage) {
   const updatedAt = page.updatedAt
     ? new Intl.DateTimeFormat('fa-IR', {
@@ -57,32 +106,54 @@ export function StorefrontPageView({ page }: { page: EnrichedStorefrontPage }) {
       <main className={storefrontShared.pageShell}>
         <div className={`${storefrontShared.pageContainer} ${heroTouchesTop ? 'pt-0' : 'pt-4'}`}>
           {page.blocks.map((block, index) => {
+            const loadingMode = resolveBlockLoadingMode(block)
+
             if (block.type === 'HERO_HEADER') {
-              return <HeroSection block={block} index={index} pageTitle={page.title} pageType={page.pageType} />
+              return <HeroSection block={block} index={index} key={block.id} pageTitle={page.title} pageType={page.pageType} />
             }
 
             if (block.type === 'CATEGORY_CIRCLES') {
-              return <CategoryCirclesSection block={block} />
+              return <CategoryCirclesSection block={block} key={block.id} />
             }
 
             if (block.type === 'PRODUCT_CAROUSEL') {
-              return <ProductCarouselSection block={block} />
+              return (
+                <ViewportSection key={block.id} mode={loadingMode}>
+                  <ProductCarouselSection block={block} />
+                </ViewportSection>
+              )
             }
 
             if (block.type === 'EDITORIAL_RICH_BLOCK') {
-              return <EditorialSection block={block} />
+              return (
+                <ViewportSection key={block.id} mode={loadingMode}>
+                  <EditorialSection block={block} />
+                </ViewportSection>
+              )
             }
 
             if (block.type === 'VENDOR_CAROUSEL') {
-              return <VendorCarouselSection block={block} />
+              return (
+                <ViewportSection key={block.id} mode={loadingMode}>
+                  <VendorCarouselSection block={block} />
+                </ViewportSection>
+              )
             }
 
             if (block.type === 'CAMPAIGN_GRID') {
-              return <CampaignGridSection block={block} />
+              return (
+                <ViewportSection key={block.id} mode={loadingMode}>
+                  <CampaignGridSection block={block} />
+                </ViewportSection>
+              )
             }
 
             if (block.type === 'LATEST_ARTICLES_SHOWCASE') {
-              return <LatestArticlesShowcaseSection block={block} />
+              return (
+                <ViewportSection key={block.id} mode={loadingMode}>
+                  <LatestArticlesShowcaseSection block={block} />
+                </ViewportSection>
+              )
             }
 
             return null

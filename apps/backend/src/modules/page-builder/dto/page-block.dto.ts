@@ -75,6 +75,12 @@ export enum HeroHeaderImagePosition {
   BOTTOM = 'bottom',
 }
 
+export enum PageBlockLoadingMode {
+  EAGER = 'eager',
+  LAZY = 'lazy',
+  VIEWPORT = 'viewport',
+}
+
 export class HeroHeaderBlockDataDto {
   @ApiProperty({ example: 'گل‌های خاص برای شب یلدا' })
   @IsString()
@@ -430,6 +436,14 @@ export class PageBlockDto {
   @ApiProperty({ enum: PageBlockType })
   @IsEnum(PageBlockType)
   type!: PageBlockType;
+
+  @ApiPropertyOptional({
+    enum: PageBlockLoadingMode,
+    description: 'Controls how the storefront loads and mounts this block.',
+  })
+  @IsOptional()
+  @IsEnum(PageBlockLoadingMode)
+  loadingMode?: PageBlockLoadingMode;
 
   @ApiProperty({
     description: 'Type-specific block payload validated strictly based on the selected block type.',
