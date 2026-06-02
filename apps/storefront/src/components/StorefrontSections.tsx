@@ -150,7 +150,7 @@ export function EditorialSection({ block }: { block: { id: string; data: Record<
       <div className={`${imageOnLeft ? 'md:order-2' : 'md:order-1'} flex flex-col justify-center px-6 py-8 md:px-10 md:py-8`}>
         <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#926b46]">editorial mood</p>
         <h2 className="mt-3 text-[1.8rem] font-black leading-tight text-[#173126] md:text-[2rem]">{String(block.data.title ?? '')}</h2>
-        <p className="mt-4 max-w-3xl text-[0.98rem] leading-7 md:text-base md:leading-8" style={{ color: descriptionColor }}>
+        <p className="mt-4 max-w-fit text-[0.98rem] leading-7 md:text-base md:leading-8" style={{ color: descriptionColor }}>
           {String(block.data.description ?? '')}
         </p>
         {block.data.buttonText && block.data.buttonLink ? (
