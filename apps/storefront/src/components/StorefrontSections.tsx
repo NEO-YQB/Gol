@@ -125,9 +125,11 @@ export function ProductCarouselSection({ block }: { block: { id: string; data: R
 export function EditorialSection({ block }: { block: { id: string; data: Record<string, unknown> } }) {
   const imageOnLeft = String(block.data.imagePosition ?? 'right') === 'left'
   const descriptionColor = String(block.data.descriptionColor ?? '#355045')
+  const imageWidthPercent = Math.min(Math.max(Number(block.data.imageWidthPercent ?? 25) || 25, 15), 45)
+  const textWidthPercent = 100 - imageWidthPercent
   const sectionLayoutClassName = imageOnLeft
-    ? 'md:grid-cols-[220px_minmax(0,1fr)]'
-    : 'md:grid-cols-[minmax(0,1fr)_220px]'
+    ? `md:grid-cols-[${imageWidthPercent}%_${textWidthPercent}%]`
+    : `md:grid-cols-[${textWidthPercent}%_${imageWidthPercent}%]`
 
   return (
     <section
@@ -138,7 +140,7 @@ export function EditorialSection({ block }: { block: { id: string; data: Record<
       <div className={`${imageOnLeft ? 'md:order-1' : 'md:order-2'} overflow-hidden bg-[#e9dccb]`}>
         <img
           alt={String(block.data.title ?? 'Editorial block')}
-          className="aspect-square h-[220px] w-full object-cover md:h-auto"
+          className="h-[240px] w-full object-cover md:h-full"
           src={resolveAssetUrl(String(block.data.imageUrl ?? ''))}
         />
       </div>

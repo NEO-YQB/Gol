@@ -114,6 +114,7 @@ function getDefaultBlockData(type: PageBlockType): Record<string, unknown> {
         buttonLink: '',
         backgroundColor: '',
         descriptionColor: '',
+        imageWidthPercent: 25,
       }
     case 'VENDOR_CAROUSEL':
       return {
@@ -993,6 +994,7 @@ export function PageBuilderWorkspacePage({
               buttonLink: toOptionalText(String(block.data.buttonLink ?? '')),
               backgroundColor: toOptionalText(String(block.data.backgroundColor ?? '')),
               descriptionColor: toOptionalText(String(block.data.descriptionColor ?? '')),
+              imageWidthPercent: Number(block.data.imageWidthPercent ?? 25) || 25,
             },
           }
         }
@@ -1578,6 +1580,17 @@ export function PageBuilderWorkspacePage({
                             <option value="right">right</option>
                             <option value="left">left</option>
                           </select>
+                        </label>
+                        <label className="fm-field">
+                          <span>درصد فضای تصویر</span>
+                          <input
+                            max={45}
+                            min={15}
+                            onChange={(event) => patchBlockData(block.id, 'imageWidthPercent', Number(event.target.value))}
+                            type="number"
+                            value={String(data.imageWidthPercent ?? 25)}
+                          />
+                          <small>مثلاً 25 یعنی 25٪ برای تصویر و 75٪ برای متن.</small>
                         </label>
                         <label className="fm-field page-builder-field--wide">
                           <span>Description</span>
