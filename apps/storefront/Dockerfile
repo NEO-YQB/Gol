@@ -1,5 +1,6 @@
 # 1. Base Stage: Install dependencies
-FROM node:20-slim AS installer
+FROM node:22-bookworm-slim AS installer
+ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y openssl curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
@@ -10,7 +11,8 @@ COPY packages/database/package*.json ./packages/database/
 RUN npm install
 
 # 2. Build Stage
-FROM node:20-slim AS builder
+FROM node:22-bookworm-slim AS builder
+ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y openssl curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
@@ -23,7 +25,8 @@ RUN npx prisma generate --schema=packages/database/prisma/schema.prisma && \
     npm run build --workspace=storefront
 
 # 3. Runner Stage
-FROM node:20-slim AS runner
+FROM node:22-bookworm-slim AS runner
+ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y openssl curl wget && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
