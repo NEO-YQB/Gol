@@ -3,10 +3,6 @@
 import Link from 'next/link'
 import { resolveAssetUrl, type EnrichedStorefrontPage } from '../lib/storefront'
 import { getStorefrontSocialOption, isStorefrontSocialIconKey, type StorefrontSocialIconKey } from './storefrontSocialIcons'
-import baleIcon from './social-icons/bale.svg'
-import eitaaIcon from './social-icons/eitaa.svg'
-import rubikaIcon from './social-icons/rubika.svg'
-import soroushIcon from './social-icons/soroush.svg'
 
 type FooterLinkItem = {
   label: string
@@ -66,11 +62,11 @@ function normalizePercent(value: number | null | undefined, fallback: number) {
 function SocialIcon({ icon, label }: { icon: StorefrontSocialIconKey; label: string }) {
   const option = getStorefrontSocialOption(icon)
   const localIcons = {
-    bale: baleIcon,
-    rubika: rubikaIcon,
-    eitaa: eitaaIcon,
-    soroush: soroushIcon,
-  }
+    bale: '/social-icons/bale.svg',
+    rubika: '/social-icons/rubika.svg',
+    eitaa: '/social-icons/eitaa.svg',
+    soroush: '/social-icons/soroush.svg',
+  } as const
   const localAssetKey = option?.localAsset
   const localIconSrc = localAssetKey && localAssetKey in localIcons ? localIcons[localAssetKey as keyof typeof localIcons] : null
   const iconSrc = option?.simpleIconSlug ? `https://cdn.simpleicons.org/${option.simpleIconSlug}` : ''
