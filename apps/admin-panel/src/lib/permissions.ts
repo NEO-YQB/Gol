@@ -118,6 +118,9 @@ const routeRequirements: Partial<Record<AdminRoute, AccessRequirement>> = {
   pageBuilderWorkspace: {
     roles: ['ADMIN'],
   },
+  settings: {
+    roles: ['ADMIN'],
+  },
   content: {
     anyOf: [
       { action: 'manage', subject: 'all' },

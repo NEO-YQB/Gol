@@ -25,6 +25,7 @@ import { VendorDashboardModule } from './modules/vendor-dashboard/vendor-dashboa
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ContentModule } from './modules/content/content.module';
+import { SettingsModule } from './modules/settings/settings.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaService } from './prisma/prisma.service';
@@ -58,6 +59,7 @@ import { PrismaService } from './prisma/prisma.service';
     ReviewsModule,
     NotificationsModule,
     ContentModule,
+    SettingsModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService, RolesGuard, AbilitiesGuard],

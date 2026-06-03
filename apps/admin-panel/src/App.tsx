@@ -28,6 +28,7 @@ import { OrdersPage } from './pages/OrdersPage'
 import { OrdersWorkspacePage } from './pages/OrdersWorkspacePage'
 import { PageBuilderPage } from './pages/PageBuilderPage'
 import { PageBuilderWorkspacePage } from './pages/PageBuilderWorkspacePage'
+import { SettingsPage } from './pages/SettingsPage'
 import { ProductsPage } from './pages/ProductsPage'
 import { ProductWorkspacePage } from './pages/ProductWorkspacePage'
 import { SettlementsPage } from './pages/SettlementsPage'
@@ -67,6 +68,7 @@ function buildNav(currentRoute: AdminRoute, session: AuthSession): NavSection[] 
         { key: 'pageBuilder', label: 'صفحه‌ساز استور', hint: 'landing pageها، homepage و چیدمان بلاک‌های storefront', active: currentRoute === 'pageBuilder' || currentRoute === 'pageBuilderWorkspace' },
         { key: 'alerts', label: 'هشدارها و اعلان ها', hint: 'outbox و رخدادهای مهم عملیاتی', active: currentRoute === 'alerts' },
         { key: 'accessControl', label: 'کاربران و دسترسی', hint: 'مدیریت user، role و permission', active: currentRoute === 'accessControl' || currentRoute === 'accessControlWorkspace', badge: hasPermission(session, 'assignPermissions', 'AdminRole') ? 'قابل ویرایش' : 'فقط مشاهده' },
+        { key: 'settings', label: 'تنظیمات', hint: 'تنظیمات سراسری سرویس‌ها و یکپارچه‌سازی‌ها', active: currentRoute === 'settings' },
       ],
     },
   ]
@@ -170,6 +172,12 @@ function getPageMeta(route: AdminRoute) {
         eyebrow: 'page builder workspace',
         title: 'ویرایشگر متمرکز صفحه‌های storefront',
         description: 'تنظیمات SEO، بلوک‌ها، ترتیب نمایش و وضعیت انتشار هر صفحه storefront در این workspace مدیریت می‌شود.',
+      }
+    case 'settings':
+      return {
+        eyebrow: 'system settings',
+        title: 'تنظیمات سراسری سرویس‌ها و یکپارچه‌سازی‌ها',
+        description: 'پیکربندی سرویس‌های بیرونی مثل OTP واقعی و سایر integrationها از این route انجام می‌شود.',
       }
     case 'contentWorkspace':
       return {
@@ -280,6 +288,8 @@ function renderRoute(
       return <ContentPage onCreateArticle={options.onOpenContentWorkspaceForCreate} onEditArticle={options.onOpenContentWorkspaceForEdit} session={session} />
     case 'pageBuilder':
       return <PageBuilderPage onCreatePage={options.onOpenPageBuilderWorkspaceForCreate} onEditPage={options.onOpenPageBuilderWorkspaceForEdit} session={session} />
+    case 'settings':
+      return <SettingsPage session={session} />
     case 'pageBuilderWorkspace':
       return <PageBuilderWorkspacePage mode={options.pageBuilderWorkspaceMode} onBack={options.onBackToPageBuilder} pageId={options.pageBuilderWorkspacePageId} session={session} />
     case 'contentWorkspace':

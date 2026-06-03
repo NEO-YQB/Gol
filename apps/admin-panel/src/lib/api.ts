@@ -38,6 +38,13 @@ export type SessionBootstrapResponse = {
   } | null
 }
 
+export type SmsSettingsResponse = {
+  apiKey?: string
+  templateId?: string
+  lineNumber?: string
+  hasApiKey?: boolean
+}
+
 export type StorefrontPagePayload = {
   id: string
   title: string
@@ -163,6 +170,21 @@ export const adminApi = {
 
   getSessionBootstrap(session: AuthSession) {
     return request<SessionBootstrapResponse>('/auth/session-bootstrap', {}, session.accessToken)
+  },
+  getSmsSettings(session: AuthSession) {
+    return request<SmsSettingsResponse>('/admin/settings/sms', {}, session.accessToken)
+  },
+  updateSmsSettings(session: AuthSession, body: { apiKey?: string; templateId?: string; lineNumber?: string }) {
+    return request<SmsSettingsResponse>('/admin/settings/sms', {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  testSmsSettings(session: AuthSession, phoneNumber: string) {
+    return request<{ message: string; expiresAt: string }>('/admin/settings/sms/test', {
+      method: 'POST',
+      body: JSON.stringify({ phoneNumber }),
+    }, session.accessToken)
   },
 
   createAccessControlUser(session: AuthSession, body: {
