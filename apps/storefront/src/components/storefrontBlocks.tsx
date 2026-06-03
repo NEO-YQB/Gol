@@ -29,6 +29,7 @@ export function StorefrontPill({ text }: { text: string }) {
 export function ProductCard({ product }: { product: ProductSummary }) {
   const price = formatPrice(product.price)
   const discountPrice = formatPrice(product.discountPrice ?? null)
+  const hasDiscount = typeof product.discountPrice === 'number' && product.discountPrice < product.price
   const productHref = getProductHref(product)
   const vendorHref = product.store?.slug ? getVendorHref(product.store) : null
   const categoryHref = product.category?.slug ? `/categories/${product.category.slug}` : null
@@ -38,8 +39,8 @@ export function ProductCard({ product }: { product: ProductSummary }) {
       <Link className={storefrontStyles.productImageWrap} href={productHref}>
         <img alt={product.mainImageAlt || product.name} className={storefrontStyles.productImage} src={resolveAssetUrl(product.mainImage)} />
       </Link>
-      <div className="space-y-3">
-        <div>
+      <div className="flex flex-1 flex-col">
+        <div className="space-y-3">
           {vendorHref ? (
             <Link className="text-xs uppercase tracking-[0.28em] text-[#9e7b52]" href={vendorHref}>
               {product.store?.name || 'فروشگاه منتخب'}
@@ -60,13 +61,15 @@ export function ProductCard({ product }: { product: ProductSummary }) {
             )
           ) : null}
         </div>
-        <div className="flex items-end justify-between gap-3">
+        <div className="mt-3 flex items-end justify-between gap-3">
           <div className="space-y-1">
-            {product.discountPrice ? <div className="text-sm text-[#9c8a75] line-through">{price} تومان</div> : null}
-            <div className="text-lg font-extrabold text-[#d06c54]">{product.discountPrice ? `${discountPrice} تومان` : `${price} تومان`}</div>
+            <div className={`min-h-[1.25rem] text-sm text-[#9c8a75] ${hasDiscount ? 'line-through' : 'invisible'}`}>
+              {hasDiscount ? `${price} تومان` : 'placeholder'}
+            </div>
+            <div className="text-lg font-extrabold text-[#d06c54]">{hasDiscount ? `${discountPrice} تومان` : `${price} تومان`}</div>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="mt-auto flex flex-wrap gap-2 pt-4">
           <Link className="inline-flex items-center rounded-full bg-[#1f6a52] px-4 py-2 text-sm font-bold text-white" href={`${productHref}?action=add-to-cart`}>
             افزودن به سبد
           </Link>

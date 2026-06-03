@@ -1,6 +1,6 @@
 export const storefrontStyles = {
   productCard:
-    'group min-w-[240px] rounded-[28px] border border-black/5 bg-white/85 p-4 shadow-[0_20px_50px_rgba(37,24,8,0.08)] backdrop-blur transition duration-300 hover:-translate-y-1 hover:shadow-[0_26px_60px_rgba(37,24,8,0.12)]',
+    'group flex w-[240px] shrink-0 flex-col rounded-[28px] border border-black/5 bg-white/85 p-4 shadow-[0_20px_50px_rgba(37,24,8,0.08)] backdrop-blur transition duration-300 hover:-translate-y-1 hover:shadow-[0_26px_60px_rgba(37,24,8,0.12)]',
   productImageWrap: 'mb-4 block overflow-hidden rounded-[24px] bg-[#f4eadc]',
   productImage: 'h-56 w-full object-cover transition duration-500 group-hover:scale-[1.04]',
   categoryCircle:
