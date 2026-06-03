@@ -228,6 +228,12 @@ export class FooterSocialItemDto {
   @MaxLength(120)
   label!: string;
 
+  @ApiPropertyOptional({ example: 'instagram' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  icon?: string;
+
   @ApiPropertyOptional({ example: 'https://cdn.example.com/socials/instagram.png' })
   @IsOptional()
   @IsString()

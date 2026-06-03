@@ -425,6 +425,7 @@ export class PageBuilderService {
         .map((social) => ({
           enabled: social.enabled !== false,
           label: this.normalizeText(social.label),
+          icon: this.normalizeNullableText(social.icon),
           imageUrl: this.normalizeNullableText(social.imageUrl),
           href: this.normalizeText(social.href),
         }))

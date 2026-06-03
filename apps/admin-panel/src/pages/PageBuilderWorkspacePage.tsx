@@ -1,4 +1,5 @@
 import { Pill, SectionCard } from '@flower-marketplace/frontend-core'
+import { SOCIAL_ICON_OPTIONS, isSocialIconKey, type SocialIconKey } from '@flower-marketplace/frontend-core/src/socialIcons'
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { useNoticeEffect } from '../components/NoticeCenter'
@@ -63,6 +64,7 @@ type FooterBadgeForm = {
 type FooterSocialForm = {
   enabled: boolean
   label: string
+  icon: SocialIconKey | ''
   imageUrl: string
   href: string
 }
@@ -145,6 +147,16 @@ function makeId() {
   }
 
   return `block-${Math.random().toString(36).slice(2, 10)}`
+}
+
+function createFooterSocial(): FooterSocialForm {
+  return {
+    enabled: true,
+    label: '',
+    icon: '',
+    imageUrl: '',
+    href: '',
+  }
 }
 
 function getDefaultBlockData(type: PageBlockType): Record<string, unknown> {
@@ -297,10 +309,6 @@ function createFooterLinkItem(): FooterLinkItemForm {
 
 function createFooterBadge(): FooterBadgeForm {
   return { enabled: true, title: '', imageUrl: '', href: '' }
-}
-
-function createFooterSocial(): FooterSocialForm {
-  return { enabled: true, label: '', imageUrl: '', href: '' }
 }
 
 function normalizeColorPickerValue(value: string, fallback = '#173126') {
@@ -480,6 +488,7 @@ function mapApiPageToForm(page: Record<string, unknown>): PageForm {
             ? {
                 enabled: (social as Record<string, unknown>).enabled !== false,
                 label: readText(social as Record<string, unknown>, ['label'], ''),
+                icon: isSocialIconKey(readText(social as Record<string, unknown>, ['icon'], '')) ? (readText(social as Record<string, unknown>, ['icon'], '') as SocialIconKey) : '',
                 imageUrl: readText(social as Record<string, unknown>, ['imageUrl'], ''),
                 href: readText(social as Record<string, unknown>, ['href'], ''),
               }
@@ -1308,10 +1317,11 @@ export function PageBuilderWorkspacePage({
           .map((social) => ({
             enabled: social.enabled,
             label: social.label.trim(),
+            icon: social.icon || undefined,
             imageUrl: toOptionalText(social.imageUrl),
             href: social.href.trim(),
           }))
-          .filter((social) => social.label.length > 0 && social.href.length > 0 && social.imageUrl),
+          .filter((social) => social.label.length > 0 && social.href.length > 0 && (social.icon || social.imageUrl)),
         legalEnabled: form.footerLegalEnabled,
         legalText: toOptionalText(form.footerLegalText),
       },
@@ -1869,17 +1879,28 @@ export function PageBuilderWorkspacePage({
                       <span>لینک</span>
                       <input onChange={(event) => patchFooterSocial(socialIndex, { href: event.target.value })} type="text" value={social.href} />
                     </label>
+                    <label className="fm-field">
+                      <span>آیکن داخلی</span>
+                      <select onChange={(event) => patchFooterSocial(socialIndex, { icon: event.target.value as SocialIconKey | '' })} value={social.icon}>
+                        <option value="">انتخاب آیکن</option>
+                        {SOCIAL_ICON_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                     <label className="fm-field page-builder-field--wide">
-                      <span>آیکون (URL)</span>
+                      <span>آیکون (URL - اختیاری)</span>
                       <input onChange={(event) => patchFooterSocial(socialIndex, { imageUrl: event.target.value })} type="text" value={social.imageUrl} />
                     </label>
                     <div className="admin-products-upload-card page-builder-field--wide">
                       <div className="admin-products-upload-actions">
                         <button className="content-secondary-action" disabled={uploadingImageTarget === `page:footerSocial:${socialIndex}`} onClick={() => openImagePicker(`page:footerSocial:${socialIndex}`)} type="button">
-                          {uploadingImageTarget === `page:footerSocial:${socialIndex}` ? 'در حال آپلود...' : 'آپلود آیکون شبکه'}
+                          {uploadingImageTarget === `page:footerSocial:${socialIndex}` ? 'در حال آپلود...' : 'آپلود آیکون سفارشی'}
                         </button>
                       </div>
-                      {getImagePreview(social.imageUrl) ? (
+                      {!social.icon && getImagePreview(social.imageUrl) ? (
                         <div className="admin-products-image-preview">
                           <img alt={`Preview social ${socialIndex + 1}`} src={social.imageUrl} />
                         </div>
