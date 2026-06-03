@@ -92,7 +92,58 @@ export class AuthService {
         phoneNumber: user.phoneNumber,
         fullName: user.fullName,
         roles: roleNames,
+        needsProfileCompletion: !user.fullName,
       },
+    };
+  }
+
+  async getMe(userId: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        roles: {
+          include: {
+            role: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new BadRequestException('کاربر یافت نشد');
+    }
+
+    return {
+      id: user.id,
+      phoneNumber: user.phoneNumber,
+      fullName: user.fullName,
+      roles: user.roles.map((userRole) => userRole.role.name),
+      needsProfileCompletion: !user.fullName,
+      createdAt: user.createdAt,
+    };
+  }
+
+  async completeProfile(userId: number, fullName: string) {
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        fullName: fullName.trim(),
+      },
+      include: {
+        roles: {
+          include: {
+            role: true,
+          },
+        },
+      },
+    });
+
+    return {
+      id: user.id,
+      phoneNumber: user.phoneNumber,
+      fullName: user.fullName,
+      roles: user.roles.map((userRole) => userRole.role.name),
+      needsProfileCompletion: !user.fullName,
     };
   }
 

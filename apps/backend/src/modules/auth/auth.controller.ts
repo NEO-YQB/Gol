@@ -1,8 +1,9 @@
-import { Controller, Post, Body, BadRequestException, Get, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, BadRequestException, Get, UseGuards, Patch } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { GetUser } from '../../common/decorators/get-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AuthService } from './auth.service';
+import { CompleteProfileDto } from './dto/complete-profile.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -33,6 +34,14 @@ export class AuthController {
   })
   getSessionBootstrap(@GetUser() user: { id: number; roles: string[]; phoneNumber?: string }) {
     return this.authService.getSessionBootstrap(user);
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'دریافت پروفایل کاربر فعلی' })
+  getMe(@GetUser() user: { id: number; phoneNumber: string; fullName?: string | null; roles: string[] }) {
+    return this.authService.getMe(user.id);
   }
 
   @Post('send-otp')
@@ -96,5 +105,16 @@ export class AuthController {
       throw new BadRequestException('شماره موبایل و کد الزامی هستند');
     }
     return this.authService.verifyOtp(phoneNumber, code);
+  }
+
+  @Patch('complete-profile')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'تکمیل پروفایل اولیه کاربر' })
+  async completeProfile(
+    @GetUser() user: { id: number },
+    @Body() dto: CompleteProfileDto,
+  ) {
+    return this.authService.completeProfile(user.id, dto.fullName);
   }
 }
