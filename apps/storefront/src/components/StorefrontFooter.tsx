@@ -1,8 +1,8 @@
 'use client'
 
-import { isSocialIconKey, type SocialIconKey } from '@flower-marketplace/frontend-core'
 import Link from 'next/link'
 import { resolveAssetUrl, type EnrichedStorefrontPage } from '../lib/storefront'
+import { isStorefrontSocialIconKey, type StorefrontSocialIconKey } from './storefrontSocialIcons'
 
 type FooterLinkItem = {
   label: string
@@ -25,7 +25,7 @@ type FooterBadge = {
 type FooterSocial = {
   enabled?: boolean
   label: string
-  icon?: SocialIconKey | null
+  icon?: StorefrontSocialIconKey | null
   imageUrl?: string | null
   href: string
 }
@@ -59,7 +59,7 @@ function normalizePercent(value: number | null | undefined, fallback: number) {
   return Math.min(Math.max(Math.round(value), 15), 60)
 }
 
-function SocialIcon({ icon, label }: { icon: SocialIconKey; label: string }) {
+function SocialIcon({ icon, label }: { icon: StorefrontSocialIconKey; label: string }) {
   const commonProps = {
     className: 'h-5 w-5',
     fill: 'none',
@@ -122,7 +122,7 @@ export function StorefrontFooter({ page }: { page: EnrichedStorefrontPage }) {
     ? footerConfig.badges.filter((badge) => badge.enabled !== false && badge.imageUrl)
     : []
   const socials = Array.isArray(footerConfig.socials)
-    ? footerConfig.socials.filter((social) => social.enabled !== false && social.href && (social.imageUrl || (social.icon && isSocialIconKey(social.icon))))
+    ? footerConfig.socials.filter((social) => social.enabled !== false && social.href && (social.imageUrl || (social.icon && isStorefrontSocialIconKey(social.icon))))
     : []
   const legalText = String(footerConfig.legalText ?? '').trim()
 
@@ -217,7 +217,7 @@ export function StorefrontFooter({ page }: { page: EnrichedStorefrontPage }) {
                 {socials.map((social) => (
                   <Link className="inline-flex rounded-[18px] border p-1.5 transition hover:opacity-90" href={social.href} key={`${social.label}-${social.href}`} style={{ borderColor: footerConfig.borderColor || 'rgba(255,255,255,0.12)' }}>
                     <span className="flex h-11 w-11 items-center justify-center rounded-[14px]" style={{ color: footerConfig.textColor || '#f5efe4' }}>
-                      {social.icon && isSocialIconKey(social.icon) ? (
+                      {social.icon && isStorefrontSocialIconKey(social.icon) ? (
                         <SocialIcon icon={social.icon} label={social.label} />
                       ) : (
                         <img alt={social.label} className="h-11 w-11 rounded-[14px] object-cover" src={resolveAssetUrl(String(social.imageUrl))} />
