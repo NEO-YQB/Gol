@@ -1,4 +1,4 @@
-export const SOCIAL_ICON_OPTIONS = [
+export const STOREFRONT_SOCIAL_ICON_OPTIONS = [
   { value: 'bale', label: 'بله', simpleIconSlug: '' },
   { value: 'rubika', label: 'روبیکا', simpleIconSlug: '' },
   { value: 'eitaa', label: 'ایتا', simpleIconSlug: '' },
@@ -14,12 +14,12 @@ export const SOCIAL_ICON_OPTIONS = [
   { value: 'whatsapp', label: 'واتس‌اپ', simpleIconSlug: 'whatsapp' },
 ] as const
 
-export type SocialIconKey = (typeof SOCIAL_ICON_OPTIONS)[number]['value']
+export type StorefrontSocialIconKey = (typeof STOREFRONT_SOCIAL_ICON_OPTIONS)[number]['value']
 
-export function isSocialIconKey(value: string): value is SocialIconKey {
-  return SOCIAL_ICON_OPTIONS.some((item) => item.value === value)
+export function isStorefrontSocialIconKey(value: string): value is StorefrontSocialIconKey {
+  return STOREFRONT_SOCIAL_ICON_OPTIONS.some((item) => item.value === value)
 }
 
-export function getSocialIconOption(value: string) {
-  return SOCIAL_ICON_OPTIONS.find((item) => item.value === value) ?? null
+export function getStorefrontSocialOption(value: string) {
+  return STOREFRONT_SOCIAL_ICON_OPTIONS.find((item) => item.value === value) ?? null
 }
