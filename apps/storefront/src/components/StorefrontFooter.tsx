@@ -107,7 +107,7 @@ export function StorefrontFooter({ page }: { page: EnrichedStorefrontPage }) {
               )
             ) : null}
             {footerConfig.brandDescription ? (
-              <p className="mt-4 max-w-[34ch] text-sm leading-7" style={{ color: footerConfig.mutedTextColor || 'rgba(245,239,228,0.8)' }}>
+              <p className="mt-4 max-w-fit text-sm leading-7" style={{ color: footerConfig.mutedTextColor || 'rgba(245,239,228,0.8)' }}>
                 {footerConfig.brandDescription}
               </p>
             ) : null}

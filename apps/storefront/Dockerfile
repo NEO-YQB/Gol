@@ -1,11 +1,7 @@
-# 0. Shared base image
-FROM node:22-bookworm-slim AS base
-ENV DEBIAN_FRONTEND=noninteractive
+# 1. Base Stage: Install dependencies
+FROM node:20-slim AS installer
 RUN apt-get update && apt-get install -y openssl curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-
-# 1. Base Stage: Install dependencies
-FROM base AS installer
 
 COPY package*.json ./
 COPY apps/storefront/package*.json ./apps/storefront/
@@ -14,7 +10,9 @@ COPY packages/database/package*.json ./packages/database/
 RUN npm install
 
 # 2. Build Stage
-FROM base AS builder
+FROM node:20-slim AS builder
+RUN apt-get update && apt-get install -y openssl curl && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
 
 COPY --from=installer /app/node_modules ./node_modules
 COPY package*.json ./
@@ -25,8 +23,8 @@ RUN npx prisma generate --schema=packages/database/prisma/schema.prisma && \
     npm run build --workspace=storefront
 
 # 3. Runner Stage
-FROM base AS runner
-RUN apt-get update && apt-get install -y wget && rm -rf /var/lib/apt/lists/*
+FROM node:20-slim AS runner
+RUN apt-get update && apt-get install -y openssl curl wget && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 ENV NODE_ENV=production
