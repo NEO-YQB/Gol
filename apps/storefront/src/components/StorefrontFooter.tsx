@@ -1,6 +1,6 @@
 'use client'
 
-import { isSocialIconKey, type SocialIconKey } from '@flower-marketplace/frontend-core/src/socialIcons'
+import { isSocialIconKey, type SocialIconKey } from '@flower-marketplace/frontend-core'
 import Link from 'next/link'
 import { resolveAssetUrl, type EnrichedStorefrontPage } from '../lib/storefront'
 

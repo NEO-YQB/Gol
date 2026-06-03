@@ -1,5 +1,4 @@
-import { Pill, SectionCard } from '@flower-marketplace/frontend-core'
-import { SOCIAL_ICON_OPTIONS, isSocialIconKey, type SocialIconKey } from '@flower-marketplace/frontend-core/src/socialIcons'
+import { Pill, SectionCard, SOCIAL_ICON_OPTIONS, isSocialIconKey, type SocialIconKey } from '@flower-marketplace/frontend-core'
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { useNoticeEffect } from '../components/NoticeCenter'
@@ -1883,7 +1882,7 @@ export function PageBuilderWorkspacePage({
                       <span>آیکن داخلی</span>
                       <select onChange={(event) => patchFooterSocial(socialIndex, { icon: event.target.value as SocialIconKey | '' })} value={social.icon}>
                         <option value="">انتخاب آیکن</option>
-                        {SOCIAL_ICON_OPTIONS.map((option) => (
+                        {SOCIAL_ICON_OPTIONS.map((option: { value: SocialIconKey; label: string }) => (
                           <option key={option.value} value={option.value}>
                             {option.label}
                           </option>
