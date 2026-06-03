@@ -10,6 +10,12 @@ function formatPrice(value: number | null | undefined) {
   return new Intl.NumberFormat('fa-IR').format(value)
 }
 
+function getEffectiveDiscountPrice(price: number, discountPrice: number | null | undefined) {
+  if (typeof discountPrice !== 'number' || Number.isNaN(discountPrice)) return null
+  if (discountPrice <= 0 || discountPrice >= price) return null
+  return discountPrice
+}
+
 function getProductHref(product: ProductSummary) {
   return `/products/${product.slug}`
 }
@@ -28,8 +34,9 @@ export function StorefrontPill({ text }: { text: string }) {
 
 export function ProductCard({ product }: { product: ProductSummary }) {
   const price = formatPrice(product.price)
-  const discountPrice = formatPrice(product.discountPrice ?? null)
-  const hasDiscount = typeof product.discountPrice === 'number' && product.discountPrice < product.price
+  const effectiveDiscountPrice = getEffectiveDiscountPrice(product.price, product.discountPrice)
+  const discountPrice = formatPrice(effectiveDiscountPrice)
+  const hasDiscount = effectiveDiscountPrice !== null
   const productHref = getProductHref(product)
   const vendorHref = product.store?.slug ? getVendorHref(product.store) : null
   const categoryHref = product.category?.slug ? `/categories/${product.category.slug}` : null
