@@ -65,13 +65,14 @@ function normalizePercent(value: number | null | undefined, fallback: number) {
 
 function SocialIcon({ icon, label }: { icon: StorefrontSocialIconKey; label: string }) {
   const option = getStorefrontSocialOption(icon)
-  const localIcons: Record<string, string> = {
+  const localIcons = {
     bale: baleIcon,
     rubika: rubikaIcon,
     eitaa: eitaaIcon,
     soroush: soroushIcon,
   }
-  const localIconSrc = option?.localAsset ? localIcons[option.localAsset] : ''
+  const localAssetKey = option?.localAsset
+  const localIconSrc = localAssetKey && localAssetKey in localIcons ? localIcons[localAssetKey as keyof typeof localIcons] : null
   const iconSrc = option?.simpleIconSlug ? `https://cdn.simpleicons.org/${option.simpleIconSlug}` : ''
 
   if (localIconSrc) {
