@@ -21,6 +21,10 @@ function maskSecret(value: string) {
   return `${trimmed.slice(0, 3)}••••••${trimmed.slice(-3)}`
 }
 
+function displayCell(value: string) {
+  return value.trim().length > 0 ? value : '—'
+}
+
 export function SettingsPage({ session }: SettingsPageProps) {
   const [form, setForm] = useState<SmsSettingsState>({ apiKey: '', templateId: '', lineNumber: '' })
   const [savedSnapshot, setSavedSnapshot] = useState<SmsSettingsState | null>(null)
@@ -64,7 +68,7 @@ export function SettingsPage({ session }: SettingsPageProps) {
       setSavedSnapshot(nextState)
       setMessage('تنظیمات پیامک ذخیره شد و دوباره از سرور خوانده شد')
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'ذخیره تنظیمات با خطا مواجه شد')
+      setError(requestError instanceof Error ? `ذخیره تنظیمات با خطا مواجه شد: ${requestError.message}` : 'ذخیره تنظیمات با خطا مواجه شد')
     } finally {
       setSaving(false)
     }
@@ -90,6 +94,7 @@ export function SettingsPage({ session }: SettingsPageProps) {
         <div className="flex flex-wrap gap-2">
           <Pill>{form.hasApiKey ? 'API Key ثبت شده' : 'API Key ثبت نشده'}</Pill>
           <Pill>{savedSnapshot?.templateId ? `Template: ${savedSnapshot.templateId}` : 'Template ثبت نشده'}</Pill>
+          <Pill>{savedSnapshot?.lineNumber ? 'خط ارسال ثبت شده' : 'خط ارسال ثبت نشده'}</Pill>
         </div>
       </SectionCard>
 
@@ -122,15 +127,15 @@ export function SettingsPage({ session }: SettingsPageProps) {
           <div className="grid text-sm">
             <div className="grid grid-cols-[160px_minmax(0,1fr)] border-b border-[#f3eadf] px-4 py-3">
               <span className="font-bold text-[#6f604e]">API Key</span>
-              <span className="text-left" dir="ltr">{maskSecret(savedSnapshot?.apiKey || '')}</span>
+              <span className="text-left font-medium" dir="ltr">{maskSecret(savedSnapshot?.apiKey || '')}</span>
             </div>
             <div className="grid grid-cols-[160px_minmax(0,1fr)] border-b border-[#f3eadf] px-4 py-3">
               <span className="font-bold text-[#6f604e]">Template ID</span>
-              <span dir="ltr">{savedSnapshot?.templateId || 'خالی'}</span>
+              <span dir="ltr">{displayCell(savedSnapshot?.templateId || '')}</span>
             </div>
             <div className="grid grid-cols-[160px_minmax(0,1fr)] px-4 py-3">
               <span className="font-bold text-[#6f604e]">Line Number</span>
-              <span dir="ltr">{savedSnapshot?.lineNumber || 'خالی'}</span>
+              <span dir="ltr">{displayCell(savedSnapshot?.lineNumber || '')}</span>
             </div>
           </div>
         </div>
@@ -148,8 +153,8 @@ export function SettingsPage({ session }: SettingsPageProps) {
             {testing ? 'در حال ارسال...' : 'ارسال پیامک تستی'}
           </button>
         </div>
-        {message ? <p className="mt-4 rounded-2xl bg-[#edf8f2] px-4 py-3 text-sm text-[#1f6a52]">{message}</p> : null}
-        {error ? <p className="mt-4 rounded-2xl bg-[#fff1ee] px-4 py-3 text-sm text-[#b64b36]">{error}</p> : null}
+        {message ? <p className="mt-4 rounded-2xl bg-[#edf8f2] px-4 py-3 text-sm font-medium text-[#1f6a52]">{message}</p> : null}
+        {error ? <p className="mt-4 rounded-2xl bg-[#fff1ee] px-4 py-3 text-sm font-medium text-[#b64b36]">{error}</p> : null}
       </SectionCard>
     </div>
   )

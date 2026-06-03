@@ -46,22 +46,29 @@ export class SettingsService {
       lineNumber: typeof input.lineNumber === 'string' ? input.lineNumber.trim() : current.lineNumber,
     };
 
-    await this.prisma.appSetting.upsert({
+    const persisted = await this.prisma.appSetting.upsert({
       where: { key: SMS_IR_SETTING_KEY },
       update: {
-        value: nextValue as Prisma.InputJsonValue,
+        value: nextValue as Prisma.JsonObject,
         description: 'SMS.IR configuration for storefront OTP',
       },
       create: {
         key: SMS_IR_SETTING_KEY,
-        value: nextValue as Prisma.InputJsonValue,
+        value: nextValue as Prisma.JsonObject,
         description: 'SMS.IR configuration for storefront OTP',
       },
     });
 
+    const saved =
+      persisted.value && typeof persisted.value === 'object' && !Array.isArray(persisted.value)
+        ? (persisted.value as Record<string, unknown>)
+        : {};
+
     return {
-      ...nextValue,
-      hasApiKey: Boolean(nextValue.apiKey),
+      apiKey: typeof saved.apiKey === 'string' ? saved.apiKey : '',
+      templateId: typeof saved.templateId === 'string' ? saved.templateId : '',
+      lineNumber: typeof saved.lineNumber === 'string' ? saved.lineNumber : '',
+      hasApiKey: typeof saved.apiKey === 'string' && saved.apiKey.trim().length > 0,
     };
   }
 
