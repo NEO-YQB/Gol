@@ -56,7 +56,11 @@ export function SettingsPage({ session }: SettingsPageProps) {
       setSaving(true)
       setError('')
       setMessage('')
-      await adminApi.updateSmsSettings(session, form)
+      await adminApi.updateSmsSettings(session, {
+        apiKey: form.apiKey,
+        templateId: form.templateId,
+        lineNumber: form.lineNumber,
+      })
       const payload = await adminApi.getSmsSettings(session)
       const nextState = {
         apiKey: String(payload.apiKey ?? ''),
