@@ -3,6 +3,10 @@
 import Link from 'next/link'
 import { resolveAssetUrl, type EnrichedStorefrontPage } from '../lib/storefront'
 import { getStorefrontSocialOption, isStorefrontSocialIconKey, type StorefrontSocialIconKey } from './storefrontSocialIcons'
+import baleIcon from './social-icons/bale.svg'
+import eitaaIcon from './social-icons/eitaa.svg'
+import rubikaIcon from './social-icons/rubika.svg'
+import soroushIcon from './social-icons/soroush.svg'
 
 type FooterLinkItem = {
   label: string
@@ -61,7 +65,37 @@ function normalizePercent(value: number | null | undefined, fallback: number) {
 
 function SocialIcon({ icon, label }: { icon: StorefrontSocialIconKey; label: string }) {
   const option = getStorefrontSocialOption(icon)
+  const localIcons: Record<string, string> = {
+    bale: baleIcon,
+    rubika: rubikaIcon,
+    eitaa: eitaaIcon,
+    soroush: soroushIcon,
+  }
+  const localIconSrc = option?.localAsset ? localIcons[option.localAsset] : ''
   const iconSrc = option?.simpleIconSlug ? `https://cdn.simpleicons.org/${option.simpleIconSlug}` : ''
+
+  if (localIconSrc) {
+    if (option?.preserveOriginalColors) {
+      return <img alt={label} className="h-5 w-5 object-contain" src={localIconSrc} />
+    }
+
+    return (
+      <span
+        aria-hidden="true"
+        className="block h-5 w-5 bg-current"
+        style={{
+          WebkitMaskImage: `url(${localIconSrc})`,
+          maskImage: `url(${localIconSrc})`,
+          WebkitMaskPosition: 'center',
+          maskPosition: 'center',
+          WebkitMaskRepeat: 'no-repeat',
+          maskRepeat: 'no-repeat',
+          WebkitMaskSize: 'contain',
+          maskSize: 'contain',
+        }}
+      />
+    )
+  }
 
   if (!iconSrc) {
     return <span className="text-[10px] font-bold">{label.slice(0, 2)}</span>
