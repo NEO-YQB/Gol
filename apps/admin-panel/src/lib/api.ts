@@ -176,7 +176,7 @@ export const adminApi = {
   },
   updateSmsSettings(session: AuthSession, body: { apiKey?: string; templateId?: string; lineNumber?: string }) {
     return request<SmsSettingsResponse>('/admin/settings/sms', {
-      method: 'PATCH',
+      method: 'POST',
       body: JSON.stringify(body),
     }, session.accessToken)
   },

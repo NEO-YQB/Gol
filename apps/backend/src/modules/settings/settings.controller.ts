@@ -32,6 +32,15 @@ export class SettingsController {
     return this.settingsService.updateSmsSettings(user, dto);
   }
 
+  @Post('sms')
+  @ApiOperation({ summary: 'ذخیره تنظیمات SMS.IR با POST' })
+  createOrUpdateSmsSettings(
+    @GetUser() user: { id: number; roles: string[] },
+    @Body() dto: UpdateSmsSettingsDto,
+  ) {
+    return this.settingsService.updateSmsSettings(user, dto);
+  }
+
   @Post('sms/test')
   @ApiOperation({ summary: 'ارسال OTP تستی از طریق تنظیمات SMS.IR' })
   sendTestSms(
