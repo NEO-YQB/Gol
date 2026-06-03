@@ -16,6 +16,7 @@ type SmsSettingsState = {
 
 export function SettingsPage({ session }: SettingsPageProps) {
   const [form, setForm] = useState<SmsSettingsState>({ apiKey: '', templateId: '', lineNumber: '' })
+  const [savedSnapshot, setSavedSnapshot] = useState<SmsSettingsState | null>(null)
   const [testPhoneNumber, setTestPhoneNumber] = useState('')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -25,12 +26,16 @@ export function SettingsPage({ session }: SettingsPageProps) {
 
   useEffect(() => {
     adminApi.getSmsSettings(session)
-      .then((payload) => setForm({
-        apiKey: String(payload.apiKey ?? ''),
-        templateId: String(payload.templateId ?? ''),
-        lineNumber: String(payload.lineNumber ?? ''),
-        hasApiKey: Boolean(payload.hasApiKey),
-      }))
+      .then((payload) => {
+        const nextState = {
+          apiKey: String(payload.apiKey ?? ''),
+          templateId: String(payload.templateId ?? ''),
+          lineNumber: String(payload.lineNumber ?? ''),
+          hasApiKey: Boolean(payload.hasApiKey),
+        }
+        setForm(nextState)
+        setSavedSnapshot(nextState)
+      })
       .catch((requestError) => setError(requestError instanceof Error ? requestError.message : 'دریافت تنظیمات با خطا مواجه شد'))
       .finally(() => setLoading(false))
   }, [session])
@@ -40,13 +45,16 @@ export function SettingsPage({ session }: SettingsPageProps) {
       setSaving(true)
       setError('')
       setMessage('')
-      const payload = await adminApi.updateSmsSettings(session, form)
-      setForm({
+      await adminApi.updateSmsSettings(session, form)
+      const payload = await adminApi.getSmsSettings(session)
+      const nextState = {
         apiKey: String(payload.apiKey ?? ''),
         templateId: String(payload.templateId ?? ''),
         lineNumber: String(payload.lineNumber ?? ''),
         hasApiKey: Boolean(payload.hasApiKey),
-      })
+      }
+      setForm(nextState)
+      setSavedSnapshot(nextState)
       setMessage('تنظیمات پیامک ذخیره شد')
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'ذخیره تنظیمات با خطا مواجه شد')
@@ -74,6 +82,7 @@ export function SettingsPage({ session }: SettingsPageProps) {
       <SectionCard eyebrow="integrations" title="تنظیمات پیامک و OTP" description="پیکربندی سرویس SMS.IR برای ورود و ثبت نام کاربران storefront از اینجا انجام می‌شود.">
         <div className="flex flex-wrap gap-2">
           <Pill>{form.hasApiKey ? 'API Key ثبت شده' : 'API Key ثبت نشده'}</Pill>
+          <Pill>{savedSnapshot?.templateId ? `Template: ${savedSnapshot.templateId}` : 'Template ثبت نشده'}</Pill>
         </div>
       </SectionCard>
 
@@ -97,6 +106,14 @@ export function SettingsPage({ session }: SettingsPageProps) {
           <button className="fm-button" disabled={saving} onClick={handleSave} type="button">
             {saving ? 'در حال ذخیره...' : 'ذخیره تنظیمات'}
           </button>
+        </div>
+        <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm">
+          <strong className="block">مقادیر ذخیره‌شده فعلی</strong>
+          <div className="mt-3 grid gap-2">
+            <span>{`API Key: ${savedSnapshot?.apiKey ? 'ثبت شده' : 'خالی'}`}</span>
+            <span>{`Template ID: ${savedSnapshot?.templateId || 'خالی'}`}</span>
+            <span>{`Line Number: ${savedSnapshot?.lineNumber || 'خالی'}`}</span>
+          </div>
         </div>
       </SectionCard>
 
