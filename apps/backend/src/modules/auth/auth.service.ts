@@ -3,20 +3,19 @@ import {
   BadRequestException,
   ForbiddenException,
   InternalServerErrorException,
-  Inject,
-  forwardRef,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { SettingsService } from '../settings/settings.service';
+import { SmsProviderService } from '../settings/sms-provider.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
-    @Inject(forwardRef(() => SettingsService))
     private settingsService: SettingsService,
+    private smsProviderService: SmsProviderService,
   ) {}
 
   async verifyOtp(phoneNumber: string, code: string) {
@@ -254,7 +253,12 @@ export class AuthService {
     }
 
     if (smsSettings?.apiKey && smsSettings.templateId) {
-      await this.sendSmsIrVerify(phoneNumber, code, smsSettings);
+      await this.smsProviderService.sendSmsIrVerify({
+        apiKey: smsSettings.apiKey,
+        templateId: smsSettings.templateId,
+        phoneNumber,
+        code,
+      });
     } else {
       console.log(`📱 OTP for ${phoneNumber}: ${code}`);
     }
@@ -262,34 +266,4 @@ export class AuthService {
     return { message: 'کد تایید ارسال شد', expiresAt };
   }
 
-  private async sendSmsIrVerify(
-    phoneNumber: string,
-    code: string,
-    settings: { apiKey: string; templateId: string; lineNumber?: string },
-  ) {
-    const response = await fetch('https://api.sms.ir/v1/send/verify', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'text/plain',
-        'x-api-key': settings.apiKey,
-      },
-      body: JSON.stringify({
-        mobile: phoneNumber.replace(/^0/, '98'),
-        templateId: Number(settings.templateId),
-        parameters: [
-          {
-            name: 'Code',
-            value: code,
-          },
-        ],
-      }),
-    });
-
-    const payload = (await response.json().catch(() => null)) as { status?: number; message?: string } | null;
-
-    if (!response.ok || payload?.status !== 1) {
-      throw new InternalServerErrorException(payload?.message || 'ارسال پیامک OTP با خطا مواجه شد');
-    }
-  }
 }

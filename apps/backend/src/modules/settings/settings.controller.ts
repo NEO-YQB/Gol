@@ -2,7 +2,6 @@ import { Body, Controller, Get, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { GetUser } from '../../common/decorators/get-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { AuthService } from '../auth/auth.service';
 import { TestSmsSettingsDto } from './dto/test-sms-settings.dto';
 import { UpdateSmsSettingsDto } from './dto/update-sms-settings.dto';
 import { SettingsService } from './settings.service';
@@ -12,10 +11,7 @@ import { SettingsService } from './settings.service';
 @UseGuards(JwtAuthGuard)
 @Controller('admin/settings')
 export class SettingsController {
-  constructor(
-    private readonly settingsService: SettingsService,
-    private readonly authService: AuthService,
-  ) {}
+  constructor(private readonly settingsService: SettingsService) {}
 
   @Get('sms')
   @ApiOperation({ summary: 'دریافت تنظیمات SMS.IR' })
@@ -47,6 +43,6 @@ export class SettingsController {
     @GetUser() user: { id: number; roles: string[] },
     @Body() dto: TestSmsSettingsDto,
   ) {
-    return this.authService.sendOtp(dto.phoneNumber, { forceRealProvider: true, requestedByAdmin: user.id });
+    return this.settingsService.sendTestSms(user, dto.phoneNumber);
   }
 }

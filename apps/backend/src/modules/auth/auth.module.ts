@@ -1,4 +1,4 @@
-import { Global, Module, forwardRef } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtModule } from '@nestjs/jwt';
@@ -10,7 +10,7 @@ import { SettingsModule } from '../settings/settings.module';
 @Global()
 @Module({
   imports: [
-    forwardRef(() => SettingsModule),
+    SettingsModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

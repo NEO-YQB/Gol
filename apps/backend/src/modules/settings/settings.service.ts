@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { SmsProviderService } from './sms-provider.service';
 
 const SMS_IR_SETTING_KEY = 'sms_ir_config';
 
@@ -17,7 +18,10 @@ export type SmsIrSettings = {
 
 @Injectable()
 export class SettingsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly smsProviderService: SmsProviderService,
+  ) {}
 
   async getSmsSettings(user: AuthenticatedUser) {
     this.assertAdmin(user);
@@ -74,6 +78,25 @@ export class SettingsService {
 
   async getSmsSettingsForRuntime() {
     return this.readSmsSettings();
+  }
+
+  async sendTestSms(user: AuthenticatedUser, phoneNumber: string) {
+    this.assertAdmin(user);
+    const settings = await this.readSmsSettings();
+    this.assertSmsSettingsConfigured(settings);
+
+    const code = Math.floor(10000 + Math.random() * 90000).toString();
+    await this.smsProviderService.sendSmsIrVerify({
+      apiKey: settings!.apiKey,
+      templateId: settings!.templateId,
+      phoneNumber,
+      code,
+    });
+
+    return {
+      message: 'پیامک تستی با موفقیت ارسال شد',
+      code,
+    };
   }
 
   assertSmsSettingsConfigured(settings: SmsIrSettings | null) {

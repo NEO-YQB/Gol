@@ -1,12 +1,11 @@
-import { Module, forwardRef } from '@nestjs/common';
-import { AuthModule } from '../auth/auth.module';
+import { Module } from '@nestjs/common';
 import { SettingsController } from './settings.controller';
+import { SmsProviderService } from './sms-provider.service';
 import { SettingsService } from './settings.service';
 
 @Module({
-  imports: [forwardRef(() => AuthModule)],
   controllers: [SettingsController],
-  providers: [SettingsService],
-  exports: [SettingsService],
+  providers: [SettingsService, SmsProviderService],
+  exports: [SettingsService, SmsProviderService],
 })
 export class SettingsModule {}
