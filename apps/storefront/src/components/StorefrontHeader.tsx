@@ -268,11 +268,11 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
                     ) : null}
                     {authStep === 'name' ? (
                       <label className="grid gap-2 text-sm">
-                        <span className={storefrontStyles.headerText}>نام شما</span>
+                        <span className={storefrontStyles.headerText}>نام زیبای شما</span>
                         <input
                           className="rounded-2xl border border-[var(--header-glass-border)] bg-white/50 px-4 py-3 text-right text-sm text-[#173126] outline-none placeholder:text-[#8d7b67]"
                           onChange={(event) => setFullName(event.target.value)}
-                          placeholder="چی صدا کنم تو رو؟"
+                          placeholder="مثلا مریم"
                           value={fullName}
                         />
                       </label>
