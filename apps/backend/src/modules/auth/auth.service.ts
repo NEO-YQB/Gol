@@ -168,7 +168,7 @@ export class AuthService {
         orderBy: { createdAt: 'desc' },
         take: 4,
         include: {
-          items: {
+          orderItems: {
             select: {
               id: true,
             },
@@ -231,7 +231,7 @@ export class AuthService {
         totalAmount: Number(order.totalAmount),
         createdAt: order.createdAt,
         storeName: order.store?.name ?? null,
-        itemCount: order.items.length,
+        itemCount: order.orderItems.length,
       })),
       addresses,
     };
