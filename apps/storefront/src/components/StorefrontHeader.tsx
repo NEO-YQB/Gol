@@ -27,11 +27,12 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const theme = useMemo(() => resolveHeaderTheme(page), [page])
+  const needsInlineProfileCompletion = sessionUser?.needsProfileCompletion === true
   const currentPath = useMemo(() => {
     const query = searchParams?.toString()
     return query ? `${pathname}?${query}` : pathname
   }, [pathname, searchParams])
-  const authMode = sessionUser ? 'authenticated' : theme.authPreviewMode
+  const authMode = sessionUser && !needsInlineProfileCompletion ? 'authenticated' : theme.authPreviewMode
   const authName = sessionUser?.fullName?.trim() || theme.authPreviewName
 
   useEffect(() => {
@@ -86,6 +87,7 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
       setAuthMessage('با موفقیت وارد شدید')
       if (payload.user.needsProfileCompletion) {
         setAuthStep('name')
+        setIsAuthMenuOpen(true)
         setFullName(payload.user.fullName || '')
         return
       }
@@ -270,7 +272,7 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
                         <input
                           className="rounded-2xl border border-[var(--header-glass-border)] bg-white/50 px-4 py-3 text-right text-sm text-[#173126] outline-none placeholder:text-[#8d7b67]"
                           onChange={(event) => setFullName(event.target.value)}
-                          placeholder="مثلاً مریم"
+                          placeholder="چی صدا کنم تو رو؟"
                           value={fullName}
                         />
                       </label>
