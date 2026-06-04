@@ -10,6 +10,39 @@ export type StorefrontUser = {
   needsProfileCompletion?: boolean
 }
 
+export type StorefrontAccountSummary = {
+  profile: {
+    id: number
+    phoneNumber: string
+    fullName?: string | null
+    createdAt: string
+  }
+  stats: {
+    orderCount: number
+    activeOrderCount: number
+    deliveredOrderCount: number
+    addressCount: number
+    defaultAddressTitle?: string | null
+    latestOrderStatus?: string | null
+  }
+  recentOrders: Array<{
+    id: number
+    status: string
+    paymentStatus: string
+    totalAmount: number
+    createdAt: string
+    storeName?: string | null
+    itemCount: number
+  }>
+  addresses: Array<{
+    id: number
+    title: string
+    city: string
+    address: string
+    isDefault: boolean
+  }>
+}
+
 export type SendOtpResponse = {
   message: string
   expiresAt: string
@@ -87,5 +120,14 @@ export async function completeProfile(token: string, fullName: string) {
       Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({ fullName }),
+  })
+}
+
+export async function getAccountSummary(token: string) {
+  return request<StorefrontAccountSummary>('/auth/account-summary', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    cache: 'no-store',
   })
 }

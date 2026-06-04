@@ -4,6 +4,7 @@ import { GetUser } from '../../common/decorators/get-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AuthService } from './auth.service';
 import { CompleteProfileDto } from './dto/complete-profile.dto';
+import { CustomerAccountSummaryDto } from './dto/customer-account-summary.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -42,6 +43,15 @@ export class AuthController {
   @ApiOperation({ summary: 'دریافت پروفایل کاربر فعلی' })
   getMe(@GetUser() user: { id: number; phoneNumber: string; fullName?: string | null; roles: string[] }) {
     return this.authService.getMe(user.id);
+  }
+
+  @Get('account-summary')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'دریافت خلاصه پنل کاربری مشتری' })
+  @ApiOkResponse({ type: CustomerAccountSummaryDto })
+  getAccountSummary(@GetUser() user: { id: number }) {
+    return this.authService.getCustomerAccountSummary(user.id);
   }
 
   @Post('send-otp')

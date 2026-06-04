@@ -8,6 +8,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { SettingsService } from '../settings/settings.service';
 import { SmsProviderService } from '../settings/sms-provider.service';
+import { OrderStatus } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -148,6 +149,91 @@ export class AuthService {
       fullName: user.fullName,
       roles: user.roles.map((userRole) => userRole.role.name),
       needsProfileCompletion: !user.fullName,
+    };
+  }
+
+  async getCustomerAccountSummary(userId: number) {
+    const [user, orders, addresses, addressCount] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          phoneNumber: true,
+          fullName: true,
+          createdAt: true,
+        },
+      }),
+      this.prisma.order.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        take: 4,
+        include: {
+          items: {
+            select: {
+              id: true,
+            },
+          },
+          store: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      }),
+      this.prisma.userAddress.findMany({
+        where: { userId },
+        orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
+        take: 3,
+        select: {
+          id: true,
+          title: true,
+          city: true,
+          address: true,
+          isDefault: true,
+        },
+      }),
+      this.prisma.userAddress.count({
+        where: { userId },
+      }),
+    ]);
+
+    if (!user) {
+      throw new BadRequestException('کاربر یافت نشد');
+    }
+
+    const allOrderCount = await this.prisma.order.count({ where: { userId } });
+    const activeOrderCount = await this.prisma.order.count({
+      where: {
+        userId,
+        status: {
+          in: [OrderStatus.PENDING, OrderStatus.PAID, OrderStatus.ACCEPTED, OrderStatus.PROCESSING, OrderStatus.SHIPPED],
+        },
+      },
+    });
+    const deliveredOrderCount = await this.prisma.order.count({
+      where: { userId, status: OrderStatus.DELIVERED },
+    });
+
+    return {
+      profile: user,
+      stats: {
+        orderCount: allOrderCount,
+        activeOrderCount,
+        deliveredOrderCount,
+        addressCount,
+        defaultAddressTitle: addresses.find((item) => item.isDefault)?.title ?? null,
+        latestOrderStatus: orders[0]?.status ?? null,
+      },
+      recentOrders: orders.map((order) => ({
+        id: order.id,
+        status: order.status,
+        paymentStatus: order.paymentStatus,
+        totalAmount: Number(order.totalAmount),
+        createdAt: order.createdAt,
+        storeName: order.store?.name ?? null,
+        itemCount: order.items.length,
+      })),
+      addresses,
     };
   }
 

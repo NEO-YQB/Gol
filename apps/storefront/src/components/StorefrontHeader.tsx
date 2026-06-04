@@ -208,7 +208,6 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
                       { label: 'پنل کاربری', href: '/account' },
                       { label: 'اطلاعات کاربری', href: '/account/profile' },
                       { label: 'کیف پول', href: '/account/wallet' },
-                      { label: 'پنل کاربری', href: '/account' },
                     ].map((item) => (
                       <Link className={storefrontStyles.userMenuItem} href={item.href} key={item.href}>
                         {item.label}
