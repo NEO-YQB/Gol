@@ -17,7 +17,7 @@ export async function StorefrontAccountShell({
 
   return (
     <>
-      {shellPage ? <StorefrontHeader heroTouchesTop={false} page={shellPage} /> : null}
+      {shellPage ? <StorefrontHeader heroTouchesTop page={shellPage} /> : null}
       <main className={storefrontShared.pageShell}>
         <div className={`${storefrontShared.pageContainer} pt-28`}>
           <section className="mb-8 overflow-hidden rounded-[36px] bg-[linear-gradient(135deg,rgba(23,49,38,0.96),rgba(41,81,63,0.94),rgba(208,108,84,0.88))] px-6 py-7 text-white shadow-[0_20px_52px_rgba(31,41,30,0.16)] md:px-8">
