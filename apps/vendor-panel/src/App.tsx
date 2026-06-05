@@ -98,7 +98,9 @@ function renderRoute(
 
 function resolveAccessState(session: AuthSession): VendorAccessState {
   const isStoreVerified = session.bootstrap?.store?.isVerified === true
-  if (isStoreVerified) return 'active'
+  const onboardingApproved = session.bootstrap?.vendorOnboarding?.applicationStatus === 'APPROVED'
+  const productApproved = session.bootstrap?.vendorOnboarding?.productStatus === 'APPROVED'
+  if (isStoreVerified || (onboardingApproved && productApproved)) return 'active'
   return 'pending'
 }
 
