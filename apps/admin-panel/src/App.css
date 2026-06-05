@@ -482,10 +482,29 @@
 }
 
 .vendor-orders-filters--styled {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
   padding: 12px;
   border-radius: 18px;
   border: 1px solid var(--fm-border-soft);
   background: rgba(255, 253, 248, 0.82);
+}
+
+.vendor-orders-filter-chip {
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--fm-border-soft);
+  background: rgba(255, 253, 248, 0.92);
+  color: var(--fm-text-secondary);
+  font-weight: 700;
+}
+
+.vendor-orders-filter-chip.is-active {
+  background: var(--fm-brand-primary);
+  color: var(--fm-text-inverse);
+  border-color: var(--fm-brand-primary);
 }
 
 .vendor-doc-grid {

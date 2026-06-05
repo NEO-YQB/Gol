@@ -164,6 +164,28 @@ export function VendorOnboardingPage({
             title="فهرست درخواست‌ها"
             description="برای شروع بررسی، یک درخواست را انتخاب کن."
           >
+            <div className="vendors-selection-list">
+              {items.length ? (
+                items.map((item) => {
+                  const itemId = readText(item, ['id'], '')
+                  const isActive = selectedRequestId === itemId
+                  return (
+                    <button
+                      className={`vendors-selection-item${isActive ? ' is-active' : ''}`}
+                      key={itemId}
+                      onClick={() => setSelectedRequestId(itemId)}
+                      type="button"
+                    >
+                      <strong>{readText(item, ['businessName'], 'فروشگاه بدون نام')}</strong>
+                      <span>{readText(item, ['user', 'fullName'], readText(item, ['user', 'phoneNumber'], '—'))}</span>
+                      <small>{`${translateStatus(readText(item, ['applicationStatus'], ''))} / ${translateStatus(readText(item, ['productStatus'], ''))}`}</small>
+                    </button>
+                  )
+                })
+              ) : (
+                <div className="vendor-note-card">درخواستی برای این فیلتر پیدا نشد.</div>
+              )}
+            </div>
             <DataTable columns={columns} rows={rows} />
             <div className="vendor-onboarding-admin-pagination">
               <button className="fm-button fm-button--ghost" disabled={page <= 1} onClick={() => setPage((current) => current - 1)} type="button">صفحه قبل</button>
@@ -182,7 +204,9 @@ export function VendorOnboardingPage({
                 <div><strong>کسب‌وکار</strong><span>{readText(selected, ['businessName'], '—')}</span></div>
                 <div><strong>وضعیت درخواست</strong><span><Pill tone={statusTone(readText(selected, ['applicationStatus'], ''))}>{translateStatus(readText(selected, ['applicationStatus'], ''))}</Pill></span></div>
                 <div><strong>وضعیت محصول</strong><span><Pill tone={statusTone(readText(selected, ['productStatus'], ''))}>{translateStatus(readText(selected, ['productStatus'], ''))}</Pill></span></div>
-                <button className="fm-button fm-button--primary" onClick={() => onOpenWorkspace(selected)} type="button">باز کردن workspace بررسی</button>
+                <div className="vendors-inline-actions">
+                  <button className="fm-button fm-button--primary" onClick={() => onOpenWorkspace(selected)} type="button">باز کردن workspace بررسی</button>
+                </div>
               </div>
             ) : (
               <div className="vendor-note-card">هنوز درخواستی برای این فیلتر پیدا نشده است.</div>
