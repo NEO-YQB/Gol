@@ -7,6 +7,7 @@ import {
   deleteAddress,
   getAddresses,
   readStoredToken,
+  setDefaultAddress,
   type CreateStorefrontAddressInput,
   type StorefrontAddress,
 } from '../lib/storefrontAuth'
@@ -58,10 +59,12 @@ function resolveAddressDraft(payload: ReverseLookupPayload) {
 export function StorefrontAccountAddresses() {
   const [addresses, setAddresses] = useState<StorefrontAddress[]>([])
   const [draft, setDraft] = useState<CreateStorefrontAddressInput>(DEFAULT_ADDRESS)
-  const [loading, setLoading] = useState(true)
+  const [initialLoading, setInitialLoading] = useState(true)
+  const [listRefreshing, setListRefreshing] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [reverseLoading, setReverseLoading] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [defaultingId, setDefaultingId] = useState<number | null>(null)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
 
@@ -70,19 +73,20 @@ export function StorefrontAccountAddresses() {
   const loadAddresses = useCallback(async () => {
     if (!token) {
       setError('برای مدیریت آدرس‌ها باید وارد حساب کاربری شوی.')
-      setLoading(false)
+      setInitialLoading(false)
       return
     }
 
     try {
-      setLoading(true)
+      setListRefreshing(true)
       const payload = await getAddresses(token)
       setAddresses(payload)
       setError('')
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'دریافت آدرس‌ها با خطا مواجه شد')
     } finally {
-      setLoading(false)
+      setInitialLoading(false)
+      setListRefreshing(false)
     }
   }, [token])
 
@@ -167,6 +171,31 @@ export function StorefrontAccountAddresses() {
     }
   }
 
+  async function handleSetDefaultAddress(id: number) {
+    if (!token) {
+      setError('نشست شما منقضی شده است. دوباره وارد شوید.')
+      return
+    }
+
+    try {
+      setDefaultingId(id)
+      setError('')
+      setMessage('')
+      const payload = await setDefaultAddress(token, id)
+      setAddresses((current) =>
+        current.map((item) => ({
+          ...item,
+          isDefault: item.id === payload.id,
+        })),
+      )
+      setMessage('آدرس پیش‌فرض با موفقیت تغییر کرد.')
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'تغییر آدرس پیش‌فرض با خطا مواجه شد')
+    } finally {
+      setDefaultingId(null)
+    }
+  }
+
   const canSubmit =
     draft.title.trim().length >= 2 &&
     draft.city.trim().length >= 2 &&
@@ -174,7 +203,7 @@ export function StorefrontAccountAddresses() {
     Number.isFinite(draft.lat) &&
     Number.isFinite(draft.lng)
 
-  if (loading) {
+  if (initialLoading) {
     return <section className="rounded-[32px] bg-white/75 px-6 py-12 text-center shadow-[0_14px_34px_rgba(52,36,17,0.06)]">در حال بارگذاری آدرس‌ها...</section>
   }
 
@@ -291,11 +320,12 @@ export function StorefrontAccountAddresses() {
               <h3 className="mt-2 text-2xl font-black text-[#173126]">آدرس‌های ذخیره‌شده</h3>
             </div>
             <button
-              className="rounded-full border border-[#1f6a52]/15 bg-white px-4 py-2 text-xs font-bold text-[#1f6a52] transition hover:bg-[#f8f2ea]"
+              className="rounded-full border border-[#1f6a52]/15 bg-white px-4 py-2 text-xs font-bold text-[#1f6a52] transition hover:bg-[#f8f2ea] disabled:cursor-not-allowed disabled:opacity-55"
+              disabled={listRefreshing}
               onClick={() => void loadAddresses()}
               type="button"
             >
-              بروزرسانی
+              {listRefreshing ? 'در حال بروزرسانی...' : 'بروزرسانی'}
             </button>
           </div>
 
@@ -320,6 +350,16 @@ export function StorefrontAccountAddresses() {
                       type="button"
                     >
                       {deletingId === address.id ? '...' : 'حذف'}
+                    </button>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      className="rounded-full border border-[#1f6a52]/15 bg-white px-3 py-1.5 text-xs font-bold text-[#1f6a52] transition hover:bg-[#edf8f2] disabled:cursor-not-allowed disabled:opacity-55"
+                      disabled={address.isDefault || defaultingId === address.id}
+                      onClick={() => void handleSetDefaultAddress(address.id)}
+                      type="button"
+                    >
+                      {address.isDefault ? 'آدرس پیش‌فرض' : defaultingId === address.id ? '...' : 'تنظیم به‌عنوان پیش‌فرض'}
                     </button>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-bold text-[#92785a]">

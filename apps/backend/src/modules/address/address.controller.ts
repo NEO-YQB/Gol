@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Delete, Body, UseGuards, Param, ParseIntPipe } from '@nestjs/common';
+import { Controller, Post, Get, Delete, Patch, Body, UseGuards, Param, ParseIntPipe } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { AddressService } from './address.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -61,6 +61,31 @@ export class AddressController {
   })
   findAll(@GetUser() user: { id: number; roles: string[] }) {
     return this.addressService.findAll(user);
+  }
+
+  @Patch(':id/default')
+  @ApiOperation({ summary: 'تنظیم آدرس پیش‌فرض برای کاربر جاری' })
+  @ApiParam({ name: 'id', type: Number, description: 'شناسه آدرس' })
+  @ApiOkResponse({
+    description: 'آدرس با موفقیت به‌عنوان پیش‌فرض تنظیم شد',
+    schema: {
+      example: {
+        id: 7,
+        title: 'خانه',
+        address: 'تهران، خیابان ولیعصر، پلاک 10',
+        city: 'تهران',
+        lat: 35.7219,
+        lng: 51.3347,
+        isDefault: true,
+        userId: 12,
+      },
+    },
+  })
+  setDefault(
+    @GetUser() user: { id: number; roles: string[] },
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.addressService.setDefault(user, id);
   }
 
   @Delete(':id')

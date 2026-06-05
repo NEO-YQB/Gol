@@ -181,3 +181,12 @@ export async function deleteAddress(token: string, id: number) {
     },
   })
 }
+
+export async function setDefaultAddress(token: string, id: number) {
+  return request<StorefrontAddress>(`/addresses/${id}/default`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+}

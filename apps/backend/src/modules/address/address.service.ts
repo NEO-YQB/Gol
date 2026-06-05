@@ -38,6 +38,28 @@ export class AddressService {
     });
   }
 
+  async setDefault(user: { id: number; roles: string[] }, addressId: number) {
+    const address = await this.prisma.userAddress.findUnique({
+      where: { id: addressId },
+    });
+
+    if (!address) {
+      throw new NotFoundException('آدرس یافت نشد');
+    }
+
+    await this.assertCanManageAddress(user, 'update', address.userId);
+
+    await this.prisma.userAddress.updateMany({
+      where: { userId: address.userId },
+      data: { isDefault: false },
+    });
+
+    return this.prisma.userAddress.update({
+      where: { id: addressId },
+      data: { isDefault: true },
+    });
+  }
+
   async remove(user: { id: number; roles: string[] }, addressId: number) {
     const address = await this.prisma.userAddress.findUnique({
       where: { id: addressId },
@@ -57,7 +79,7 @@ export class AddressService {
 
   private async assertCanManageAddress(
     user: { id: number; roles: string[] },
-    action: 'create' | 'read' | 'delete',
+    action: 'create' | 'read' | 'update' | 'delete',
     ownerUserId: number,
   ) {
     const ability = await this.abilityFactory.createForUser(user);
