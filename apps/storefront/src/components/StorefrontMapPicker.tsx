@@ -4,61 +4,66 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 
 declare global {
   interface Window {
-    L?: {
-      map: (element: HTMLElement, options?: Record<string, unknown>) => LeafletMap
-      tileLayer: (url: string, options?: Record<string, unknown>) => { addTo: (map: LeafletMap) => void }
-      marker: (latlng: [number, number], options?: Record<string, unknown>) => LeafletMarker
+    mapboxgl?: {
+      accessToken?: string
+      Map: new (options: Record<string, unknown>) => MapboxMap
+      Marker: new (options?: Record<string, unknown>) => MapboxMarker
+      NavigationControl: new () => unknown
     }
   }
 }
 
-type LeafletMap = {
-  setView: (latlng: [number, number], zoom: number) => LeafletMap
-  on: (event: string, handler: (event: { latlng?: { lat: number; lng: number } }) => void) => LeafletMap
+type MapboxMap = {
+  on: (event: string, handler: (event: { lngLat?: { lat: number; lng: number } }) => void) => MapboxMap
+  addControl: (control: unknown, position?: string) => void
+  setCenter: (lngLat: [number, number]) => void
   remove: () => void
 }
 
-type LeafletMarker = {
-  addTo: (map: LeafletMap) => LeafletMarker
-  setLatLng: (latlng: [number, number]) => LeafletMarker
-  on: (event: string, handler: (event: { target?: { getLatLng?: () => { lat: number; lng: number } } }) => void) => LeafletMarker
+type MapboxMarker = {
+  setLngLat: (lngLat: [number, number]) => MapboxMarker
+  addTo: (map: MapboxMap) => MapboxMarker
+  on: (event: string, handler: () => void) => MapboxMarker
+  getLngLat: () => { lat: number; lng: number }
 }
 
 const DEFAULT_LAT = 35.7219
 const DEFAULT_LNG = 51.3347
 const DEFAULT_ZOOM = 14
-const LEAFLET_SCRIPT_ID = 'storefront-leaflet-script'
-const LEAFLET_STYLE_ID = 'storefront-leaflet-style'
+const MAPBOX_GL_SCRIPT_ID = 'storefront-mapboxgl-script'
+const MAPBOX_GL_STYLE_ID = 'storefront-mapboxgl-style'
 
-const TILE_URL = process.env.NEXT_PUBLIC_MAP_TILE_URL_TEMPLATE || ''
-const TILE_ATTRIBUTION = process.env.NEXT_PUBLIC_MAP_TILE_ATTRIBUTION || ''
+const MAP_IR_API_KEY = process.env.NEXT_PUBLIC_MAP_IR_API_KEY || ''
+const MAP_STYLE_URL =
+  process.env.NEXT_PUBLIC_MAP_IR_STYLE_URL ||
+  'https://map.ir/vector/styles/main/mapir-xyz-style.json'
 
-function loadLeafletAssets() {
+function loadMapAssets() {
   if (typeof window === 'undefined') return Promise.resolve()
-  if (window.L) return Promise.resolve()
+  if (window.mapboxgl) return Promise.resolve()
 
   return new Promise<void>((resolve, reject) => {
-    if (!document.getElementById(LEAFLET_STYLE_ID)) {
+    if (!document.getElementById(MAPBOX_GL_STYLE_ID)) {
       const link = document.createElement('link')
-      link.id = LEAFLET_STYLE_ID
+      link.id = MAPBOX_GL_STYLE_ID
       link.rel = 'stylesheet'
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
+      link.href = 'https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css'
       document.head.appendChild(link)
     }
 
-    const existingScript = document.getElementById(LEAFLET_SCRIPT_ID) as HTMLScriptElement | null
+    const existingScript = document.getElementById(MAPBOX_GL_SCRIPT_ID) as HTMLScriptElement | null
     if (existingScript) {
       existingScript.addEventListener('load', () => resolve(), { once: true })
-      existingScript.addEventListener('error', () => reject(new Error('Leaflet load failed')), { once: true })
+      existingScript.addEventListener('error', () => reject(new Error('Map SDK load failed')), { once: true })
       return
     }
 
     const script = document.createElement('script')
-    script.id = LEAFLET_SCRIPT_ID
-    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+    script.id = MAPBOX_GL_SCRIPT_ID
+    script.src = 'https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'
     script.async = true
     script.onload = () => resolve()
-    script.onerror = () => reject(new Error('Leaflet load failed'))
+    script.onerror = () => reject(new Error('Map SDK load failed'))
     document.body.appendChild(script)
   })
 }
@@ -76,10 +81,10 @@ export function StorefrontMapPicker({
   onChange: (nextValue: StorefrontMapValue) => void
 }) {
   const mapRef = useRef<HTMLDivElement | null>(null)
-  const instanceRef = useRef<{ map?: LeafletMap; marker?: LeafletMarker }>({})
+  const instanceRef = useRef<{ map?: MapboxMap; marker?: MapboxMarker }>({})
   const [mapError, setMapError] = useState('')
 
-  const initialCenter = useMemo<[number, number]>(() => [value.lat || DEFAULT_LAT, value.lng || DEFAULT_LNG], [value.lat, value.lng])
+  const initialCenter = useMemo<[number, number]>(() => [value.lng || DEFAULT_LNG, value.lat || DEFAULT_LAT], [value.lat, value.lng])
 
   useEffect(() => {
     let cancelled = false
@@ -88,38 +93,53 @@ export function StorefrontMapPicker({
       if (!mapRef.current) return
 
       try {
-        if (!TILE_URL) {
-          setMapError('آدرس tile provider تنظیم نشده است. مقدار map.ir یا provider نهایی را در env وارد کن.')
+        if (!MAP_IR_API_KEY) {
+          setMapError('کلید عمومی map.ir تنظیم نشده است. مقدار NEXT_PUBLIC_MAP_IR_API_KEY را در env وارد کن.')
           return
         }
 
-        await loadLeafletAssets()
-        if (cancelled || !mapRef.current || !window.L) return
+        await loadMapAssets()
+        if (cancelled || !mapRef.current || !window.mapboxgl) return
 
-        const map = window.L.map(mapRef.current, {
+        window.mapboxgl.accessToken = MAP_IR_API_KEY
+
+        const map = new window.mapboxgl.Map({
+          container: mapRef.current,
+          style: MAP_STYLE_URL,
+          transformRequest: (url: string) => {
+            if (url.startsWith('https://map.ir')) {
+              return {
+                url,
+                headers: {
+                  'x-api-key': MAP_IR_API_KEY,
+                },
+              }
+            }
+
+            return { url }
+          },
           center: initialCenter,
           zoom: DEFAULT_ZOOM,
-        }).setView(initialCenter, DEFAULT_ZOOM)
+        })
 
-        window.L.tileLayer(TILE_URL, {
-          attribution: TILE_ATTRIBUTION,
-          maxZoom: 19,
-        }).addTo(map)
+        map.addControl(new window.mapboxgl.NavigationControl(), 'top-left')
 
-        const marker = window.L.marker(initialCenter, {
+        const marker = new window.mapboxgl.Marker({
           draggable: true,
-        }).addTo(map)
+        })
+          .setLngLat(initialCenter)
+          .addTo(map)
 
         map.on('click', (event) => {
-          const lat = event.latlng?.lat
-          const lng = event.latlng?.lng
+          const lat = event.lngLat?.lat
+          const lng = event.lngLat?.lng
           if (typeof lat !== 'number' || typeof lng !== 'number') return
-          marker.setLatLng([lat, lng])
+          marker.setLngLat([lng, lat])
           onChange({ lat, lng })
         })
 
-        marker.on('dragend', (event) => {
-          const latlng = event.target?.getLatLng?.()
+        marker.on('dragend', () => {
+          const latlng = marker.getLngLat()
           if (!latlng) return
           onChange({ lat: latlng.lat, lng: latlng.lng })
         })
@@ -143,8 +163,8 @@ export function StorefrontMapPicker({
   }, [initialCenter, onChange])
 
   useEffect(() => {
-    instanceRef.current.marker?.setLatLng([value.lat, value.lng])
-    instanceRef.current.map?.setView([value.lat, value.lng], DEFAULT_ZOOM)
+    instanceRef.current.marker?.setLngLat([value.lng, value.lat])
+    instanceRef.current.map?.setCenter([value.lng, value.lat])
   }, [value.lat, value.lng])
 
   return (
