@@ -117,7 +117,7 @@ export default function App() {
 
   async function refreshSessionBootstrap(baseSession?: AuthSession) {
     const currentSession = baseSession ?? session
-    if (!currentSession) return
+    if (!currentSession) return undefined
 
     const response = await vendorApi.getSessionBootstrap(currentSession)
     const nextSession: AuthSession = {
@@ -241,12 +241,12 @@ export default function App() {
 
   useEffect(() => {
     if (!session) return
+    const currentSession = session
 
     let active = true
 
     async function loadBootstrap() {
       try {
-        const currentSession = session
         const response = await vendorApi.getSessionBootstrap(currentSession)
         if (!active) return
 
