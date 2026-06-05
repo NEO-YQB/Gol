@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
   try {
     const targetUrl = new URL(MAP_REVERSE_GEOCODE_URL)
     targetUrl.searchParams.set('lat', lat)
-    targetUrl.searchParams.set('lng', lng)
+    targetUrl.searchParams.set('lon', lng)
 
     const headers: HeadersInit = {}
     if (MAP_REVERSE_GEOCODE_KEY) {
