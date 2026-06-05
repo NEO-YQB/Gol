@@ -47,7 +47,7 @@ export class AddressService {
       throw new NotFoundException('آدرس یافت نشد');
     }
 
-    await this.assertCanManageAddress(user, 'update', address.userId);
+    await this.assertCanManageAddress(user, 'read', address.userId);
 
     await this.prisma.userAddress.updateMany({
       where: { userId: address.userId },
