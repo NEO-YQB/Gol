@@ -411,11 +411,13 @@ export const vendorApi = {
     return url.toString()
   },
   getMapReverseHeaders() {
-    return MAP_REVERSE_GEOCODE_KEY
-      ? {
-          'x-api-key': MAP_REVERSE_GEOCODE_KEY,
-        }
-      : {}
+    if (!MAP_REVERSE_GEOCODE_KEY) {
+      return {} as Record<string, string>
+    }
+
+    return {
+      'x-api-key': MAP_REVERSE_GEOCODE_KEY,
+    } satisfies Record<string, string>
   },
 }
 
