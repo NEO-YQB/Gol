@@ -43,6 +43,28 @@ export type StorefrontAccountSummary = {
   }>
 }
 
+export type StorefrontAddress = {
+  id: number
+  title: string
+  city: string
+  address: string
+  lat: number
+  lng: number
+  isDefault: boolean
+  userId?: number
+  createdAt?: string
+  updatedAt?: string
+}
+
+export type CreateStorefrontAddressInput = {
+  title: string
+  city: string
+  address: string
+  lat: number
+  lng: number
+  isDefault?: boolean
+}
+
 export type SendOtpResponse = {
   message: string
   expiresAt: string
@@ -129,5 +151,33 @@ export async function getAccountSummary(token: string) {
       Authorization: `Bearer ${token}`,
     },
     cache: 'no-store',
+  })
+}
+
+export async function getAddresses(token: string) {
+  return request<StorefrontAddress[]>('/addresses', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    cache: 'no-store',
+  })
+}
+
+export async function createAddress(token: string, payload: CreateStorefrontAddressInput) {
+  return request<StorefrontAddress>('/addresses', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteAddress(token: string, id: number) {
+  return request<StorefrontAddress>(`/addresses/${id}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
   })
 }

@@ -200,6 +200,8 @@ export function StorefrontAccountDashboard() {
       <section className="grid gap-4 md:grid-cols-2">
         {[
           { title: 'پروفایل', description: 'ویرایش اطلاعات پایه حساب و مدیریت جزئیات شخصی.', href: '/account/profile' },
+          { title: 'آدرس‌ها', description: 'ثبت آدرس جدید با انتخاب موقعیت روی نقشه و مدیریت مقصدهای تحویل.', href: '/account/addresses' },
+          { title: 'کیف پول', description: 'مشاهده وضعیت اعتبار و گردش حساب کیف پول کاربری.', href: '/account/wallet' },
           { title: 'بازگشت به فروشگاه', description: 'مشاهده محصولات جدید و ادامه خرید از استور.', href: '/' },
         ].map((item) => (
           <Link className="rounded-[28px] border border-[#1f6a52]/10 bg-white/78 px-5 py-5 shadow-[0_10px_26px_rgba(52,36,17,0.05)] transition hover:-translate-y-0.5" href={item.href} key={item.title}>

@@ -159,6 +159,9 @@ export function StorefrontAccountProfile() {
             <Link className="rounded-[22px] border border-[#1f6a52]/10 bg-white/80 px-4 py-4 text-sm font-bold text-[#173126] transition hover:-translate-y-0.5" href="/account">
               مشاهده خلاصه حساب
             </Link>
+            <Link className="rounded-[22px] border border-[#1f6a52]/10 bg-white/80 px-4 py-4 text-sm font-bold text-[#173126] transition hover:-translate-y-0.5" href="/account/addresses">
+              مدیریت آدرس‌ها
+            </Link>
             <Link className="rounded-[22px] border border-[#1f6a52]/10 bg-white/80 px-4 py-4 text-sm font-bold text-[#173126] transition hover:-translate-y-0.5" href="/account/wallet">
               رفتن به کیف پول
             </Link>
