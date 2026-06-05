@@ -115,6 +115,26 @@ export default function App() {
   const [otpCountdown, setOtpCountdown] = useState<string | null>(null)
   const [accessState, setAccessState] = useState<VendorAccessState>('pending')
 
+  async function refreshSessionBootstrap(baseSession?: AuthSession) {
+    const currentSession = baseSession ?? session
+    if (!currentSession) return
+
+    const response = await vendorApi.getSessionBootstrap(currentSession)
+    const nextSession: AuthSession = {
+      ...currentSession,
+      bootstrap: response,
+      user: {
+        ...currentSession.user,
+        roles: response.roles ?? currentSession.user.roles,
+      },
+    }
+
+    saveSession(nextSession)
+    setSession(nextSession)
+    setAccessState(resolveAccessState(nextSession))
+    return nextSession
+  }
+
   useEffect(() => {
     setSession(loadSession())
   }, [])
@@ -123,6 +143,12 @@ export default function App() {
     if (!session) return
     setAccessState(resolveAccessState(session))
   }, [session])
+
+  useEffect(() => {
+    if (accessState === 'active') {
+      setRoute(defaultRoute)
+    }
+  }, [accessState])
 
   useEffect(() => {
     if (!otpExpiresAt) {
@@ -194,6 +220,7 @@ export default function App() {
       setOtpExpiresAt(null)
       setOtpCountdown(null)
       setMessage('ورود موفق بود.')
+      void refreshSessionBootstrap(nextSession)
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'تایید OTP ناموفق بود')
     } finally {
@@ -213,13 +240,13 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (!session || session.bootstrap) return
-    const currentSession = session
+    if (!session) return
 
     let active = true
 
     async function loadBootstrap() {
       try {
+        const currentSession = session
         const response = await vendorApi.getSessionBootstrap(currentSession)
         if (!active) return
 
@@ -245,7 +272,7 @@ export default function App() {
     return () => {
       active = false
     }
-  }, [session])
+  }, [session?.accessToken])
 
   if (!session) {
     return (
@@ -265,7 +292,7 @@ export default function App() {
   }
 
   if (accessState === 'pending') {
-    return <VendorOnboardingPage session={session} />
+    return <VendorOnboardingPage onRefreshSession={refreshSessionBootstrap} session={session} />
   }
 
   return (

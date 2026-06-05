@@ -69,7 +69,13 @@ function toNumericCoordinate(value: string, fallback: number) {
   return Number.isFinite(numericValue) ? numericValue : fallback
 }
 
-export function VendorOnboardingPage({ session }: { session: AuthSession }) {
+export function VendorOnboardingPage({
+  session,
+  onRefreshSession,
+}: {
+  session: AuthSession
+  onRefreshSession: (session?: AuthSession) => Promise<AuthSession | undefined>
+}) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState<UploadKey | null>(null)
@@ -317,12 +323,21 @@ export function VendorOnboardingPage({ session }: { session: AuthSession }) {
       setHasApprovedProduct(false)
       setActiveStep('status')
       setMessage('محصول نمونه ثبت شد و برای بررسی ارسال شد.')
+      void onRefreshSession(session)
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'ثبت محصول ناموفق بود')
     } finally {
       setSaving(false)
     }
   }
+
+  useEffect(() => {
+    if (applicationState !== 'approved' || productState !== 'approved') {
+      return
+    }
+
+    void onRefreshSession(session)
+  }, [applicationState, onRefreshSession, productState, session])
 
   if (loading) {
     return <div className="vendor-onboarding-screen" dir="rtl"><div className="vendor-onboarding-layout"><p>در حال بارگذاری...</p></div></div>
