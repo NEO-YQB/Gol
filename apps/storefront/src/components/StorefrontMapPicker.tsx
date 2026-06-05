@@ -86,9 +86,14 @@ export function StorefrontMapPicker({
 }) {
   const mapRef = useRef<HTMLDivElement | null>(null)
   const instanceRef = useRef<{ map?: MapboxMap; marker?: MapboxMarker }>({})
+  const onChangeRef = useRef(onChange)
   const [mapError, setMapError] = useState('')
 
   const initialCenter = useMemo<[number, number]>(() => [value.lng || DEFAULT_LNG, value.lat || DEFAULT_LAT], [value.lat, value.lng])
+
+  useEffect(() => {
+    onChangeRef.current = onChange
+  }, [onChange])
 
   useEffect(() => {
     let cancelled = false
@@ -140,13 +145,13 @@ export function StorefrontMapPicker({
           const lng = event.lngLat?.lng
           if (typeof lat !== 'number' || typeof lng !== 'number') return
           marker.setLngLat([lng, lat])
-          onChange({ lat, lng })
+          onChangeRef.current({ lat, lng })
         })
 
         marker.on('dragend', () => {
           const latlng = marker.getLngLat()
           if (!latlng) return
-          onChange({ lat: latlng.lat, lng: latlng.lng })
+          onChangeRef.current({ lat: latlng.lat, lng: latlng.lng })
         })
 
         instanceRef.current = { map, marker }
@@ -165,7 +170,7 @@ export function StorefrontMapPicker({
       instanceRef.current.map?.remove()
       instanceRef.current = {}
     }
-  }, [initialCenter, onChange])
+  }, [initialCenter])
 
   useEffect(() => {
     instanceRef.current.marker?.setLngLat([value.lng, value.lat])
