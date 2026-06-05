@@ -15,6 +15,7 @@ import { StorefrontMapPicker } from './StorefrontMapPicker'
 type ReverseLookupPayload = {
   formattedAddress?: string
   city?: string
+  raw?: unknown
 }
 
 const DEFAULT_ADDRESS: CreateStorefrontAddressInput = {
@@ -29,6 +30,29 @@ const DEFAULT_ADDRESS: CreateStorefrontAddressInput = {
 function formatDate(value?: string) {
   if (!value) return 'همین حالا'
   return new Intl.DateTimeFormat('fa-IR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+}
+
+function resolveAddressDraft(payload: ReverseLookupPayload) {
+  const rawRecord = typeof payload.raw === 'object' && payload.raw !== null ? (payload.raw as Record<string, unknown>) : {}
+  const addressRecord =
+    typeof rawRecord.address === 'object' && rawRecord.address !== null ? (rawRecord.address as Record<string, unknown>) : {}
+
+  const city =
+    payload.city ||
+    (typeof rawRecord.city === 'string' ? rawRecord.city : '') ||
+    (typeof addressRecord.city === 'string' ? addressRecord.city : '') ||
+    (typeof addressRecord.town === 'string' ? addressRecord.town : '') ||
+    (typeof addressRecord.state === 'string' ? addressRecord.state : '')
+
+  const formattedAddress =
+    payload.formattedAddress ||
+    (typeof rawRecord.address === 'string' ? rawRecord.address : '') ||
+    (typeof rawRecord.display_name === 'string' ? rawRecord.display_name : '')
+
+  return {
+    city: city.trim(),
+    formattedAddress: formattedAddress.trim(),
+  }
 }
 
 export function StorefrontAccountAddresses() {
@@ -75,10 +99,11 @@ export function StorefrontAccountAddresses() {
       if (!response.ok) return
 
       const payload = (await response.json()) as ReverseLookupPayload
+      const nextDraft = resolveAddressDraft(payload)
       setDraft((current) => ({
         ...current,
-        city: current.city || payload.city || '',
-        address: current.address || payload.formattedAddress || '',
+        city: nextDraft.city || current.city,
+        address: nextDraft.formattedAddress || current.address,
       }))
     } catch {
     } finally {
@@ -185,6 +210,17 @@ export function StorefrontAccountAddresses() {
 
         <div className="mt-6 grid gap-4">
           <StorefrontMapPicker value={{ lat: draft.lat, lng: draft.lng }} onChange={handleLocationChange} />
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              className="rounded-full border border-[#1f6a52]/15 bg-white px-4 py-2 text-xs font-bold text-[#1f6a52] transition hover:bg-[#f8f2ea] disabled:cursor-not-allowed disabled:opacity-55"
+              disabled={reverseLoading}
+              onClick={() => void handleReverseLookup(draft.lat, draft.lng)}
+              type="button"
+            >
+              {reverseLoading ? 'در حال خواندن آدرس...' : 'پرکردن خودکار آدرس از روی نقشه'}
+            </button>
+            <span className="text-xs text-[#92785a]">بعد از جابه‌جایی marker می‌توانی دوباره آدرس تقریبی را از روی مختصات بگیری.</span>
+          </div>
 
           <div className="grid gap-4 md:grid-cols-2">
             <label className="grid gap-2 text-sm">

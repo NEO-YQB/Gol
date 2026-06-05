@@ -9,6 +9,7 @@ declare global {
       Map: new (options: Record<string, unknown>) => MapboxMap
       Marker: new (options?: Record<string, unknown>) => MapboxMarker
       NavigationControl: new () => unknown
+      setRTLTextPlugin?: (pluginURL: string, callback?: (error?: Error) => void, lazy?: boolean) => void
     }
   }
 }
@@ -37,6 +38,9 @@ const MAP_IR_API_KEY = process.env.NEXT_PUBLIC_MAP_IR_API_KEY || ''
 const MAP_STYLE_URL =
   process.env.NEXT_PUBLIC_MAP_IR_STYLE_URL ||
   'https://map.ir/vector/styles/main/mapir-xyz-style.json'
+const RTL_PLUGIN_URL =
+  process.env.NEXT_PUBLIC_MAP_IR_RTL_PLUGIN_URL ||
+  'https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-rtl-text/v0.4.0/mapbox-gl-rtl-text.js'
 
 function loadMapAssets() {
   if (typeof window === 'undefined') return Promise.resolve()
@@ -102,6 +106,7 @@ export function StorefrontMapPicker({
         if (cancelled || !mapRef.current || !window.mapboxgl) return
 
         window.mapboxgl.accessToken = MAP_IR_API_KEY
+        window.mapboxgl.setRTLTextPlugin?.(RTL_PLUGIN_URL, undefined, true)
 
         const map = new window.mapboxgl.Map({
           container: mapRef.current,
