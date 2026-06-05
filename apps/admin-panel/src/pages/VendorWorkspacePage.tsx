@@ -1,9 +1,11 @@
 import { ActivityFeed, Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { AdminVendorMapPicker } from '../components/AdminVendorMapPicker'
 import { LoadableState } from '../components/LoadableState'
 import { useNoticeEffect } from '../components/NoticeCenter'
 import { adminApi } from '../lib/api'
 import { readText, toArray } from '../lib/normalize'
+import { hasPermission } from '../lib/permissions'
 import type { AuthSession } from '../lib/session'
 
 type VendorRecord = Record<string, unknown>
@@ -132,6 +134,11 @@ function parseMetadataInput(value: string) {
   return parsed as Record<string, unknown>
 }
 
+function toNumericCoordinate(value: unknown, fallback: number) {
+  const numericValue = typeof value === 'number' ? value : Number(String(value ?? ''))
+  return Number.isFinite(numericValue) ? numericValue : fallback
+}
+
 export function VendorWorkspacePage({
   session,
   store,
@@ -171,8 +178,15 @@ export function VendorWorkspacePage({
   })
   const [releaseOrderId, setReleaseOrderId] = useState('')
   const [storeActiveBusy, setStoreActiveBusy] = useState(false)
+  const [locationBusy, setLocationBusy] = useState(false)
+  const [locationForm, setLocationForm] = useState({
+    address: '',
+    lat: 35.7219,
+    lng: 51.3347,
+  })
 
   const storeId = readText(store ?? {}, ['storeId'], '')
+  const canUpdateStoreLocation = hasPermission(session, 'manage', 'all') || hasPermission(session, 'update', 'Store')
 
   const loadWorkspaceData = useCallback(async () => {
     if (!storeId) {
@@ -237,6 +251,14 @@ export function VendorWorkspacePage({
     })
   }, [currentPolicy])
 
+  useEffect(() => {
+    setLocationForm({
+      address: readText(detailStore, ['address'], ''),
+      lat: toNumericCoordinate(detailStore.lat, 35.7219),
+      lng: toNumericCoordinate(detailStore.lng, 51.3347),
+    })
+  }, [detailStore])
+
   const stats = [
     {
       label: 'فروشگاه',
@@ -292,6 +314,56 @@ export function VendorWorkspacePage({
       setActionError(toggleError instanceof Error ? toggleError.message : 'تغییر وضعیت فروشگاه ناموفق بود')
     } finally {
       setStoreActiveBusy(false)
+    }
+  }
+
+  async function handleLocationChange(nextValue: { lat: number; lng: number }) {
+    setLocationForm((current) => ({
+      ...current,
+      lat: nextValue.lat,
+      lng: nextValue.lng,
+    }))
+
+    try {
+      const response = await fetch(adminApi.getMapReverseUrl(nextValue.lat, nextValue.lng), {
+        headers: adminApi.getMapReverseHeaders(),
+      })
+      if (!response.ok) return
+
+      const payload = (await response.json()) as Record<string, unknown>
+      const nextAddress =
+        typeof payload.address === 'string'
+          ? payload.address
+          : typeof payload.formatted_address === 'string'
+            ? payload.formatted_address
+            : ''
+
+      if (nextAddress.trim()) {
+        setLocationForm((current) => ({
+          ...current,
+          address: nextAddress.trim(),
+        }))
+      }
+    } catch {}
+  }
+
+  async function handleSaveLocation() {
+    if (!storeId || !canUpdateStoreLocation) return
+
+    setLocationBusy(true)
+    setActionError(null)
+    try {
+      await adminApi.updateStore(session, storeId, {
+        address: locationForm.address.trim() || undefined,
+        lat: locationForm.lat,
+        lng: locationForm.lng,
+      })
+      setActionMessage('لوکیشن فروشگاه با موفقیت بروزرسانی شد.')
+      await loadWorkspaceData()
+    } catch (locationError) {
+      setActionError(locationError instanceof Error ? locationError.message : 'بروزرسانی لوکیشن فروشگاه ناموفق بود')
+    } finally {
+      setLocationBusy(false)
     }
   }
 
@@ -571,6 +643,47 @@ export function VendorWorkspacePage({
             <StatCard key={item.label} {...item} />
           ))}
         </div>
+
+        {canUpdateStoreLocation ? (
+          <SectionCard
+            eyebrow="لوکیشن فروشگاه"
+            title="بروزرسانی marker و آدرس فروشنده"
+            description="این بخش فقط برای ادمین و کاربران دارای دسترسی لازم باز است و برای اصلاح لوکیشن فروشگاه بعد از درخواست فروشنده استفاده می‌شود."
+          >
+            <div className="vendors-workspace-form-grid">
+              <div className="fm-field">
+                <label htmlFor="vendor-workspace-address">آدرس فروشگاه</label>
+                <textarea
+                  id="vendor-workspace-address"
+                  rows={3}
+                  value={locationForm.address}
+                  onChange={(event) => setLocationForm((current) => ({ ...current, address: event.target.value }))}
+                  placeholder="آدرس دقیق فروشگاه"
+                />
+              </div>
+
+              <div className="fm-field">
+                <label htmlFor="vendor-workspace-lat">عرض جغرافیایی</label>
+                <input id="vendor-workspace-lat" dir="ltr" readOnly value={String(locationForm.lat)} />
+              </div>
+
+              <div className="fm-field">
+                <label htmlFor="vendor-workspace-lng">طول جغرافیایی</label>
+                <input id="vendor-workspace-lng" dir="ltr" readOnly value={String(locationForm.lng)} />
+              </div>
+
+              <div className="vendors-workspace-form-wide">
+                <AdminVendorMapPicker value={{ lat: locationForm.lat, lng: locationForm.lng }} onChange={handleLocationChange} />
+              </div>
+            </div>
+
+            <div className="vendors-inline-actions">
+              <button className="fm-button fm-button--primary" disabled={locationBusy} onClick={() => void handleSaveLocation()} type="button">
+                {locationBusy ? 'در حال ذخیره...' : 'ذخیره لوکیشن فروشگاه'}
+              </button>
+            </div>
+          </SectionCard>
+        ) : null}
 
         <SectionCard
           eyebrow="میزکار متمرکز"

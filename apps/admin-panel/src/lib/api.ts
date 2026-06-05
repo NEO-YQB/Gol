@@ -83,6 +83,9 @@ const API_BASE_URL =
   'http://localhost:3000/v1'
 
 const API_ORIGIN = new URL(API_BASE_URL).origin
+const MAP_REVERSE_GEOCODE_URL =
+  import.meta.env.VITE_MAP_REVERSE_GEOCODE_URL || 'https://map.ir/reverse'
+const MAP_REVERSE_GEOCODE_KEY = import.meta.env.VITE_MAP_REVERSE_GEOCODE_KEY || import.meta.env.VITE_MAP_IR_API_KEY || ''
 
 async function readJson(response: Response) {
   const text = await response.text()
@@ -461,11 +464,26 @@ export const adminApi = {
   getVendorHealthDetail(session: AuthSession, storeId: string) {
     return request<unknown>(`/stores/admin/${storeId}/vendor-health`, {}, session.accessToken)
   },
-  updateStore(session: AuthSession, storeId: string, body: { isVerified?: boolean }) {
+  updateStore(session: AuthSession, storeId: string, body: { isVerified?: boolean; address?: string; lat?: number; lng?: number }) {
     return request<unknown>(`/stores/${storeId}`, {
       method: 'PATCH',
       body: JSON.stringify(body),
     }, session.accessToken)
+  },
+  getMapReverseUrl(lat: number, lng: number) {
+    const url = new URL(MAP_REVERSE_GEOCODE_URL)
+    url.searchParams.set('lat', String(lat))
+    url.searchParams.set('lon', String(lng))
+    return url.toString()
+  },
+  getMapReverseHeaders() {
+    if (!MAP_REVERSE_GEOCODE_KEY) {
+      return {} as Record<string, string>
+    }
+
+    return {
+      'x-api-key': MAP_REVERSE_GEOCODE_KEY,
+    } satisfies Record<string, string>
   },
   getVendorOnboardingRequests(
     session: AuthSession,
