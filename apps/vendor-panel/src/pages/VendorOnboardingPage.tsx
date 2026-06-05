@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { vendorApi } from '../lib/api'
 import { formatFaNumber } from '../lib/normalize'
 import type { AuthSession } from '../lib/session'
+import { VendorMapPicker } from '../components/VendorMapPicker'
 
 type VendorApplicationState = 'draft' | 'submitted' | 'under_review' | 'approved' | 'rejected'
 type OnboardingStep = 'profile' | 'business' | 'license' | 'product' | 'status'
@@ -61,6 +62,11 @@ function stepLabel(step: OnboardingStep) {
 function renderUploadPreview(url: string, alt: string) {
   if (!url) return null
   return <img className="vendor-upload-preview" src={url} alt={alt} />
+}
+
+function toNumericCoordinate(value: string, fallback: number) {
+  const numericValue = Number(value)
+  return Number.isFinite(numericValue) ? numericValue : fallback
 }
 
 export function VendorOnboardingPage({ session }: { session: AuthSession }) {
@@ -172,6 +178,38 @@ export function VendorOnboardingPage({ session }: { session: AuthSession }) {
 
   function updateDraft<K extends keyof OnboardingDraft>(key: K, value: OnboardingDraft[K]) {
     setDraft((current) => ({ ...current, [key]: value }))
+  }
+
+  async function handleBusinessLocationChange(nextValue: { lat: number; lng: number }) {
+    setDraft((current) => ({
+      ...current,
+      businessLat: String(nextValue.lat),
+      businessLng: String(nextValue.lng),
+    }))
+
+    try {
+      const response = await fetch(
+        `${vendorApi.getMapReverseUrl(nextValue.lat, nextValue.lng)}`,
+        {
+          headers: vendorApi.getMapReverseHeaders(),
+        },
+      )
+      if (!response.ok) return
+      const payload = (await response.json()) as Record<string, unknown>
+      const addressText =
+        typeof payload.address === 'string'
+          ? payload.address
+          : typeof payload.formatted_address === 'string'
+            ? payload.formatted_address
+            : ''
+
+      if (addressText.trim()) {
+        setDraft((current) => ({
+          ...current,
+          businessAddress: addressText.trim(),
+        }))
+      }
+    } catch {}
   }
 
   async function uploadSingleFile(file: File, target: Exclude<UploadKey, 'gallery'>) {
@@ -346,9 +384,18 @@ export function VendorOnboardingPage({ session }: { session: AuthSession }) {
               <label className="fm-field"><span>نام فروشگاه</span><input value={draft.businessName} onChange={(event) => updateDraft('businessName', event.target.value)} placeholder="مثلا: گلخانه بهار" /></label>
               <label className="fm-field"><span>اسلاگ فروشگاه</span><input value={draft.businessSlug} onChange={(event) => updateDraft('businessSlug', event.target.value)} placeholder="bahar-flower-shop" /></label>
               <label className="fm-field vendor-onboarding-field-wide"><span>توضیح کوتاه فروشگاه</span><textarea rows={3} value={draft.businessDescription} onChange={(event) => updateDraft('businessDescription', event.target.value)} placeholder="در چند خط درباره فروشگاه بنویس" /></label>
+              <div className="vendor-onboarding-field-wide">
+                <VendorMapPicker
+                  onChange={handleBusinessLocationChange}
+                  value={{
+                    lat: toNumericCoordinate(draft.businessLat, 35.7219),
+                    lng: toNumericCoordinate(draft.businessLng, 51.3347),
+                  }}
+                />
+              </div>
               <label className="fm-field vendor-onboarding-field-wide"><span>آدرس مغازه</span><textarea rows={3} value={draft.businessAddress} onChange={(event) => updateDraft('businessAddress', event.target.value)} placeholder="آدرس دقیق و قابل‌تحویل" /></label>
-              <label className="fm-field"><span>عرض جغرافیایی</span><input value={draft.businessLat} onChange={(event) => updateDraft('businessLat', event.target.value)} placeholder="35.7219" inputMode="decimal" /></label>
-              <label className="fm-field"><span>طول جغرافیایی</span><input value={draft.businessLng} onChange={(event) => updateDraft('businessLng', event.target.value)} placeholder="51.3347" inputMode="decimal" /></label>
+              <label className="fm-field"><span>عرض جغرافیایی</span><input value={draft.businessLat} readOnly placeholder="35.7219" inputMode="decimal" /></label>
+              <label className="fm-field"><span>طول جغرافیایی</span><input value={draft.businessLng} readOnly placeholder="51.3347" inputMode="decimal" /></label>
             </div>
             <div className="vendor-onboarding-actions">
               <button className="fm-button fm-button--ghost" type="button" onClick={prevStep}>قبلی</button>

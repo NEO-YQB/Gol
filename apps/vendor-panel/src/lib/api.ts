@@ -201,6 +201,10 @@ export const apiConfig = {
   origin: API_ORIGIN,
 }
 
+const MAP_REVERSE_GEOCODE_URL =
+  import.meta.env.VITE_MAP_REVERSE_GEOCODE_URL || 'https://map.ir/reverse'
+const MAP_REVERSE_GEOCODE_KEY = import.meta.env.VITE_MAP_REVERSE_GEOCODE_KEY || import.meta.env.VITE_MAP_IR_API_KEY || ''
+
 export const vendorApi = {
   sendOtp(phoneNumber: string) {
     return request<OtpSendResponse>('/auth/send-otp', {
@@ -399,6 +403,19 @@ export const vendorApi = {
       method: 'POST',
       body: JSON.stringify(payload),
     }, session.accessToken)
+  },
+  getMapReverseUrl(lat: number, lng: number) {
+    const url = new URL(MAP_REVERSE_GEOCODE_URL)
+    url.searchParams.set('lat', String(lat))
+    url.searchParams.set('lon', String(lng))
+    return url.toString()
+  },
+  getMapReverseHeaders() {
+    return MAP_REVERSE_GEOCODE_KEY
+      ? {
+          'x-api-key': MAP_REVERSE_GEOCODE_KEY,
+        }
+      : {}
   },
 }
 

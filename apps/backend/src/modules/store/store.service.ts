@@ -72,6 +72,15 @@ export class StoreService {
 
     await this.assertCanManageStore(user, 'update', store.ownerId);
 
+    if (
+      user.id === store.ownerId &&
+      ((updateStoreDto.address !== undefined && updateStoreDto.address !== store.address) ||
+        (updateStoreDto.lat !== undefined && updateStoreDto.lat !== Number(store.lat ?? updateStoreDto.lat)) ||
+        (updateStoreDto.lng !== undefined && updateStoreDto.lng !== Number(store.lng ?? updateStoreDto.lng)))
+    ) {
+      throw new ForbiddenException('فروشنده اجازه ویرایش آدرس فروشگاه را ندارد');
+    }
+
     if (updateStoreDto.slug) {
       await this.ensureSlugIsAvailable(updateStoreDto.slug, id);
     }

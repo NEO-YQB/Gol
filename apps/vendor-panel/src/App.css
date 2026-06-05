@@ -160,6 +160,59 @@
   margin: 8px 0 0;
 }
 
+.vendor-map-picker {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 22px;
+  border: 1px solid var(--fm-border-soft);
+  background: rgba(255, 253, 248, 0.9);
+}
+
+.vendor-map-picker__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.vendor-map-picker__head strong {
+  color: var(--fm-text-primary);
+}
+
+.vendor-map-picker__head p {
+  margin: 6px 0 0;
+  color: var(--fm-text-secondary);
+  line-height: 1.9;
+}
+
+.vendor-map-picker__coords {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(31, 106, 82, 0.08);
+  color: var(--fm-brand-primary);
+  font-weight: 700;
+  direction: ltr;
+}
+
+.vendor-map-picker__canvas {
+  min-height: 320px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: rgba(231, 223, 212, 0.92);
+}
+
+.vendor-map-help {
+  display: block;
+  margin-top: 8px;
+  color: var(--fm-text-secondary);
+  line-height: 1.8;
+}
+
 .vendor-orders-toolbar {
   display: grid;
   gap: 16px;

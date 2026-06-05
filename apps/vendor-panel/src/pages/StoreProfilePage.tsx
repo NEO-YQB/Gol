@@ -4,6 +4,7 @@ import { LoadableState } from '../components/LoadableState'
 import { vendorApi, type DeliveryWindowPayload, type VendorStorePayload } from '../lib/api'
 import { formatFaNumber, readText } from '../lib/normalize'
 import type { AuthSession } from '../lib/session'
+import { VendorMapPicker } from '../components/VendorMapPicker'
 
 type StoreRecord = Record<string, unknown>
 
@@ -125,6 +126,11 @@ function getStoreProductCount(store: StoreRecord | null) {
   }
 
   return 0
+}
+
+function toNumericCoordinate(value: string, fallback: number) {
+  const numericValue = Number(value)
+  return Number.isFinite(numericValue) ? numericValue : fallback
 }
 
 export function StoreProfilePage({ session }: { session: AuthSession }) {
@@ -407,7 +413,8 @@ export function StoreProfilePage({ session }: { session: AuthSession }) {
 
                       <div className="fm-field vendor-product-editor-wide">
                         <label htmlFor="store-address">آدرس</label>
-                        <textarea id="store-address" rows={3} value={form.address} onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))} placeholder="آدرس کامل فروشگاه" />
+                        <textarea id="store-address" rows={3} value={form.address} readOnly placeholder="آدرس کامل فروشگاه" />
+                        <small className="vendor-map-help">لوکیشن فروشگاه بعد از onboarding برای جلوگیری از اختلال در منطق فروشنده نزدیک قفل می‌شود.</small>
                       </div>
 
                       <div className="fm-field vendor-product-editor-wide">
@@ -485,12 +492,22 @@ export function StoreProfilePage({ session }: { session: AuthSession }) {
 
                       <div className="fm-field">
                         <label htmlFor="store-lat">عرض جغرافیایی</label>
-                        <input id="store-lat" dir="ltr" value={form.lat} onChange={(event) => setForm((current) => ({ ...current, lat: event.target.value }))} placeholder="35.7219" />
+                        <input id="store-lat" dir="ltr" value={form.lat} readOnly placeholder="35.7219" />
                       </div>
 
                       <div className="fm-field">
                         <label htmlFor="store-lng">طول جغرافیایی</label>
-                        <input id="store-lng" dir="ltr" value={form.lng} onChange={(event) => setForm((current) => ({ ...current, lng: event.target.value }))} placeholder="51.3347" />
+                        <input id="store-lng" dir="ltr" value={form.lng} readOnly placeholder="51.3347" />
+                      </div>
+
+                      <div className="vendor-product-editor-wide">
+                        <VendorMapPicker
+                          disabled
+                          value={{
+                            lat: toNumericCoordinate(form.lat, 35.7219),
+                            lng: toNumericCoordinate(form.lng, 51.3347),
+                          }}
+                        />
                       </div>
                     </div>
 
