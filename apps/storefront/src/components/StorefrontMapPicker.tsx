@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 declare global {
   interface Window {
@@ -88,8 +88,7 @@ export function StorefrontMapPicker({
   const instanceRef = useRef<{ map?: MapboxMap; marker?: MapboxMarker }>({})
   const onChangeRef = useRef(onChange)
   const [mapError, setMapError] = useState('')
-
-  const initialCenter = useMemo<[number, number]>(() => [value.lng || DEFAULT_LNG, value.lat || DEFAULT_LAT], [value.lat, value.lng])
+  const initialCenterRef = useRef<[number, number]>([value.lng || DEFAULT_LNG, value.lat || DEFAULT_LAT])
 
   useEffect(() => {
     onChangeRef.current = onChange
@@ -128,7 +127,7 @@ export function StorefrontMapPicker({
 
             return { url }
           },
-          center: initialCenter,
+          center: initialCenterRef.current,
           zoom: DEFAULT_ZOOM,
         })
 
@@ -137,7 +136,7 @@ export function StorefrontMapPicker({
         const marker = new window.mapboxgl.Marker({
           draggable: true,
         })
-          .setLngLat(initialCenter)
+          .setLngLat(initialCenterRef.current)
           .addTo(map)
 
         map.on('click', (event) => {
@@ -170,7 +169,7 @@ export function StorefrontMapPicker({
       instanceRef.current.map?.remove()
       instanceRef.current = {}
     }
-  }, [initialCenter])
+  }, [])
 
   useEffect(() => {
     instanceRef.current.marker?.setLngLat([value.lng, value.lat])
