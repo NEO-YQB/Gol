@@ -5,9 +5,9 @@ import { getStorefrontCatalogData } from '../../lib/storefront'
 export default async function ShopArchivePage({
   searchParams,
 }: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>
+  searchParams?: Record<string, string | string[] | undefined>
 }) {
-  const query = await searchParams
+  const query = searchParams ?? {}
   const catalog = await getStorefrontCatalogData({
     search: typeof query.search === 'string' ? query.search : '',
     sort: typeof query.sort === 'string' ? query.sort : 'newest',
