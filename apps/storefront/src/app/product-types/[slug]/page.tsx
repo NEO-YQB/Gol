@@ -18,6 +18,8 @@ export default async function ProductTypeArchivePage({
     notFound()
   }
 
+  const resolvedProductType = productType
+
   const catalog = await getStorefrontCatalogData({
     search: typeof query.search === 'string' ? query.search : '',
     sort: typeof query.sort === 'string' ? query.sort : 'newest',
@@ -27,8 +29,8 @@ export default async function ProductTypeArchivePage({
 
   return (
     <StorefrontAccountShell
-      title={`نوع محصول ${productType.name}`}
-      description={productType.description || 'آرشیو محصولات این نوع با فیلترهای واقعی و sidebar کامل آماده شده است.'}
+      title={`نوع محصول ${resolvedProductType.name}`}
+      description={resolvedProductType.description || 'آرشیو محصولات این نوع با فیلترهای واقعی و sidebar کامل آماده شده است.'}
     >
       <StorefrontCatalogPage
         activeCategorySlug={typeof query.category === 'string' ? query.category : ''}
@@ -36,12 +38,12 @@ export default async function ProductTypeArchivePage({
         activeSort={catalog.activeSort}
         basePath={`/product-types/${slug}`}
         categories={catalog.categories}
-        description={`محصولات مرتبط با نوع ${productType.name} را با جستجو، دسته‌بندی و sort فعلی API مرور کن.`}
+        description={`محصولات مرتبط با نوع ${resolvedProductType.name} را با جستجو، دسته‌بندی و sort فعلی API مرور کن.`}
         eyebrow="Product Type Archive"
         productTypes={catalog.productTypes}
         products={catalog.products}
         searchValue={catalog.search}
-        title={productType.name}
+        title={resolvedProductType.name}
         total={catalog.total}
       />
     </StorefrontAccountShell>
