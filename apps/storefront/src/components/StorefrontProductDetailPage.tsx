@@ -1,41 +1,13 @@
 import Link from 'next/link'
-import type { ProductSummary } from '../lib/storefront'
+import type { StorefrontProductDetail } from '../lib/storefront'
 import { resolveAssetUrl } from '../lib/storefront'
 import { storefrontCatalog } from './storefrontCatalog'
-
-type ProductDetail = ProductSummary & {
-  description?: string | null
-  shortDescription?: string | null
-  mainImageAlt?: string | null
-  gallery?: Array<{ url: string; alt?: string | null }>
-  productType?: {
-    id: number
-    name: string
-    slug: string
-  } | null
-  store?: {
-    id: number
-    name: string
-    slug: string
-    sameDayDelivery?: boolean
-  } | null
-  composition?: Array<{
-    id: number
-    quantity: number
-    elementType: string
-    element?: {
-      id: number
-      name: string
-      unit?: string | null
-    } | null
-  }>
-}
 
 function formatMoney(value: number) {
   return `${new Intl.NumberFormat('fa-IR').format(value)} تومان`
 }
 
-export function StorefrontProductDetailPage({ product }: { product: ProductDetail }) {
+export function StorefrontProductDetailPage({ product }: { product: StorefrontProductDetail }) {
   const gallery = Array.isArray(product.gallery) ? product.gallery : []
   const hasDiscount = typeof product.discountPrice === 'number' && product.discountPrice > 0 && product.discountPrice < product.price
 

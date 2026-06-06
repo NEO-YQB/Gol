@@ -374,7 +374,16 @@ export async function getStorefrontCatalogData({
   sort?: string
   categorySlug?: string
   productTypeSlug?: string
-}) {
+}): Promise<{
+  products: ProductSummary[]
+  total: number
+  search: string
+  activeSort: 'newest' | 'most_sold' | 'instant_delivery'
+  categories: CategorySummary[]
+  productTypes: ProductTypeSummary[]
+  resolvedCategory: CategorySummary | null
+  resolvedProductType: ProductTypeSummary | null
+}> {
   const categories = await getCategories()
   const productTypes = await getProductTypes()
 
@@ -382,7 +391,7 @@ export async function getStorefrontCatalogData({
   const resolvedProductType = productTypeSlug ? await getStorefrontProductTypeBySlug(productTypeSlug) : null
   const categoryIds = resolvedCategory ? collectCategoryIds(categories, String(resolvedCategory.id)) : []
 
-  const activeSort =
+  const activeSort: 'newest' | 'most_sold' | 'instant_delivery' =
     sort === 'most_sold' || sort === 'instant_delivery' || sort === 'newest'
       ? sort
       : 'newest'
