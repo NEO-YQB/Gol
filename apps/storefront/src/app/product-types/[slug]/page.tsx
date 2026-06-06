@@ -1,0 +1,49 @@
+import { notFound } from 'next/navigation'
+import { StorefrontAccountShell } from '../../../components/StorefrontAccountShell'
+import { StorefrontCatalogPage } from '../../../components/StorefrontCatalogPage'
+import { getStorefrontCatalogData, getStorefrontProductTypeBySlug } from '../../../lib/storefront'
+
+export default async function ProductTypeArchivePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
+  const { slug } = await params
+  const query = await searchParams
+  const productType = await getStorefrontProductTypeBySlug(slug)
+
+  if (!productType) {
+    notFound()
+  }
+
+  const catalog = await getStorefrontCatalogData({
+    search: typeof query.search === 'string' ? query.search : '',
+    sort: typeof query.sort === 'string' ? query.sort : 'newest',
+    categorySlug: typeof query.category === 'string' ? query.category : '',
+    productTypeSlug: slug,
+  })
+
+  return (
+    <StorefrontAccountShell
+      title={`نوع محصول ${productType.name}`}
+      description={productType.description || 'آرشیو محصولات این نوع با فیلترهای واقعی و sidebar کامل آماده شده است.'}
+    >
+      <StorefrontCatalogPage
+        activeCategorySlug={typeof query.category === 'string' ? query.category : ''}
+        activeProductTypeSlug={slug}
+        activeSort={catalog.activeSort}
+        basePath={`/product-types/${slug}`}
+        categories={catalog.categories}
+        description={`محصولات مرتبط با نوع ${productType.name} را با جستجو، دسته‌بندی و sort فعلی API مرور کن.`}
+        eyebrow="Product Type Archive"
+        productTypes={catalog.productTypes}
+        products={catalog.products}
+        searchValue={catalog.search}
+        title={productType.name}
+        total={catalog.total}
+      />
+    </StorefrontAccountShell>
+  )
+}

@@ -55,6 +55,40 @@ export type ProductSummary = {
   } | null
 }
 
+export type ProductTypeSummary = {
+  id: number
+  name: string
+  slug: string
+  description?: string | null
+  image?: string | null
+}
+
+type PaginatedResponse<T> = {
+  data?: T[]
+  meta?: {
+    total?: number
+    page?: number
+    lastPage?: number
+  }
+}
+
+export type StorefrontProductDetail = ProductSummary & {
+  description?: string | null
+  shortDescription?: string | null
+  gallery?: Array<{ url: string; alt?: string | null }>
+  productType?: ProductTypeSummary | null
+  composition?: Array<{
+    id: number
+    quantity: number
+    elementType: string
+    element?: {
+      id: number
+      name: string
+      unit?: string | null
+    } | null
+  }>
+}
+
 export type StoreSummary = {
   id: number
   name: string
@@ -195,6 +229,10 @@ const getStores = cache(async (): Promise<StoreSummary[]> => {
   return requestCached<StoreSummary[]>('/stores')
 })
 
+const getProductTypes = cache(async (): Promise<ProductTypeSummary[]> => {
+  return requestCached<ProductTypeSummary[]>('/product-types')
+})
+
 const getArticles = cache(async (limit: number): Promise<ArticleSummary[]> => {
   const params = new URLSearchParams()
   params.set('limit', String(limit))
@@ -262,7 +300,7 @@ async function getProductsNoStore(query: ProductQuery): Promise<ProductSummary[]
   if (query.search) params.set('search', query.search)
   if (query.sortBy) params.set('sortBy', query.sortBy)
 
-  const payload = await requestNoStore<{ data?: ProductSummary[] } | ProductSummary[]>(`/products?${params.toString()}`)
+  const payload = await requestNoStore<PaginatedResponse<ProductSummary> | ProductSummary[]>(`/products?${params.toString()}`)
   const products = filterEligibleProducts(toArray<ProductSummary>(payload))
 
   if (!query.ids?.length) {
@@ -271,6 +309,103 @@ async function getProductsNoStore(query: ProductQuery): Promise<ProductSummary[]
 
   const order = new Map(query.ids.map((id, index) => [Number(id), index]))
   return [...products].sort((left, right) => (order.get(left.id) ?? 999) - (order.get(right.id) ?? 999))
+}
+
+async function getProductsNoStoreWithMeta(query: ProductQuery): Promise<{
+  products: ProductSummary[]
+  total: number
+}> {
+  const params = new URLSearchParams()
+
+  params.set('publicationStatus', 'PUBLISHED')
+  params.set('limit', String(query.limit ?? 8))
+
+  if (query.categoryId) params.set('categoryId', query.categoryId)
+  if (query.categoryIds?.length) params.set('categoryIds', query.categoryIds.join(','))
+  if (query.productTypeId) params.set('productTypeId', query.productTypeId)
+  if (query.ids?.length) params.set('ids', query.ids.join(','))
+  if (query.search) params.set('search', query.search)
+  if (query.sortBy) params.set('sortBy', query.sortBy)
+
+  const payload = await requestNoStore<PaginatedResponse<ProductSummary> | ProductSummary[]>(`/products?${params.toString()}`)
+  const products = filterEligibleProducts(toArray<ProductSummary>(payload))
+  const total =
+    !Array.isArray(payload) && payload.meta && typeof payload.meta.total === 'number'
+      ? payload.meta.total
+      : products.length
+
+  if (!query.ids?.length) {
+    return { products, total }
+  }
+
+  const order = new Map(query.ids.map((id, index) => [Number(id), index]))
+  return {
+    products: [...products].sort((left, right) => (order.get(left.id) ?? 999) - (order.get(right.id) ?? 999)),
+    total,
+  }
+}
+
+export async function getStorefrontProductBySlug(slug: string): Promise<StorefrontProductDetail | null> {
+  try {
+    return await requestNoStore<StorefrontProductDetail>(`/products/${slug}`)
+  } catch {
+    return null
+  }
+}
+
+export async function getStorefrontCategoryBySlug(slug: string): Promise<CategorySummary | null> {
+  const categories = await getCategories()
+  const all = flattenCategories(categories)
+  return all.find((item) => item.slug === slug) || null
+}
+
+export async function getStorefrontProductTypeBySlug(slug: string): Promise<ProductTypeSummary | null> {
+  const productTypes = await getProductTypes()
+  return productTypes.find((item) => item.slug === slug) || null
+}
+
+export async function getStorefrontCatalogData({
+  search,
+  sort,
+  categorySlug,
+  productTypeSlug,
+}: {
+  search?: string
+  sort?: string
+  categorySlug?: string
+  productTypeSlug?: string
+}) {
+  const categories = await getCategories()
+  const productTypes = await getProductTypes()
+
+  const resolvedCategory = categorySlug ? await getStorefrontCategoryBySlug(categorySlug) : null
+  const resolvedProductType = productTypeSlug ? await getStorefrontProductTypeBySlug(productTypeSlug) : null
+  const categoryIds = resolvedCategory ? collectCategoryIds(categories, String(resolvedCategory.id)) : []
+
+  const activeSort =
+    sort === 'most_sold' || sort === 'instant_delivery' || sort === 'newest'
+      ? sort
+      : 'newest'
+
+  const { products, total } = await getProductsNoStoreWithMeta({
+    search: search?.trim() || undefined,
+    sortBy: activeSort,
+    categoryIds: categoryIds.length > 1 ? categoryIds : undefined,
+    categoryId: categoryIds.length === 1 ? categoryIds[0] : undefined,
+    productTypeId: resolvedProductType ? String(resolvedProductType.id) : undefined,
+    limit: 48,
+  })
+
+  return {
+    products,
+    total,
+    search: search?.trim() || '',
+    activeSort,
+    categories,
+    productTypes,
+    resolvedCategory,
+    resolvedProductType,
+  }
 }
 
 async function getStorefrontPageNoStore(slug: string): Promise<StorefrontPage | null> {
