@@ -2,17 +2,17 @@ import { notFound } from 'next/navigation'
 import { StorefrontPageView } from '../../components/StorefrontPageView'
 import { getEnrichedStorefrontPage, getStorefrontMetadata } from '../../lib/storefront'
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string[] }> }) {
-  const { slug } = await params
+export async function generateMetadata({ params }: { params: { slug: string[] } }) {
+  const { slug } = params
   return getStorefrontMetadata(slug)
 }
 
 export default async function DynamicStorefrontPage({
   params,
 }: {
-  params: Promise<{ slug: string[] }>
+  params: { slug: string[] }
 }) {
-  const { slug } = await params
+  const { slug } = params
   const page = await getEnrichedStorefrontPage(slug)
 
   if (!page) {

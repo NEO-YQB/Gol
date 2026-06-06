@@ -5,8 +5,8 @@ const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
   'http://localhost:3000/v1'
 
-export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const { id } = await context.params
+export async function DELETE(request: NextRequest, context: { params: { id: string } }) {
+  const { id } = context.params
 
   try {
     const response = await fetch(`${API_BASE_URL}/addresses/${id}`, {
