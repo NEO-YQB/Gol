@@ -141,24 +141,6 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
           </section>
 
           <section className={storefrontCatalog.card}>
-            <h2 className="text-xl font-black text-[#173126]">درباره فروشنده</h2>
-            <div className="mt-4 grid gap-3">
-              <div className="rounded-[20px] bg-[#f9f4ec] px-4 py-4">
-                <span className="block text-xs font-bold text-[#92785a]">میانگین رضایت مشتریان</span>
-                <strong className="mt-1 block text-base text-[#173126]">{ratingAverage > 0 ? ratingAverage.toFixed(1) : 'جدید'}</strong>
-              </div>
-              <div className="rounded-[20px] bg-[#f9f4ec] px-4 py-4">
-                <span className="block text-xs font-bold text-[#92785a]">تعداد نظر ثبت‌شده</span>
-                <strong className="mt-1 block text-base text-[#173126]">{new Intl.NumberFormat('fa-IR').format(ratingCount)}</strong>
-              </div>
-              <div className="rounded-[20px] bg-[#f9f4ec] px-4 py-4">
-                <span className="block text-xs font-bold text-[#92785a]">وضعیت ارسال</span>
-                <strong className="mt-1 block text-base text-[#173126]">{product.store?.sameDayDelivery ? 'ارسال فوری فعال است' : 'ارسال استاندارد فروشگاه'}</strong>
-              </div>
-            </div>
-          </section>
-
-          <section className={storefrontCatalog.card}>
             <h2 className="text-xl font-black text-[#173126]">ترکیب و اجزا</h2>
             <div className="mt-4 grid gap-3">
               {product.composition?.length ? (
@@ -178,7 +160,7 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
         </aside>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.8fr)]">
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_320px]">
         <article className={storefrontCatalog.card}>
           <h2 className="text-2xl font-black text-[#173126]">توضیحات کامل محصول</h2>
           <div className="mt-4 text-sm leading-8 text-[#5f564c] whitespace-pre-line">
@@ -189,20 +171,17 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
         <aside className="rounded-[30px] border border-[#b7d7c8] bg-[linear-gradient(180deg,rgba(237,248,241,0.98),rgba(224,242,232,0.96))] px-5 py-5 shadow-[0_14px_34px_rgba(52,36,17,0.06)]">
           <h2 className="text-xl font-black text-[#224638]">{`درباره فروشگاه ${product.store?.name || 'فروشنده'}`}</h2>
           <div className="mt-4 grid gap-3">
-            <div className="rounded-[20px] bg-white/70 px-4 py-4 text-sm leading-7 text-[#416353]">
-              {product.store?.name
-                ? `${product.store.name} یکی از فروشگاه‌های فعال این مارکت‌پلیس است و اطلاعات این بخش فقط از داده‌های عمومی و قابل‌نمایش برای مشتری ساخته شده است.`
-                : 'اطلاعات این بخش فقط از داده‌های عمومی و قابل‌نمایش فروشگاه برای مشتری ساخته شده است.'}
+            <div className="rounded-[20px] bg-white/70 px-4 py-4">
+              <span className="block text-xs font-bold text-[#6f8f80]">میانگین رضایت مشتریان</span>
+              <strong className="mt-1 block text-base text-[#224638]">{ratingAverage > 0 ? ratingAverage.toFixed(1) : 'جدید'}</strong>
             </div>
-            <div className="rounded-[20px] bg-white/70 px-4 py-4 text-sm leading-7 text-[#416353]">
-              {product.store?.sameDayDelivery
-                ? 'این فروشگاه ارسال فوری را برای بخشی از سفارش‌ها فعال کرده و می‌تواند گزینه مناسب‌تری برای خریدهای زمان‌حساس باشد.'
-                : 'این فروشگاه در حال حاضر با الگوی ارسال استاندارد سفارش‌ها را مدیریت می‌کند و وضعیت آن برای مشتری به‌صورت شفاف نمایش داده می‌شود.'}
+            <div className="rounded-[20px] bg-white/70 px-4 py-4">
+              <span className="block text-xs font-bold text-[#6f8f80]">تعداد نظر ثبت‌شده</span>
+              <strong className="mt-1 block text-base text-[#224638]">{new Intl.NumberFormat('fa-IR').format(ratingCount)}</strong>
             </div>
-            <div className="rounded-[20px] bg-white/70 px-4 py-4 text-sm leading-7 text-[#416353]">
-              {ratingCount > 0
-                ? `تا این لحظه ${new Intl.NumberFormat('fa-IR').format(ratingCount)} نظر برای این فروشگاه ثبت شده و میانگین رضایت مشتریان ${ratingAverage > 0 ? ratingAverage.toFixed(1) : 'جدید'} است.`
-                : 'هنوز نظر ثبت‌شده‌ای برای این فروشگاه نمایش داده نشده، اما جزئیات عمومی فروشگاه در همین صفحه در دسترس است.'}
+            <div className="rounded-[20px] bg-white/70 px-4 py-4">
+              <span className="block text-xs font-bold text-[#6f8f80]">وضعیت ارسال</span>
+              <strong className="mt-1 block text-base text-[#224638]">{product.store?.sameDayDelivery ? 'ارسال فوری فعال است' : 'ارسال استاندارد فروشگاه'}</strong>
             </div>
           </div>
         </aside>
