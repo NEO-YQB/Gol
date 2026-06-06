@@ -1,4 +1,7 @@
+'use client'
+
 import Link from 'next/link'
+import { useMemo, useState } from 'react'
 import type { StorefrontProductDetail } from '../lib/storefront'
 import { resolveAssetUrl } from '../lib/storefront'
 import { storefrontCatalog } from './storefrontCatalog'
@@ -9,16 +12,35 @@ function formatMoney(value: number) {
 
 export function StorefrontProductDetailPage({ product }: { product: StorefrontProductDetail }) {
   const gallery = Array.isArray(product.gallery) ? product.gallery : []
+  const allImages = useMemo(() => {
+    const items = [
+      {
+        url: product.mainImage,
+        alt: product.mainImageAlt || product.name,
+      },
+      ...gallery.map((item) => ({
+        url: item.url,
+        alt: item.alt || product.name,
+      })),
+    ]
+
+    const seen = new Set<string>()
+    return items.filter((item) => {
+      if (!item.url || seen.has(item.url)) return false
+      seen.add(item.url)
+      return true
+    })
+  }, [gallery, product.mainImage, product.mainImageAlt, product.name])
+  const [activeImageUrl, setActiveImageUrl] = useState(allImages[0]?.url || product.mainImage)
+  const activeImage = allImages.find((item) => item.url === activeImageUrl) || allImages[0]
   const hasDiscount = typeof product.discountPrice === 'number' && product.discountPrice > 0 && product.discountPrice < product.price
 
   return (
     <div className="grid gap-6">
       <section className={storefrontCatalog.hero}>
-        <span className="text-xs font-bold uppercase tracking-[0.22em] text-white/75">Single Product</span>
-        <div className="mt-4 grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_360px]">
-          <div>
-            <h1 className="text-3xl font-black md:text-[2.3rem]">{product.name}</h1>
-            <p className="mt-4 max-w-3xl text-sm leading-7 text-white/82">{product.shortDescription || product.description || 'جزئیات کامل این محصول از داده‌های واقعی فروشگاه بارگذاری شده است.'}</p>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-3xl">
+            <h1 className="text-3xl font-black md:text-[2.4rem]">{product.name}</h1>
             <div className="mt-5 flex flex-wrap gap-2 text-xs font-bold text-white/85">
               {product.category?.slug ? (
                 <Link className="rounded-full border border-white/15 bg-white/10 px-3 py-2" href={`/categories/${product.category.slug}`}>
@@ -38,7 +60,7 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
             </div>
           </div>
 
-          <div className="rounded-[30px] border border-white/10 bg-black/10 px-5 py-5">
+          <div className="rounded-[30px] border border-white/10 bg-black/10 px-5 py-5 lg:min-w-[320px]">
             {hasDiscount ? <div className="text-sm text-white/62 line-through">{formatMoney(product.price)}</div> : null}
             <strong className="mt-2 block text-3xl font-black">{formatMoney(hasDiscount ? Number(product.discountPrice) : product.price)}</strong>
             <p className="mt-3 text-sm text-white/82">{product.isPurchasable ? 'این محصول آماده ثبت سفارش است.' : 'این محصول فعلاً برای خرید مستقیم فعال نیست.'}</p>
@@ -54,30 +76,50 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.12fr)_360px]">
-        <div className="grid gap-5">
-          <article className={storefrontCatalog.card}>
-            <div className="overflow-hidden rounded-[26px] bg-[#f6efe5]">
-              <img alt={product.mainImageAlt || product.name} className="h-[420px] w-full object-cover" src={resolveAssetUrl(product.mainImage)} />
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(280px,0.62fr)_320px]">
+        <article className={`${storefrontCatalog.card} overflow-hidden`}>
+          <div className="group overflow-hidden rounded-[26px] bg-[#f6efe5]">
+            <img
+              alt={activeImage?.alt || product.name}
+              className="h-[360px] w-full object-cover transition duration-300 group-hover:scale-[1.35] md:h-[420px]"
+              src={resolveAssetUrl(activeImage?.url || product.mainImage)}
+            />
+          </div>
+
+          {allImages.length > 1 ? (
+            <div className="mt-4 grid grid-cols-3 gap-3 md:grid-cols-4">
+              {allImages.map((item) => {
+                const isActive = item.url === activeImage?.url
+
+                return (
+                  <button
+                    className={`overflow-hidden rounded-[20px] border transition ${isActive ? 'border-[#173126] ring-2 ring-[#173126]/20' : 'border-transparent hover:border-[#1f6a52]/25'}`}
+                    key={item.url}
+                    onClick={() => setActiveImageUrl(item.url)}
+                    type="button"
+                  >
+                    <img alt={item.alt || product.name} className="h-24 w-full object-cover md:h-28" src={resolveAssetUrl(item.url)} />
+                  </button>
+                )
+              })}
             </div>
+          ) : null}
+        </article>
 
-            {gallery.length ? (
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                {gallery.map((item, index) => (
-                  <div className="overflow-hidden rounded-[22px] bg-[#f6efe5]" key={`${item.url}-${index}`}>
-                    <img alt={item.alt || product.name} className="h-28 w-full object-cover" src={resolveAssetUrl(item.url)} />
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </article>
+        <div className="grid gap-5">
+          <section className={`${storefrontCatalog.card} h-fit`}>
+            <h2 className="text-xl font-black text-[#173126]">خلاصه محصول</h2>
+            <div className="mt-4 text-sm leading-8 text-[#5f564c] whitespace-pre-line">
+              {product.shortDescription || product.description || 'برای این محصول هنوز توضیح کوتاه ثبت نشده است.'}
+            </div>
+          </section>
 
-          <article className={storefrontCatalog.card}>
-            <h2 className="text-2xl font-black text-[#173126]">توضیحات محصول</h2>
+          <section className={storefrontCatalog.card}>
+            <h2 className="text-xl font-black text-[#173126]">توضیحات کامل</h2>
             <div className="mt-4 text-sm leading-8 text-[#5f564c] whitespace-pre-line">
               {product.description || product.shortDescription || 'برای این محصول هنوز توضیح تکمیلی ثبت نشده است.'}
             </div>
-          </article>
+          </section>
         </div>
 
         <aside className="grid gap-5">
