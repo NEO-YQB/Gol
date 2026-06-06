@@ -1,10 +1,11 @@
 import Link from 'next/link'
 import { ExpandableTextBlock } from './ExpandableTextBlock'
+import { NearestSortButton } from './NearestSortButton'
 import { ProductCard } from './storefrontBlocks'
 import { storefrontCatalog } from './storefrontCatalog'
 import type { CategorySummary, ProductSummary, ProductTypeSummary } from '../lib/storefront'
 
-type CatalogSortOption = 'newest' | 'most_sold' | 'instant_delivery'
+type CatalogSortOption = 'newest' | 'most_sold' | 'instant_delivery' | 'nearest'
 
 function flattenCategories(categories: CategorySummary[], depth = 0): Array<CategorySummary & { depth: number }> {
   return categories.flatMap((category) => {
@@ -28,6 +29,8 @@ export function StorefrontCatalogPage({
   activeCategorySlug,
   activeProductTypeSlug,
   archiveDescription,
+  userLat,
+  userLng,
 }: {
   title: string
   description: string
@@ -43,6 +46,8 @@ export function StorefrontCatalogPage({
   activeCategorySlug?: string
   activeProductTypeSlug?: string
   archiveDescription?: string
+  userLat?: number
+  userLng?: number
 }) {
   const flatCategories = flattenCategories(categories)
   const activeCategory = flatCategories.find((category) => category.slug === activeCategorySlug)
@@ -67,6 +72,8 @@ export function StorefrontCatalogPage({
     if (categorySlug) params.set('category', categorySlug)
     if (productTypeSlug) params.set('type', productTypeSlug)
     if (page > 1) params.set('page', String(page))
+    if (typeof userLat === 'number') params.set('userLat', String(userLat))
+    if (typeof userLng === 'number') params.set('userLng', String(userLng))
 
     const query = params.toString()
     return query ? `${basePath}?${query}` : basePath
@@ -102,12 +109,14 @@ export function StorefrontCatalogPage({
                   <option value="newest">جدیدترین</option>
                   <option value="most_sold">پرفروش‌ترین</option>
                   <option value="instant_delivery">ارسال فوری</option>
+                  <option value="nearest">نزدیک‌ترین به من</option>
                 </select>
                 {activeCategorySlug ? <input name="category" type="hidden" value={activeCategorySlug} /> : null}
                 {activeProductTypeSlug ? <input name="type" type="hidden" value={activeProductTypeSlug} /> : null}
                 <button className="rounded-full bg-[#173126] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#29513f]" type="submit">
                   اعمال فیلتر
                 </button>
+                <NearestSortButton />
               </form>
             </section>
 

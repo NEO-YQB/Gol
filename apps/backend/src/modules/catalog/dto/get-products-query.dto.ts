@@ -7,6 +7,7 @@ export enum ProductListingSortBy {
   NEWEST = 'newest',
   MOST_SOLD = 'most_sold',
   INSTANT_DELIVERY = 'instant_delivery',
+  NEAREST = 'nearest',
 }
 
 function toOptionalBoolean(value: unknown) {
@@ -120,4 +121,16 @@ export class GetProductsQueryDto {
   @IsOptional()
   @IsEnum(ProductListingSortBy)
   sortBy?: ProductListingSortBy;
+
+  @ApiPropertyOptional({ description: 'عرض جغرافیایی کاربر برای سورت نزدیک‌ترین فروشگاه' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  userLat?: number;
+
+  @ApiPropertyOptional({ description: 'طول جغرافیایی کاربر برای سورت نزدیک‌ترین فروشگاه' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  userLng?: number;
 } 

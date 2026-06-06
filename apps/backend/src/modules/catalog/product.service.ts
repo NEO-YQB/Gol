@@ -296,6 +296,8 @@ export class ProductService {
       isPurchasable,
       isArchived,
       sortBy,
+      userLat,
+      userLng,
     } = query;
     const skip = (page - 1) * limit;
     const productIds = ids
@@ -332,6 +334,51 @@ export class ProductService {
       }),
     };
 
+    const include = {
+      category: { select: { id: true, name: true, slug: true } },
+      store: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          lat: true,
+          lng: true,
+          sameDayDelivery: true,
+          customerRatingAverage: true,
+          customerRatingCount: true,
+        },
+      },
+      productType: { select: { id: true, name: true, slug: true } },
+      reviewedByUser: { select: { id: true, fullName: true, phoneNumber: true } },
+      publishedByUser: { select: { id: true, fullName: true, phoneNumber: true } },
+    } as const;
+
+    if (sortBy === 'nearest' && typeof userLat === 'number' && typeof userLng === 'number') {
+      const products = await this.prisma.product.findMany({
+        where,
+        include,
+      });
+
+      const sortedProducts = [...products].sort((left, right) => {
+        const leftDistance = this.calculateDistance(userLat, userLng, left.store?.lat, left.store?.lng);
+        const rightDistance = this.calculateDistance(userLat, userLng, right.store?.lat, right.store?.lng);
+
+        if (leftDistance !== rightDistance) {
+          return leftDistance - rightDistance;
+        }
+
+        return right.createdAt.getTime() - left.createdAt.getTime();
+      });
+
+      const total = sortedProducts.length;
+      const paginatedProducts = sortedProducts.slice(skip, skip + limit);
+
+      return {
+        data: paginatedProducts,
+        meta: { total, page, lastPage: Math.ceil(total / limit) },
+      };
+    }
+
     const orderBy =
       sortBy === 'most_sold'
         ? [{ orderItems: { _count: 'desc' as const } }, { createdAt: 'desc' as const }]
@@ -344,13 +391,7 @@ export class ProductService {
         where,
         skip,
         take: limit,
-        include: {
-          category: { select: { id: true, name: true } },
-          store: { select: { id: true, name: true } },
-          productType: { select: { id: true, name: true } },
-          reviewedByUser: { select: { id: true, fullName: true, phoneNumber: true } },
-          publishedByUser: { select: { id: true, fullName: true, phoneNumber: true } },
-        },
+        include,
         orderBy,
       }),
       this.prisma.product.count({ where }),
@@ -376,6 +417,30 @@ export class ProductService {
     });
     if (!product) throw new NotFoundException(`محصول یافت نشد`);
     return product;
+  }
+
+  private calculateDistance(
+    originLat: number,
+    originLng: number,
+    destinationLat?: number | null,
+    destinationLng?: number | null,
+  ) {
+    if (typeof destinationLat !== 'number' || typeof destinationLng !== 'number') {
+      return Number.POSITIVE_INFINITY;
+    }
+
+    const toRadians = (value: number) => (value * Math.PI) / 180;
+    const earthRadiusKm = 6371;
+    const deltaLat = toRadians(destinationLat - originLat);
+    const deltaLng = toRadians(destinationLng - originLng);
+    const startLat = toRadians(originLat);
+    const endLat = toRadians(destinationLat);
+
+    const haversine =
+      Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+      Math.cos(startLat) * Math.cos(endLat) * Math.sin(deltaLng / 2) * Math.sin(deltaLng / 2);
+
+    return 2 * earthRadiusKm * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
   }
 
   async remove(id: number, user: { id: number; roles: string[] }) {

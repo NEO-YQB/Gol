@@ -45,6 +45,8 @@ export default async function CategoryArchivePage({
     search: typeof query.search === 'string' ? query.search : '',
     page: typeof query.page === 'string' ? Number(query.page) || 1 : 1,
     sort: typeof query.sort === 'string' ? query.sort : 'newest',
+    userLat: typeof query.userLat === 'string' ? Number(query.userLat) || undefined : undefined,
+    userLng: typeof query.userLng === 'string' ? Number(query.userLng) || undefined : undefined,
     categorySlug: slug,
     productTypeSlug: typeof query.type === 'string' ? query.type : '',
   })
@@ -66,6 +68,8 @@ export default async function CategoryArchivePage({
         searchValue={catalog.search}
         title={resolvedCategory.name}
         total={catalog.total}
+        userLat={typeof query.userLat === 'string' ? Number(query.userLat) || undefined : undefined}
+        userLng={typeof query.userLng === 'string' ? Number(query.userLng) || undefined : undefined}
       />
     </StorefrontShell>
   )

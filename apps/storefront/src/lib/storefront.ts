@@ -270,7 +270,9 @@ type ProductQuery = {
   productTypeId?: string
   ids?: string[]
   search?: string
-  sortBy?: 'newest' | 'most_sold' | 'instant_delivery'
+  sortBy?: 'newest' | 'most_sold' | 'instant_delivery' | 'nearest'
+  userLat?: number
+  userLng?: number
 }
 
 const getProducts = cache(async (_queryKey: string, query: ProductQuery): Promise<ProductSummary[]> => {
@@ -286,6 +288,8 @@ const getProducts = cache(async (_queryKey: string, query: ProductQuery): Promis
   if (query.ids?.length) params.set('ids', query.ids.join(','))
   if (query.search) params.set('search', query.search)
   if (query.sortBy) params.set('sortBy', query.sortBy)
+  if (typeof query.userLat === 'number') params.set('userLat', String(query.userLat))
+  if (typeof query.userLng === 'number') params.set('userLng', String(query.userLng))
 
   const payload = await requestCached<{ data?: ProductSummary[] } | ProductSummary[]>(`/products?${params.toString()}`)
   const products = filterEligibleProducts(toArray<ProductSummary>(payload))
@@ -321,6 +325,8 @@ async function getProductsNoStore(query: ProductQuery): Promise<ProductSummary[]
   if (query.ids?.length) params.set('ids', query.ids.join(','))
   if (query.search) params.set('search', query.search)
   if (query.sortBy) params.set('sortBy', query.sortBy)
+  if (typeof query.userLat === 'number') params.set('userLat', String(query.userLat))
+  if (typeof query.userLng === 'number') params.set('userLng', String(query.userLng))
 
   const payload = await requestNoStore<PaginatedResponse<ProductSummary> | ProductSummary[]>(`/products?${params.toString()}`)
   const products = filterEligibleProducts(toArray<ProductSummary>(payload))
@@ -351,6 +357,8 @@ async function getProductsNoStoreWithMeta(query: ProductQuery): Promise<{
   if (query.ids?.length) params.set('ids', query.ids.join(','))
   if (query.search) params.set('search', query.search)
   if (query.sortBy) params.set('sortBy', query.sortBy)
+  if (typeof query.userLat === 'number') params.set('userLat', String(query.userLat))
+  if (typeof query.userLng === 'number') params.set('userLng', String(query.userLng))
 
   const payload = await requestNoStore<PaginatedResponse<ProductSummary> | ProductSummary[]>(`/products?${params.toString()}`)
   const products = filterEligibleProducts(toArray<ProductSummary>(payload))
@@ -403,12 +411,16 @@ export async function getStorefrontCatalogData({
   search,
   sort,
   page,
+  userLat,
+  userLng,
   categorySlug,
   productTypeSlug,
 }: {
   search?: string
   sort?: string
   page?: number
+  userLat?: number
+  userLng?: number
   categorySlug?: string
   productTypeSlug?: string
 }): Promise<{
@@ -417,7 +429,7 @@ export async function getStorefrontCatalogData({
   page: number
   lastPage: number
   search: string
-  activeSort: 'newest' | 'most_sold' | 'instant_delivery'
+  activeSort: 'newest' | 'most_sold' | 'instant_delivery' | 'nearest'
   categories: CategorySummary[]
   productTypes: ProductTypeSummary[]
   resolvedCategory: CategorySummary | null
@@ -430,8 +442,8 @@ export async function getStorefrontCatalogData({
   const resolvedProductType = productTypeSlug ? await getStorefrontProductTypeBySlug(productTypeSlug) : null
   const categoryIds = resolvedCategory ? collectCategoryIds(categories, String(resolvedCategory.id)) : []
 
-  const activeSort: 'newest' | 'most_sold' | 'instant_delivery' =
-    sort === 'most_sold' || sort === 'instant_delivery' || sort === 'newest'
+  const activeSort: 'newest' | 'most_sold' | 'instant_delivery' | 'nearest' =
+    sort === 'most_sold' || sort === 'instant_delivery' || sort === 'newest' || sort === 'nearest'
       ? sort
       : 'newest'
 
@@ -439,6 +451,8 @@ export async function getStorefrontCatalogData({
     search: search?.trim() || undefined,
     sortBy: activeSort,
     page,
+    userLat,
+    userLng,
     categoryIds: categoryIds.length > 1 ? categoryIds : undefined,
     categoryId: categoryIds.length === 1 ? categoryIds[0] : undefined,
     productTypeId: resolvedProductType ? String(resolvedProductType.id) : undefined,

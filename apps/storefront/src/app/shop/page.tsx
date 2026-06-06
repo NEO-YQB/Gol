@@ -21,6 +21,8 @@ export default async function ShopArchivePage({
     search: typeof query.search === 'string' ? query.search : '',
     page: typeof query.page === 'string' ? Number(query.page) || 1 : 1,
     sort: typeof query.sort === 'string' ? query.sort : 'newest',
+    userLat: typeof query.userLat === 'string' ? Number(query.userLat) || undefined : undefined,
+    userLng: typeof query.userLng === 'string' ? Number(query.userLng) || undefined : undefined,
     categorySlug: typeof query.category === 'string' ? query.category : '',
     productTypeSlug: typeof query.type === 'string' ? query.type : '',
   })
@@ -42,6 +44,8 @@ export default async function ShopArchivePage({
         searchValue={catalog.search}
         title="همه محصولات"
         total={catalog.total}
+        userLat={typeof query.userLat === 'string' ? Number(query.userLat) || undefined : undefined}
+        userLng={typeof query.userLng === 'string' ? Number(query.userLng) || undefined : undefined}
       />
     </StorefrontShell>
   )
