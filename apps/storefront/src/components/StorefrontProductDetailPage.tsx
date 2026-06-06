@@ -34,6 +34,8 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
   const [activeImageUrl, setActiveImageUrl] = useState(allImages[0]?.url || product.mainImage)
   const activeImage = allImages.find((item) => item.url === activeImageUrl) || allImages[0]
   const hasDiscount = typeof product.discountPrice === 'number' && product.discountPrice > 0 && product.discountPrice < product.price
+  const ratingAverage = Number(product.store?.customerRatingAverage ?? 0)
+  const ratingCount = Number(product.store?.customerRatingCount ?? 0)
 
   return (
     <div className="grid gap-6">
@@ -113,13 +115,6 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
               {product.shortDescription || product.description || 'برای این محصول هنوز توضیح کوتاه ثبت نشده است.'}
             </div>
           </section>
-
-          <section className={storefrontCatalog.card}>
-            <h2 className="text-xl font-black text-[#173126]">توضیحات کامل</h2>
-            <div className="mt-4 text-sm leading-8 text-[#5f564c] whitespace-pre-line">
-              {product.description || product.shortDescription || 'برای این محصول هنوز توضیح تکمیلی ثبت نشده است.'}
-            </div>
-          </section>
         </div>
 
         <aside className="grid gap-5">
@@ -146,6 +141,24 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
           </section>
 
           <section className={storefrontCatalog.card}>
+            <h2 className="text-xl font-black text-[#173126]">درباره فروشنده</h2>
+            <div className="mt-4 grid gap-3">
+              <div className="rounded-[20px] bg-[#f9f4ec] px-4 py-4">
+                <span className="block text-xs font-bold text-[#92785a]">میانگین رضایت مشتریان</span>
+                <strong className="mt-1 block text-base text-[#173126]">{ratingAverage > 0 ? ratingAverage.toFixed(1) : 'جدید'}</strong>
+              </div>
+              <div className="rounded-[20px] bg-[#f9f4ec] px-4 py-4">
+                <span className="block text-xs font-bold text-[#92785a]">تعداد نظر ثبت‌شده</span>
+                <strong className="mt-1 block text-base text-[#173126]">{new Intl.NumberFormat('fa-IR').format(ratingCount)}</strong>
+              </div>
+              <div className="rounded-[20px] bg-[#f9f4ec] px-4 py-4">
+                <span className="block text-xs font-bold text-[#92785a]">وضعیت ارسال</span>
+                <strong className="mt-1 block text-base text-[#173126]">{product.store?.sameDayDelivery ? 'ارسال فوری فعال است' : 'ارسال استاندارد فروشگاه'}</strong>
+              </div>
+            </div>
+          </section>
+
+          <section className={storefrontCatalog.card}>
             <h2 className="text-xl font-black text-[#173126]">ترکیب و اجزا</h2>
             <div className="mt-4 grid gap-3">
               {product.composition?.length ? (
@@ -162,6 +175,27 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
               )}
             </div>
           </section>
+        </aside>
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_320px]">
+        <article className={storefrontCatalog.card}>
+          <h2 className="text-2xl font-black text-[#173126]">توضیحات کامل محصول</h2>
+          <div className="mt-4 text-sm leading-8 text-[#5f564c] whitespace-pre-line">
+            {product.description || product.shortDescription || 'برای این محصول هنوز توضیح تکمیلی ثبت نشده است.'}
+          </div>
+        </article>
+
+        <aside className={storefrontCatalog.card}>
+          <h2 className="text-xl font-black text-[#173126]">شفاف‌سازی خرید</h2>
+          <div className="mt-4 grid gap-3">
+            <div className="rounded-[20px] bg-[#f9f4ec] px-4 py-4 text-sm leading-7 text-[#5f564c]">
+              اطلاعات این بخش فقط از داده‌های عمومی فروشگاه نمایش داده می‌شود و شامل وضعیت ارسال، امتیاز مشتریان و اطلاعات عمومی فروشنده است.
+            </div>
+            <div className="rounded-[20px] bg-[#f9f4ec] px-4 py-4 text-sm leading-7 text-[#5f564c]">
+              اطلاعات مدیریتی، سلامت داخلی فروشنده و جزئیات مالی عمداً در این صفحه نمایش داده نمی‌شود.
+            </div>
+          </div>
         </aside>
       </section>
     </div>

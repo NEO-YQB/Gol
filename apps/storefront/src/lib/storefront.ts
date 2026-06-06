@@ -93,6 +93,8 @@ export type StorefrontProductDetail = ProductSummary & {
     name: string
     slug: string
     sameDayDelivery?: boolean
+    customerRatingAverage?: string | number | null
+    customerRatingCount?: number | null
   } | null
   composition?: Array<{
     id: number
