@@ -7,11 +7,11 @@ export default async function CategoryArchivePage({
   params,
   searchParams,
 }: {
-  params: { slug: string }
-  searchParams?: Record<string, string | string[] | undefined>
+  params: Promise<{ slug: string }>
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
 }) {
-  const { slug } = params
-  const query = searchParams ?? {}
+  const { slug } = await params
+  const query = (await searchParams) ?? {}
   const category = await getStorefrontCategoryBySlug(slug)
 
   if (!category) {

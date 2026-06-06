@@ -6,9 +6,9 @@ import { getStorefrontProductBySlug } from '../../../lib/storefront'
 export default async function ProductDetailPage({
   params,
 }: {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }) {
-  const { slug } = params
+  const { slug } = await params
   const product = await getStorefrontProductBySlug(slug)
 
   if (!product) {
