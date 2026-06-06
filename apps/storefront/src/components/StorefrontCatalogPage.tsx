@@ -86,14 +86,13 @@ export function StorefrontCatalogPage({
   return (
     <div className={storefrontCatalog.content}>
       <section className={storefrontCatalog.hero}>
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
             <h1 className="text-3xl font-black md:text-[2.2rem]">{title}</h1>
-            <p className="mt-3 text-sm leading-7 text-white/82">{description}</p>
+            <p className="mt-2 text-sm leading-7 text-white/82">{description}</p>
           </div>
           <div className="flex flex-wrap gap-2 text-xs font-bold text-white/85">
             <span className="rounded-full border border-white/15 bg-white/10 px-3 py-2">{`${new Intl.NumberFormat('fa-IR').format(total)} محصول`}</span>
-            <span className="rounded-full border border-white/15 bg-white/10 px-3 py-2">سورت فعلی از API واقعی</span>
           </div>
         </div>
       </section>
@@ -170,10 +169,7 @@ export function StorefrontCatalogPage({
 
         <section className={storefrontCatalog.content}>
           <div className={`${storefrontCatalog.card} flex flex-wrap items-center justify-between gap-3`}>
-            <div>
-              <strong className="block text-lg text-[#173126]">نتایج فهرست</strong>
-              <p className="mt-1 text-sm text-[#6e6152]">این فاز با sortهای فعلی API کار می‌کند؛ سورت نزدیک‌ترین لوکیشن در فاز بعد اضافه می‌شود.</p>
-            </div>
+            <strong className="block text-lg text-[#173126]">نتایج فهرست</strong>
             <div className="flex flex-wrap gap-2">
               {searchValue ? <span className={storefrontCatalog.chip}>{`جستجو: ${searchValue}`}</span> : null}
               {activeCategory ? <span className={storefrontCatalog.chip}>{`دسته: ${activeCategory.name}`}</span> : null}

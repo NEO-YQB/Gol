@@ -61,7 +61,7 @@ export default async function ProductTypeArchivePage({
         basePath={`/product-types/${slug}`}
         categories={catalog.categories}
         currentPage={catalog.page}
-        description={`محصولات مرتبط با نوع ${resolvedProductType.name} را با جستجو، دسته‌بندی و sort فعلی API مرور کن.`}
+        description={`محصولات مرتبط با نوع ${resolvedProductType.name}`}
         lastPage={catalog.lastPage}
         productTypes={catalog.productTypes}
         products={catalog.products}

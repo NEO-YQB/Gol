@@ -61,7 +61,7 @@ export default async function CategoryArchivePage({
         basePath={`/categories/${slug}`}
         categories={catalog.categories}
         currentPage={catalog.page}
-        description={`محصولات مرتبط با ${resolvedCategory.name} را با جستجو، نوع محصول و sort فعلی API مرور کن.`}
+        description={`محصولات مرتبط با ${resolvedCategory.name}`}
         lastPage={catalog.lastPage}
         productTypes={catalog.productTypes}
         products={catalog.products}

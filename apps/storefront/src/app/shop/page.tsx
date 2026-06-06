@@ -33,11 +33,11 @@ export default async function ShopArchivePage({
         activeCategorySlug={typeof query.category === 'string' ? query.category : ''}
         activeProductTypeSlug={typeof query.type === 'string' ? query.type : ''}
         activeSort={catalog.activeSort}
-        archiveDescription="در این آرشیو می‌توانی همه محصولات منتشرشده را با فیلترهای دسته‌بندی، نوع محصول، جستجو و مرتب‌سازی واقعی فروشگاه مرور کنی."
+        archiveDescription=""
         basePath="/shop"
         categories={catalog.categories}
         currentPage={catalog.page}
-        description="همه محصولات منتشرشده و قابل خرید را در یک آرشیو یکپارچه با فیلترهای sidebar مرور کن."
+        description="همه محصولات فروشگاه"
         lastPage={catalog.lastPage}
         productTypes={catalog.productTypes}
         products={catalog.products}
