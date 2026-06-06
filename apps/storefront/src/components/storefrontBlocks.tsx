@@ -16,6 +16,15 @@ function getEffectiveDiscountPrice(price: number, discountPrice: number | null |
   return discountPrice
 }
 
+function formatDistance(value: number | undefined) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null
+  if (value < 1) {
+    return `${new Intl.NumberFormat('fa-IR').format(Math.max(100, Math.round(value * 1000)))} متر`
+  }
+
+  return `${new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 1 }).format(value)} کیلومتر`
+}
+
 function getProductHref(product: ProductSummary) {
   return `/products/${product.slug}`
 }
@@ -37,6 +46,7 @@ export function ProductCard({ product, className = '' }: { product: ProductSumma
   const effectiveDiscountPrice = getEffectiveDiscountPrice(product.price, product.discountPrice)
   const discountPrice = formatPrice(effectiveDiscountPrice)
   const hasDiscount = effectiveDiscountPrice !== null
+  const distanceLabel = formatDistance(product.aerialDistanceKm)
   const productHref = getProductHref(product)
   const vendorHref = product.store?.slug ? getVendorHref(product.store) : null
   const categoryHref = product.category?.slug ? `/categories/${product.category.slug}` : null
@@ -48,13 +58,21 @@ export function ProductCard({ product, className = '' }: { product: ProductSumma
       </Link>
       <div className="flex flex-1 flex-col">
         <div className="space-y-3">
-          {vendorHref ? (
-            <Link className="text-xs uppercase tracking-[0.28em] text-[#9e7b52]" href={vendorHref}>
-              {product.store?.name || 'فروشگاه منتخب'}
-            </Link>
-          ) : (
-            <p className="text-xs uppercase tracking-[0.28em] text-[#9e7b52]">{product.store?.name || 'فروشگاه منتخب'}</p>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {vendorHref ? (
+              <Link className="text-xs uppercase tracking-[0.28em] text-[#9e7b52]" href={vendorHref}>
+                {product.store?.name || 'فروشگاه منتخب'}
+              </Link>
+            ) : (
+              <p className="text-xs uppercase tracking-[0.28em] text-[#9e7b52]">{product.store?.name || 'فروشگاه منتخب'}</p>
+            )}
+            {distanceLabel ? (
+              <span className="inline-flex items-center gap-1 rounded-full border border-[#bfd9cf] bg-[#edf7f1] px-2.5 py-1 text-[11px] font-bold text-[#2f5f4d]">
+                <span aria-hidden="true">📍</span>
+                <span>{distanceLabel}</span>
+              </span>
+            ) : null}
+          </div>
           <Link className="mt-2 block text-xl font-black text-[#1e3529]" href={productHref}>
             {product.name}
           </Link>
