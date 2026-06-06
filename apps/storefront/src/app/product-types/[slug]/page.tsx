@@ -1,7 +1,28 @@
 import { notFound } from 'next/navigation'
-import { StorefrontAccountShell } from '../../../components/StorefrontAccountShell'
 import { StorefrontCatalogPage } from '../../../components/StorefrontCatalogPage'
-import { getStorefrontCatalogData, getStorefrontProductTypeBySlug } from '../../../lib/storefront'
+import { StorefrontShell } from '../../../components/StorefrontShell'
+import { buildArchiveMetadata, getStorefrontCatalogData, getStorefrontProductTypeBySlug } from '../../../lib/storefront'
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
+  const productType = await getStorefrontProductTypeBySlug(slug)
+
+  if (!productType) {
+    return buildArchiveMetadata({
+      title: 'نوع محصول پیدا نشد | گلینو',
+      description: 'این نوع محصول در دسترس نیست.',
+      path: `/product-types/${slug}`,
+    })
+  }
+
+  return buildArchiveMetadata({
+    title: productType.metaTitle || `${productType.name} | گلینو`,
+    description: productType.metaDescription || productType.description || `آرشیو محصولات ${productType.name} در گلینو.`,
+    path: `/product-types/${slug}`,
+    image: productType.image,
+    indexable: productType.isIndexed,
+  })
+}
 
 export default async function ProductTypeArchivePage({
   params,
@@ -22,30 +43,30 @@ export default async function ProductTypeArchivePage({
 
   const catalog = await getStorefrontCatalogData({
     search: typeof query.search === 'string' ? query.search : '',
+    page: typeof query.page === 'string' ? Number(query.page) || 1 : 1,
     sort: typeof query.sort === 'string' ? query.sort : 'newest',
     categorySlug: typeof query.category === 'string' ? query.category : '',
     productTypeSlug: slug,
   })
 
   return (
-    <StorefrontAccountShell
-      title={`نوع محصول ${resolvedProductType.name}`}
-      description={resolvedProductType.description || 'آرشیو محصولات این نوع با فیلترهای واقعی و sidebar کامل آماده شده است.'}
-    >
+    <StorefrontShell>
       <StorefrontCatalogPage
         activeCategorySlug={typeof query.category === 'string' ? query.category : ''}
         activeProductTypeSlug={slug}
         activeSort={catalog.activeSort}
+        archiveDescription={resolvedProductType.description || ''}
         basePath={`/product-types/${slug}`}
         categories={catalog.categories}
+        currentPage={catalog.page}
         description={`محصولات مرتبط با نوع ${resolvedProductType.name} را با جستجو، دسته‌بندی و sort فعلی API مرور کن.`}
-        eyebrow="Product Type Archive"
+        lastPage={catalog.lastPage}
         productTypes={catalog.productTypes}
         products={catalog.products}
         searchValue={catalog.search}
         title={resolvedProductType.name}
         total={catalog.total}
       />
-    </StorefrontAccountShell>
+    </StorefrontShell>
   )
 }

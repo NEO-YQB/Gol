@@ -32,7 +32,7 @@ export function StorefrontPill({ text }: { text: string }) {
   return <span className={storefrontShared.pill}>{text}</span>
 }
 
-export function ProductCard({ product }: { product: ProductSummary }) {
+export function ProductCard({ product, className = '' }: { product: ProductSummary; className?: string }) {
   const price = formatPrice(product.price)
   const effectiveDiscountPrice = getEffectiveDiscountPrice(product.price, product.discountPrice)
   const discountPrice = formatPrice(effectiveDiscountPrice)
@@ -42,7 +42,7 @@ export function ProductCard({ product }: { product: ProductSummary }) {
   const categoryHref = product.category?.slug ? `/categories/${product.category.slug}` : null
 
   return (
-    <article className={storefrontStyles.productCard}>
+    <article className={`${storefrontStyles.productCard} ${className}`.trim()}>
       <Link className={storefrontStyles.productImageWrap} href={productHref}>
         <img alt={product.mainImageAlt || product.name} className={storefrontStyles.productImage} src={resolveAssetUrl(product.mainImage)} />
       </Link>

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { ExpandableTextBlock } from './ExpandableTextBlock'
 import { ProductCard } from './storefrontBlocks'
 import { storefrontCatalog } from './storefrontCatalog'
 import type { CategorySummary, ProductSummary, ProductTypeSummary } from '../lib/storefront'
@@ -15,9 +16,10 @@ function flattenCategories(categories: CategorySummary[], depth = 0): Array<Cate
 export function StorefrontCatalogPage({
   title,
   description,
-  eyebrow,
   products,
   total,
+  currentPage,
+  lastPage,
   searchValue,
   activeSort,
   basePath,
@@ -25,12 +27,14 @@ export function StorefrontCatalogPage({
   productTypes,
   activeCategorySlug,
   activeProductTypeSlug,
+  archiveDescription,
 }: {
   title: string
   description: string
-  eyebrow: string
   products: ProductSummary[]
   total: number
+  currentPage: number
+  lastPage: number
   searchValue?: string
   activeSort: CatalogSortOption
   basePath: string
@@ -38,32 +42,44 @@ export function StorefrontCatalogPage({
   productTypes: ProductTypeSummary[]
   activeCategorySlug?: string
   activeProductTypeSlug?: string
+  archiveDescription?: string
 }) {
   const flatCategories = flattenCategories(categories)
   const activeCategory = flatCategories.find((category) => category.slug === activeCategorySlug)
   const activeProductType = productTypes.find((type) => type.slug === activeProductTypeSlug)
 
-  function buildHref(next: { search?: string; sort?: CatalogSortOption; categorySlug?: string; productTypeSlug?: string }) {
+  function buildHref(next: {
+    search?: string
+    sort?: CatalogSortOption
+    categorySlug?: string
+    productTypeSlug?: string
+    page?: number
+  }) {
     const params = new URLSearchParams()
     const search = next.search ?? searchValue ?? ''
     const sort = next.sort ?? activeSort
     const categorySlug = next.categorySlug ?? activeCategorySlug ?? ''
     const productTypeSlug = next.productTypeSlug ?? activeProductTypeSlug ?? ''
+    const page = next.page ?? currentPage
 
     if (search.trim()) params.set('search', search.trim())
     if (sort && sort !== 'newest') params.set('sort', sort)
     if (categorySlug) params.set('category', categorySlug)
     if (productTypeSlug) params.set('type', productTypeSlug)
+    if (page > 1) params.set('page', String(page))
 
     const query = params.toString()
     return query ? `${basePath}?${query}` : basePath
   }
 
+  const paginationItems = Array.from({ length: lastPage }, (_, index) => index + 1).filter((pageNumber) => {
+    return pageNumber === 1 || pageNumber === lastPage || Math.abs(pageNumber - currentPage) <= 1
+  })
+
   return (
     <div className={storefrontCatalog.content}>
       <section className={storefrontCatalog.hero}>
-        <span className="text-xs font-bold uppercase tracking-[0.22em] text-white/75">{eyebrow}</span>
-        <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
             <h1 className="text-3xl font-black md:text-[2.2rem]">{title}</h1>
             <p className="mt-3 text-sm leading-7 text-white/82">{description}</p>
@@ -157,14 +173,41 @@ export function StorefrontCatalogPage({
           </div>
 
           {products.length ? (
-            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {products.map((product) => (
-                <ProductCard key={product.id} product={product} />
+                <ProductCard className="w-full min-w-0" key={product.id} product={product} />
               ))}
             </div>
           ) : (
             <div className={storefrontCatalog.empty}>هیچ محصولی با این فیلترها پیدا نشد.</div>
           )}
+
+          {lastPage > 1 ? (
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {paginationItems.map((pageNumber, index) => {
+                const previousPage = paginationItems[index - 1]
+                const shouldShowGap = previousPage !== undefined && pageNumber - previousPage > 1
+
+                return (
+                  <div className="contents" key={pageNumber}>
+                    {shouldShowGap ? <span className="px-2 text-sm text-[#8e7e6d]">…</span> : null}
+                    <Link
+                      className={`inline-flex min-w-10 items-center justify-center rounded-full px-3 py-2 text-sm font-bold transition ${
+                        pageNumber === currentPage
+                          ? 'bg-[#173126] text-white'
+                          : 'border border-[#1f6a52]/12 bg-white/78 text-[#173126] hover:bg-white'
+                      }`}
+                      href={buildHref({ page: pageNumber })}
+                    >
+                      {new Intl.NumberFormat('fa-IR').format(pageNumber)}
+                    </Link>
+                  </div>
+                )
+              })}
+            </div>
+          ) : null}
+
+          {archiveDescription ? <ExpandableTextBlock text={archiveDescription} title={`درباره ${title}`} /> : null}
         </section>
       </div>
     </div>

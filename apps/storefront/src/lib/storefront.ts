@@ -28,7 +28,11 @@ export type CategorySummary = {
   id: number
   name: string
   slug: string
+  description?: string | null
   image?: string | null
+  metaTitle?: string | null
+  metaDescription?: string | null
+  isIndexed?: boolean | null
   children?: CategorySummary[]
 }
 
@@ -40,6 +44,10 @@ export type ProductSummary = {
   mainImageAlt?: string | null
   price: number
   discountPrice?: number | null
+  description?: string | null
+  shortDescription?: string | null
+  metaTitle?: string | null
+  metaDescription?: string | null
   isPurchasable?: boolean
   isArchived?: boolean
   publicationStatus?: string
@@ -61,6 +69,9 @@ export type ProductTypeSummary = {
   slug: string
   description?: string | null
   image?: string | null
+  metaTitle?: string | null
+  metaDescription?: string | null
+  isIndexed?: boolean | null
 }
 
 type PaginatedResponse<T> = {
@@ -250,6 +261,7 @@ const getArticles = cache(async (limit: number): Promise<ArticleSummary[]> => {
 })
 
 type ProductQuery = {
+  page?: number
   limit?: number
   categoryId?: string
   categoryIds?: string[]
@@ -263,6 +275,7 @@ const getProducts = cache(async (_queryKey: string, query: ProductQuery): Promis
   const params = new URLSearchParams()
 
   params.set('publicationStatus', 'PUBLISHED')
+  params.set('page', String(query.page ?? 1))
   params.set('limit', String(query.limit ?? 8))
 
   if (query.categoryId) params.set('categoryId', query.categoryId)
@@ -297,6 +310,7 @@ async function getProductsNoStore(query: ProductQuery): Promise<ProductSummary[]
   const params = new URLSearchParams()
 
   params.set('publicationStatus', 'PUBLISHED')
+  params.set('page', String(query.page ?? 1))
   params.set('limit', String(query.limit ?? 8))
 
   if (query.categoryId) params.set('categoryId', query.categoryId)
@@ -320,10 +334,13 @@ async function getProductsNoStore(query: ProductQuery): Promise<ProductSummary[]
 async function getProductsNoStoreWithMeta(query: ProductQuery): Promise<{
   products: ProductSummary[]
   total: number
+  page: number
+  lastPage: number
 }> {
   const params = new URLSearchParams()
 
   params.set('publicationStatus', 'PUBLISHED')
+  params.set('page', String(query.page ?? 1))
   params.set('limit', String(query.limit ?? 8))
 
   if (query.categoryId) params.set('categoryId', query.categoryId)
@@ -339,15 +356,25 @@ async function getProductsNoStoreWithMeta(query: ProductQuery): Promise<{
     !Array.isArray(payload) && payload.meta && typeof payload.meta.total === 'number'
       ? payload.meta.total
       : products.length
+  const page =
+    !Array.isArray(payload) && payload.meta && typeof payload.meta.page === 'number'
+      ? payload.meta.page
+      : query.page ?? 1
+  const lastPage =
+    !Array.isArray(payload) && payload.meta && typeof payload.meta.lastPage === 'number'
+      ? payload.meta.lastPage
+      : 1
 
   if (!query.ids?.length) {
-    return { products, total }
+    return { products, total, page, lastPage }
   }
 
   const order = new Map(query.ids.map((id, index) => [Number(id), index]))
   return {
     products: [...products].sort((left, right) => (order.get(left.id) ?? 999) - (order.get(right.id) ?? 999)),
     total,
+    page,
+    lastPage,
   }
 }
 
@@ -373,16 +400,20 @@ export async function getStorefrontProductTypeBySlug(slug: string): Promise<Prod
 export async function getStorefrontCatalogData({
   search,
   sort,
+  page,
   categorySlug,
   productTypeSlug,
 }: {
   search?: string
   sort?: string
+  page?: number
   categorySlug?: string
   productTypeSlug?: string
 }): Promise<{
   products: ProductSummary[]
   total: number
+  page: number
+  lastPage: number
   search: string
   activeSort: 'newest' | 'most_sold' | 'instant_delivery'
   categories: CategorySummary[]
@@ -402,18 +433,21 @@ export async function getStorefrontCatalogData({
       ? sort
       : 'newest'
 
-  const { products, total } = await getProductsNoStoreWithMeta({
+  const { products, total, page: currentPage, lastPage } = await getProductsNoStoreWithMeta({
     search: search?.trim() || undefined,
     sortBy: activeSort,
+    page,
     categoryIds: categoryIds.length > 1 ? categoryIds : undefined,
     categoryId: categoryIds.length === 1 ? categoryIds[0] : undefined,
     productTypeId: resolvedProductType ? String(resolvedProductType.id) : undefined,
-    limit: 48,
+    limit: 24,
   })
 
   return {
     products,
     total,
+    page: currentPage,
+    lastPage,
     search: search?.trim() || '',
     activeSort,
     categories,
@@ -681,6 +715,40 @@ export async function getStorefrontMetadata(slugSegments?: string[]): Promise<Me
       description,
       url: canonical,
       images: image ? [{ url: image }] : undefined,
+    },
+  }
+}
+
+export function buildArchiveMetadata({
+  title,
+  description,
+  path,
+  image,
+  indexable,
+}: {
+  title: string
+  description: string
+  path: string
+  image?: string | null
+  indexable?: boolean | null
+}): Metadata {
+  const resolvedImage = resolveAssetUrl(image)
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: path,
+    },
+    robots: {
+      index: indexable !== false,
+      follow: true,
+    },
+    openGraph: {
+      title,
+      description,
+      url: path,
+      images: resolvedImage ? [{ url: resolvedImage }] : undefined,
     },
   }
 }
