@@ -22,6 +22,12 @@ export type StorefrontHeaderTheme = {
   glassBorderColor: string
   actionBackgroundColor: string
   actionTextColor: string
+  dropdownTriggerTextColor: string
+  dropdownTriggerBackgroundColor: string
+  dropdownPanelBackgroundColor: string
+  dropdownPanelTextColor: string
+  dropdownPanelBorderColor: string
+  dropdownPanelHoverBackgroundColor: string
   authPreviewMode: 'guest' | 'authenticated'
   authPreviewName: string
   menuItems: StorefrontHeaderMenuItem[]
@@ -62,6 +68,12 @@ export function resolveHeaderTheme(page: EnrichedStorefrontPage): StorefrontHead
     glassBorderColor: String(headerConfig.glassBorderColor ?? 'rgba(255,255,255,0.2)'),
     actionBackgroundColor: String(headerConfig.actionBackgroundColor ?? '#1f6a52'),
     actionTextColor: String(headerConfig.actionTextColor ?? '#ffffff'),
+    dropdownTriggerTextColor: String(headerConfig.dropdownTriggerTextColor ?? '#173126'),
+    dropdownTriggerBackgroundColor: String(headerConfig.dropdownTriggerBackgroundColor ?? 'rgba(255,255,255,0.35)'),
+    dropdownPanelBackgroundColor: String(headerConfig.dropdownPanelBackgroundColor ?? 'rgba(255,251,245,0.96)'),
+    dropdownPanelTextColor: String(headerConfig.dropdownPanelTextColor ?? '#173126'),
+    dropdownPanelBorderColor: String(headerConfig.dropdownPanelBorderColor ?? 'rgba(255,255,255,0.2)'),
+    dropdownPanelHoverBackgroundColor: String(headerConfig.dropdownPanelHoverBackgroundColor ?? 'rgba(255,255,255,0.52)'),
     authPreviewMode:
       String(headerConfig.authPreviewMode ?? 'guest') === 'authenticated' ? 'authenticated' : 'guest',
     authPreviewName: String(headerConfig.authPreviewName ?? '').trim(),
@@ -82,5 +94,11 @@ export function buildHeaderThemeVars(
     '--header-action-text': theme.actionTextColor,
     '--header-soft-bg': shouldShowGlass ? 'rgba(255,255,255,0.24)' : 'rgba(255,255,255,0.12)',
     '--header-nav-bg': shouldShowGlass ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.1)',
+    '--header-dropdown-trigger-text': theme.dropdownTriggerTextColor,
+    '--header-dropdown-trigger-bg': theme.dropdownTriggerBackgroundColor,
+    '--header-dropdown-panel-bg': theme.dropdownPanelBackgroundColor,
+    '--header-dropdown-panel-text': theme.dropdownPanelTextColor,
+    '--header-dropdown-panel-border': theme.dropdownPanelBorderColor,
+    '--header-dropdown-panel-hover-bg': theme.dropdownPanelHoverBackgroundColor,
   } as CSSProperties
 }

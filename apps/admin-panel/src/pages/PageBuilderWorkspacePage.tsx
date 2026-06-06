@@ -107,6 +107,12 @@ type PageForm = {
   headerGlassBorderColor: string
   headerActionBackgroundColor: string
   headerActionTextColor: string
+  headerDropdownTriggerTextColor: string
+  headerDropdownTriggerBackgroundColor: string
+  headerDropdownPanelBackgroundColor: string
+  headerDropdownPanelTextColor: string
+  headerDropdownPanelBorderColor: string
+  headerDropdownPanelHoverBackgroundColor: string
   headerAuthPreviewMode: 'guest' | 'authenticated'
   headerAuthPreviewName: string
   headerMenuItems: Array<{ label: string; href: string; highlighted: boolean; textColor: string; backgroundColor: string }>
@@ -264,6 +270,12 @@ function createEmptyForm(): PageForm {
     headerGlassBorderColor: 'rgba(255,255,255,0.2)',
     headerActionBackgroundColor: '#1f6a52',
     headerActionTextColor: '#ffffff',
+    headerDropdownTriggerTextColor: '#173126',
+    headerDropdownTriggerBackgroundColor: 'rgba(255,255,255,0.35)',
+    headerDropdownPanelBackgroundColor: 'rgba(255,251,245,0.96)',
+    headerDropdownPanelTextColor: '#173126',
+    headerDropdownPanelBorderColor: 'rgba(255,255,255,0.2)',
+    headerDropdownPanelHoverBackgroundColor: 'rgba(255,255,255,0.52)',
     headerAuthPreviewMode: 'guest',
     headerAuthPreviewName: '',
     headerMenuItems: [],
@@ -514,6 +526,12 @@ function mapApiPageToForm(page: Record<string, unknown>): PageForm {
     headerGlassBorderColor: readText(headerConfig, ['glassBorderColor'], 'rgba(255,255,255,0.2)'),
     headerActionBackgroundColor: readText(headerConfig, ['actionBackgroundColor'], '#1f6a52'),
     headerActionTextColor: readText(headerConfig, ['actionTextColor'], '#ffffff'),
+    headerDropdownTriggerTextColor: readText(headerConfig, ['dropdownTriggerTextColor'], '#173126'),
+    headerDropdownTriggerBackgroundColor: readText(headerConfig, ['dropdownTriggerBackgroundColor'], 'rgba(255,255,255,0.35)'),
+    headerDropdownPanelBackgroundColor: readText(headerConfig, ['dropdownPanelBackgroundColor'], 'rgba(255,251,245,0.96)'),
+    headerDropdownPanelTextColor: readText(headerConfig, ['dropdownPanelTextColor'], '#173126'),
+    headerDropdownPanelBorderColor: readText(headerConfig, ['dropdownPanelBorderColor'], 'rgba(255,255,255,0.2)'),
+    headerDropdownPanelHoverBackgroundColor: readText(headerConfig, ['dropdownPanelHoverBackgroundColor'], 'rgba(255,255,255,0.52)'),
     headerAuthPreviewMode: readText(headerConfig, ['authPreviewMode'], 'guest') === 'authenticated' ? 'authenticated' : 'guest',
     headerAuthPreviewName: readText(headerConfig, ['authPreviewName'], ''),
     headerMenuItems,
@@ -1263,6 +1281,12 @@ export function PageBuilderWorkspacePage({
         glassBorderColor: toOptionalText(form.headerGlassBorderColor),
         actionBackgroundColor: toOptionalText(form.headerActionBackgroundColor),
         actionTextColor: toOptionalText(form.headerActionTextColor),
+        dropdownTriggerTextColor: toOptionalText(form.headerDropdownTriggerTextColor),
+        dropdownTriggerBackgroundColor: toOptionalText(form.headerDropdownTriggerBackgroundColor),
+        dropdownPanelBackgroundColor: toOptionalText(form.headerDropdownPanelBackgroundColor),
+        dropdownPanelTextColor: toOptionalText(form.headerDropdownPanelTextColor),
+        dropdownPanelBorderColor: toOptionalText(form.headerDropdownPanelBorderColor),
+        dropdownPanelHoverBackgroundColor: toOptionalText(form.headerDropdownPanelHoverBackgroundColor),
         authPreviewMode: form.headerAuthPreviewMode,
         authPreviewName: form.headerAuthPreviewMode === 'authenticated' ? toOptionalText(form.headerAuthPreviewName) : undefined,
         menuItems: form.headerMenuItems
@@ -1585,6 +1609,12 @@ export function PageBuilderWorkspacePage({
             <ColorField hint="برای شفافیت، rgba دستی هم پشتیبانی می‌شود." label="رنگ border glass" onChange={(value) => updateForm('headerGlassBorderColor', value)} pickerFallback="#ffffff" value={form.headerGlassBorderColor} />
             <ColorField label="رنگ پس‌زمینه اکشن‌ها" onChange={(value) => updateForm('headerActionBackgroundColor', value)} value={form.headerActionBackgroundColor} />
             <ColorField label="رنگ متن اکشن‌ها" onChange={(value) => updateForm('headerActionTextColor', value)} pickerFallback="#ffffff" value={form.headerActionTextColor} />
+            <ColorField label="رنگ متن منوهای دسته‌بندی" onChange={(value) => updateForm('headerDropdownTriggerTextColor', value)} value={form.headerDropdownTriggerTextColor} />
+            <ColorField label="پس‌زمینه منوهای دسته‌بندی" onChange={(value) => updateForm('headerDropdownTriggerBackgroundColor', value)} pickerFallback="#f5efe4" value={form.headerDropdownTriggerBackgroundColor} />
+            <ColorField label="پس‌زمینه پنل dropdown" onChange={(value) => updateForm('headerDropdownPanelBackgroundColor', value)} pickerFallback="#f5efe4" value={form.headerDropdownPanelBackgroundColor} />
+            <ColorField label="رنگ متن پنل dropdown" onChange={(value) => updateForm('headerDropdownPanelTextColor', value)} value={form.headerDropdownPanelTextColor} />
+            <ColorField label="رنگ border پنل dropdown" onChange={(value) => updateForm('headerDropdownPanelBorderColor', value)} pickerFallback="#ffffff" value={form.headerDropdownPanelBorderColor} />
+            <ColorField label="رنگ hover آیتم‌های dropdown" onChange={(value) => updateForm('headerDropdownPanelHoverBackgroundColor', value)} pickerFallback="#ffffff" value={form.headerDropdownPanelHoverBackgroundColor} />
             <label className="fm-field">
               <span>پیش‌نمایش وضعیت کاربر</span>
               <select onChange={(event) => updateForm('headerAuthPreviewMode', event.target.value as 'guest' | 'authenticated')} value={form.headerAuthPreviewMode}>

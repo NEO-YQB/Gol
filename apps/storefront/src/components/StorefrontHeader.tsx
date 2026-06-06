@@ -204,7 +204,7 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
           <nav className="hidden min-w-0 flex-wrap items-center gap-2 md:flex md:gap-3">
             <div className={storefrontStyles.headerDropdownRoot}>
               <button
-                className={`${storefrontStyles.headerDropdownTrigger} ${storefrontStyles.headerNavDefault}`}
+                className={storefrontStyles.headerDropdownTrigger}
                 onClick={() => toggleDesktopMenu('categories')}
                 type="button"
               >
@@ -217,7 +217,7 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
 
             <div className={storefrontStyles.headerDropdownRoot}>
               <button
-                className={`${storefrontStyles.headerDropdownTrigger} ${storefrontStyles.headerNavDefault}`}
+                className={storefrontStyles.headerDropdownTrigger}
                 onClick={() => toggleDesktopMenu('productTypes')}
                 type="button"
               >
