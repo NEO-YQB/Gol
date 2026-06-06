@@ -162,6 +162,10 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
     router.push(currentPath)
   }
 
+  function toggleDesktopMenu(menu: 'categories' | 'productTypes') {
+    setOpenDesktopMenu((current) => (current === menu ? null : menu))
+  }
+
   if (!theme.enabled) return null
 
   function renderCategoryTree(items: CategorySummary[], depth = 0): React.ReactNode {
@@ -196,12 +200,12 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
             )}
           </Link>
           <nav className="hidden min-w-0 flex-wrap items-center gap-2 md:flex md:gap-3">
-            <div
-              className={storefrontStyles.headerDropdownRoot}
-              onMouseEnter={() => setOpenDesktopMenu('categories')}
-              onMouseLeave={() => setOpenDesktopMenu((current) => (current === 'categories' ? null : current))}
-            >
-              <button className={storefrontStyles.headerDropdownTrigger} type="button">
+            <div className={storefrontStyles.headerDropdownRoot}>
+              <button
+                className={`${storefrontStyles.headerDropdownTrigger} ${storefrontStyles.headerNavDefault}`}
+                onClick={() => toggleDesktopMenu('categories')}
+                type="button"
+              >
                 دسته‌بندی‌ها
               </button>
               {openDesktopMenu === 'categories' && categories.length ? (
@@ -209,12 +213,12 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
               ) : null}
             </div>
 
-            <div
-              className={storefrontStyles.headerDropdownRoot}
-              onMouseEnter={() => setOpenDesktopMenu('productTypes')}
-              onMouseLeave={() => setOpenDesktopMenu((current) => (current === 'productTypes' ? null : current))}
-            >
-              <button className={storefrontStyles.headerDropdownTrigger} type="button">
+            <div className={storefrontStyles.headerDropdownRoot}>
+              <button
+                className={`${storefrontStyles.headerDropdownTrigger} ${storefrontStyles.headerNavDefault}`}
+                onClick={() => toggleDesktopMenu('productTypes')}
+                type="button"
+              >
                 نوع محصولات
               </button>
               {openDesktopMenu === 'productTypes' && productTypes.length ? (

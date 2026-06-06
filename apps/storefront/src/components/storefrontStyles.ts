@@ -22,7 +22,7 @@ export const storefrontStyles = {
   headerNavDefault: 'bg-[var(--header-nav-bg)] text-[var(--header-text)]',
   headerNavHighlight: 'bg-[var(--header-action-bg)] text-[var(--header-action-text)]',
   headerDropdownRoot: 'relative',
-  headerDropdownTrigger: 'inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition-all duration-300 hover:translate-y-[-1px] bg-[var(--header-nav-bg)] text-[var(--header-text)]',
+  headerDropdownTrigger: 'inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition-all duration-300 hover:translate-y-[-1px]',
   headerDropdownPanel:
     'absolute right-0 top-[calc(100%+10px)] z-30 min-w-[260px] rounded-[24px] border border-[var(--header-glass-border)] bg-[var(--header-glass-bg)] p-3 text-[var(--header-text)] shadow-[0_20px_45px_rgba(20,29,25,0.16)] backdrop-blur-2xl',
   headerDropdownItem:
