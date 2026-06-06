@@ -83,7 +83,7 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
           <div className="group overflow-hidden rounded-[26px] bg-[#f6efe5]">
             <img
               alt={activeImage?.alt || product.name}
-              className="h-[320px] w-full object-cover transition duration-300 group-hover:scale-[1.22] md:h-[360px] xl:h-[380px]"
+              className="aspect-square w-full object-cover transition duration-300 group-hover:scale-[1.22]"
               src={resolveAssetUrl(activeImage?.url || product.mainImage)}
             />
           </div>
