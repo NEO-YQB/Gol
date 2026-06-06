@@ -5,8 +5,17 @@ const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
   'http://localhost:3000/v1'
 
-export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const { id } = await context.params
+type RouteContext = {
+  params?: Promise<Record<string, string | string[] | undefined>>
+}
+
+export async function PATCH(request: NextRequest, context: RouteContext) {
+  const params = await context.params
+  const id = typeof params?.id === 'string' ? params.id : ''
+
+  if (!id) {
+    return NextResponse.json({ message: 'شناسه آدرس نامعتبر است' }, { status: 400 })
+  }
 
   try {
     const response = await fetch(`${API_BASE_URL}/addresses/${id}/default`, {
