@@ -111,7 +111,7 @@ export function StorefrontCatalogPage({
                       href={buildHref({ categorySlug: category.slug })}
                       key={category.id}
                     >
-                      <span style={{ paddingInlineRight: `${category.depth * 12}px` }}>{category.name}</span>
+                      <span style={{ paddingInlineStart: `${category.depth * 12}px` }}>{category.name}</span>
                     </Link>
                   )
                 })}
