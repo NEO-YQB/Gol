@@ -79,11 +79,11 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(280px,0.62fr)_320px]">
-        <article className={`${storefrontCatalog.card} overflow-hidden`}>
+        <article className={`${storefrontCatalog.card} h-fit overflow-hidden self-start`}>
           <div className="group overflow-hidden rounded-[26px] bg-[#f6efe5]">
             <img
               alt={activeImage?.alt || product.name}
-              className="h-[360px] w-full object-cover transition duration-300 group-hover:scale-[1.35] md:h-[420px]"
+              className="h-[320px] w-full object-cover transition duration-300 group-hover:scale-[1.22] md:h-[360px] xl:h-[380px]"
               src={resolveAssetUrl(activeImage?.url || product.mainImage)}
             />
           </div>
@@ -178,7 +178,7 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
         </aside>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_320px]">
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.8fr)]">
         <article className={storefrontCatalog.card}>
           <h2 className="text-2xl font-black text-[#173126]">توضیحات کامل محصول</h2>
           <div className="mt-4 text-sm leading-8 text-[#5f564c] whitespace-pre-line">
@@ -186,14 +186,23 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
           </div>
         </article>
 
-        <aside className={storefrontCatalog.card}>
-          <h2 className="text-xl font-black text-[#173126]">شفاف‌سازی خرید</h2>
+        <aside className="rounded-[30px] border border-[#b7d7c8] bg-[linear-gradient(180deg,rgba(237,248,241,0.98),rgba(224,242,232,0.96))] px-5 py-5 shadow-[0_14px_34px_rgba(52,36,17,0.06)]">
+          <h2 className="text-xl font-black text-[#224638]">{`درباره فروشگاه ${product.store?.name || 'فروشنده'}`}</h2>
           <div className="mt-4 grid gap-3">
-            <div className="rounded-[20px] bg-[#f9f4ec] px-4 py-4 text-sm leading-7 text-[#5f564c]">
-              اطلاعات این بخش فقط از داده‌های عمومی فروشگاه نمایش داده می‌شود و شامل وضعیت ارسال، امتیاز مشتریان و اطلاعات عمومی فروشنده است.
+            <div className="rounded-[20px] bg-white/70 px-4 py-4 text-sm leading-7 text-[#416353]">
+              {product.store?.name
+                ? `${product.store.name} یکی از فروشگاه‌های فعال این مارکت‌پلیس است و اطلاعات این بخش فقط از داده‌های عمومی و قابل‌نمایش برای مشتری ساخته شده است.`
+                : 'اطلاعات این بخش فقط از داده‌های عمومی و قابل‌نمایش فروشگاه برای مشتری ساخته شده است.'}
             </div>
-            <div className="rounded-[20px] bg-[#f9f4ec] px-4 py-4 text-sm leading-7 text-[#5f564c]">
-              اطلاعات مدیریتی، سلامت داخلی فروشنده و جزئیات مالی عمداً در این صفحه نمایش داده نمی‌شود.
+            <div className="rounded-[20px] bg-white/70 px-4 py-4 text-sm leading-7 text-[#416353]">
+              {product.store?.sameDayDelivery
+                ? 'این فروشگاه ارسال فوری را برای بخشی از سفارش‌ها فعال کرده و می‌تواند گزینه مناسب‌تری برای خریدهای زمان‌حساس باشد.'
+                : 'این فروشگاه در حال حاضر با الگوی ارسال استاندارد سفارش‌ها را مدیریت می‌کند و وضعیت آن برای مشتری به‌صورت شفاف نمایش داده می‌شود.'}
+            </div>
+            <div className="rounded-[20px] bg-white/70 px-4 py-4 text-sm leading-7 text-[#416353]">
+              {ratingCount > 0
+                ? `تا این لحظه ${new Intl.NumberFormat('fa-IR').format(ratingCount)} نظر برای این فروشگاه ثبت شده و میانگین رضایت مشتریان ${ratingAverage > 0 ? ratingAverage.toFixed(1) : 'جدید'} است.`
+                : 'هنوز نظر ثبت‌شده‌ای برای این فروشگاه نمایش داده نشده، اما جزئیات عمومی فروشگاه در همین صفحه در دسترس است.'}
             </div>
           </div>
         </aside>
