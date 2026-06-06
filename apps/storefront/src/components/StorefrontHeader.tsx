@@ -170,11 +170,13 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
 
   function renderCategoryTree(items: CategorySummary[], depth = 0): React.ReactNode {
     return items.map((item) => (
-      <div key={`category-${item.id}-${depth}`}>
-        <Link className={storefrontStyles.headerDropdownItem} href={`/categories/${item.slug}`}>
-          <span>{item.name}</span>
+      <div className={storefrontStyles.headerDropdownChildRoot} key={`category-${item.id}-${depth}`}>
+        <div className={storefrontStyles.headerDropdownItem}>
+          <Link className="min-w-0 flex-1" href={`/categories/${item.slug}`}>
+            {item.name}
+          </Link>
           {Array.isArray(item.children) && item.children.length ? <span className="text-xs opacity-70">‹</span> : null}
-        </Link>
+        </div>
         {Array.isArray(item.children) && item.children.length ? (
           <div className={storefrontStyles.headerDropdownChildPanel}>{renderCategoryTree(item.children, depth + 1)}</div>
         ) : null}
