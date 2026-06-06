@@ -153,6 +153,10 @@ const API_BASE_URL =
   process.env.API_BASE_URL ||
   'http://localhost:3000/v1'
 
+export function getStorefrontApiBaseUrl() {
+  return API_BASE_URL
+}
+
 function toRecord(value: unknown): Record<string, unknown> {
   return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {}
 }
@@ -252,6 +256,14 @@ const getStores = cache(async (): Promise<StoreSummary[]> => {
 const getProductTypes = cache(async (): Promise<ProductTypeSummary[]> => {
   return requestCached<ProductTypeSummary[]>('/product-types')
 })
+
+export async function getStorefrontCategories(): Promise<CategorySummary[]> {
+  return getCategories()
+}
+
+export async function getStorefrontProductTypes(): Promise<ProductTypeSummary[]> {
+  return getProductTypes()
+}
 
 const getArticles = cache(async (limit: number): Promise<ArticleSummary[]> => {
   const params = new URLSearchParams()

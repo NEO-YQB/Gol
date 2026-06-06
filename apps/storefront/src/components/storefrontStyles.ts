@@ -21,6 +21,14 @@ export const storefrontStyles = {
   headerNavItem: 'rounded-full px-4 py-2 text-sm font-bold transition-all duration-300 hover:translate-y-[-1px]',
   headerNavDefault: 'bg-[var(--header-nav-bg)] text-[var(--header-text)]',
   headerNavHighlight: 'bg-[var(--header-action-bg)] text-[var(--header-action-text)]',
+  headerDropdownRoot: 'relative',
+  headerDropdownTrigger: 'inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition-all duration-300 hover:translate-y-[-1px] bg-[var(--header-nav-bg)] text-[var(--header-text)]',
+  headerDropdownPanel:
+    'absolute right-0 top-[calc(100%+10px)] z-30 min-w-[260px] rounded-[24px] border border-[var(--header-glass-border)] bg-[var(--header-glass-bg)] p-3 text-[var(--header-text)] shadow-[0_20px_45px_rgba(20,29,25,0.16)] backdrop-blur-2xl',
+  headerDropdownItem:
+    'flex items-center justify-between gap-3 rounded-2xl px-4 py-3 text-sm font-bold text-[var(--header-text)] transition-colors hover:bg-white/20',
+  headerDropdownChildPanel:
+    'mt-2 mr-3 grid gap-2 border-r border-[var(--header-glass-border)] pr-3',
   headerAction:
     'inline-flex items-center gap-2 rounded-full bg-[var(--header-action-bg)] px-4 py-2 text-sm font-bold text-[var(--header-action-text)] shadow-[0_14px_30px_rgba(15,32,25,0.14)] transition-all duration-300 hover:translate-y-[-1px]',
   userMenuPanel:

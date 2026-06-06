@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import type { EnrichedStorefrontPage } from '../lib/storefront'
+import type { CategorySummary, EnrichedStorefrontPage, ProductTypeSummary } from '../lib/storefront'
 import { resolveAssetUrl } from '../lib/storefront'
 import { clearStoredToken, completeProfile, getCurrentUser, readStoredToken, sendOtp, verifyOtp, writeStoredToken, type StorefrontUser } from '../lib/storefrontAuth'
 import { CartIcon, MenuIcon, UserIcon } from './storefrontIcons'
@@ -23,6 +23,9 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
   const [authMessage, setAuthMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [sessionUser, setSessionUser] = useState<StorefrontUser | null>(null)
+  const [categories, setCategories] = useState<CategorySummary[]>([])
+  const [productTypes, setProductTypes] = useState<ProductTypeSummary[]>([])
+  const [openDesktopMenu, setOpenDesktopMenu] = useState<'categories' | 'productTypes' | null>(null)
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -61,6 +64,26 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
         clearStoredToken()
         setSessionUser(null)
       })
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/catalog/categories', { cache: 'no-store' })
+      .then((response) => response.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setCategories(data)
+        }
+      })
+      .catch(() => {})
+
+    fetch('/api/catalog/product-types', { cache: 'no-store' })
+      .then((response) => response.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setProductTypes(data)
+        }
+      })
+      .catch(() => {})
   }, [])
 
   async function handleSendOtp() {
@@ -141,6 +164,20 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
 
   if (!theme.enabled) return null
 
+  function renderCategoryTree(items: CategorySummary[], depth = 0): React.ReactNode {
+    return items.map((item) => (
+      <div key={`category-${item.id}-${depth}`}>
+        <Link className={storefrontStyles.headerDropdownItem} href={`/categories/${item.slug}`}>
+          <span>{item.name}</span>
+          {Array.isArray(item.children) && item.children.length ? <span className="text-xs opacity-70">‹</span> : null}
+        </Link>
+        {Array.isArray(item.children) && item.children.length ? (
+          <div className={storefrontStyles.headerDropdownChildPanel}>{renderCategoryTree(item.children, depth + 1)}</div>
+        ) : null}
+      </div>
+    ))
+  }
+
   const shouldFloat = isScrolled && theme.stickyVariant === 'floating'
   const shouldShowGlass = isScrolled || !theme.transparentOnTop || !heroTouchesTop
   const headerVars = buildHeaderThemeVars(theme, shouldShowGlass)
@@ -159,6 +196,40 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
             )}
           </Link>
           <nav className="hidden min-w-0 flex-wrap items-center gap-2 md:flex md:gap-3">
+            <div
+              className={storefrontStyles.headerDropdownRoot}
+              onMouseEnter={() => setOpenDesktopMenu('categories')}
+              onMouseLeave={() => setOpenDesktopMenu((current) => (current === 'categories' ? null : current))}
+            >
+              <button className={storefrontStyles.headerDropdownTrigger} type="button">
+                دسته‌بندی‌ها
+              </button>
+              {openDesktopMenu === 'categories' && categories.length ? (
+                <div className={storefrontStyles.headerDropdownPanel}>{renderCategoryTree(categories)}</div>
+              ) : null}
+            </div>
+
+            <div
+              className={storefrontStyles.headerDropdownRoot}
+              onMouseEnter={() => setOpenDesktopMenu('productTypes')}
+              onMouseLeave={() => setOpenDesktopMenu((current) => (current === 'productTypes' ? null : current))}
+            >
+              <button className={storefrontStyles.headerDropdownTrigger} type="button">
+                نوع محصولات
+              </button>
+              {openDesktopMenu === 'productTypes' && productTypes.length ? (
+                <div className={storefrontStyles.headerDropdownPanel}>
+                  <div className="grid gap-2">
+                    {productTypes.map((item) => (
+                      <Link className={storefrontStyles.headerDropdownItem} href={`/product-types/${item.slug}`} key={`product-type-${item.id}`}>
+                        <span>{item.name}</span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
             {theme.menuItems.map((item) => (
               <Link
                 className={`${storefrontStyles.headerNavItem} ${item.highlighted ? storefrontStyles.headerNavHighlight : storefrontStyles.headerNavDefault}`}
@@ -310,6 +381,24 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
 
       <div className={`${storefrontStyles.mobileMenuPanel} ${isMobileMenuOpen ? 'max-h-[75vh] translate-y-0 opacity-100' : 'max-h-0 -translate-y-2 opacity-0'}`}>
         <div className="grid gap-2 p-4">
+          {categories.length ? (
+            <details className={`rounded-2xl px-4 py-3 ${storefrontStyles.headerSoftSurface}`}>
+              <summary className={`cursor-pointer text-sm font-bold ${storefrontStyles.headerText}`}>دسته‌بندی‌ها</summary>
+              <div className="mt-3 grid gap-2">{renderCategoryTree(categories)}</div>
+            </details>
+          ) : null}
+          {productTypes.length ? (
+            <details className={`rounded-2xl px-4 py-3 ${storefrontStyles.headerSoftSurface}`}>
+              <summary className={`cursor-pointer text-sm font-bold ${storefrontStyles.headerText}`}>نوع محصولات</summary>
+              <div className="mt-3 grid gap-2">
+                {productTypes.map((item) => (
+                  <Link className={`rounded-2xl px-4 py-3 text-sm font-bold ${storefrontStyles.headerText} transition-colors hover:bg-white/30`} href={`/product-types/${item.slug}`} key={`mobile-type-${item.id}`}>
+                    {item.name}
+                  </Link>
+                ))}
+              </div>
+            </details>
+          ) : null}
           {theme.menuItems.map((item) => (
             <Link
               className={`${storefrontStyles.headerNavItem} ${item.highlighted ? storefrontStyles.headerNavHighlight : storefrontStyles.headerNavDefault} rounded-2xl text-center`}
