@@ -119,6 +119,16 @@ export type StoreSummary = {
   customerRatingCount?: number
 }
 
+type MetadataInput = {
+  title: string
+  description: string
+  path: string
+  image?: string | null
+  indexable?: boolean | null
+  keywords?: string[]
+  type?: 'website' | 'article'
+}
+
 export type ArticleSummary = {
   id: number
   title: string
@@ -754,18 +764,43 @@ export function buildArchiveMetadata({
   path,
   image,
   indexable,
+  keywords,
+  type = 'website',
 }: {
   title: string
   description: string
   path: string
   image?: string | null
   indexable?: boolean | null
+  keywords?: string[]
+  type?: 'website' | 'article'
 }): Metadata {
+  return buildRichMetadata({
+    title,
+    description,
+    path,
+    image,
+    indexable,
+    keywords,
+    type,
+  })
+}
+
+export function buildRichMetadata({
+  title,
+  description,
+  path,
+  image,
+  indexable,
+  keywords,
+  type = 'website',
+}: MetadataInput): Metadata {
   const resolvedImage = resolveAssetUrl(image)
 
   return {
     title,
     description,
+    keywords,
     alternates: {
       canonical: path,
     },
@@ -777,8 +812,105 @@ export function buildArchiveMetadata({
       title,
       description,
       url: path,
+      type,
       images: resolvedImage ? [{ url: resolvedImage }] : undefined,
     },
+    twitter: {
+      card: resolvedImage ? 'summary_large_image' : 'summary',
+      title,
+      description,
+      images: resolvedImage ? [resolvedImage] : undefined,
+    },
+  }
+}
+
+export function buildBreadcrumbJsonLd(
+  items: Array<{ name: string; path: string }>,
+) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map((item, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: item.name,
+      item: item.path,
+    })),
+  }
+}
+
+export function buildCollectionPageJsonLd({
+  title,
+  description,
+  path,
+}: {
+  title: string
+  description: string
+  path: string
+}) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: title,
+    description,
+    url: path,
+  }
+}
+
+export function buildProductJsonLd(product: StorefrontProductDetail) {
+  const imageUrls = [
+    resolveAssetUrl(product.mainImage),
+    ...(Array.isArray(product.gallery) ? product.gallery.map((item) => resolveAssetUrl(item.url)) : []),
+  ].filter(Boolean)
+
+  const hasDiscount =
+    typeof product.discountPrice === 'number' &&
+    product.discountPrice > 0 &&
+    product.discountPrice < product.price
+
+  const price = hasDiscount ? Number(product.discountPrice) : product.price
+  const ratingValue = Number(product.store?.customerRatingAverage ?? 0)
+  const reviewCount = Number(product.store?.customerRatingCount ?? 0)
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.metaTitle || product.name,
+    description:
+      product.metaDescription ||
+      product.shortDescription ||
+      product.description ||
+      `جزئیات محصول ${product.name}`,
+    image: imageUrls,
+    sku: String(product.id),
+    category: product.category?.name,
+    brand: product.store?.name
+      ? {
+          '@type': 'Brand',
+          name: product.store.name,
+        }
+      : undefined,
+    offers: {
+      '@type': 'Offer',
+      priceCurrency: 'IRR',
+      price,
+      availability: product.isPurchasable ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+      url: `/products/${product.slug}`,
+      seller: product.store?.name
+        ? {
+            '@type': 'Organization',
+            name: product.store.name,
+          }
+        : undefined,
+    },
+    aggregateRating:
+      ratingValue > 0 && reviewCount > 0
+        ? {
+            '@type': 'AggregateRating',
+            ratingValue,
+            reviewCount,
+          }
+        : undefined,
   }
 }
 

@@ -1,7 +1,13 @@
 import { notFound } from 'next/navigation'
 import { StorefrontCatalogPage } from '../../../components/StorefrontCatalogPage'
 import { StorefrontShell } from '../../../components/StorefrontShell'
-import { buildArchiveMetadata, getStorefrontCatalogData, getStorefrontCategoryBySlug } from '../../../lib/storefront'
+import {
+  buildArchiveMetadata,
+  buildBreadcrumbJsonLd,
+  buildCollectionPageJsonLd,
+  getStorefrontCatalogData,
+  getStorefrontCategoryBySlug,
+} from '../../../lib/storefront'
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -21,6 +27,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     path: `/categories/${slug}`,
     image: category.image,
     indexable: category.isIndexed,
+    keywords: [category.name, 'دسته‌بندی محصولات', 'خرید گل', 'گلینو'],
   })
 }
 
@@ -50,9 +57,30 @@ export default async function CategoryArchivePage({
     categorySlug: slug,
     productTypeSlug: typeof query.type === 'string' ? query.type : '',
   })
+  const pageTitle = resolvedCategory.name
+  const pageDescription = `محصولات مرتبط با ${resolvedCategory.name}`
+  const categoryPath = `/categories/${slug}`
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd([
+    { name: 'خانه', path: '/' },
+    { name: 'فروشگاه', path: '/shop' },
+    { name: resolvedCategory.name, path: categoryPath },
+  ])
+  const collectionJsonLd = buildCollectionPageJsonLd({
+    title: pageTitle,
+    description: pageDescription,
+    path: categoryPath,
+  })
 
   return (
     <StorefrontShell>
+      <script
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        type="application/ld+json"
+      />
+      <script
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionJsonLd) }}
+        type="application/ld+json"
+      />
       <StorefrontCatalogPage
         activeCategorySlug={slug}
         activeProductTypeSlug={typeof query.type === 'string' ? query.type : ''}
@@ -61,12 +89,12 @@ export default async function CategoryArchivePage({
         basePath={`/categories/${slug}`}
         categories={catalog.categories}
         currentPage={catalog.page}
-        description={`محصولات مرتبط با ${resolvedCategory.name}`}
+        description={pageDescription}
         lastPage={catalog.lastPage}
         productTypes={catalog.productTypes}
         products={catalog.products}
         searchValue={catalog.search}
-        title={resolvedCategory.name}
+        title={pageTitle}
         total={catalog.total}
         userLat={typeof query.userLat === 'string' ? Number(query.userLat) || undefined : undefined}
         userLng={typeof query.userLng === 'string' ? Number(query.userLng) || undefined : undefined}

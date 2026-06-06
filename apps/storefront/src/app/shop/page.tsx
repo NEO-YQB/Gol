@@ -1,6 +1,6 @@
 import { StorefrontCatalogPage } from '../../components/StorefrontCatalogPage'
 import { StorefrontShell } from '../../components/StorefrontShell'
-import { buildArchiveMetadata, getStorefrontCatalogData } from '../../lib/storefront'
+import { buildArchiveMetadata, buildBreadcrumbJsonLd, buildCollectionPageJsonLd, getStorefrontCatalogData } from '../../lib/storefront'
 
 export async function generateMetadata() {
   return buildArchiveMetadata({
@@ -8,6 +8,7 @@ export async function generateMetadata() {
     description: 'فهرست کامل محصولات فروشگاه با فیلتر دسته‌بندی، نوع محصول، جستجو و مرتب‌سازی.',
     path: '/shop',
     indexable: true,
+    keywords: ['آرشیو محصولات', 'خرید گل', 'فروشگاه گل', 'گلینو'],
   })
 }
 
@@ -26,9 +27,28 @@ export default async function ShopArchivePage({
     categorySlug: typeof query.category === 'string' ? query.category : '',
     productTypeSlug: typeof query.type === 'string' ? query.type : '',
   })
+  const title = 'همه محصولات'
+  const description = 'همه محصولات فروشگاه'
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd([
+    { name: 'خانه', path: '/' },
+    { name: 'فروشگاه', path: '/shop' },
+  ])
+  const collectionJsonLd = buildCollectionPageJsonLd({
+    title,
+    description,
+    path: '/shop',
+  })
 
   return (
     <StorefrontShell>
+      <script
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        type="application/ld+json"
+      />
+      <script
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionJsonLd) }}
+        type="application/ld+json"
+      />
       <StorefrontCatalogPage
         activeCategorySlug={typeof query.category === 'string' ? query.category : ''}
         activeProductTypeSlug={typeof query.type === 'string' ? query.type : ''}
@@ -37,12 +57,12 @@ export default async function ShopArchivePage({
         basePath="/shop"
         categories={catalog.categories}
         currentPage={catalog.page}
-        description="همه محصولات فروشگاه"
+        description={description}
         lastPage={catalog.lastPage}
         productTypes={catalog.productTypes}
         products={catalog.products}
         searchValue={catalog.search}
-        title="همه محصولات"
+        title={title}
         total={catalog.total}
         userLat={typeof query.userLat === 'string' ? Number(query.userLat) || undefined : undefined}
         userLng={typeof query.userLng === 'string' ? Number(query.userLng) || undefined : undefined}

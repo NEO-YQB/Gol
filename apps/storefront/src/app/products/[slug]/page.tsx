@@ -1,7 +1,12 @@
 import { notFound } from 'next/navigation'
 import { StorefrontProductDetailPage } from '../../../components/StorefrontProductDetailPage'
 import { StorefrontShell } from '../../../components/StorefrontShell'
-import { buildArchiveMetadata, getStorefrontProductBySlug } from '../../../lib/storefront'
+import {
+  buildArchiveMetadata,
+  buildBreadcrumbJsonLd,
+  buildProductJsonLd,
+  getStorefrontProductBySlug,
+} from '../../../lib/storefront'
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -21,6 +26,15 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     path: `/products/${slug}`,
     image: product.mainImage,
     indexable: true,
+    keywords: [
+      product.name,
+      product.category?.name || '',
+      product.productType?.name || '',
+      product.store?.name || '',
+      'خرید گل',
+      'گلینو',
+    ].filter(Boolean),
+    type: 'article',
   })
 }
 
@@ -35,9 +49,24 @@ export default async function ProductDetailPage({
   if (!product) {
     notFound()
   }
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd([
+    { name: 'خانه', path: '/' },
+    { name: 'فروشگاه', path: '/shop' },
+    ...(product.category?.slug ? [{ name: product.category.name, path: `/categories/${product.category.slug}` }] : []),
+    { name: product.name, path: `/products/${product.slug}` },
+  ])
+  const productJsonLd = buildProductJsonLd(product)
 
   return (
     <StorefrontShell>
+      <script
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        type="application/ld+json"
+      />
+      <script
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+        type="application/ld+json"
+      />
       <StorefrontProductDetailPage product={product} />
     </StorefrontShell>
   )
