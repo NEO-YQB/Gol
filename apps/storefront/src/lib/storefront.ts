@@ -77,6 +77,12 @@ export type StorefrontProductDetail = ProductSummary & {
   shortDescription?: string | null
   gallery?: Array<{ url: string; alt?: string | null }>
   productType?: ProductTypeSummary | null
+  store?: {
+    id: number
+    name: string
+    slug: string
+    sameDayDelivery?: boolean
+  } | null
   composition?: Array<{
     id: number
     quantity: number
