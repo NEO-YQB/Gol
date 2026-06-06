@@ -136,6 +136,42 @@ export class StorefrontHeaderConfigDto {
   @MaxLength(50)
   actionTextColor?: string;
 
+  @ApiPropertyOptional({ example: '#173126' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  dropdownTriggerTextColor?: string;
+
+  @ApiPropertyOptional({ example: 'rgba(255,255,255,0.35)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  dropdownTriggerBackgroundColor?: string;
+
+  @ApiPropertyOptional({ example: 'rgba(255,251,245,0.96)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  dropdownPanelBackgroundColor?: string;
+
+  @ApiPropertyOptional({ example: '#173126' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  dropdownPanelTextColor?: string;
+
+  @ApiPropertyOptional({ example: 'rgba(255,255,255,0.2)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  dropdownPanelBorderColor?: string;
+
+  @ApiPropertyOptional({ example: 'rgba(255,255,255,0.52)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  dropdownPanelHoverBackgroundColor?: string;
+
   @ApiPropertyOptional({ enum: StorefrontHeaderAuthPreviewMode, example: StorefrontHeaderAuthPreviewMode.GUEST })
   @IsOptional()
   @IsEnum(StorefrontHeaderAuthPreviewMode)

@@ -362,6 +362,12 @@ export class PageBuilderService {
       glassBorderColor: this.normalizeNullableText(headerConfig.glassBorderColor),
       actionBackgroundColor: this.normalizeNullableText(headerConfig.actionBackgroundColor),
       actionTextColor: this.normalizeNullableText(headerConfig.actionTextColor),
+      dropdownTriggerTextColor: this.normalizeNullableText(headerConfig.dropdownTriggerTextColor),
+      dropdownTriggerBackgroundColor: this.normalizeNullableText(headerConfig.dropdownTriggerBackgroundColor),
+      dropdownPanelBackgroundColor: this.normalizeNullableText(headerConfig.dropdownPanelBackgroundColor),
+      dropdownPanelTextColor: this.normalizeNullableText(headerConfig.dropdownPanelTextColor),
+      dropdownPanelBorderColor: this.normalizeNullableText(headerConfig.dropdownPanelBorderColor),
+      dropdownPanelHoverBackgroundColor: this.normalizeNullableText(headerConfig.dropdownPanelHoverBackgroundColor),
       authPreviewMode:
         headerConfig.authPreviewMode === StorefrontHeaderAuthPreviewMode.AUTHENTICATED
           ? StorefrontHeaderAuthPreviewMode.AUTHENTICATED
