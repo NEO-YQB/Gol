@@ -48,6 +48,7 @@ export type ProductSummary = {
   shortDescription?: string | null
   metaTitle?: string | null
   metaDescription?: string | null
+  aerialDistanceKm?: number
   isPurchasable?: boolean
   isArchived?: boolean
   publicationStatus?: string

@@ -359,9 +359,14 @@ export class ProductService {
         include,
       });
 
-      const sortedProducts = [...products].sort((left, right) => {
-        const leftDistance = this.calculateDistance(userLat, userLng, left.store?.lat, left.store?.lng);
-        const rightDistance = this.calculateDistance(userLat, userLng, right.store?.lat, right.store?.lng);
+      const productsWithDistance = products.map((product) => ({
+        ...product,
+        aerialDistanceKm: this.calculateDistance(userLat, userLng, product.store?.lat, product.store?.lng),
+      }));
+
+      const sortedProducts = [...productsWithDistance].sort((left, right) => {
+        const leftDistance = left.aerialDistanceKm;
+        const rightDistance = right.aerialDistanceKm;
 
         if (leftDistance !== rightDistance) {
           return leftDistance - rightDistance;
