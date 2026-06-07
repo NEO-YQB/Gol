@@ -43,6 +43,7 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
   const authMode = sessionUser && !needsInlineProfileCompletion ? 'authenticated' : theme.authPreviewMode
   const authName = sessionUser?.fullName?.trim() || theme.authPreviewName
   const moneyFormatter = useMemo(() => new Intl.NumberFormat('fa-IR'), [])
+  const cartMetaTextClass = 'text-[#7d817b]'
 
   useEffect(() => {
     function onScroll() {
@@ -306,7 +307,7 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
                 <div className="grid gap-3">
                   <div className="flex items-center justify-between gap-3 px-1">
                     <strong className={`text-sm ${storefrontStyles.headerText}`}>سبد خرید شما</strong>
-                    <span className={`text-xs ${storefrontStyles.headerMutedText}`}>{cartCount ? `${moneyFormatter.format(cartCount)} آیتم` : 'خالی است'}</span>
+                    <span className={`text-xs ${cartMetaTextClass}`}>{cartCount ? `${moneyFormatter.format(cartCount)} آیتم` : 'خالی است'}</span>
                   </div>
                   {cartItems.length ? (
                     <div className="grid max-h-[320px] gap-2 overflow-y-auto">
@@ -321,7 +322,7 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
                           </div>
                           <div className="min-w-0 flex-1 text-right">
                             <strong className="block truncate text-sm text-[var(--header-dropdown-panel-text)]">{item.product.name}</strong>
-                            <span className={`mt-1 block text-xs ${storefrontStyles.headerMutedText}`}>
+                            <span className={`mt-1 block text-xs ${cartMetaTextClass}`}>
                               {`${moneyFormatter.format(item.quantity)} عدد • ${moneyFormatter.format(item.lineTotal)} تومان`}
                             </span>
                           </div>
@@ -335,7 +336,7 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
                   )}
                   <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--header-dropdown-panel-border)] bg-white/45 px-4 py-3">
                     <div className="text-right">
-                      <span className={`block text-xs ${storefrontStyles.headerMutedText}`}>جمع سبد</span>
+                      <span className={`block text-xs ${cartMetaTextClass}`}>جمع سبد</span>
                       <strong className="block text-sm text-[var(--header-dropdown-panel-text)]">{moneyFormatter.format(cartTotalAmount)} تومان</strong>
                     </div>
                     <Link className={storefrontStyles.headerAction} href="/cart">
