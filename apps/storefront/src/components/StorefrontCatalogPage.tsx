@@ -285,7 +285,7 @@ export function StorefrontCatalogPage({
           </div>
         </aside>
 
-        <section className={storefrontCatalog.content}>
+        <section className="grid content-start gap-3">
           {hasActiveFilters ? (
             <div className="flex h-11 min-w-0 items-center gap-2 overflow-hidden rounded-[18px] border border-[#1f6a52]/10 bg-white/78 px-3 shadow-[0_8px_18px_rgba(52,36,17,0.04)]">
               <strong className="shrink-0 text-xs font-black leading-none text-[#173126]">فیلترهای انتخاب‌شده</strong>
@@ -325,7 +325,7 @@ export function StorefrontCatalogPage({
           ) : null}
 
           {products.length ? (
-            <div className={`grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-4 ${hasActiveFilters ? '-mt-3' : ''}`}>
+            <div className="grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {products.map((product) => (
                 <ProductCard className="w-full min-w-0" key={product.id} product={product} />
               ))}
