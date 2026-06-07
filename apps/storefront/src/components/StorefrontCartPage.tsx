@@ -290,8 +290,8 @@ export function StorefrontCartPage() {
                 <strong className="mt-2 block text-2xl font-black">{formatMoney(cart?.pricing.totalAmount ?? 0)}</strong>
               </div>
               <div className="mt-5 grid gap-3">
-                <Link className="inline-flex items-center justify-center rounded-full bg-[#173126] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#29513f]" href="/account/addresses">
-                  انتخاب آدرس و ادامه خرید
+                <Link className="inline-flex items-center justify-center rounded-full bg-[#173126] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#29513f]" href="/checkout">
+                  ادامه تا تسویه حساب
                 </Link>
                 <button
                   className="inline-flex items-center justify-center rounded-full border border-[#d06c54]/18 bg-white px-5 py-3 text-sm font-bold text-[#b64b36] disabled:opacity-50"
