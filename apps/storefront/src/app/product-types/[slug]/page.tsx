@@ -56,6 +56,12 @@ export default async function ProductTypeArchivePage({
     userLng: typeof query.userLng === 'string' ? Number(query.userLng) || undefined : undefined,
     categorySlug: typeof query.category === 'string' ? query.category : '',
     productTypeSlug: slug,
+    minPrice: typeof query.minPrice === 'string' ? Number(query.minPrice) || undefined : undefined,
+    maxPrice: typeof query.maxPrice === 'string' ? Number(query.maxPrice) || undefined : undefined,
+    elementTypes:
+      typeof query.elements === 'string'
+        ? query.elements.split(',').map((item) => item.trim()).filter(Boolean) as Array<'BASE' | 'FLOWER' | 'FILLER' | 'ACCESSORY'>
+        : undefined,
   })
   const pageTitle = resolvedProductType.name
   const pageDescription = `محصولات مرتبط با نوع ${resolvedProductType.name}`
@@ -96,6 +102,11 @@ export default async function ProductTypeArchivePage({
         searchValue={catalog.search}
         title={pageTitle}
         total={catalog.total}
+        minPrice={catalog.minPrice}
+        maxPrice={catalog.maxPrice}
+        selectedMinPrice={typeof query.minPrice === 'string' ? Number(query.minPrice) || undefined : undefined}
+        selectedMaxPrice={typeof query.maxPrice === 'string' ? Number(query.maxPrice) || undefined : undefined}
+        activeElementTypes={typeof query.elements === 'string' ? query.elements.split(',').map((item) => item.trim()).filter(Boolean) as Array<'BASE' | 'FLOWER' | 'FILLER' | 'ACCESSORY'> : []}
         userLat={typeof query.userLat === 'string' ? Number(query.userLat) || undefined : undefined}
         userLng={typeof query.userLng === 'string' ? Number(query.userLng) || undefined : undefined}
       />

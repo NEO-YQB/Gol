@@ -81,6 +81,8 @@ type PaginatedResponse<T> = {
     total?: number
     page?: number
     lastPage?: number
+    minPrice?: number | null
+    maxPrice?: number | null
   }
 }
 
@@ -285,6 +287,8 @@ const getArticles = cache(async (limit: number): Promise<ArticleSummary[]> => {
   return toArray<ArticleSummary>(payload)
 })
 
+export type StorefrontElementType = 'BASE' | 'FLOWER' | 'FILLER' | 'ACCESSORY'
+
 type ProductQuery = {
   page?: number
   limit?: number
@@ -296,6 +300,9 @@ type ProductQuery = {
   sortBy?: 'newest' | 'most_sold' | 'instant_delivery' | 'nearest'
   userLat?: number
   userLng?: number
+  minPrice?: number
+  maxPrice?: number
+  elementTypes?: StorefrontElementType[]
 }
 
 const getProducts = cache(async (_queryKey: string, query: ProductQuery): Promise<ProductSummary[]> => {
@@ -310,6 +317,9 @@ const getProducts = cache(async (_queryKey: string, query: ProductQuery): Promis
   if (query.productTypeId) params.set('productTypeId', query.productTypeId)
   if (query.ids?.length) params.set('ids', query.ids.join(','))
   if (query.search) params.set('search', query.search)
+  if (typeof query.minPrice === 'number') params.set('minPrice', String(query.minPrice))
+  if (typeof query.maxPrice === 'number') params.set('maxPrice', String(query.maxPrice))
+  if (query.elementTypes?.length) params.set('elementTypes', query.elementTypes.join(','))
   if (query.sortBy) params.set('sortBy', query.sortBy)
   if (typeof query.userLat === 'number') params.set('userLat', String(query.userLat))
   if (typeof query.userLng === 'number') params.set('userLng', String(query.userLng))
@@ -347,6 +357,9 @@ async function getProductsNoStore(query: ProductQuery): Promise<ProductSummary[]
   if (query.productTypeId) params.set('productTypeId', query.productTypeId)
   if (query.ids?.length) params.set('ids', query.ids.join(','))
   if (query.search) params.set('search', query.search)
+  if (typeof query.minPrice === 'number') params.set('minPrice', String(query.minPrice))
+  if (typeof query.maxPrice === 'number') params.set('maxPrice', String(query.maxPrice))
+  if (query.elementTypes?.length) params.set('elementTypes', query.elementTypes.join(','))
   if (query.sortBy) params.set('sortBy', query.sortBy)
   if (typeof query.userLat === 'number') params.set('userLat', String(query.userLat))
   if (typeof query.userLng === 'number') params.set('userLng', String(query.userLng))
@@ -379,6 +392,9 @@ async function getProductsNoStoreWithMeta(query: ProductQuery): Promise<{
   if (query.productTypeId) params.set('productTypeId', query.productTypeId)
   if (query.ids?.length) params.set('ids', query.ids.join(','))
   if (query.search) params.set('search', query.search)
+  if (typeof query.minPrice === 'number') params.set('minPrice', String(query.minPrice))
+  if (typeof query.maxPrice === 'number') params.set('maxPrice', String(query.maxPrice))
+  if (query.elementTypes?.length) params.set('elementTypes', query.elementTypes.join(','))
   if (query.sortBy) params.set('sortBy', query.sortBy)
   if (typeof query.userLat === 'number') params.set('userLat', String(query.userLat))
   if (typeof query.userLng === 'number') params.set('userLng', String(query.userLng))
@@ -397,9 +413,17 @@ async function getProductsNoStoreWithMeta(query: ProductQuery): Promise<{
     !Array.isArray(payload) && payload.meta && typeof payload.meta.lastPage === 'number'
       ? payload.meta.lastPage
       : 1
+  const minPrice =
+    !Array.isArray(payload) && payload.meta && typeof payload.meta.minPrice === 'number'
+      ? payload.meta.minPrice
+      : null
+  const maxPrice =
+    !Array.isArray(payload) && payload.meta && typeof payload.meta.maxPrice === 'number'
+      ? payload.meta.maxPrice
+      : null
 
   if (!query.ids?.length) {
-    return { products, total, page, lastPage }
+    return { products, total, page, lastPage, minPrice, maxPrice }
   }
 
   const order = new Map(query.ids.map((id, index) => [Number(id), index]))
@@ -408,6 +432,8 @@ async function getProductsNoStoreWithMeta(query: ProductQuery): Promise<{
     total,
     page,
     lastPage,
+    minPrice,
+    maxPrice,
   }
 }
 
@@ -438,6 +464,9 @@ export async function getStorefrontCatalogData({
   userLng,
   categorySlug,
   productTypeSlug,
+  minPrice,
+  maxPrice,
+  elementTypes,
 }: {
   search?: string
   sort?: string
@@ -446,11 +475,16 @@ export async function getStorefrontCatalogData({
   userLng?: number
   categorySlug?: string
   productTypeSlug?: string
+  minPrice?: number
+  maxPrice?: number
+  elementTypes?: StorefrontElementType[]
 }): Promise<{
   products: ProductSummary[]
   total: number
   page: number
   lastPage: number
+  minPrice: number | null
+  maxPrice: number | null
   search: string
   activeSort: 'newest' | 'most_sold' | 'instant_delivery' | 'nearest'
   categories: CategorySummary[]
@@ -470,12 +504,15 @@ export async function getStorefrontCatalogData({
       ? sort
       : 'newest'
 
-  const { products, total, page: currentPage, lastPage } = await getProductsNoStoreWithMeta({
+  const { products, total, page: currentPage, lastPage, minPrice: resolvedMinPrice, maxPrice: resolvedMaxPrice } = await getProductsNoStoreWithMeta({
     search: search?.trim() || undefined,
     sortBy: activeSort,
     page,
     userLat,
     userLng,
+    minPrice,
+    maxPrice,
+    elementTypes,
     categoryIds: categoryIds.length > 1 ? categoryIds : undefined,
     categoryId: categoryIds.length === 1 ? categoryIds[0] : undefined,
     productTypeId: resolvedProductType ? String(resolvedProductType.id) : undefined,
@@ -487,6 +524,8 @@ export async function getStorefrontCatalogData({
     total,
     page: currentPage,
     lastPage,
+    minPrice: resolvedMinPrice,
+    maxPrice: resolvedMaxPrice,
     search: search?.trim() || '',
     activeSort,
     categories,

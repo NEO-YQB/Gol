@@ -15,7 +15,7 @@ import { ReviewProductDto } from './dto/review-product.dto';
 import { PublishProductDto } from './dto/publish-product.dto';
 import { ToggleProductPurchasableDto } from './dto/toggle-product-purchasable.dto';
 import slugify from 'slugify';
-import { Prisma, Product, ProductPublicationStatus, Store } from '@prisma/client';
+import { ElementType, Prisma, Product, ProductPublicationStatus, Store } from '@prisma/client';
 import { AbilityFactory } from '../auth/ability.factory';
 import { subject } from '@casl/ability';
 
@@ -292,6 +292,7 @@ export class ProductService {
       ids,
       minPrice,
       maxPrice,
+      elementTypes,
       publicationStatus,
       isPurchasable,
       isArchived,
@@ -313,6 +314,13 @@ export class ProductService {
           .filter((value) => Number.isInteger(value) && value > 0)
       : [];
 
+    const parsedElementTypes = elementTypes
+      ? elementTypes
+          .split(',')
+          .map((value) => value.trim())
+          .filter((value): value is ElementType => Object.values(ElementType).includes(value as ElementType))
+      : [];
+
     const where: any = {
       ...(search && { name: { contains: search, mode: 'insensitive' } }),
       ...(categoryIdList.length > 0
@@ -328,11 +336,21 @@ export class ProductService {
       ...(typeof isArchived === 'boolean' ? { isArchived } : {}),
       ...((minPrice || maxPrice) && {
         price: {
-          ...(minPrice && { gte: minPrice }),
-          ...(maxPrice && { lte: maxPrice }),
+          ...(typeof minPrice === 'number' ? { gte: minPrice } : {}),
+          ...(typeof maxPrice === 'number' ? { lte: maxPrice } : {}),
+        },
+      }),
+      ...(parsedElementTypes.length > 0 && {
+        composition: {
+          some: {
+            elementType: { in: parsedElementTypes },
+          },
         },
       }),
     };
+
+    const rangeWhere = { ...where } as any;
+    delete rangeWhere.price;
 
     const include = {
       category: { select: { id: true, name: true, slug: true } },
@@ -351,6 +369,7 @@ export class ProductService {
       productType: { select: { id: true, name: true, slug: true } },
       reviewedByUser: { select: { id: true, fullName: true, phoneNumber: true } },
       publishedByUser: { select: { id: true, fullName: true, phoneNumber: true } },
+      composition: { select: { elementType: true } },
     } as const;
 
     if (sortBy === 'nearest' && typeof userLat === 'number' && typeof userLng === 'number') {
@@ -377,10 +396,21 @@ export class ProductService {
 
       const total = sortedProducts.length;
       const paginatedProducts = sortedProducts.slice(skip, skip + limit);
+      const aggregate = await this.prisma.product.aggregate({
+        where: rangeWhere,
+        _min: { price: true },
+        _max: { price: true },
+      });
 
       return {
         data: paginatedProducts,
-        meta: { total, page, lastPage: Math.ceil(total / limit) },
+        meta: {
+          total,
+          page,
+          lastPage: Math.ceil(total / limit),
+          minPrice: aggregate._min.price ?? null,
+          maxPrice: aggregate._max.price ?? null,
+        },
       };
     }
 
@@ -391,7 +421,7 @@ export class ProductService {
           ? [{ store: { sameDayDelivery: 'desc' as const } }, { createdAt: 'desc' as const }]
           : [{ createdAt: 'desc' as const }];
 
-    const [products, total] = await Promise.all([
+    const [products, total, aggregate] = await Promise.all([
       this.prisma.product.findMany({
         where,
         skip,
@@ -400,11 +430,22 @@ export class ProductService {
         orderBy,
       }),
       this.prisma.product.count({ where }),
+      this.prisma.product.aggregate({
+        where: rangeWhere,
+        _min: { price: true },
+        _max: { price: true },
+      }),
     ]);
 
     return {
       data: products,
-      meta: { total, page, lastPage: Math.ceil(total / limit) },
+      meta: {
+        total,
+        page,
+        lastPage: Math.ceil(total / limit),
+        minPrice: aggregate._min.price ?? null,
+        maxPrice: aggregate._max.price ?? null,
+      },
     };
   }
 

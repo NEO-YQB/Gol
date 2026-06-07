@@ -3,15 +3,28 @@ import { ExpandableTextBlock } from './ExpandableTextBlock'
 import { NearestSortButton } from './NearestSortButton'
 import { ProductCard } from './storefrontBlocks'
 import { storefrontCatalog } from './storefrontCatalog'
-import type { CategorySummary, ProductSummary, ProductTypeSummary } from '../lib/storefront'
+import type { CategorySummary, ProductSummary, ProductTypeSummary, StorefrontElementType } from '../lib/storefront'
 
 type CatalogSortOption = 'newest' | 'most_sold' | 'instant_delivery' | 'nearest'
+
+const ELEMENT_TYPE_LABELS: Record<StorefrontElementType, string> = {
+  FLOWER: 'گل',
+  FILLER: 'پرکننده',
+  ACCESSORY: 'اکسسوری',
+  BASE: 'بیس',
+}
+
+const ELEMENT_TYPE_OPTIONS: StorefrontElementType[] = ['FLOWER', 'FILLER', 'ACCESSORY', 'BASE']
 
 function flattenCategories(categories: CategorySummary[], depth = 0): Array<CategorySummary & { depth: number }> {
   return categories.flatMap((category) => {
     const children = Array.isArray(category.children) ? category.children : []
     return [{ ...category, depth }, ...flattenCategories(children, depth + 1)]
   })
+}
+
+function formatMoney(value: number) {
+  return new Intl.NumberFormat('fa-IR').format(value)
 }
 
 export function StorefrontCatalogPage({
@@ -31,6 +44,11 @@ export function StorefrontCatalogPage({
   archiveDescription,
   userLat,
   userLng,
+  minPrice,
+  maxPrice,
+  selectedMinPrice,
+  selectedMaxPrice,
+  activeElementTypes,
 }: {
   title: string
   description: string
@@ -48,10 +66,16 @@ export function StorefrontCatalogPage({
   archiveDescription?: string
   userLat?: number
   userLng?: number
+  minPrice?: number | null
+  maxPrice?: number | null
+  selectedMinPrice?: number
+  selectedMaxPrice?: number
+  activeElementTypes?: StorefrontElementType[]
 }) {
   const flatCategories = flattenCategories(categories)
   const activeCategory = flatCategories.find((category) => category.slug === activeCategorySlug)
   const activeProductType = productTypes.find((type) => type.slug === activeProductTypeSlug)
+  const selectedElementTypes = activeElementTypes ?? []
 
   function buildHref(next: {
     search?: string
@@ -59,6 +83,9 @@ export function StorefrontCatalogPage({
     categorySlug?: string
     productTypeSlug?: string
     page?: number
+    minPrice?: number | null
+    maxPrice?: number | null
+    elementTypes?: StorefrontElementType[]
   }) {
     const params = new URLSearchParams()
     const search = next.search ?? searchValue ?? ''
@@ -66,11 +93,17 @@ export function StorefrontCatalogPage({
     const categorySlug = next.categorySlug ?? activeCategorySlug ?? ''
     const productTypeSlug = next.productTypeSlug ?? activeProductTypeSlug ?? ''
     const page = next.page ?? currentPage
+    const nextMinPrice = next.minPrice !== undefined ? next.minPrice : selectedMinPrice
+    const nextMaxPrice = next.maxPrice !== undefined ? next.maxPrice : selectedMaxPrice
+    const nextElementTypes = next.elementTypes ?? selectedElementTypes
 
     if (search.trim()) params.set('search', search.trim())
     if (sort && sort !== 'newest') params.set('sort', sort)
     if (categorySlug) params.set('category', categorySlug)
     if (productTypeSlug) params.set('type', productTypeSlug)
+    if (typeof nextMinPrice === 'number') params.set('minPrice', String(nextMinPrice))
+    if (typeof nextMaxPrice === 'number') params.set('maxPrice', String(nextMaxPrice))
+    if (nextElementTypes.length) params.set('elements', nextElementTypes.join(','))
     if (page > 1) params.set('page', String(page))
     if (typeof userLat === 'number') params.set('userLat', String(userLat))
     if (typeof userLng === 'number') params.set('userLng', String(userLng))
@@ -112,6 +145,7 @@ export function StorefrontCatalogPage({
                 </select>
                 {activeCategorySlug ? <input name="category" type="hidden" value={activeCategorySlug} /> : null}
                 {activeProductTypeSlug ? <input name="type" type="hidden" value={activeProductTypeSlug} /> : null}
+                {selectedElementTypes.length ? <input name="elements" type="hidden" value={selectedElementTypes.join(',')} /> : null}
                 <button className="rounded-full bg-[#173126] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#29513f]" type="submit">
                   اعمال فیلتر
                 </button>
@@ -121,8 +155,63 @@ export function StorefrontCatalogPage({
 
             <section>
               <div className="flex items-center justify-between gap-3">
+                <h2 className="text-lg font-black text-[#173126]">فیلتر قیمت</h2>
+                {(typeof selectedMinPrice === 'number' || typeof selectedMaxPrice === 'number') ? (
+                  <Link className={storefrontCatalog.chip} href={buildHref({ minPrice: null, maxPrice: null, page: 1 })}>
+                    حذف
+                  </Link>
+                ) : null}
+              </div>
+              <form action={basePath} className="mt-4 grid gap-3">
+                <input className={storefrontCatalog.input} defaultValue={typeof selectedMinPrice === 'number' ? String(selectedMinPrice) : ''} max={typeof maxPrice === 'number' ? maxPrice : undefined} min={typeof minPrice === 'number' ? minPrice : undefined} name="minPrice" placeholder={typeof minPrice === 'number' ? `از ${formatMoney(minPrice)}` : 'حداقل قیمت'} type="number" />
+                <input className={storefrontCatalog.input} defaultValue={typeof selectedMaxPrice === 'number' ? String(selectedMaxPrice) : ''} max={typeof maxPrice === 'number' ? maxPrice : undefined} min={typeof minPrice === 'number' ? minPrice : undefined} name="maxPrice" placeholder={typeof maxPrice === 'number' ? `تا ${formatMoney(maxPrice)}` : 'حداکثر قیمت'} type="number" />
+                {activeCategorySlug ? <input name="category" type="hidden" value={activeCategorySlug} /> : null}
+                {activeProductTypeSlug ? <input name="type" type="hidden" value={activeProductTypeSlug} /> : null}
+                {searchValue ? <input name="search" type="hidden" value={searchValue} /> : null}
+                {activeSort !== 'newest' ? <input name="sort" type="hidden" value={activeSort} /> : null}
+                {selectedElementTypes.length ? <input name="elements" type="hidden" value={selectedElementTypes.join(',')} /> : null}
+                <button className="rounded-full border border-[#1f6a52]/12 bg-white px-4 py-3 text-sm font-bold text-[#173126] transition hover:bg-[#f8f2ea]" type="submit">
+                  اعمال بازه قیمت
+                </button>
+                {typeof minPrice === 'number' && typeof maxPrice === 'number' ? (
+                  <p className="text-xs text-[#92785a]">{`بازه فعلی محصولات: ${formatMoney(minPrice)} تا ${formatMoney(maxPrice)} تومان`}</p>
+                ) : null}
+              </form>
+            </section>
+
+            <section>
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-lg font-black text-[#173126]">المان‌های محصول</h2>
+                {selectedElementTypes.length ? (
+                  <Link className={storefrontCatalog.chip} href={buildHref({ elementTypes: [], page: 1 })}>
+                    حذف همه
+                  </Link>
+                ) : null}
+              </div>
+              <div className="mt-4 grid gap-2">
+                {ELEMENT_TYPE_OPTIONS.map((elementType) => {
+                  const isActive = selectedElementTypes.includes(elementType)
+                  const nextElementTypes = isActive
+                    ? selectedElementTypes.filter((item) => item !== elementType)
+                    : [...selectedElementTypes, elementType]
+
+                  return (
+                    <Link
+                      className={`rounded-[18px] px-4 py-3 text-sm transition ${isActive ? 'bg-[#173126] font-bold text-white' : 'bg-white/72 text-[#173126] hover:bg-white'}`}
+                      href={buildHref({ elementTypes: nextElementTypes, page: 1 })}
+                      key={elementType}
+                    >
+                      {ELEMENT_TYPE_LABELS[elementType]}
+                    </Link>
+                  )
+                })}
+              </div>
+            </section>
+
+            <section>
+              <div className="flex items-center justify-between gap-3">
                 <h2 className="text-lg font-black text-[#173126]">دسته‌بندی‌ها</h2>
-                <Link className={storefrontCatalog.chip} href={buildHref({ categorySlug: '' })}>
+                <Link className={storefrontCatalog.chip} href={buildHref({ categorySlug: '', page: 1 })}>
                   همه
                 </Link>
               </div>
@@ -132,7 +221,7 @@ export function StorefrontCatalogPage({
                   return (
                     <Link
                       className={`rounded-[18px] px-4 py-3 text-sm transition ${isActive ? 'bg-[#173126] font-bold text-white' : 'bg-white/72 text-[#173126] hover:bg-white'}`}
-                      href={buildHref({ categorySlug: category.slug })}
+                      href={buildHref({ categorySlug: category.slug, page: 1 })}
                       key={category.id}
                     >
                       <span style={{ paddingInlineStart: `${category.depth * 12}px` }}>{category.name}</span>
@@ -145,7 +234,7 @@ export function StorefrontCatalogPage({
             <section>
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-lg font-black text-[#173126]">نوع محصول</h2>
-                <Link className={storefrontCatalog.chip} href={buildHref({ productTypeSlug: '' })}>
+                <Link className={storefrontCatalog.chip} href={buildHref({ productTypeSlug: '', page: 1 })}>
                   همه
                 </Link>
               </div>
@@ -155,7 +244,7 @@ export function StorefrontCatalogPage({
                   return (
                     <Link
                       className={`rounded-[18px] px-4 py-3 text-sm transition ${isActive ? 'bg-[#173126] font-bold text-white' : 'bg-white/72 text-[#173126] hover:bg-white'}`}
-                      href={buildHref({ productTypeSlug: type.slug })}
+                      href={buildHref({ productTypeSlug: type.slug, page: 1 })}
                       key={type.id}
                     >
                       {type.name}
@@ -177,6 +266,18 @@ export function StorefrontCatalogPage({
                   <span aria-hidden="true">×</span>
                 </Link>
               ) : null}
+              {typeof selectedMinPrice === 'number' || typeof selectedMaxPrice === 'number' ? (
+                <Link className={`${storefrontCatalog.chip} gap-2 hover:bg-white`} href={buildHref({ minPrice: null, maxPrice: null, page: 1 })}>
+                  <span>{`قیمت: ${typeof selectedMinPrice === 'number' ? formatMoney(selectedMinPrice) : 'کمینه'} تا ${typeof selectedMaxPrice === 'number' ? formatMoney(selectedMaxPrice) : 'بیشینه'}`}</span>
+                  <span aria-hidden="true">×</span>
+                </Link>
+              ) : null}
+              {selectedElementTypes.map((elementType) => (
+                <Link className={`${storefrontCatalog.chip} gap-2 hover:bg-white`} href={buildHref({ elementTypes: selectedElementTypes.filter((item) => item !== elementType), page: 1 })} key={elementType}>
+                  <span>{ELEMENT_TYPE_LABELS[elementType]}</span>
+                  <span aria-hidden="true">×</span>
+                </Link>
+              ))}
               {activeCategory ? (
                 <Link className={`${storefrontCatalog.chip} gap-2 hover:bg-white`} href={buildHref({ categorySlug: '', page: 1 })}>
                   <span>{`دسته: ${activeCategory.name}`}</span>
