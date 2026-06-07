@@ -42,7 +42,7 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
 
   useEffect(() => {
     if (!cartMessage) return
-    const timeoutId = window.setTimeout(() => setCartMessage(''), 4200)
+    const timeoutId = window.setTimeout(() => setCartMessage(''), 8000)
     return () => window.clearTimeout(timeoutId)
   }, [cartMessage])
   const ratingAverage = Number(product.store?.customerRatingAverage ?? 0)
@@ -50,6 +50,13 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
 
   return (
     <div className="grid gap-6">
+      {cartMessage ? (
+        <div className="pointer-events-none fixed inset-x-4 bottom-4 z-[90] flex justify-center md:inset-x-auto md:left-1/2 md:-translate-x-1/2">
+          <div className="w-full max-w-[720px] rounded-[22px] border border-[#d06c54]/16 bg-[#fff6f3]/98 px-4 py-3 text-right text-sm font-bold leading-7 text-[#9f3f2c] shadow-[0_20px_50px_rgba(159,63,44,0.18)] backdrop-blur-sm md:px-5">
+            {cartMessage}
+          </div>
+        </div>
+      ) : null}
       <section className={storefrontCatalog.hero}>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-3xl">
@@ -124,17 +131,12 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(280px,0.62fr)_320px]">
         <article className={`${storefrontCatalog.card} h-fit overflow-hidden self-start`}>
-          <div className="relative group overflow-hidden rounded-[26px] bg-[#f6efe5]">
+          <div className="group overflow-hidden rounded-[26px] bg-[#f6efe5]">
             <img
               alt={activeImage?.alt || product.name}
               className="aspect-square w-full object-cover transition duration-300 group-hover:scale-[1.22]"
               src={resolveAssetUrl(activeImage?.url || product.mainImage)}
             />
-            {cartMessage ? (
-              <div className="pointer-events-none absolute left-4 top-4 max-w-[88%] rounded-[18px] border border-white/14 bg-[#fff6f3]/96 px-3 py-3 text-right text-xs font-bold leading-6 text-[#9f3f2c] shadow-[0_16px_30px_rgba(159,63,44,0.16)] backdrop-blur-sm">
-                {cartMessage}
-              </div>
-            ) : null}
           </div>
 
           {allImages.length > 1 ? (

@@ -64,22 +64,15 @@ export function ProductCard({ product, className = '' }: { product: ProductSumma
 
   useEffect(() => {
     if (!cartMessage) return
-    const timeoutId = window.setTimeout(() => setCartMessage(''), 4200)
+    const timeoutId = window.setTimeout(() => setCartMessage(''), 8000)
     return () => window.clearTimeout(timeoutId)
   }, [cartMessage])
 
   return (
     <article className={`${storefrontStyles.productCard} ${className}`.trim()}>
-      <div className="relative">
-        <Link className={storefrontStyles.productImageWrap} href={productHref}>
+      <Link className={storefrontStyles.productImageWrap} href={productHref}>
         <img alt={product.mainImageAlt || product.name} className={storefrontStyles.productImage} src={resolveAssetUrl(product.mainImage)} />
-        </Link>
-        {cartMessage ? (
-          <div className="pointer-events-none absolute left-3 top-3 max-w-[88%] rounded-[18px] border border-[#d06c54]/18 bg-[#fff6f3]/96 px-3 py-3 text-right text-xs font-bold leading-6 text-[#9f3f2c] shadow-[0_14px_28px_rgba(159,63,44,0.14)] backdrop-blur-sm">
-            {cartMessage}
-          </div>
-        ) : null}
-      </div>
+      </Link>
       <div className="flex flex-1 flex-col">
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
@@ -163,6 +156,13 @@ export function ProductCard({ product, className = '' }: { product: ProductSumma
           </Link>
         </div>
       </div>
+      {cartMessage ? (
+        <div className="pointer-events-none fixed inset-x-4 bottom-4 z-[90] flex justify-center md:inset-x-auto md:left-1/2 md:-translate-x-1/2">
+          <div className="w-full max-w-[720px] rounded-[22px] border border-[#d06c54]/16 bg-[#fff6f3]/98 px-4 py-3 text-right text-sm font-bold leading-7 text-[#9f3f2c] shadow-[0_20px_50px_rgba(159,63,44,0.18)] backdrop-blur-sm md:px-5">
+            {cartMessage}
+          </div>
+        </div>
+      ) : null}
     </article>
   )
 }
