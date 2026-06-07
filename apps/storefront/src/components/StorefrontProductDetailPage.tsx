@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { StorefrontProductDetail } from '../lib/storefront'
 import { resolveAssetUrl } from '../lib/storefront'
 import { addCartItem, getCart, readStoredToken } from '../lib/storefrontAuth'
@@ -39,6 +39,12 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
   const [cartMessage, setCartMessage] = useState('')
   const [isAdding, setIsAdding] = useState(false)
   const hasDiscount = typeof product.discountPrice === 'number' && product.discountPrice > 0 && product.discountPrice < product.price
+
+  useEffect(() => {
+    if (!cartMessage) return
+    const timeoutId = window.setTimeout(() => setCartMessage(''), 4200)
+    return () => window.clearTimeout(timeoutId)
+  }, [cartMessage])
   const ratingAverage = Number(product.store?.customerRatingAverage ?? 0)
   const ratingCount = Number(product.store?.customerRatingCount ?? 0)
 
@@ -112,19 +118,23 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
                 بازگشت به آرشیو
               </Link>
             </div>
-            {cartMessage ? <p className="mt-4 rounded-[18px] border border-white/14 bg-white/12 px-4 py-3 text-sm leading-7 text-white/92">{cartMessage}</p> : null}
           </div>
         </div>
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(280px,0.62fr)_320px]">
         <article className={`${storefrontCatalog.card} h-fit overflow-hidden self-start`}>
-          <div className="group overflow-hidden rounded-[26px] bg-[#f6efe5]">
+          <div className="relative group overflow-hidden rounded-[26px] bg-[#f6efe5]">
             <img
               alt={activeImage?.alt || product.name}
               className="aspect-square w-full object-cover transition duration-300 group-hover:scale-[1.22]"
               src={resolveAssetUrl(activeImage?.url || product.mainImage)}
             />
+            {cartMessage ? (
+              <div className="pointer-events-none absolute left-4 top-4 max-w-[88%] rounded-[18px] border border-white/14 bg-[#fff6f3]/96 px-3 py-3 text-right text-xs font-bold leading-6 text-[#9f3f2c] shadow-[0_16px_30px_rgba(159,63,44,0.16)] backdrop-blur-sm">
+                {cartMessage}
+              </div>
+            ) : null}
           </div>
 
           {allImages.length > 1 ? (

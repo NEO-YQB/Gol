@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { resolveAssetUrl, type CategorySummary, type ProductSummary, type StoreSummary } from '../lib/storefront'
 import { addCartItem, getCart, readStoredToken } from '../lib/storefrontAuth'
 import { storefrontShared } from './storefrontShared'
@@ -62,11 +62,24 @@ export function ProductCard({ product, className = '' }: { product: ProductSumma
   const categoryHref = product.category?.slug ? `/categories/${product.category.slug}` : null
   const isAddToCartDisabled = isAdding || product.isPurchasable !== true || product.isArchived === true
 
+  useEffect(() => {
+    if (!cartMessage) return
+    const timeoutId = window.setTimeout(() => setCartMessage(''), 4200)
+    return () => window.clearTimeout(timeoutId)
+  }, [cartMessage])
+
   return (
     <article className={`${storefrontStyles.productCard} ${className}`.trim()}>
-      <Link className={storefrontStyles.productImageWrap} href={productHref}>
+      <div className="relative">
+        <Link className={storefrontStyles.productImageWrap} href={productHref}>
         <img alt={product.mainImageAlt || product.name} className={storefrontStyles.productImage} src={resolveAssetUrl(product.mainImage)} />
-      </Link>
+        </Link>
+        {cartMessage ? (
+          <div className="pointer-events-none absolute left-3 top-3 max-w-[88%] rounded-[18px] border border-[#d06c54]/18 bg-[#fff6f3]/96 px-3 py-3 text-right text-xs font-bold leading-6 text-[#9f3f2c] shadow-[0_14px_28px_rgba(159,63,44,0.14)] backdrop-blur-sm">
+            {cartMessage}
+          </div>
+        ) : null}
+      </div>
       <div className="flex flex-1 flex-col">
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
@@ -149,7 +162,6 @@ export function ProductCard({ product, className = '' }: { product: ProductSumma
             مشاهده محصول
           </Link>
         </div>
-        {cartMessage ? <p className="mt-3 rounded-[18px] border border-[#d06c54]/18 bg-[#fff6f3] px-3 py-3 text-sm leading-7 text-[#9f3f2c]">{cartMessage}</p> : null}
       </div>
     </article>
   )
