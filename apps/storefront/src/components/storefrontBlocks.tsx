@@ -60,6 +60,7 @@ export function ProductCard({ product, className = '' }: { product: ProductSumma
   const productHref = getProductHref(product)
   const vendorHref = product.store?.slug ? getVendorHref(product.store) : null
   const categoryHref = product.category?.slug ? `/categories/${product.category.slug}` : null
+  const isAddToCartDisabled = isAdding || product.isPurchasable !== true || product.isArchived === true
 
   return (
     <article className={`${storefrontStyles.productCard} ${className}`.trim()}>
@@ -105,8 +106,13 @@ export function ProductCard({ product, className = '' }: { product: ProductSumma
         <div className="mt-auto flex flex-wrap gap-2 pt-4">
           <button
             className="inline-flex items-center rounded-full bg-[#1f6a52] px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
-            disabled={isAdding}
+            disabled={isAddToCartDisabled}
             onClick={async () => {
+              if (product.isPurchasable !== true || product.isArchived === true) {
+                setCartMessage('این محصول در حال حاضر امکان افزودن به سبد خرید را ندارد.')
+                return
+              }
+
               const token = readStoredToken()
               if (!token) {
                 setCartMessage('برای افزودن محصول به سبد خرید، ابتدا وارد حساب کاربری شوید.')
@@ -137,7 +143,7 @@ export function ProductCard({ product, className = '' }: { product: ProductSumma
             }}
             type="button"
           >
-            {isAdding ? 'در حال افزودن...' : 'افزودن به سبد'}
+            {product.isPurchasable !== true || product.isArchived === true ? 'ناموجود' : isAdding ? 'در حال افزودن...' : 'افزودن به سبد'}
           </button>
           <Link className="inline-flex items-center rounded-full border border-[#1f6a52]/18 px-4 py-2 text-sm font-bold text-[#1f6a52]" href={productHref}>
             مشاهده محصول

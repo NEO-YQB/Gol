@@ -28,14 +28,6 @@ function getLineDiscount(item: StorefrontCartItem) {
   return Math.max(0, base - item.lineTotal)
 }
 
-function getStockState(item: StorefrontCartItem) {
-  const availableQuantity = Number(item.product.quantity ?? 0)
-
-  if (!Number.isFinite(availableQuantity) || availableQuantity <= 0) return 'ناموجود'
-  if (availableQuantity < item.quantity) return `فقط ${new Intl.NumberFormat('fa-IR').format(availableQuantity)} عدد موجود است`
-  return `موجودی: ${new Intl.NumberFormat('fa-IR').format(availableQuantity)} عدد`
-}
-
 export function StorefrontCartPage() {
   const [cart, setCart] = useState<StorefrontCart | null>(null)
   const [loading, setLoading] = useState(true)
@@ -215,7 +207,6 @@ export function StorefrontCartPage() {
                               <Link className="block text-lg font-black text-[#173126]" href={`/products/${item.product.slug}`}>
                                 {item.product.name}
                               </Link>
-                              <p className="mt-2 text-sm text-[#6e6152]">{getStockState(item)}</p>
                               {lineDiscount > 0 ? (
                                 <p className="mt-2 text-xs font-bold text-[#1f6a52]">
                                   {`تخفیف این آیتم: ${formatMoney(lineDiscount)}`}
