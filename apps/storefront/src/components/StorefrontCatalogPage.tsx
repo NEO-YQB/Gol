@@ -171,9 +171,24 @@ export function StorefrontCatalogPage({
           <div className={`${storefrontCatalog.card} flex flex-wrap items-center justify-between gap-3`}>
             <strong className="block text-lg text-[#173126]">نتایج فهرست</strong>
             <div className="flex flex-wrap gap-2">
-              {searchValue ? <span className={storefrontCatalog.chip}>{`جستجو: ${searchValue}`}</span> : null}
-              {activeCategory ? <span className={storefrontCatalog.chip}>{`دسته: ${activeCategory.name}`}</span> : null}
-              {activeProductType ? <span className={storefrontCatalog.chip}>{`نوع: ${activeProductType.name}`}</span> : null}
+              {searchValue ? (
+                <Link className={`${storefrontCatalog.chip} gap-2 hover:bg-white`} href={buildHref({ search: '', page: 1 })}>
+                  <span>{`جستجو: ${searchValue}`}</span>
+                  <span aria-hidden="true">×</span>
+                </Link>
+              ) : null}
+              {activeCategory ? (
+                <Link className={`${storefrontCatalog.chip} gap-2 hover:bg-white`} href={buildHref({ categorySlug: '', page: 1 })}>
+                  <span>{`دسته: ${activeCategory.name}`}</span>
+                  <span aria-hidden="true">×</span>
+                </Link>
+              ) : null}
+              {activeProductType ? (
+                <Link className={`${storefrontCatalog.chip} gap-2 hover:bg-white`} href={buildHref({ productTypeSlug: '', page: 1 })}>
+                  <span>{`نوع: ${activeProductType.name}`}</span>
+                  <span aria-hidden="true">×</span>
+                </Link>
+              ) : null}
             </div>
           </div>
 
