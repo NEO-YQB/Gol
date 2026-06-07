@@ -15,7 +15,7 @@ import { ReviewProductDto } from './dto/review-product.dto';
 import { PublishProductDto } from './dto/publish-product.dto';
 import { ToggleProductPurchasableDto } from './dto/toggle-product-purchasable.dto';
 import slugify from 'slugify';
-import { ElementType, Prisma, Product, ProductPublicationStatus, Store } from '@prisma/client';
+import { Prisma, Product, ProductPublicationStatus, Store } from '@prisma/client';
 import { AbilityFactory } from '../auth/ability.factory';
 import { subject } from '@casl/ability';
 
@@ -292,7 +292,7 @@ export class ProductService {
       ids,
       minPrice,
       maxPrice,
-      elementTypes,
+      elementIds,
       publicationStatus,
       isPurchasable,
       isArchived,
@@ -314,11 +314,11 @@ export class ProductService {
           .filter((value) => Number.isInteger(value) && value > 0)
       : [];
 
-    const parsedElementTypes = elementTypes
-      ? elementTypes
+    const parsedElementIds = elementIds
+      ? elementIds
           .split(',')
-          .map((value) => value.trim())
-          .filter((value): value is ElementType => Object.values(ElementType).includes(value as ElementType))
+          .map((value) => Number(value.trim()))
+          .filter((value) => Number.isInteger(value) && value > 0)
       : [];
 
     const where: any = {
@@ -340,10 +340,10 @@ export class ProductService {
           ...(typeof maxPrice === 'number' ? { lte: maxPrice } : {}),
         },
       }),
-      ...(parsedElementTypes.length > 0 && {
+      ...(parsedElementIds.length > 0 && {
         composition: {
           some: {
-            elementType: { in: parsedElementTypes },
+            elementId: { in: parsedElementIds },
           },
         },
       }),
@@ -369,7 +369,6 @@ export class ProductService {
       productType: { select: { id: true, name: true, slug: true } },
       reviewedByUser: { select: { id: true, fullName: true, phoneNumber: true } },
       publishedByUser: { select: { id: true, fullName: true, phoneNumber: true } },
-      composition: { select: { elementType: true } },
     } as const;
 
     if (sortBy === 'nearest' && typeof userLat === 'number' && typeof userLng === 'number') {

@@ -1,7 +1,7 @@
 import { IsOptional, IsNumber, IsString, Min, IsBoolean, IsEnum, Matches } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { ElementType, ProductPublicationStatus } from '@prisma/client';
+import { ProductPublicationStatus } from '@prisma/client';
 
 export enum ProductListingSortBy {
   NEWEST = 'newest',
@@ -119,17 +119,15 @@ export class GetProductsQueryDto {
 
 
   @ApiPropertyOptional({
-    description: 'فیلتر بر اساس گروه‌های المان به صورت comma-separated',
-    enum: ElementType,
-    isArray: true,
-    example: 'FLOWER,ACCESSORY',
+    description: 'فیلتر بر اساس شناسه المان‌ها به صورت comma-separated',
+    example: '1,4,9',
   })
   @IsOptional()
   @IsString()
-  @Matches(/^[A-Z]+(?:,[A-Z]+)*$/, {
-    message: 'elementTypes باید به صورت comma-separated از enumهای معتبر باشد',
+  @Matches(/^\d+(,\d+)*$/, {
+    message: 'elementIds باید به صورت comma-separated از اعداد باشد',
   })
-  elementTypes?: string;
+  elementIds?: string;
 
   @ApiPropertyOptional({ description: 'ترتیب نتایج برای مصرف storefront', enum: ProductListingSortBy })
   @IsOptional()

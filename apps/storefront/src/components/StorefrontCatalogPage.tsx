@@ -3,7 +3,13 @@ import { ExpandableTextBlock } from './ExpandableTextBlock'
 import { NearestSortButton } from './NearestSortButton'
 import { ProductCard } from './storefrontBlocks'
 import { storefrontCatalog } from './storefrontCatalog'
-import type { CategorySummary, ProductSummary, ProductTypeSummary, StorefrontElementType } from '../lib/storefront'
+import type {
+  CategorySummary,
+  ProductSummary,
+  ProductTypeSummary,
+  StorefrontElementType,
+  StorefrontProductElement,
+} from '../lib/storefront'
 
 type CatalogSortOption = 'newest' | 'most_sold' | 'instant_delivery' | 'nearest'
 
@@ -39,6 +45,7 @@ export function StorefrontCatalogPage({
   basePath,
   categories,
   productTypes,
+  productElements,
   activeCategorySlug,
   activeProductTypeSlug,
   archiveDescription,
@@ -48,7 +55,7 @@ export function StorefrontCatalogPage({
   maxPrice,
   selectedMinPrice,
   selectedMaxPrice,
-  activeElementTypes,
+  activeElementIds,
 }: {
   title: string
   description: string
@@ -61,6 +68,7 @@ export function StorefrontCatalogPage({
   basePath: string
   categories: CategorySummary[]
   productTypes: ProductTypeSummary[]
+  productElements: StorefrontProductElement[]
   activeCategorySlug?: string
   activeProductTypeSlug?: string
   archiveDescription?: string
@@ -70,12 +78,18 @@ export function StorefrontCatalogPage({
   maxPrice?: number | null
   selectedMinPrice?: number
   selectedMaxPrice?: number
-  activeElementTypes?: StorefrontElementType[]
+  activeElementIds?: number[]
 }) {
   const flatCategories = flattenCategories(categories)
   const activeCategory = flatCategories.find((category) => category.slug === activeCategorySlug)
   const activeProductType = productTypes.find((type) => type.slug === activeProductTypeSlug)
-  const selectedElementTypes = activeElementTypes ?? []
+  const selectedElementIds = activeElementIds ?? []
+  const activeElements = productElements.filter((item) => selectedElementIds.includes(item.id))
+  const groupedElements = ELEMENT_TYPE_OPTIONS.map((elementType) => ({
+    type: elementType,
+    label: ELEMENT_TYPE_LABELS[elementType],
+    items: productElements.filter((item) => item.type === elementType),
+  })).filter((group) => group.items.length > 0)
 
   function buildHref(next: {
     search?: string
@@ -85,7 +99,7 @@ export function StorefrontCatalogPage({
     page?: number
     minPrice?: number | null
     maxPrice?: number | null
-    elementTypes?: StorefrontElementType[]
+    elementIds?: number[]
   }) {
     const params = new URLSearchParams()
     const search = next.search ?? searchValue ?? ''
@@ -95,7 +109,7 @@ export function StorefrontCatalogPage({
     const page = next.page ?? currentPage
     const nextMinPrice = next.minPrice !== undefined ? next.minPrice : selectedMinPrice
     const nextMaxPrice = next.maxPrice !== undefined ? next.maxPrice : selectedMaxPrice
-    const nextElementTypes = next.elementTypes ?? selectedElementTypes
+    const nextElementIds = next.elementIds ?? selectedElementIds
 
     if (search.trim()) params.set('search', search.trim())
     if (sort && sort !== 'newest') params.set('sort', sort)
@@ -103,7 +117,7 @@ export function StorefrontCatalogPage({
     if (productTypeSlug) params.set('type', productTypeSlug)
     if (typeof nextMinPrice === 'number') params.set('minPrice', String(nextMinPrice))
     if (typeof nextMaxPrice === 'number') params.set('maxPrice', String(nextMaxPrice))
-    if (nextElementTypes.length) params.set('elements', nextElementTypes.join(','))
+    if (nextElementIds.length) params.set('elementIds', nextElementIds.join(','))
     if (page > 1) params.set('page', String(page))
     if (typeof userLat === 'number') params.set('userLat', String(userLat))
     if (typeof userLng === 'number') params.set('userLng', String(userLng))
@@ -145,7 +159,7 @@ export function StorefrontCatalogPage({
                 </select>
                 {activeCategorySlug ? <input name="category" type="hidden" value={activeCategorySlug} /> : null}
                 {activeProductTypeSlug ? <input name="type" type="hidden" value={activeProductTypeSlug} /> : null}
-                {selectedElementTypes.length ? <input name="elements" type="hidden" value={selectedElementTypes.join(',')} /> : null}
+                {selectedElementIds.length ? <input name="elementIds" type="hidden" value={selectedElementIds.join(',')} /> : null}
                 <button className="rounded-full bg-[#173126] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#29513f]" type="submit">
                   اعمال فیلتر
                 </button>
@@ -156,7 +170,7 @@ export function StorefrontCatalogPage({
             <section>
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-lg font-black text-[#173126]">فیلتر قیمت</h2>
-                {(typeof selectedMinPrice === 'number' || typeof selectedMaxPrice === 'number') ? (
+                {typeof selectedMinPrice === 'number' || typeof selectedMaxPrice === 'number' ? (
                   <Link className={storefrontCatalog.chip} href={buildHref({ minPrice: null, maxPrice: null, page: 1 })}>
                     حذف
                   </Link>
@@ -169,7 +183,7 @@ export function StorefrontCatalogPage({
                 {activeProductTypeSlug ? <input name="type" type="hidden" value={activeProductTypeSlug} /> : null}
                 {searchValue ? <input name="search" type="hidden" value={searchValue} /> : null}
                 {activeSort !== 'newest' ? <input name="sort" type="hidden" value={activeSort} /> : null}
-                {selectedElementTypes.length ? <input name="elements" type="hidden" value={selectedElementTypes.join(',')} /> : null}
+                {selectedElementIds.length ? <input name="elementIds" type="hidden" value={selectedElementIds.join(',')} /> : null}
                 <button className="rounded-full border border-[#1f6a52]/12 bg-white px-4 py-3 text-sm font-bold text-[#173126] transition hover:bg-[#f8f2ea]" type="submit">
                   اعمال بازه قیمت
                 </button>
@@ -179,34 +193,42 @@ export function StorefrontCatalogPage({
               </form>
             </section>
 
-            <section>
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-lg font-black text-[#173126]">المان‌های محصول</h2>
-                {selectedElementTypes.length ? (
-                  <Link className={storefrontCatalog.chip} href={buildHref({ elementTypes: [], page: 1 })}>
-                    حذف همه
-                  </Link>
-                ) : null}
-              </div>
-              <div className="mt-4 grid gap-2">
-                {ELEMENT_TYPE_OPTIONS.map((elementType) => {
-                  const isActive = selectedElementTypes.includes(elementType)
-                  const nextElementTypes = isActive
-                    ? selectedElementTypes.filter((item) => item !== elementType)
-                    : [...selectedElementTypes, elementType]
-
-                  return (
+            {groupedElements.map((group) => (
+              <section key={group.type}>
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-lg font-black text-[#173126]">{group.label}</h2>
+                  {selectedElementIds.some((id) => group.items.some((item) => item.id === id)) ? (
                     <Link
-                      className={`rounded-[18px] px-4 py-3 text-sm transition ${isActive ? 'bg-[#173126] font-bold text-white' : 'bg-white/72 text-[#173126] hover:bg-white'}`}
-                      href={buildHref({ elementTypes: nextElementTypes, page: 1 })}
-                      key={elementType}
+                      className={storefrontCatalog.chip}
+                      href={buildHref({
+                        elementIds: selectedElementIds.filter((id) => !group.items.some((item) => item.id === id)),
+                        page: 1,
+                      })}
                     >
-                      {ELEMENT_TYPE_LABELS[elementType]}
+                      حذف
                     </Link>
-                  )
-                })}
-              </div>
-            </section>
+                  ) : null}
+                </div>
+                <div className="mt-4 grid gap-2">
+                  {group.items.map((element) => {
+                    const isActive = selectedElementIds.includes(element.id)
+                    const nextElementIds = isActive
+                      ? selectedElementIds.filter((item) => item !== element.id)
+                      : [...selectedElementIds, element.id]
+
+                    return (
+                      <Link
+                        className={`rounded-[18px] px-4 py-3 text-sm transition ${isActive ? 'bg-[#173126] font-bold text-white' : 'bg-white/72 text-[#173126] hover:bg-white'}`}
+                        href={buildHref({ elementIds: nextElementIds, page: 1 })}
+                        key={element.id}
+                      >
+                        {element.name}
+                      </Link>
+                    )
+                  })}
+                </div>
+              </section>
+            ))}
 
             <section>
               <div className="flex items-center justify-between gap-3">
@@ -272,9 +294,9 @@ export function StorefrontCatalogPage({
                   <span aria-hidden="true">×</span>
                 </Link>
               ) : null}
-              {selectedElementTypes.map((elementType) => (
-                <Link className={`${storefrontCatalog.chip} gap-2 hover:bg-white`} href={buildHref({ elementTypes: selectedElementTypes.filter((item) => item !== elementType), page: 1 })} key={elementType}>
-                  <span>{ELEMENT_TYPE_LABELS[elementType]}</span>
+              {activeElements.map((element) => (
+                <Link className={`${storefrontCatalog.chip} gap-2 hover:bg-white`} href={buildHref({ elementIds: selectedElementIds.filter((item) => item !== element.id), page: 1 })} key={element.id}>
+                  <span>{element.name}</span>
                   <span aria-hidden="true">×</span>
                 </Link>
               ))}

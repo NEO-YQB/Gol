@@ -28,9 +28,9 @@ export default async function ShopArchivePage({
     productTypeSlug: typeof query.type === 'string' ? query.type : '',
     minPrice: typeof query.minPrice === 'string' ? Number(query.minPrice) || undefined : undefined,
     maxPrice: typeof query.maxPrice === 'string' ? Number(query.maxPrice) || undefined : undefined,
-    elementTypes:
-      typeof query.elements === 'string'
-        ? query.elements.split(',').map((item) => item.trim()).filter(Boolean) as Array<'BASE' | 'FLOWER' | 'FILLER' | 'ACCESSORY'>
+    elementIds:
+      typeof query.elementIds === 'string'
+        ? query.elementIds.split(',').map((item) => Number(item.trim())).filter((item) => Number.isInteger(item) && item > 0)
         : undefined,
   })
   const title = 'همه محصولات'
@@ -74,7 +74,8 @@ export default async function ShopArchivePage({
         maxPrice={catalog.maxPrice}
         selectedMinPrice={typeof query.minPrice === 'string' ? Number(query.minPrice) || undefined : undefined}
         selectedMaxPrice={typeof query.maxPrice === 'string' ? Number(query.maxPrice) || undefined : undefined}
-        activeElementTypes={typeof query.elements === 'string' ? query.elements.split(',').map((item) => item.trim()).filter(Boolean) as Array<'BASE' | 'FLOWER' | 'FILLER' | 'ACCESSORY'> : []}
+        productElements={catalog.productElements}
+        activeElementIds={typeof query.elementIds === 'string' ? query.elementIds.split(',').map((item) => Number(item.trim())).filter((item) => Number.isInteger(item) && item > 0) : []}
         userLat={typeof query.userLat === 'string' ? Number(query.userLat) || undefined : undefined}
         userLng={typeof query.userLng === 'string' ? Number(query.userLng) || undefined : undefined}
       />
