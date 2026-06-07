@@ -53,18 +53,18 @@ export function StorefrontToastHost() {
   return (
     <div className="pointer-events-none fixed bottom-4 left-4 z-[120] md:bottom-6 md:left-6">
       <div
-        className={`pointer-events-auto flex min-h-14 w-[min(calc(100vw-2rem),430px)] items-center gap-3 rounded-[20px] border px-3.5 py-3 shadow-[0_18px_44px_rgba(40,29,12,0.14)] backdrop-blur-xl ${tone}`}
+        className={`pointer-events-auto flex min-h-14 max-w-[min(calc(100vw-2rem),720px)] items-center gap-3 rounded-[20px] border px-3.5 py-3 shadow-[0_18px_44px_rgba(40,29,12,0.14)] backdrop-blur-xl ${tone}`}
         role="status"
       >
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/72 text-[#8b867f] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
           <InfoIcon />
         </div>
-        <p className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-right text-sm font-semibold leading-6">
+        <p className="text-right text-sm font-semibold leading-6 text-balance">
           {toast.message}
         </p>
         <button
           aria-label="بستن پیام"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#96918a] transition hover:bg-white/65 hover:text-[#6f6a63]"
+          className="mr-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#96918a] transition hover:bg-white/65 hover:text-[#6f6a63]"
           onClick={dismissToast}
           type="button"
         >
