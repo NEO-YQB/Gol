@@ -3,13 +3,16 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
+  clearStoredSelectedAddress,
   createAddress,
   deleteAddress,
   getAddresses,
+  readStoredSelectedAddress,
   readStoredToken,
   setDefaultAddress,
   type CreateStorefrontAddressInput,
   type StorefrontAddress,
+  writeStoredSelectedAddress,
 } from '../lib/storefrontAuth'
 import { StorefrontMapPicker } from './StorefrontMapPicker'
 
@@ -65,6 +68,7 @@ export function StorefrontAccountAddresses() {
   const [reverseLoading, setReverseLoading] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [defaultingId, setDefaultingId] = useState<number | null>(null)
+  const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
 
@@ -81,6 +85,22 @@ export function StorefrontAccountAddresses() {
       setListRefreshing(true)
       const payload = await getAddresses(token)
       setAddresses(payload)
+
+      const storedAddress = readStoredSelectedAddress()
+      const matchingSelectedAddress = storedAddress
+        ? payload.find((item) => item.id === storedAddress.id)
+        : null
+      const fallbackAddress = payload.find((item) => item.isDefault) || payload[0]
+      const effectiveAddress = matchingSelectedAddress || fallbackAddress
+
+      if (effectiveAddress) {
+        writeStoredSelectedAddress(effectiveAddress)
+        setSelectedAddressId(effectiveAddress.id)
+      } else {
+        clearStoredSelectedAddress()
+        setSelectedAddressId(null)
+      }
+
       setError('')
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'دریافت آدرس‌ها با خطا مواجه شد')
@@ -138,10 +158,18 @@ export function StorefrontAccountAddresses() {
         address: draft.address.trim(),
       })
 
-      setAddresses((current) => [payload, ...current.filter((item) => item.id !== payload.id)].map((item) => ({
+      const nextAddresses = [payload, ...addresses.filter((item) => item.id !== payload.id)].map((item) => ({
         ...item,
         isDefault: payload.isDefault ? item.id === payload.id : item.isDefault,
-      })))
+      }))
+
+      setAddresses(nextAddresses)
+
+      if (payload.isDefault || nextAddresses.length === 1) {
+        writeStoredSelectedAddress(payload)
+        setSelectedAddressId(payload.id)
+      }
+
       setDraft(DEFAULT_ADDRESS)
       setMessage('آدرس جدید با موفقیت ثبت شد.')
     } catch (requestError) {
@@ -162,7 +190,22 @@ export function StorefrontAccountAddresses() {
       setError('')
       setMessage('')
       await deleteAddress(token, id)
-      setAddresses((current) => current.filter((item) => item.id !== id))
+      setAddresses((current) => {
+        const nextAddresses = current.filter((item) => item.id !== id)
+        const fallbackAddress = nextAddresses.find((item) => item.isDefault) || nextAddresses[0]
+
+        if (selectedAddressId === id) {
+          if (fallbackAddress) {
+            writeStoredSelectedAddress(fallbackAddress)
+            setSelectedAddressId(fallbackAddress.id)
+          } else {
+            clearStoredSelectedAddress()
+            setSelectedAddressId(null)
+          }
+        }
+
+        return nextAddresses
+      })
       setMessage('آدرس انتخاب‌شده حذف شد.')
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'حذف آدرس با خطا مواجه شد')
@@ -188,12 +231,21 @@ export function StorefrontAccountAddresses() {
           isDefault: item.id === payload.id,
         })),
       )
+      writeStoredSelectedAddress(payload)
+      setSelectedAddressId(payload.id)
       setMessage('آدرس پیش‌فرض با موفقیت تغییر کرد.')
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'تغییر آدرس پیش‌فرض با خطا مواجه شد')
     } finally {
       setDefaultingId(null)
     }
+  }
+
+  function handleSelectForNearest(address: StorefrontAddress) {
+    writeStoredSelectedAddress(address)
+    setSelectedAddressId(address.id)
+    setMessage(`آدرس «${address.title}» برای مرتب‌سازی نزدیک‌ترین انتخاب شد.`)
+    setError('')
   }
 
   const canSubmit =
@@ -329,6 +381,15 @@ export function StorefrontAccountAddresses() {
             </button>
           </div>
 
+          <div className="mt-4 rounded-[22px] bg-[#edf8f2] px-4 py-4 text-sm text-[#1f6a52]">
+            <strong className="block font-black">مبنای مرتب‌سازی نزدیک‌ترین</strong>
+            <span className="mt-1 block leading-7">
+              {selectedAddressId
+                ? `الان نزدیک‌ترین فروشگاه‌ها با آدرس انتخاب‌شده شما محاسبه می‌شوند.`
+                : 'اگر وارد حساب شده باشی، نزدیک‌ترین بر اساس آدرس انتخاب‌شده یا آدرس پیش‌فرضت محاسبه می‌شود.'}
+            </span>
+          </div>
+
           <div className="mt-5 grid gap-3">
             {addresses.length ? (
               addresses.map((address) => (
@@ -339,6 +400,9 @@ export function StorefrontAccountAddresses() {
                         <strong className="text-base text-[#173126]">{address.title}</strong>
                         {address.isDefault ? (
                           <span className="rounded-full bg-[#edf8f2] px-3 py-1 text-[11px] font-bold text-[#1f6a52]">پیش‌فرض</span>
+                        ) : null}
+                        {selectedAddressId === address.id ? (
+                          <span className="rounded-full bg-[#173126] px-3 py-1 text-[11px] font-bold text-white">مبنای نزدیک‌ترین</span>
                         ) : null}
                       </div>
                       <p className="mt-2 text-sm text-[#6e6152]">{`${address.city} — ${address.address}`}</p>
@@ -353,6 +417,14 @@ export function StorefrontAccountAddresses() {
                     </button>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      className="rounded-full border border-[#1f6a52]/15 bg-white px-3 py-1.5 text-xs font-bold text-[#1f6a52] transition hover:bg-[#edf8f2] disabled:cursor-not-allowed disabled:opacity-55"
+                      disabled={selectedAddressId === address.id}
+                      onClick={() => handleSelectForNearest(address)}
+                      type="button"
+                    >
+                      {selectedAddressId === address.id ? 'آدرس انتخاب‌شده برای نزدیک‌ترین' : 'انتخاب برای نزدیک‌ترین'}
+                    </button>
                     <button
                       className="rounded-full border border-[#1f6a52]/15 bg-white px-3 py-1.5 text-xs font-bold text-[#1f6a52] transition hover:bg-[#edf8f2] disabled:cursor-not-allowed disabled:opacity-55"
                       disabled={address.isDefault || defaultingId === address.id}

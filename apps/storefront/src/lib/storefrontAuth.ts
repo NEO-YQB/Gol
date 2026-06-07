@@ -1,6 +1,7 @@
 'use client'
 
 export const STOREFRONT_TOKEN_KEY = 'golino.storefront.token'
+export const STOREFRONT_SELECTED_ADDRESS_KEY = 'golino.storefront.selected-address'
 
 export type StorefrontUser = {
   id: number
@@ -54,6 +55,14 @@ export type StorefrontAddress = {
   userId?: number
   createdAt?: string
   updatedAt?: string
+}
+
+export type StorefrontSelectedAddressLocation = {
+  id: number
+  title: string
+  lat: number
+  lng: number
+  isDefault: boolean
 }
 
 export type CreateStorefrontAddressInput = {
@@ -110,6 +119,54 @@ export function writeStoredToken(token: string) {
 export function clearStoredToken() {
   if (typeof window === 'undefined') return
   window.localStorage.removeItem(STOREFRONT_TOKEN_KEY)
+}
+
+export function readStoredSelectedAddress() {
+  if (typeof window === 'undefined') return null
+
+  try {
+    const rawValue = window.localStorage.getItem(STOREFRONT_SELECTED_ADDRESS_KEY)
+    if (!rawValue) return null
+
+    const payload = JSON.parse(rawValue) as Partial<StorefrontSelectedAddressLocation>
+    if (
+      typeof payload.id !== 'number' ||
+      typeof payload.title !== 'string' ||
+      typeof payload.lat !== 'number' ||
+      typeof payload.lng !== 'number'
+    ) {
+      return null
+    }
+
+    return {
+      id: payload.id,
+      title: payload.title,
+      lat: payload.lat,
+      lng: payload.lng,
+      isDefault: payload.isDefault === true,
+    } satisfies StorefrontSelectedAddressLocation
+  } catch {
+    return null
+  }
+}
+
+export function writeStoredSelectedAddress(address: StorefrontAddress | StorefrontSelectedAddressLocation) {
+  if (typeof window === 'undefined') return
+
+  const payload: StorefrontSelectedAddressLocation = {
+    id: address.id,
+    title: address.title,
+    lat: address.lat,
+    lng: address.lng,
+    isDefault: address.isDefault === true,
+  }
+
+  window.localStorage.setItem(STOREFRONT_SELECTED_ADDRESS_KEY, JSON.stringify(payload))
+}
+
+export function clearStoredSelectedAddress() {
+  if (typeof window === 'undefined') return
+  window.localStorage.removeItem(STOREFRONT_SELECTED_ADDRESS_KEY)
 }
 
 export async function sendOtp(phoneNumber: string) {

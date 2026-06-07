@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { getAddresses, readStoredSelectedAddress, readStoredToken, writeStoredSelectedAddress } from '../lib/storefrontAuth'
 
 export function NearestSortButton() {
   const router = useRouter()
@@ -9,27 +10,55 @@ export function NearestSortButton() {
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)
 
-  async function handleClick() {
-    if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      return
-    }
+  function pushNearest(lat: number, lng: number) {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('sort', 'nearest')
+    params.set('userLat', String(lat))
+    params.set('userLng', String(lng))
+    router.push(`${pathname}?${params.toString()}`)
+  }
 
+  async function handleClick() {
     setIsLoading(true)
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const params = new URLSearchParams(searchParams.toString())
-        params.set('sort', 'nearest')
-        params.set('userLat', String(position.coords.latitude))
-        params.set('userLng', String(position.coords.longitude))
-        router.push(`${pathname}?${params.toString()}`)
+    try {
+      const token = readStoredToken()
+
+      if (token) {
+        const storedAddress = readStoredSelectedAddress()
+        if (storedAddress) {
+          pushNearest(storedAddress.lat, storedAddress.lng)
+          return
+        }
+
+        const addresses = await getAddresses(token)
+        const selectedAddress = addresses.find((item) => item.isDefault) || addresses[0]
+        if (selectedAddress) {
+          writeStoredSelectedAddress(selectedAddress)
+          pushNearest(selectedAddress.lat, selectedAddress.lng)
+          return
+        }
+      }
+
+      if (typeof navigator === 'undefined' || !navigator.geolocation) {
+        return
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          pushNearest(position.coords.latitude, position.coords.longitude)
+          setIsLoading(false)
+        },
+        () => {
+          setIsLoading(false)
+        },
+        { enableHighAccuracy: true, timeout: 10000 },
+      )
+    } finally {
+      if (typeof navigator === 'undefined' || !navigator.geolocation) {
         setIsLoading(false)
-      },
-      () => {
-        setIsLoading(false)
-      },
-      { enableHighAccuracy: true, timeout: 10000 },
-    )
+      }
+    }
   }
 
   return (
