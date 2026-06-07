@@ -16,6 +16,7 @@ type AdminMapboxMap = {
   on: (event: string, handler: (event: { lngLat?: { lat: number; lng: number } }) => void) => AdminMapboxMap
   addControl: (control: unknown, position?: string) => void
   setCenter: (lngLat: [number, number]) => void
+  resize?: () => void
   remove: () => void
 }
 
@@ -80,7 +81,6 @@ export function AdminVendorMapPicker({
   const mapRef = useRef<HTMLDivElement | null>(null)
   const instanceRef = useRef<{ map?: AdminMapboxMap; marker?: AdminMapboxMarker }>({})
   const onChangeRef = useRef(onChange)
-  const initialCenterRef = useRef<[number, number]>([value.lng || DEFAULT_LNG, value.lat || DEFAULT_LAT])
   const [mapError, setMapError] = useState('')
 
   useEffect(() => {
@@ -120,14 +120,14 @@ export function AdminVendorMapPicker({
 
             return { url }
           },
-          center: initialCenterRef.current,
+          center: [value.lng || DEFAULT_LNG, value.lat || DEFAULT_LAT],
           zoom: DEFAULT_ZOOM,
         })
 
         map.addControl(new window.mapboxgl.NavigationControl(), 'top-left')
 
         const marker = new window.mapboxgl.Marker({ draggable: true })
-          .setLngLat(initialCenterRef.current)
+          .setLngLat([value.lng || DEFAULT_LNG, value.lat || DEFAULT_LAT])
           .addTo(map)
 
         map.on('click', (event) => {
@@ -144,6 +144,10 @@ export function AdminVendorMapPicker({
         })
 
         instanceRef.current = { map, marker }
+        map.on('load', () => {
+          map.resize?.()
+          setMapError('')
+        })
         setMapError('')
       } catch {
         if (!cancelled) {
@@ -164,6 +168,7 @@ export function AdminVendorMapPicker({
   useEffect(() => {
     instanceRef.current.marker?.setLngLat([value.lng, value.lat])
     instanceRef.current.map?.setCenter([value.lng, value.lat])
+    instanceRef.current.map?.resize?.()
   }, [value.lat, value.lng])
 
   return (

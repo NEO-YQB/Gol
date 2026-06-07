@@ -188,7 +188,7 @@ export function VendorWorkspacePage({
   const storeId = readText(store ?? {}, ['storeId'], '')
   const canUpdateStoreLocation = hasPermission(session, 'manage', 'all') || hasPermission(session, 'update', 'Store')
 
-  const loadWorkspaceData = useCallback(async () => {
+  const loadWorkspaceData = useCallback(async (options?: { silent?: boolean }) => {
     if (!storeId) {
       setLoading(false)
       setDetail(null)
@@ -198,7 +198,9 @@ export function VendorWorkspacePage({
       return
     }
 
-    setLoading(true)
+    if (!options?.silent) {
+      setLoading(true)
+    }
     setError(null)
 
     try {
@@ -214,7 +216,9 @@ export function VendorWorkspacePage({
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'خطا در بارگذاری میزکار فروشنده')
     } finally {
-      setLoading(false)
+      if (!options?.silent) {
+        setLoading(false)
+      }
     }
   }, [session, storeId])
 
@@ -252,12 +256,45 @@ export function VendorWorkspacePage({
   }, [currentPolicy])
 
   useEffect(() => {
-    setLocationForm({
-      address: readText(detailStore, ['address'], ''),
-      lat: toNumericCoordinate(detailStore.lat, 35.7219),
-      lng: toNumericCoordinate(detailStore.lng, 51.3347),
+    const fallbackStore = toObject(store)
+    const nextAddress =
+      readText(detailStore, ['address'], '') ||
+      readText(fallbackStore, ['address'], '') ||
+      readText(fallbackStore, ['storeAddress'], '')
+    const nextLat =
+      typeof detailStore.lat === 'number' || String(detailStore.lat ?? '').trim() !== ''
+        ? toNumericCoordinate(detailStore.lat, 35.7219)
+        : typeof fallbackStore.lat === 'number' || String(fallbackStore.lat ?? '').trim() !== ''
+          ? toNumericCoordinate(fallbackStore.lat, 35.7219)
+          : 35.7219
+    const nextLng =
+      typeof detailStore.lng === 'number' || String(detailStore.lng ?? '').trim() !== ''
+        ? toNumericCoordinate(detailStore.lng, 51.3347)
+        : typeof fallbackStore.lng === 'number' || String(fallbackStore.lng ?? '').trim() !== ''
+          ? toNumericCoordinate(fallbackStore.lng, 51.3347)
+          : 51.3347
+
+    setLocationForm((current) => {
+      const currentAddress = current.address.trim()
+      const resolvedAddress = nextAddress || currentAddress
+      const resolvedLat = Number.isFinite(nextLat) ? nextLat : current.lat
+      const resolvedLng = Number.isFinite(nextLng) ? nextLng : current.lng
+
+      if (
+        current.address === resolvedAddress &&
+        current.lat === resolvedLat &&
+        current.lng === resolvedLng
+      ) {
+        return current
+      }
+
+      return {
+        address: resolvedAddress,
+        lat: resolvedLat,
+        lng: resolvedLng,
+      }
     })
-  }, [detailStore])
+  }, [detailStore, store])
 
   const stats = [
     {
@@ -309,7 +346,7 @@ export function VendorWorkspacePage({
     try {
       await adminApi.updateStore(session, storeId, { isVerified: nextIsVerified })
       setActionMessage(nextIsVerified ? 'فروشگاه فعال شد.' : 'فروشگاه غیرفعال شد.')
-      await loadWorkspaceData()
+      await loadWorkspaceData({ silent: true })
     } catch (toggleError) {
       setActionError(toggleError instanceof Error ? toggleError.message : 'تغییر وضعیت فروشگاه ناموفق بود')
     } finally {
@@ -350,14 +387,21 @@ export function VendorWorkspacePage({
   async function handleSaveLocation() {
     if (!storeId || !canUpdateStoreLocation) return
 
+    const nextLocation = {
+      address: locationForm.address.trim(),
+      lat: locationForm.lat,
+      lng: locationForm.lng,
+    }
+
     setLocationBusy(true)
     setActionError(null)
     try {
       await adminApi.updateStore(session, storeId, {
-        address: locationForm.address.trim() || undefined,
-        lat: locationForm.lat,
-        lng: locationForm.lng,
+        address: nextLocation.address || undefined,
+        lat: nextLocation.lat,
+        lng: nextLocation.lng,
       })
+      setLocationForm(nextLocation)
       setActionMessage('لوکیشن فروشگاه با موفقیت بروزرسانی شد.')
       await loadWorkspaceData()
     } catch (locationError) {
