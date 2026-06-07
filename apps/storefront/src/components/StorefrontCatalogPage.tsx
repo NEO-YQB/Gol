@@ -280,38 +280,35 @@ export function StorefrontCatalogPage({
 
         <section className={storefrontCatalog.content}>
           {searchValue || typeof selectedMinPrice === 'number' || typeof selectedMaxPrice === 'number' || activeElements.length || activeCategory || activeProductType ? (
-            <div className="grid gap-2 rounded-[22px] border border-[#1f6a52]/10 bg-white/78 px-4 py-3 shadow-[0_10px_24px_rgba(52,36,17,0.04)]">
-              <div className="flex items-center justify-between gap-3">
-                <strong className="text-sm font-black text-[#173126]">فیلترهای انتخاب‌شده</strong>
-                <span className="text-xs text-[#92785a]">برای حذف، روی هر مورد بزن</span>
-              </div>
-              <div className="-mx-1 flex flex-nowrap items-center gap-2 overflow-x-auto px-1 pb-1">
+            <div className="flex min-w-0 items-center gap-3 rounded-[18px] border border-[#1f6a52]/10 bg-white/78 px-3 py-2 shadow-[0_8px_18px_rgba(52,36,17,0.04)]">
+              <strong className="shrink-0 text-xs font-black text-[#173126]">فیلترهای انتخاب‌شده</strong>
+              <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-2 overflow-x-auto">
                 {searchValue ? (
-                  <Link className={`${storefrontCatalog.chip} shrink-0 gap-2 whitespace-nowrap hover:bg-white`} href={buildHref({ search: '', page: 1 })}>
+                  <Link className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#1f6a52]/10 bg-white px-2.5 py-1 text-[11px] font-bold whitespace-nowrap text-[#1f6a52] hover:bg-white" href={buildHref({ search: '', page: 1 })}>
                     <span>{`جستجو: ${searchValue}`}</span>
                     <span aria-hidden="true">×</span>
                   </Link>
                 ) : null}
                 {typeof selectedMinPrice === 'number' || typeof selectedMaxPrice === 'number' ? (
-                  <Link className={`${storefrontCatalog.chip} shrink-0 gap-2 whitespace-nowrap hover:bg-white`} href={buildHref({ minPrice: null, maxPrice: null, page: 1 })}>
+                  <Link className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#1f6a52]/10 bg-white px-2.5 py-1 text-[11px] font-bold whitespace-nowrap text-[#1f6a52] hover:bg-white" href={buildHref({ minPrice: null, maxPrice: null, page: 1 })}>
                     <span>{`قیمت: ${typeof selectedMinPrice === 'number' ? formatMoney(selectedMinPrice) : 'کمینه'} تا ${typeof selectedMaxPrice === 'number' ? formatMoney(selectedMaxPrice) : 'بیشینه'}`}</span>
                     <span aria-hidden="true">×</span>
                   </Link>
                 ) : null}
                 {activeElements.map((element) => (
-                  <Link className={`${storefrontCatalog.chip} shrink-0 gap-2 whitespace-nowrap hover:bg-white`} href={buildHref({ elementIds: selectedElementIds.filter((item) => item !== element.id), page: 1 })} key={element.id}>
+                  <Link className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#1f6a52]/10 bg-white px-2.5 py-1 text-[11px] font-bold whitespace-nowrap text-[#1f6a52] hover:bg-white" href={buildHref({ elementIds: selectedElementIds.filter((item) => item !== element.id), page: 1 })} key={element.id}>
                     <span>{element.name}</span>
                     <span aria-hidden="true">×</span>
                   </Link>
                 ))}
                 {activeCategory ? (
-                  <Link className={`${storefrontCatalog.chip} shrink-0 gap-2 whitespace-nowrap hover:bg-white`} href={buildHref({ categorySlug: '', page: 1 })}>
+                  <Link className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#1f6a52]/10 bg-white px-2.5 py-1 text-[11px] font-bold whitespace-nowrap text-[#1f6a52] hover:bg-white" href={buildHref({ categorySlug: '', page: 1 })}>
                     <span>{`دسته: ${activeCategory.name}`}</span>
                     <span aria-hidden="true">×</span>
                   </Link>
                 ) : null}
                 {activeProductType ? (
-                  <Link className={`${storefrontCatalog.chip} shrink-0 gap-2 whitespace-nowrap hover:bg-white`} href={buildHref({ productTypeSlug: '', page: 1 })}>
+                  <Link className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#1f6a52]/10 bg-white px-2.5 py-1 text-[11px] font-bold whitespace-nowrap text-[#1f6a52] hover:bg-white" href={buildHref({ productTypeSlug: '', page: 1 })}>
                     <span>{`نوع: ${activeProductType.name}`}</span>
                     <span aria-hidden="true">×</span>
                   </Link>
