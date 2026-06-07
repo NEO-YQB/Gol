@@ -23,3 +23,21 @@ export function MenuIcon({ open }: { open: boolean }) {
     </svg>
   )
 }
+
+export function InfoIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" height="18" viewBox="0 0 24 24" width="18">
+      <circle cx="12" cy="12" r="8.25" stroke="currentColor" strokeWidth="1.7" />
+      <path d="M12 10.1v5.2" stroke="currentColor" strokeLinecap="round" strokeWidth="1.7" />
+      <circle cx="12" cy="7.55" r="1.05" fill="currentColor" />
+    </svg>
+  )
+}
+
+export function CloseIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" height="16" viewBox="0 0 24 24" width="16">
+      <path d="M7 7l10 10M17 7 7 17" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
+    </svg>
+  )
+}

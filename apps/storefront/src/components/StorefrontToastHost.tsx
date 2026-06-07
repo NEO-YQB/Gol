@@ -1,11 +1,20 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { CloseIcon, InfoIcon } from './storefrontIcons'
 import { STOREFRONT_TOAST_EVENT, type StorefrontToastDetail } from './storefrontToast'
 
 export function StorefrontToastHost() {
   const [toast, setToast] = useState<StorefrontToastDetail | null>(null)
   const timeoutRef = useRef<number | null>(null)
+
+  const dismissToast = useCallback(() => {
+    setToast(null)
+    if (timeoutRef.current) {
+      window.clearTimeout(timeoutRef.current)
+      timeoutRef.current = null
+    }
+  }, [])
 
   useEffect(() => {
     function handleToast(event: Event) {
@@ -20,8 +29,7 @@ export function StorefrontToastHost() {
       }
 
       timeoutRef.current = window.setTimeout(() => {
-        setToast(null)
-        timeoutRef.current = null
+        dismissToast()
       }, detail.duration ?? 8000)
     }
 
@@ -33,19 +41,35 @@ export function StorefrontToastHost() {
         window.clearTimeout(timeoutRef.current)
       }
     }
-  }, [])
+  }, [dismissToast])
 
   if (!toast?.message) return null
 
   const tone =
     toast.variant === 'success'
-      ? 'border-[#1f6a52]/16 bg-[#edf8f2]/98 text-[#1f6a52]'
-      : 'border-[#d06c54]/16 bg-[#fff6f3]/98 text-[#9f3f2c]'
+      ? 'border-white/55 bg-[rgba(245,249,245,0.92)] text-[#6a716c]'
+      : 'border-white/52 bg-[rgba(250,245,241,0.92)] text-[#74706a]'
 
   return (
-    <div className="pointer-events-none fixed inset-x-4 bottom-4 z-[120] flex justify-center md:bottom-6">
-      <div className={`w-full max-w-[720px] rounded-[22px] border px-4 py-3 text-right text-sm font-bold leading-7 shadow-[0_20px_50px_rgba(40,29,12,0.18)] backdrop-blur-sm md:px-5 ${tone}`}>
-        {toast.message}
+    <div className="pointer-events-none fixed bottom-4 left-4 z-[120] md:bottom-6 md:left-6">
+      <div
+        className={`pointer-events-auto flex min-h-14 w-[min(calc(100vw-2rem),430px)] items-center gap-3 rounded-[20px] border px-3.5 py-3 shadow-[0_18px_44px_rgba(40,29,12,0.14)] backdrop-blur-xl ${tone}`}
+        role="status"
+      >
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/72 text-[#8b867f] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
+          <InfoIcon />
+        </div>
+        <p className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-right text-sm font-semibold leading-6">
+          {toast.message}
+        </p>
+        <button
+          aria-label="بستن پیام"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#96918a] transition hover:bg-white/65 hover:text-[#6f6a63]"
+          onClick={dismissToast}
+          type="button"
+        >
+          <CloseIcon />
+        </button>
       </div>
     </div>
   )
