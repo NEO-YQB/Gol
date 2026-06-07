@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { ProductCard } from './storefrontBlocks'
 import { storefrontCatalog } from './storefrontCatalog'
+import { resolveAssetUrl } from '../lib/storefront'
 import type {
   CategorySummary,
   ProductSummary,
@@ -143,26 +144,51 @@ export function StorefrontVendorPage({
 
   return (
     <div className="grid gap-6">
-      <section className={storefrontCatalog.hero}>
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_340px] xl:items-start">
+      <section className={`${storefrontCatalog.hero} overflow-hidden`}>
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_360px] xl:items-start">
           <div>
-            <div className="flex flex-wrap gap-2 text-xs font-bold text-white/85">
-              <span className="rounded-full border border-white/15 bg-white/10 px-3 py-2">فروشنده منتخب</span>
-              {store.isVerified ? <span className="rounded-full border border-[#d8f0e3]/40 bg-[#d8f0e3]/18 px-3 py-2 text-white">تأیید شده</span> : null}
-              <span className="rounded-full border border-white/15 bg-white/10 px-3 py-2">{`${new Intl.NumberFormat('fa-IR').format(productCount)} محصول`}</span>
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap gap-2 text-xs font-bold text-white/85">
+                  <span className="rounded-full border border-white/15 bg-white/10 px-3 py-2">فروشنده منتخب</span>
+                  {store.isVerified ? <span className="rounded-full border border-[#d8f0e3]/40 bg-[#d8f0e3]/18 px-3 py-2 text-white">تأیید شده</span> : null}
+                  <span className="rounded-full border border-white/15 bg-white/10 px-3 py-2">{`${new Intl.NumberFormat('fa-IR').format(productCount)} محصول`}</span>
+                </div>
+                <h1 className="mt-4 text-3xl font-black md:text-[2.6rem]">{store.name}</h1>
+                <p className="mt-3 max-w-3xl text-sm leading-7 text-white/82 md:text-[15px]">
+                  {store.description || `محصولات ${store.name} را با فیلتر دسته‌بندی، جستجو و مرتب‌سازی در همین صفحه ببینید.`}
+                </p>
+              </div>
+
+              {store.logo ? (
+                <div className="flex shrink-0 justify-start sm:justify-end">
+                  <div className="overflow-hidden rounded-[28px] border border-white/15 bg-white/95 p-3 shadow-[0_18px_44px_rgba(18,28,24,0.18)]">
+                    <img alt={store.name} className="h-20 w-20 rounded-[20px] object-cover md:h-24 md:w-24" src={resolveAssetUrl(store.logo)} />
+                  </div>
+                </div>
+              ) : null}
             </div>
-            <h1 className="mt-4 text-3xl font-black md:text-[2.4rem]">{store.name}</h1>
-            <p className="mt-3 max-w-3xl text-sm leading-7 text-white/82">
-              {store.description || `محصولات ${store.name} را با فیلتر دسته‌بندی، جستجو و مرتب‌سازی در همین صفحه ببینید.`}
-            </p>
-            <div className="mt-5 flex flex-wrap gap-2 text-xs font-bold text-white/85">
-              <span className="rounded-full border border-white/15 bg-white/10 px-3 py-2">{`رضایت مشتریان: ${formatRating(store.customerRatingAverage)}`}</span>
-              <span className="rounded-full border border-white/15 bg-white/10 px-3 py-2">{`${new Intl.NumberFormat('fa-IR').format(Number(store.customerRatingCount ?? 0))} نظر`}</span>
-              <span className="rounded-full border border-white/15 bg-white/10 px-3 py-2">{getDeliveryLabel(store)}</span>
+
+            <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="rounded-[24px] border border-white/12 bg-white/10 px-4 py-4 backdrop-blur-sm">
+                <span className="block text-xs font-bold text-white/65">رضایت مشتریان</span>
+                <strong className="mt-2 block text-2xl font-black text-white">{formatRating(store.customerRatingAverage)}</strong>
+                <p className="mt-1 text-xs text-white/72">بر پایه بازخورد مشتریان</p>
+              </div>
+              <div className="rounded-[24px] border border-white/12 bg-white/10 px-4 py-4 backdrop-blur-sm">
+                <span className="block text-xs font-bold text-white/65">تعداد نظر</span>
+                <strong className="mt-2 block text-2xl font-black text-white">{new Intl.NumberFormat('fa-IR').format(Number(store.customerRatingCount ?? 0))}</strong>
+                <p className="mt-1 text-xs text-white/72">ثبت‌شده برای این فروشگاه</p>
+              </div>
+              <div className="rounded-[24px] border border-white/12 bg-white/10 px-4 py-4 backdrop-blur-sm sm:col-span-2 xl:col-span-1">
+                <span className="block text-xs font-bold text-white/65">زمان تحویل</span>
+                <strong className="mt-2 block text-base font-black text-white leading-7">{getDeliveryLabel(store)}</strong>
+                <p className="mt-1 text-xs text-white/72">براساس تنظیمات فعلی فروشنده</p>
+              </div>
             </div>
           </div>
 
-          <aside className="rounded-[30px] border border-white/10 bg-black/10 p-5">
+          <aside className="rounded-[32px] border border-white/10 bg-black/10 p-5 backdrop-blur-sm">
             <h2 className="text-lg font-black">اطلاعات فروشگاه</h2>
             <div className="mt-4 grid gap-3 text-sm">
               <div className="rounded-[20px] bg-white/10 px-4 py-4">
@@ -176,6 +202,18 @@ export function StorefrontVendorPage({
                     {typeof store.expressDeliveryHours === 'number'
                       ? `${new Intl.NumberFormat('fa-IR').format(store.expressDeliveryHours)} ساعت`
                       : 'فعال'}
+                  </strong>
+                </div>
+              ) : null}
+              {(typeof store.minDeliveryHours === 'number' || typeof store.maxDeliveryHours === 'number') ? (
+                <div className="rounded-[20px] bg-white/10 px-4 py-4">
+                  <span className="block text-white/65">بازه تحویل</span>
+                  <strong className="mt-1 block">
+                    {typeof store.minDeliveryHours === 'number' && typeof store.maxDeliveryHours === 'number'
+                      ? `${new Intl.NumberFormat('fa-IR').format(store.minDeliveryHours)} تا ${new Intl.NumberFormat('fa-IR').format(store.maxDeliveryHours)} ساعت`
+                      : typeof store.minDeliveryHours === 'number'
+                        ? `${new Intl.NumberFormat('fa-IR').format(store.minDeliveryHours)} ساعت`
+                        : `${new Intl.NumberFormat('fa-IR').format(Number(store.maxDeliveryHours ?? 0))} ساعت`}
                   </strong>
                 </div>
               ) : null}
@@ -351,7 +389,7 @@ export function StorefrontVendorPage({
               ))}
             </section>
           ) : (
-            <section className={`${storefrontCatalog.card} border-dashed`}>
+            <section className={storefrontCatalog.empty}>
               <h3 className="text-xl font-black text-[#173126]">محصولی پیدا نشد</h3>
               <p className="mt-3 text-sm leading-7 text-[#6e6152]">
                 فیلترها را سبک‌تر کنید یا دوباره همه محصولات فروشگاه را ببینید.
