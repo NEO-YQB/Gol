@@ -1,9 +1,11 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
 import type { StorefrontProductDetail } from '../lib/storefront'
 import { resolveAssetUrl } from '../lib/storefront'
+import { addCartItem, getCart, readStoredToken } from '../lib/storefrontAuth'
 import { storefrontCatalog } from './storefrontCatalog'
 
 function formatMoney(value: number) {
@@ -31,8 +33,11 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
       return true
     })
   }, [gallery, product.mainImage, product.mainImageAlt, product.name])
+  const router = useRouter()
   const [activeImageUrl, setActiveImageUrl] = useState(allImages[0]?.url || product.mainImage)
   const activeImage = allImages.find((item) => item.url === activeImageUrl) || allImages[0]
+  const [cartMessage, setCartMessage] = useState('')
+  const [isAdding, setIsAdding] = useState(false)
   const hasDiscount = typeof product.discountPrice === 'number' && product.discountPrice > 0 && product.discountPrice < product.price
   const ratingAverage = Number(product.store?.customerRatingAverage ?? 0)
   const ratingCount = Number(product.store?.customerRatingCount ?? 0)
@@ -67,13 +72,47 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
             <strong className="mt-2 block text-3xl font-black">{formatMoney(hasDiscount ? Number(product.discountPrice) : product.price)}</strong>
             <p className="mt-3 text-sm text-white/82">{product.isPurchasable ? 'این محصول آماده ثبت سفارش است.' : 'این محصول فعلاً برای خرید مستقیم فعال نیست.'}</p>
             <div className="mt-5 flex flex-wrap gap-3">
-              <Link className="rounded-full bg-white px-5 py-2.5 text-sm font-bold text-[#173126]" href={`/products/${product.slug}?action=add-to-cart`}>
-                افزودن به سبد
-              </Link>
+              <button
+                className="rounded-full bg-white px-5 py-2.5 text-sm font-bold text-[#173126] disabled:opacity-60"
+                disabled={isAdding}
+                onClick={async () => {
+                  const token = readStoredToken()
+                  if (!token) {
+                    setCartMessage('برای افزودن محصول به سبد خرید، ابتدا وارد حساب کاربری شوید.')
+                    return
+                  }
+
+                  try {
+                    setIsAdding(true)
+                    setCartMessage('')
+                    const cart = await getCart(token)
+                    const existingStoreName = cart.items[0]?.product.store?.name
+                    const existingStoreSlug = cart.items[0]?.product.store?.slug
+                    const nextStoreName = product.store?.name || 'این فروشگاه'
+                    const nextStoreSlug = product.store?.slug || ''
+
+                    if (cart.items.length && existingStoreSlug && nextStoreSlug && existingStoreSlug !== nextStoreSlug) {
+                      setCartMessage(`سبد خرید شما در حال حاضر برای فروشگاه «${existingStoreName || 'فروشگاه فعلی'}» ثبت شده است. برای سفارش از «${nextStoreName}»، لطفاً ابتدا سبد فعلی را نهایی یا خالی کنید.`)
+                      return
+                    }
+
+                    await addCartItem(token, { productId: product.id, quantity: 1 })
+                    router.push('/cart')
+                  } catch (error) {
+                    setCartMessage(error instanceof Error ? error.message : 'افزودن به سبد خرید با خطا مواجه شد.')
+                  } finally {
+                    setIsAdding(false)
+                  }
+                }}
+                type="button"
+              >
+                {isAdding ? 'در حال افزودن...' : 'افزودن به سبد'}
+              </button>
               <Link className="rounded-full border border-white/20 px-5 py-2.5 text-sm font-bold text-white" href="/shop">
                 بازگشت به آرشیو
               </Link>
             </div>
+            {cartMessage ? <p className="mt-4 rounded-[18px] border border-white/14 bg-white/12 px-4 py-3 text-sm leading-7 text-white/92">{cartMessage}</p> : null}
           </div>
         </div>
       </section>

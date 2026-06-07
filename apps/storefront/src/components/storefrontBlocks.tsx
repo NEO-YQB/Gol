@@ -1,7 +1,10 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import { resolveAssetUrl, type CategorySummary, type ProductSummary, type StoreSummary } from '../lib/storefront'
+import { addCartItem, getCart, readStoredToken } from '../lib/storefrontAuth'
 import { storefrontShared } from './storefrontShared'
 import { storefrontStyles } from './storefrontStyles'
 
@@ -25,6 +28,10 @@ function formatDistance(value: number | undefined) {
   return `${new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 1 }).format(value)} کیلومتر`
 }
 
+function getSingleStoreCartMessage(currentStoreName: string, nextStoreName: string) {
+  return `سبد خرید شما در حال حاضر برای فروشگاه «${currentStoreName}» ثبت شده است. برای سفارش از «${nextStoreName}»، لطفاً ابتدا سبد فعلی را نهایی یا خالی کنید.`
+}
+
 function getProductHref(product: ProductSummary) {
   return `/products/${product.slug}`
 }
@@ -42,6 +49,9 @@ export function StorefrontPill({ text }: { text: string }) {
 }
 
 export function ProductCard({ product, className = '' }: { product: ProductSummary; className?: string }) {
+  const router = useRouter()
+  const [cartMessage, setCartMessage] = useState('')
+  const [isAdding, setIsAdding] = useState(false)
   const price = formatPrice(product.price)
   const effectiveDiscountPrice = getEffectiveDiscountPrice(product.price, product.discountPrice)
   const discountPrice = formatPrice(effectiveDiscountPrice)
@@ -93,13 +103,47 @@ export function ProductCard({ product, className = '' }: { product: ProductSumma
           </div>
         </div>
         <div className="mt-auto flex flex-wrap gap-2 pt-4">
-          <Link className="inline-flex items-center rounded-full bg-[#1f6a52] px-4 py-2 text-sm font-bold text-white" href={`${productHref}?action=add-to-cart`}>
-            افزودن به سبد
-          </Link>
+          <button
+            className="inline-flex items-center rounded-full bg-[#1f6a52] px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
+            disabled={isAdding}
+            onClick={async () => {
+              const token = readStoredToken()
+              if (!token) {
+                setCartMessage('برای افزودن محصول به سبد خرید، ابتدا وارد حساب کاربری شوید.')
+                return
+              }
+
+              try {
+                setIsAdding(true)
+                setCartMessage('')
+                const cart = await getCart(token)
+                const existingStoreName = cart.items[0]?.product.store?.name
+                const existingStoreSlug = cart.items[0]?.product.store?.slug
+                const nextStoreName = product.store?.name || 'این فروشگاه'
+                const nextStoreSlug = product.store?.slug || ''
+
+                if (cart.items.length && existingStoreSlug && nextStoreSlug && existingStoreSlug !== nextStoreSlug) {
+                  setCartMessage(getSingleStoreCartMessage(existingStoreName || 'فروشگاه فعلی', nextStoreName))
+                  return
+                }
+
+                await addCartItem(token, { productId: product.id, quantity: 1 })
+                router.push('/cart')
+              } catch (error) {
+                setCartMessage(error instanceof Error ? error.message : 'افزودن به سبد خرید با خطا مواجه شد.')
+              } finally {
+                setIsAdding(false)
+              }
+            }}
+            type="button"
+          >
+            {isAdding ? 'در حال افزودن...' : 'افزودن به سبد'}
+          </button>
           <Link className="inline-flex items-center rounded-full border border-[#1f6a52]/18 px-4 py-2 text-sm font-bold text-[#1f6a52]" href={productHref}>
             مشاهده محصول
           </Link>
         </div>
+        {cartMessage ? <p className="mt-3 rounded-[18px] border border-[#d06c54]/18 bg-[#fff6f3] px-3 py-3 text-sm leading-7 text-[#9f3f2c]">{cartMessage}</p> : null}
       </div>
     </article>
   )

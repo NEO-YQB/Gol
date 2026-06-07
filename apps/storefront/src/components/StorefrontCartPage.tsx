@@ -29,9 +29,11 @@ function getLineDiscount(item: StorefrontCartItem) {
 }
 
 function getStockState(item: StorefrontCartItem) {
-  if (item.product.quantity <= 0) return 'ناموجود'
-  if (item.product.quantity < item.quantity) return `فقط ${new Intl.NumberFormat('fa-IR').format(item.product.quantity)} عدد موجود است`
-  return `موجودی: ${new Intl.NumberFormat('fa-IR').format(item.product.quantity)} عدد`
+  const availableQuantity = Number(item.product.quantity ?? 0)
+
+  if (!Number.isFinite(availableQuantity) || availableQuantity <= 0) return 'ناموجود'
+  if (availableQuantity < item.quantity) return `فقط ${new Intl.NumberFormat('fa-IR').format(availableQuantity)} عدد موجود است`
+  return `موجودی: ${new Intl.NumberFormat('fa-IR').format(availableQuantity)} عدد`
 }
 
 export function StorefrontCartPage() {
@@ -243,7 +245,7 @@ export function StorefrontCartPage() {
                               </span>
                               <button
                                 className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#1f6a52]/12 bg-[#f8f2ea] text-lg font-black text-[#173126] disabled:opacity-50"
-                                disabled={isBusy || item.quantity >= item.product.quantity}
+                                disabled={isBusy || item.quantity >= Number(item.product.quantity || 0)}
                                 onClick={() => handleQuantityChange(item, item.quantity + 1)}
                                 type="button"
                               >
