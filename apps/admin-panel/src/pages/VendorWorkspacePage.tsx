@@ -257,22 +257,28 @@ export function VendorWorkspacePage({
 
   useEffect(() => {
     const fallbackStore = toObject(store)
+    const healthStore = toObject(healthDetail)
     const nextAddress =
+      readText(healthStore, ['address'], '') ||
       readText(detailStore, ['address'], '') ||
       readText(fallbackStore, ['address'], '') ||
       readText(fallbackStore, ['storeAddress'], '')
     const nextLat =
-      typeof detailStore.lat === 'number' || String(detailStore.lat ?? '').trim() !== ''
-        ? toNumericCoordinate(detailStore.lat, 35.7219)
-        : typeof fallbackStore.lat === 'number' || String(fallbackStore.lat ?? '').trim() !== ''
-          ? toNumericCoordinate(fallbackStore.lat, 35.7219)
-          : 35.7219
+      typeof healthStore.lat === 'number' || String(healthStore.lat ?? '').trim() !== ''
+        ? toNumericCoordinate(healthStore.lat, 35.7219)
+        : typeof detailStore.lat === 'number' || String(detailStore.lat ?? '').trim() !== ''
+          ? toNumericCoordinate(detailStore.lat, 35.7219)
+          : typeof fallbackStore.lat === 'number' || String(fallbackStore.lat ?? '').trim() !== ''
+            ? toNumericCoordinate(fallbackStore.lat, 35.7219)
+            : 35.7219
     const nextLng =
-      typeof detailStore.lng === 'number' || String(detailStore.lng ?? '').trim() !== ''
-        ? toNumericCoordinate(detailStore.lng, 51.3347)
-        : typeof fallbackStore.lng === 'number' || String(fallbackStore.lng ?? '').trim() !== ''
-          ? toNumericCoordinate(fallbackStore.lng, 51.3347)
-          : 51.3347
+      typeof healthStore.lng === 'number' || String(healthStore.lng ?? '').trim() !== ''
+        ? toNumericCoordinate(healthStore.lng, 51.3347)
+        : typeof detailStore.lng === 'number' || String(detailStore.lng ?? '').trim() !== ''
+          ? toNumericCoordinate(detailStore.lng, 51.3347)
+          : typeof fallbackStore.lng === 'number' || String(fallbackStore.lng ?? '').trim() !== ''
+            ? toNumericCoordinate(fallbackStore.lng, 51.3347)
+            : 51.3347
 
     setLocationForm((current) => {
       const currentAddress = current.address.trim()
@@ -294,7 +300,7 @@ export function VendorWorkspacePage({
         lng: resolvedLng,
       }
     })
-  }, [detailStore, store])
+  }, [detailStore, healthDetail, store])
 
   const stats = [
     {
