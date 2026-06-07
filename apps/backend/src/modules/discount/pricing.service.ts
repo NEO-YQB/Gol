@@ -55,6 +55,7 @@ type ResolvedLine = {
     name: string;
     slug: string;
     mainImage: string;
+    quantity: number;
     categoryId: number;
     store: {
       id: number;
@@ -264,6 +265,7 @@ export class PricingService {
         name: input.item.product.name,
         slug: input.item.product.slug,
         mainImage: input.item.product.mainImage,
+        quantity: input.item.product.quantity,
         categoryId: input.item.product.categoryId,
         store: {
           id: input.item.product.store.id,
