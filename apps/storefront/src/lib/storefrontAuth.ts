@@ -74,6 +74,63 @@ export type CreateStorefrontAddressInput = {
   isDefault?: boolean
 }
 
+export type StorefrontCartItem = {
+  id: number
+  productId: number
+  quantity: number
+  unitPrice: number
+  lineTotal: number
+  product: {
+    id: number
+    name: string
+    slug: string
+    mainImage: string
+    quantity: number
+    price: number
+    discountPrice?: number | null
+    store?: {
+      id: number
+      name: string
+      slug: string
+    } | null
+  }
+  pricing?: {
+    lineBaseTotal: number
+    finalUnitPriceBeforeCoupon: number
+    finalLineTotalBeforeCoupon: number
+    lineDiscountAmount: number
+    appliedRules?: Array<{
+      sourceType: 'vendor' | 'promotion'
+      sourceId: number
+      title: string
+      amount: number
+      priority: number
+      isExclusive?: boolean
+      couponCombinable?: boolean
+    }>
+  }
+}
+
+export type StorefrontCart = {
+  id: number
+  userId: number
+  items: StorefrontCartItem[]
+  pricing: {
+    subtotalBaseAmount: number
+    subtotalAfterLineDiscounts: number
+    deliveryFee: number
+    lineDiscountAmount: number
+    couponDiscountAmount: number
+    discountAmount: number
+    totalAmount: number
+    totalItems: number
+  }
+  totalItems: number
+  totalAmount: number
+  createdAt: string
+  updatedAt: string
+}
+
 export type SendOtpResponse = {
   message: string
   expiresAt: string
@@ -167,6 +224,53 @@ export function writeStoredSelectedAddress(address: StorefrontAddress | Storefro
 export function clearStoredSelectedAddress() {
   if (typeof window === 'undefined') return
   window.localStorage.removeItem(STOREFRONT_SELECTED_ADDRESS_KEY)
+}
+
+export async function getCart(token: string) {
+  return request<StorefrontCart>('/cart', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    cache: 'no-store',
+  })
+}
+
+export async function addCartItem(token: string, payload: { productId: number; quantity: number }) {
+  return request<StorefrontCart>('/cart/items', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function updateCartItem(token: string, itemId: number, payload: { quantity: number }) {
+  return request<StorefrontCart>(`/cart/items/${itemId}`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function removeCartItem(token: string, itemId: number) {
+  return request<StorefrontCart>(`/cart/items/${itemId}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+}
+
+export async function clearCart(token: string) {
+  return request<StorefrontCart>('/cart', {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
 }
 
 export async function sendOtp(phoneNumber: string) {
