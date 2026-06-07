@@ -2,11 +2,12 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { StorefrontProductDetail } from '../lib/storefront'
 import { resolveAssetUrl } from '../lib/storefront'
 import { addCartItem, getCart, readStoredToken } from '../lib/storefrontAuth'
 import { storefrontCatalog } from './storefrontCatalog'
+import { emitStorefrontToast } from './storefrontToast'
 
 function formatMoney(value: number) {
   return `${new Intl.NumberFormat('fa-IR').format(value)} تومان`
@@ -36,27 +37,13 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
   const router = useRouter()
   const [activeImageUrl, setActiveImageUrl] = useState(allImages[0]?.url || product.mainImage)
   const activeImage = allImages.find((item) => item.url === activeImageUrl) || allImages[0]
-  const [cartMessage, setCartMessage] = useState('')
   const [isAdding, setIsAdding] = useState(false)
   const hasDiscount = typeof product.discountPrice === 'number' && product.discountPrice > 0 && product.discountPrice < product.price
-
-  useEffect(() => {
-    if (!cartMessage) return
-    const timeoutId = window.setTimeout(() => setCartMessage(''), 8000)
-    return () => window.clearTimeout(timeoutId)
-  }, [cartMessage])
   const ratingAverage = Number(product.store?.customerRatingAverage ?? 0)
   const ratingCount = Number(product.store?.customerRatingCount ?? 0)
 
   return (
     <div className="grid gap-6">
-      {cartMessage ? (
-        <div className="pointer-events-none fixed inset-x-4 bottom-4 z-[90] flex justify-center md:inset-x-auto md:left-1/2 md:-translate-x-1/2">
-          <div className="w-full max-w-[720px] rounded-[22px] border border-[#d06c54]/16 bg-[#fff6f3]/98 px-4 py-3 text-right text-sm font-bold leading-7 text-[#9f3f2c] shadow-[0_20px_50px_rgba(159,63,44,0.18)] backdrop-blur-sm md:px-5">
-            {cartMessage}
-          </div>
-        </div>
-      ) : null}
       <section className={storefrontCatalog.hero}>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-3xl">
@@ -91,13 +78,12 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
                 onClick={async () => {
                   const token = readStoredToken()
                   if (!token) {
-                    setCartMessage('برای افزودن محصول به سبد خرید، ابتدا وارد حساب کاربری شوید.')
+                    emitStorefrontToast({ message: 'برای افزودن محصول به سبد خرید، ابتدا وارد حساب کاربری شوید.', duration: 8000 })
                     return
                   }
 
                   try {
                     setIsAdding(true)
-                    setCartMessage('')
                     const cart = await getCart(token)
                     const existingStoreName = cart.items[0]?.product.store?.name
                     const existingStoreSlug = cart.items[0]?.product.store?.slug
@@ -105,14 +91,14 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
                     const nextStoreSlug = product.store?.slug || ''
 
                     if (cart.items.length && existingStoreSlug && nextStoreSlug && existingStoreSlug !== nextStoreSlug) {
-                      setCartMessage(`سبد خرید شما در حال حاضر برای فروشگاه «${existingStoreName || 'فروشگاه فعلی'}» ثبت شده است. برای سفارش از «${nextStoreName}»، لطفاً ابتدا سبد فعلی را نهایی یا خالی کنید.`)
+                      emitStorefrontToast({ message: `سبد خرید شما در حال حاضر برای فروشگاه «${existingStoreName || 'فروشگاه فعلی'}» ثبت شده است. برای سفارش از «${nextStoreName}»، لطفاً ابتدا سبد فعلی را نهایی یا خالی کنید.`, duration: 8000 })
                       return
                     }
 
                     await addCartItem(token, { productId: product.id, quantity: 1 })
                     router.push('/cart')
                   } catch (error) {
-                    setCartMessage(error instanceof Error ? error.message : 'افزودن به سبد خرید با خطا مواجه شد.')
+                    emitStorefrontToast({ message: error instanceof Error ? error.message : 'افزودن به سبد خرید با خطا مواجه شد.', duration: 8000 })
                   } finally {
                     setIsAdding(false)
                   }

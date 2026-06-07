@@ -2,9 +2,10 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { resolveAssetUrl, type CategorySummary, type ProductSummary, type StoreSummary } from '../lib/storefront'
 import { addCartItem, getCart, readStoredToken } from '../lib/storefrontAuth'
+import { emitStorefrontToast } from './storefrontToast'
 import { storefrontShared } from './storefrontShared'
 import { storefrontStyles } from './storefrontStyles'
 
@@ -50,7 +51,6 @@ export function StorefrontPill({ text }: { text: string }) {
 
 export function ProductCard({ product, className = '' }: { product: ProductSummary; className?: string }) {
   const router = useRouter()
-  const [cartMessage, setCartMessage] = useState('')
   const [isAdding, setIsAdding] = useState(false)
   const price = formatPrice(product.price)
   const effectiveDiscountPrice = getEffectiveDiscountPrice(product.price, product.discountPrice)
@@ -61,12 +61,6 @@ export function ProductCard({ product, className = '' }: { product: ProductSumma
   const vendorHref = product.store?.slug ? getVendorHref(product.store) : null
   const categoryHref = product.category?.slug ? `/categories/${product.category.slug}` : null
   const isAddToCartDisabled = isAdding || product.isPurchasable !== true || product.isArchived === true
-
-  useEffect(() => {
-    if (!cartMessage) return
-    const timeoutId = window.setTimeout(() => setCartMessage(''), 8000)
-    return () => window.clearTimeout(timeoutId)
-  }, [cartMessage])
 
   return (
     <article className={`${storefrontStyles.productCard} ${className}`.trim()}>
@@ -115,19 +109,18 @@ export function ProductCard({ product, className = '' }: { product: ProductSumma
             disabled={isAddToCartDisabled}
             onClick={async () => {
               if (product.isPurchasable !== true || product.isArchived === true) {
-                setCartMessage('این محصول در حال حاضر امکان افزودن به سبد خرید را ندارد.')
+                emitStorefrontToast({ message: 'این محصول در حال حاضر امکان افزودن به سبد خرید را ندارد.', duration: 8000 })
                 return
               }
 
               const token = readStoredToken()
               if (!token) {
-                setCartMessage('برای افزودن محصول به سبد خرید، ابتدا وارد حساب کاربری شوید.')
+                emitStorefrontToast({ message: 'برای افزودن محصول به سبد خرید، ابتدا وارد حساب کاربری شوید.', duration: 8000 })
                 return
               }
 
               try {
                 setIsAdding(true)
-                setCartMessage('')
                 const cart = await getCart(token)
                 const existingStoreName = cart.items[0]?.product.store?.name
                 const existingStoreSlug = cart.items[0]?.product.store?.slug
@@ -135,14 +128,14 @@ export function ProductCard({ product, className = '' }: { product: ProductSumma
                 const nextStoreSlug = product.store?.slug || ''
 
                 if (cart.items.length && existingStoreSlug && nextStoreSlug && existingStoreSlug !== nextStoreSlug) {
-                  setCartMessage(getSingleStoreCartMessage(existingStoreName || 'فروشگاه فعلی', nextStoreName))
+                  emitStorefrontToast({ message: getSingleStoreCartMessage(existingStoreName || 'فروشگاه فعلی', nextStoreName), duration: 8000 })
                   return
                 }
 
                 await addCartItem(token, { productId: product.id, quantity: 1 })
                 router.push('/cart')
               } catch (error) {
-                setCartMessage(error instanceof Error ? error.message : 'افزودن به سبد خرید با خطا مواجه شد.')
+                emitStorefrontToast({ message: error instanceof Error ? error.message : 'افزودن به سبد خرید با خطا مواجه شد.', duration: 8000 })
               } finally {
                 setIsAdding(false)
               }
@@ -156,13 +149,6 @@ export function ProductCard({ product, className = '' }: { product: ProductSumma
           </Link>
         </div>
       </div>
-      {cartMessage ? (
-        <div className="pointer-events-none fixed inset-x-4 bottom-4 z-[90] flex justify-center md:inset-x-auto md:left-1/2 md:-translate-x-1/2">
-          <div className="w-full max-w-[720px] rounded-[22px] border border-[#d06c54]/16 bg-[#fff6f3]/98 px-4 py-3 text-right text-sm font-bold leading-7 text-[#9f3f2c] shadow-[0_20px_50px_rgba(159,63,44,0.18)] backdrop-blur-sm md:px-5">
-            {cartMessage}
-          </div>
-        </div>
-      ) : null}
     </article>
   )
 }
