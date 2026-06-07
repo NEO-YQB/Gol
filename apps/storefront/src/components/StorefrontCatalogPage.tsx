@@ -280,7 +280,7 @@ export function StorefrontCatalogPage({
 
         <section className={storefrontCatalog.content}>
           {searchValue || typeof selectedMinPrice === 'number' || typeof selectedMaxPrice === 'number' || activeElements.length || activeCategory || activeProductType ? (
-            <div className={`${storefrontCatalog.card} grid gap-2 px-4 py-3`}>
+            <div className="grid gap-2 rounded-[22px] border border-[#1f6a52]/10 bg-white/78 px-4 py-3 shadow-[0_10px_24px_rgba(52,36,17,0.04)]">
               <div className="flex items-center justify-between gap-3">
                 <strong className="text-sm font-black text-[#173126]">فیلترهای انتخاب‌شده</strong>
                 <span className="text-xs text-[#92785a]">برای حذف، روی هر مورد بزن</span>
