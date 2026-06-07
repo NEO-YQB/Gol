@@ -384,6 +384,47 @@ export function VendorWorkspacePage({
     } catch {}
   }
 
+  useEffect(() => {
+    if (!canUpdateStoreLocation) return
+    if (locationForm.address.trim()) return
+    if (!Number.isFinite(locationForm.lat) || !Number.isFinite(locationForm.lng)) return
+
+    let cancelled = false
+
+    async function hydrateAddressFromCoordinates() {
+      try {
+        const response = await fetch(adminApi.getMapReverseUrl(locationForm.lat, locationForm.lng), {
+          headers: adminApi.getMapReverseHeaders(),
+        })
+        if (!response.ok || cancelled) return
+
+        const payload = (await response.json()) as Record<string, unknown>
+        const nextAddress =
+          typeof payload.address === 'string'
+            ? payload.address
+            : typeof payload.formatted_address === 'string'
+              ? payload.formatted_address
+              : ''
+
+        if (nextAddress.trim() && !cancelled) {
+          setLocationForm((current) => {
+            if (current.address.trim()) return current
+            return {
+              ...current,
+              address: nextAddress.trim(),
+            }
+          })
+        }
+      } catch {}
+    }
+
+    void hydrateAddressFromCoordinates()
+
+    return () => {
+      cancelled = true
+    }
+  }, [canUpdateStoreLocation, locationForm.address, locationForm.lat, locationForm.lng])
+
   async function handleSaveLocation() {
     if (!storeId || !canUpdateStoreLocation) return
 
@@ -403,7 +444,7 @@ export function VendorWorkspacePage({
       })
       setLocationForm(nextLocation)
       setActionMessage('لوکیشن فروشگاه با موفقیت بروزرسانی شد.')
-      await loadWorkspaceData()
+      await loadWorkspaceData({ silent: true })
     } catch (locationError) {
       setActionError(locationError instanceof Error ? locationError.message : 'بروزرسانی لوکیشن فروشگاه ناموفق بود')
     } finally {
