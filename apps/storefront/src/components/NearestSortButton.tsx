@@ -21,44 +21,44 @@ export function NearestSortButton() {
   async function handleClick() {
     setIsLoading(true)
 
-    try {
-      const token = readStoredToken()
+    const token = readStoredToken()
 
-      if (token) {
-        const storedAddress = readStoredSelectedAddress()
-        if (storedAddress) {
-          pushNearest(storedAddress.lat, storedAddress.lng)
-          return
-        }
+    if (token) {
+      const storedAddress = readStoredSelectedAddress()
+      if (storedAddress) {
+        pushNearest(storedAddress.lat, storedAddress.lng)
+        setIsLoading(false)
+        return
+      }
 
+      try {
         const addresses = await getAddresses(token)
         const selectedAddress = addresses.find((item) => item.isDefault) || addresses[0]
         if (selectedAddress) {
           writeStoredSelectedAddress(selectedAddress)
           pushNearest(selectedAddress.lat, selectedAddress.lng)
+          setIsLoading(false)
           return
         }
-      }
-
-      if (typeof navigator === 'undefined' || !navigator.geolocation) {
-        return
-      }
-
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          pushNearest(position.coords.latitude, position.coords.longitude)
-          setIsLoading(false)
-        },
-        () => {
-          setIsLoading(false)
-        },
-        { enableHighAccuracy: true, timeout: 10000 },
-      )
-    } finally {
-      if (typeof navigator === 'undefined' || !navigator.geolocation) {
-        setIsLoading(false)
+      } catch {
       }
     }
+
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setIsLoading(false)
+      return
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        pushNearest(position.coords.latitude, position.coords.longitude)
+        setIsLoading(false)
+      },
+      () => {
+        setIsLoading(false)
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    )
   }
 
   return (
