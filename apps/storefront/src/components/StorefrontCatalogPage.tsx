@@ -280,9 +280,9 @@ export function StorefrontCatalogPage({
 
         <section className={storefrontCatalog.content}>
           {searchValue || typeof selectedMinPrice === 'number' || typeof selectedMaxPrice === 'number' || activeElements.length || activeCategory || activeProductType ? (
-            <div className="flex min-w-0 items-center gap-3 rounded-[18px] border border-[#1f6a52]/10 bg-white/78 px-3 py-2 shadow-[0_8px_18px_rgba(52,36,17,0.04)]">
-              <strong className="shrink-0 text-xs font-black text-[#173126]">فیلترهای انتخاب‌شده</strong>
-              <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-2 overflow-x-auto">
+            <div className="flex h-11 min-w-0 items-center gap-2 overflow-hidden rounded-[18px] border border-[#1f6a52]/10 bg-white/78 px-3 shadow-[0_8px_18px_rgba(52,36,17,0.04)]">
+              <strong className="shrink-0 text-xs font-black leading-none text-[#173126]">فیلترهای انتخاب‌شده</strong>
+              <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-2 overflow-x-auto py-1">
                 {searchValue ? (
                   <Link className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#1f6a52]/10 bg-white px-2.5 py-1 text-[11px] font-bold whitespace-nowrap text-[#1f6a52] hover:bg-white" href={buildHref({ search: '', page: 1 })}>
                     <span>{`جستجو: ${searchValue}`}</span>
@@ -318,7 +318,7 @@ export function StorefrontCatalogPage({
           ) : null}
 
           {products.length ? (
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {products.map((product) => (
                 <ProductCard className="w-full min-w-0" key={product.id} product={product} />
               ))}
