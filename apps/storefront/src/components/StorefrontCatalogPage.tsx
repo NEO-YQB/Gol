@@ -280,37 +280,43 @@ export function StorefrontCatalogPage({
 
         <section className={storefrontCatalog.content}>
           {searchValue || typeof selectedMinPrice === 'number' || typeof selectedMaxPrice === 'number' || activeElements.length || activeCategory || activeProductType ? (
-            <div className={`${storefrontCatalog.card} flex flex-wrap items-center gap-2 px-4 py-3`}>
-              {searchValue ? (
-                <Link className={`${storefrontCatalog.chip} gap-2 hover:bg-white`} href={buildHref({ search: '', page: 1 })}>
-                  <span>{`جستجو: ${searchValue}`}</span>
-                  <span aria-hidden="true">×</span>
-                </Link>
-              ) : null}
-              {typeof selectedMinPrice === 'number' || typeof selectedMaxPrice === 'number' ? (
-                <Link className={`${storefrontCatalog.chip} gap-2 hover:bg-white`} href={buildHref({ minPrice: null, maxPrice: null, page: 1 })}>
-                  <span>{`قیمت: ${typeof selectedMinPrice === 'number' ? formatMoney(selectedMinPrice) : 'کمینه'} تا ${typeof selectedMaxPrice === 'number' ? formatMoney(selectedMaxPrice) : 'بیشینه'}`}</span>
-                  <span aria-hidden="true">×</span>
-                </Link>
-              ) : null}
-              {activeElements.map((element) => (
-                <Link className={`${storefrontCatalog.chip} gap-2 hover:bg-white`} href={buildHref({ elementIds: selectedElementIds.filter((item) => item !== element.id), page: 1 })} key={element.id}>
-                  <span>{element.name}</span>
-                  <span aria-hidden="true">×</span>
-                </Link>
-              ))}
-              {activeCategory ? (
-                <Link className={`${storefrontCatalog.chip} gap-2 hover:bg-white`} href={buildHref({ categorySlug: '', page: 1 })}>
-                  <span>{`دسته: ${activeCategory.name}`}</span>
-                  <span aria-hidden="true">×</span>
-                </Link>
-              ) : null}
-              {activeProductType ? (
-                <Link className={`${storefrontCatalog.chip} gap-2 hover:bg-white`} href={buildHref({ productTypeSlug: '', page: 1 })}>
-                  <span>{`نوع: ${activeProductType.name}`}</span>
-                  <span aria-hidden="true">×</span>
-                </Link>
-              ) : null}
+            <div className={`${storefrontCatalog.card} grid gap-2 px-4 py-3`}>
+              <div className="flex items-center justify-between gap-3">
+                <strong className="text-sm font-black text-[#173126]">فیلترهای انتخاب‌شده</strong>
+                <span className="text-xs text-[#92785a]">برای حذف، روی هر مورد بزن</span>
+              </div>
+              <div className="-mx-1 flex flex-nowrap items-center gap-2 overflow-x-auto px-1 pb-1">
+                {searchValue ? (
+                  <Link className={`${storefrontCatalog.chip} shrink-0 gap-2 whitespace-nowrap hover:bg-white`} href={buildHref({ search: '', page: 1 })}>
+                    <span>{`جستجو: ${searchValue}`}</span>
+                    <span aria-hidden="true">×</span>
+                  </Link>
+                ) : null}
+                {typeof selectedMinPrice === 'number' || typeof selectedMaxPrice === 'number' ? (
+                  <Link className={`${storefrontCatalog.chip} shrink-0 gap-2 whitespace-nowrap hover:bg-white`} href={buildHref({ minPrice: null, maxPrice: null, page: 1 })}>
+                    <span>{`قیمت: ${typeof selectedMinPrice === 'number' ? formatMoney(selectedMinPrice) : 'کمینه'} تا ${typeof selectedMaxPrice === 'number' ? formatMoney(selectedMaxPrice) : 'بیشینه'}`}</span>
+                    <span aria-hidden="true">×</span>
+                  </Link>
+                ) : null}
+                {activeElements.map((element) => (
+                  <Link className={`${storefrontCatalog.chip} shrink-0 gap-2 whitespace-nowrap hover:bg-white`} href={buildHref({ elementIds: selectedElementIds.filter((item) => item !== element.id), page: 1 })} key={element.id}>
+                    <span>{element.name}</span>
+                    <span aria-hidden="true">×</span>
+                  </Link>
+                ))}
+                {activeCategory ? (
+                  <Link className={`${storefrontCatalog.chip} shrink-0 gap-2 whitespace-nowrap hover:bg-white`} href={buildHref({ categorySlug: '', page: 1 })}>
+                    <span>{`دسته: ${activeCategory.name}`}</span>
+                    <span aria-hidden="true">×</span>
+                  </Link>
+                ) : null}
+                {activeProductType ? (
+                  <Link className={`${storefrontCatalog.chip} shrink-0 gap-2 whitespace-nowrap hover:bg-white`} href={buildHref({ productTypeSlug: '', page: 1 })}>
+                    <span>{`نوع: ${activeProductType.name}`}</span>
+                    <span aria-hidden="true">×</span>
+                  </Link>
+                ) : null}
+              </div>
             </div>
           ) : null}
 
