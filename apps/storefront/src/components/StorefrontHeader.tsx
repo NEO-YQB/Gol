@@ -5,7 +5,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import type { CategorySummary, EnrichedStorefrontPage, ProductTypeSummary } from '../lib/storefront'
 import { resolveAssetUrl } from '../lib/storefront'
-import { clearStoredToken, completeProfile, getCurrentUser, readStoredToken, sendOtp, verifyOtp, writeStoredToken, type StorefrontUser } from '../lib/storefrontAuth'
+import { clearStoredToken, completeProfile, getCart, getCurrentUser, readStoredToken, sendOtp, verifyOtp, writeStoredToken, type StorefrontCart, type StorefrontUser } from '../lib/storefrontAuth'
+import { STOREFRONT_CART_UPDATED_EVENT } from '../lib/storefrontCartEvents'
 import { CartIcon, MenuIcon, UserIcon } from './storefrontIcons'
 import { storefrontStyles } from './storefrontStyles'
 import { buildHeaderThemeVars, resolveHeaderTheme } from './storefrontTheme'
@@ -23,20 +24,25 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
   const [authMessage, setAuthMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [sessionUser, setSessionUser] = useState<StorefrontUser | null>(null)
+  const [cart, setCart] = useState<StorefrontCart | null>(null)
   const [categories, setCategories] = useState<CategorySummary[]>([])
   const [productTypes, setProductTypes] = useState<ProductTypeSummary[]>([])
-  const [openDesktopMenu, setOpenDesktopMenu] = useState<'categories' | 'productTypes' | null>(null)
+  const [openDesktopMenu, setOpenDesktopMenu] = useState<'categories' | 'productTypes' | 'cart' | null>(null)
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const theme = useMemo(() => resolveHeaderTheme(page), [page])
   const needsInlineProfileCompletion = sessionUser?.needsProfileCompletion === true
+  const cartCount = cart?.totalItems ?? 0
+  const cartItems = cart?.items ?? []
+  const cartTotalAmount = cart?.pricing.totalAmount ?? 0
   const currentPath = useMemo(() => {
     const query = searchParams?.toString()
     return query ? `${pathname}?${query}` : pathname
   }, [pathname, searchParams])
   const authMode = sessionUser && !needsInlineProfileCompletion ? 'authenticated' : theme.authPreviewMode
   const authName = sessionUser?.fullName?.trim() || theme.authPreviewName
+  const moneyFormatter = useMemo(() => new Intl.NumberFormat('fa-IR'), [])
 
   useEffect(() => {
     function onScroll() {
@@ -59,11 +65,33 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
           setIsAuthMenuOpen(true)
           setFullName(user.fullName || '')
         }
+
+        return getCart(token).catch(() => null)
+      })
+      .then((nextCart) => {
+        if (nextCart) {
+          setCart(nextCart)
+        }
       })
       .catch(() => {
         clearStoredToken()
         setSessionUser(null)
+        setCart(null)
       })
+  }, [])
+
+  useEffect(() => {
+    function handleCartUpdated(event: Event) {
+      const customEvent = event as CustomEvent<StorefrontCart>
+      if (!customEvent.detail) return
+      setCart(customEvent.detail)
+    }
+
+    window.addEventListener(STOREFRONT_CART_UPDATED_EVENT, handleCartUpdated as EventListener)
+
+    return () => {
+      window.removeEventListener(STOREFRONT_CART_UPDATED_EVENT, handleCartUpdated as EventListener)
+    }
   }, [])
 
   useEffect(() => {
@@ -117,6 +145,8 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
       setIsAuthMenuOpen(false)
       router.refresh()
       router.push(currentPath)
+      const nextCart = await getCart(payload.access_token).catch(() => null)
+      setCart(nextCart)
     } catch (error) {
       setAuthError(error instanceof Error ? error.message : 'تایید کد با خطا مواجه شد')
     } finally {
@@ -158,11 +188,12 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
     setPhoneNumber('')
     setOtpCode('')
     setFullName('')
+    setCart(null)
     router.refresh()
     router.push(currentPath)
   }
 
-  function toggleDesktopMenu(menu: 'categories' | 'productTypes') {
+  function toggleDesktopMenu(menu: 'categories' | 'productTypes' | 'cart') {
     setOpenDesktopMenu((current) => (current === menu ? null : menu))
   }
 
@@ -258,10 +289,63 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
             <MenuIcon open={isMobileMenuOpen} />
           </button>
 
-          <Link className={storefrontStyles.headerAction} href="/cart">
-            <CartIcon />
-            <span className="hidden md:inline">سبد خرید</span>
-          </Link>
+          <div className={storefrontStyles.headerDropdownRoot}>
+            <button className={`${storefrontStyles.headerAction} relative`} onClick={() => toggleDesktopMenu('cart')} type="button">
+              <span className="relative inline-flex">
+                <CartIcon />
+                {cartCount > 0 ? (
+                  <span className="absolute -right-2 -top-2 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[#fff7f0] px-1.5 text-[11px] font-black leading-none text-[#8f5f43] shadow-[0_8px_18px_rgba(68,39,17,0.16)]">
+                    {moneyFormatter.format(cartCount)}
+                  </span>
+                ) : null}
+              </span>
+              <span className="hidden md:inline">سبد خرید</span>
+            </button>
+            {openDesktopMenu === 'cart' ? (
+              <div className={`${storefrontStyles.headerDropdownPanel} left-0 right-auto w-[min(92vw,380px)]`}>
+                <div className="grid gap-3">
+                  <div className="flex items-center justify-between gap-3 px-1">
+                    <strong className={`text-sm ${storefrontStyles.headerText}`}>سبد خرید شما</strong>
+                    <span className={`text-xs ${storefrontStyles.headerMutedText}`}>{cartCount ? `${moneyFormatter.format(cartCount)} آیتم` : 'خالی است'}</span>
+                  </div>
+                  {cartItems.length ? (
+                    <div className="grid max-h-[320px] gap-2 overflow-y-auto">
+                      {cartItems.map((item) => (
+                        <Link
+                          className="flex items-center gap-3 rounded-2xl border border-[var(--header-dropdown-panel-border)] bg-white/45 px-3 py-3 transition-colors hover:bg-[var(--header-dropdown-panel-hover-bg)]"
+                          href={`/products/${item.product.slug}`}
+                          key={`header-cart-${item.id}`}
+                        >
+                          <div className="h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-white/70">
+                            <img alt={item.product.name} className="h-full w-full object-cover" src={resolveAssetUrl(item.product.mainImage)} />
+                          </div>
+                          <div className="min-w-0 flex-1 text-right">
+                            <strong className="block truncate text-sm text-[var(--header-dropdown-panel-text)]">{item.product.name}</strong>
+                            <span className={`mt-1 block text-xs ${storefrontStyles.headerMutedText}`}>
+                              {`${moneyFormatter.format(item.quantity)} عدد • ${moneyFormatter.format(item.lineTotal)} تومان`}
+                            </span>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-[var(--header-dropdown-panel-border)] bg-white/40 px-4 py-4 text-right text-sm leading-7 text-[var(--header-dropdown-panel-text)]">
+                      هنوز محصولی به سبد خریدت اضافه نکردی.
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--header-dropdown-panel-border)] bg-white/45 px-4 py-3">
+                    <div className="text-right">
+                      <span className={`block text-xs ${storefrontStyles.headerMutedText}`}>جمع سبد</span>
+                      <strong className="block text-sm text-[var(--header-dropdown-panel-text)]">{moneyFormatter.format(cartTotalAmount)} تومان</strong>
+                    </div>
+                    <Link className={storefrontStyles.headerAction} href="/cart">
+                      مشاهده سبد
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
 
           {authMode === 'authenticated' ? (
             <div className="relative">

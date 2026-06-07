@@ -1,5 +1,7 @@
 'use client'
 
+import { emitStorefrontCartUpdated } from './storefrontCartEvents'
+
 export const STOREFRONT_TOKEN_KEY = 'golino.storefront.token'
 export const STOREFRONT_SELECTED_ADDRESS_KEY = 'golino.storefront.selected-address'
 
@@ -236,41 +238,53 @@ export async function getCart(token: string) {
 }
 
 export async function addCartItem(token: string, payload: { productId: number; quantity: number }) {
-  return request<StorefrontCart>('/cart/items', {
+  const cart = await request<StorefrontCart>('/cart/items', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify(payload),
   })
+
+  emitStorefrontCartUpdated(cart)
+  return cart
 }
 
 export async function updateCartItem(token: string, itemId: number, payload: { quantity: number }) {
-  return request<StorefrontCart>(`/cart/items/${itemId}`, {
+  const cart = await request<StorefrontCart>(`/cart/items/${itemId}`, {
     method: 'PATCH',
     headers: {
       Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify(payload),
   })
+
+  emitStorefrontCartUpdated(cart)
+  return cart
 }
 
 export async function removeCartItem(token: string, itemId: number) {
-  return request<StorefrontCart>(`/cart/items/${itemId}`, {
+  const cart = await request<StorefrontCart>(`/cart/items/${itemId}`, {
     method: 'DELETE',
     headers: {
       Authorization: `Bearer ${token}`,
     },
   })
+
+  emitStorefrontCartUpdated(cart)
+  return cart
 }
 
 export async function clearCart(token: string) {
-  return request<StorefrontCart>('/cart', {
+  const cart = await request<StorefrontCart>('/cart', {
     method: 'DELETE',
     headers: {
       Authorization: `Bearer ${token}`,
     },
   })
+
+  emitStorefrontCartUpdated(cart)
+  return cart
 }
 
 export async function sendOtp(phoneNumber: string) {
