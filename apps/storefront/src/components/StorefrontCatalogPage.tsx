@@ -85,6 +85,13 @@ export function StorefrontCatalogPage({
   const activeProductType = productTypes.find((type) => type.slug === activeProductTypeSlug)
   const selectedElementIds = activeElementIds ?? []
   const activeElements = productElements.filter((item) => selectedElementIds.includes(item.id))
+  const hasActiveFilters =
+    Boolean(searchValue) ||
+    typeof selectedMinPrice === 'number' ||
+    typeof selectedMaxPrice === 'number' ||
+    activeElements.length > 0 ||
+    Boolean(activeCategory) ||
+    Boolean(activeProductType)
   const groupedElements = ELEMENT_TYPE_OPTIONS.map((elementType) => ({
     type: elementType,
     label: ELEMENT_TYPE_LABELS[elementType],
@@ -279,7 +286,7 @@ export function StorefrontCatalogPage({
         </aside>
 
         <section className={storefrontCatalog.content}>
-          {searchValue || typeof selectedMinPrice === 'number' || typeof selectedMaxPrice === 'number' || activeElements.length || activeCategory || activeProductType ? (
+          {hasActiveFilters ? (
             <div className="flex h-11 min-w-0 items-center gap-2 overflow-hidden rounded-[18px] border border-[#1f6a52]/10 bg-white/78 px-3 shadow-[0_8px_18px_rgba(52,36,17,0.04)]">
               <strong className="shrink-0 text-xs font-black leading-none text-[#173126]">فیلترهای انتخاب‌شده</strong>
               <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-2 overflow-x-auto py-1">
@@ -318,7 +325,7 @@ export function StorefrontCatalogPage({
           ) : null}
 
           {products.length ? (
-            <div className="grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className={`grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-4 ${hasActiveFilters ? '-mt-3' : ''}`}>
               {products.map((product) => (
                 <ProductCard className="w-full min-w-0" key={product.id} product={product} />
               ))}
