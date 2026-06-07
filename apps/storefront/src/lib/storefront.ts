@@ -116,9 +116,26 @@ export type StoreSummary = {
   name: string
   slug: string
   logo?: string | null
+  description?: string | null
+  address?: string | null
+  isVerified?: boolean
   sameDayDelivery?: boolean
+  hasExpressDelivery?: boolean
+  minDeliveryHours?: number | null
+  maxDeliveryHours?: number | null
+  expressDeliveryHours?: number | null
+  deliveryWindows?: Array<{
+    key: string
+    label: string
+    startTime?: string
+    endTime?: string
+  }> | null
   customerRatingAverage?: string | number
   customerRatingCount?: number
+  products?: ProductSummary[]
+  _count?: {
+    products?: number
+  }
 }
 
 type MetadataInput = {
@@ -306,6 +323,7 @@ type ProductQuery = {
   limit?: number
   categoryId?: string
   categoryIds?: string[]
+  storeId?: string
   productTypeId?: string
   ids?: string[]
   search?: string
@@ -326,6 +344,7 @@ const getProducts = cache(async (_queryKey: string, query: ProductQuery): Promis
 
   if (query.categoryId) params.set('categoryId', query.categoryId)
   if (query.categoryIds?.length) params.set('categoryIds', query.categoryIds.join(','))
+  if (query.storeId) params.set('storeId', query.storeId)
   if (query.productTypeId) params.set('productTypeId', query.productTypeId)
   if (query.ids?.length) params.set('ids', query.ids.join(','))
   if (query.search) params.set('search', query.search)
@@ -368,6 +387,7 @@ async function getProductsNoStore(query: ProductQuery): Promise<ProductSummary[]
 
   if (query.categoryId) params.set('categoryId', query.categoryId)
   if (query.categoryIds?.length) params.set('categoryIds', query.categoryIds.join(','))
+  if (query.storeId) params.set('storeId', query.storeId)
   if (query.productTypeId) params.set('productTypeId', query.productTypeId)
   if (query.ids?.length) params.set('ids', query.ids.join(','))
   if (query.search) params.set('search', query.search)
@@ -407,6 +427,7 @@ async function getProductsNoStoreWithMeta(query: ProductQuery): Promise<{
 
   if (query.categoryId) params.set('categoryId', query.categoryId)
   if (query.categoryIds?.length) params.set('categoryIds', query.categoryIds.join(','))
+  if (query.storeId) params.set('storeId', query.storeId)
   if (query.productTypeId) params.set('productTypeId', query.productTypeId)
   if (query.ids?.length) params.set('ids', query.ids.join(','))
   if (query.search) params.set('search', query.search)
@@ -474,6 +495,14 @@ export async function getStorefrontCategoryBySlug(slug: string): Promise<Categor
 export async function getStorefrontProductTypeBySlug(slug: string): Promise<ProductTypeSummary | null> {
   const productTypes = await getProductTypes()
   return productTypes.find((item) => item.slug === slug) || null
+}
+
+export async function getStorefrontStoreBySlug(slug: string): Promise<StoreSummary | null> {
+  try {
+    return await requestNoStore<StoreSummary>(`/stores/${slug}`)
+  } catch {
+    return null
+  }
 }
 
 export async function getStorefrontCatalogData({
@@ -555,6 +584,114 @@ export async function getStorefrontCatalogData({
     productElements,
     resolvedCategory,
     resolvedProductType,
+  }
+}
+
+
+export async function getStorefrontStorePageData({
+  slug,
+  search,
+  sort,
+  page,
+  userLat,
+  userLng,
+  categorySlug,
+  productTypeSlug,
+  minPrice,
+  maxPrice,
+  elementIds,
+}: {
+  slug: string
+  search?: string
+  sort?: string
+  page?: number
+  userLat?: number
+  userLng?: number
+  categorySlug?: string
+  productTypeSlug?: string
+  minPrice?: number
+  maxPrice?: number
+  elementIds?: number[]
+}): Promise<{
+  store: StoreSummary | null
+  products: ProductSummary[]
+  total: number
+  page: number
+  lastPage: number
+  minPrice: number | null
+  maxPrice: number | null
+  search: string
+  activeSort: 'newest' | 'most_sold' | 'instant_delivery' | 'nearest'
+  categories: CategorySummary[]
+  productTypes: ProductTypeSummary[]
+  resolvedCategory: CategorySummary | null
+  resolvedProductType: ProductTypeSummary | null
+  productElements: StorefrontProductElement[]
+}> {
+  const store = await getStorefrontStoreBySlug(slug)
+
+  if (!store) {
+    return {
+      store: null,
+      products: [],
+      total: 0,
+      page: 1,
+      lastPage: 1,
+      minPrice: null,
+      maxPrice: null,
+      search: search?.trim() || '',
+      activeSort: 'newest',
+      categories: [],
+      productTypes: [],
+      resolvedCategory: null,
+      resolvedProductType: null,
+      productElements: [],
+    }
+  }
+
+  const categories = await getCategories()
+  const productTypes = await getProductTypes()
+  const productElements = await getProductElements()
+  const resolvedCategory = categorySlug ? await getStorefrontCategoryBySlug(categorySlug) : null
+  const resolvedProductType = productTypeSlug ? await getStorefrontProductTypeBySlug(productTypeSlug) : null
+  const categoryIds = resolvedCategory ? collectCategoryIds(categories, String(resolvedCategory.id)) : []
+  const activeSort: 'newest' | 'most_sold' | 'instant_delivery' | 'nearest' =
+    sort === 'most_sold' || sort === 'instant_delivery' || sort === 'newest' || sort === 'nearest'
+      ? sort
+      : 'newest'
+
+  const { products, total, page: currentPage, lastPage, minPrice: resolvedMinPrice, maxPrice: resolvedMaxPrice } =
+    await getProductsNoStoreWithMeta({
+      search: search?.trim() || undefined,
+      sortBy: activeSort,
+      page,
+      userLat,
+      userLng,
+      minPrice,
+      maxPrice,
+      elementIds,
+      storeId: String(store.id),
+      categoryIds: categoryIds.length > 1 ? categoryIds : undefined,
+      categoryId: categoryIds.length === 1 ? categoryIds[0] : undefined,
+      productTypeId: resolvedProductType ? String(resolvedProductType.id) : undefined,
+      limit: 24,
+    })
+
+  return {
+    store,
+    products,
+    total,
+    page: currentPage,
+    lastPage,
+    minPrice: resolvedMinPrice,
+    maxPrice: resolvedMaxPrice,
+    search: search?.trim() || '',
+    activeSort,
+    categories,
+    productTypes,
+    resolvedCategory,
+    resolvedProductType,
+    productElements,
   }
 }
 
@@ -916,6 +1053,37 @@ export function buildCollectionPageJsonLd({
     name: title,
     description,
     url: path,
+  }
+}
+
+export function buildStoreJsonLd(store: StoreSummary, productCount?: number) {
+  const ratingValue = Number(store.customerRatingAverage ?? 0)
+  const reviewCount = Number(store.customerRatingCount ?? 0)
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Store',
+    name: store.name,
+    description: store.description || undefined,
+    image: store.logo ? [resolveAssetUrl(store.logo)] : undefined,
+    url: `/stores/${store.slug}`,
+    address: store.address || undefined,
+    aggregateRating:
+      ratingValue > 0 && reviewCount > 0
+        ? {
+            '@type': 'AggregateRating',
+            ratingValue,
+            reviewCount,
+          }
+        : undefined,
+    makesOffer:
+      typeof productCount === 'number' && productCount > 0
+        ? {
+            '@type': 'OfferCatalog',
+            name: `محصولات ${store.name}`,
+            numberOfItems: productCount,
+          }
+        : undefined,
   }
 }
 
