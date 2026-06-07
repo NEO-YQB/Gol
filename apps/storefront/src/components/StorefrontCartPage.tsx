@@ -145,10 +145,7 @@ export function StorefrontCartPage() {
               <span className="rounded-full border border-white/15 bg-white/10 px-3 py-2">سبد خرید شما</span>
               <span className="rounded-full border border-white/15 bg-white/10 px-3 py-2">{`${new Intl.NumberFormat('fa-IR').format(cart?.totalItems ?? 0)} آیتم`}</span>
             </div>
-            <h1 className="mt-4 text-3xl font-black md:text-[2.4rem]">مرور سفارش قبل از ثبت نهایی</h1>
-            <p className="mt-3 text-sm leading-7 text-white/82">
-              تعداد آیتم‌ها، قیمت نهایی و تخفیف‌های اعمال‌شده را اینجا یک‌جا می‌بینی.
-            </p>
+            <h1 className="mt-4 text-3xl font-black md:text-[2.4rem]">سبد خرید</h1>
           </div>
 
           <div className="grid min-w-[280px] grid-cols-2 gap-3">
@@ -307,22 +304,11 @@ export function StorefrontCartPage() {
               </div>
             </section>
 
-            <section className="rounded-[32px] border border-[#b7d7c8] bg-[linear-gradient(180deg,rgba(237,248,241,0.98),rgba(224,242,232,0.96))] px-5 py-5 shadow-[0_14px_34px_rgba(52,36,17,0.06)]">
-              <h2 className="text-xl font-black text-[#224638]">نکات سفارش</h2>
-              <div className="mt-4 grid gap-3 text-sm leading-7 text-[#4d5c55]">
-                <p>قیمت نهایی هر آیتم با تخفیف‌های فعال فروشنده و پلتفرم محاسبه شده است.</p>
-                <p>در مرحله بعد آدرس تحویل را انتخاب می‌کنی تا جریان checkout کامل شود.</p>
-                <p>اگر موجودی محصول تغییر کند، backend هنگام ویرایش تعداد دوباره آن را بررسی می‌کند.</p>
-              </div>
-            </section>
           </aside>
         </section>
       ) : (
         <section className={storefrontShared.emptyState}>
           <h2 className="text-2xl font-black text-[#173126]">سبد خرید شما خالی است</h2>
-          <p className="mt-4 text-sm leading-7 text-[#6e6152]">
-            هنوز محصولی به سبد اضافه نکرده‌ای. از فروشگاه شروع کن و بعد برای نهایی‌سازی سفارش برگرد.
-          </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <Link className="rounded-full bg-[#173126] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#29513f]" href="/shop">
               رفتن به فروشگاه
