@@ -294,7 +294,7 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
               <span className="relative inline-flex">
                 <CartIcon />
                 {cartCount > 0 ? (
-                  <span className="absolute -right-2 -top-2 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[#fff7f0] px-1.5 text-[11px] font-black leading-none text-[#8f5f43] shadow-[0_8px_18px_rgba(68,39,17,0.16)]">
+                  <span className={`absolute -right-2 -top-2 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[#fff7f0] px-1.5 text-[11px] font-black leading-none shadow-[0_8px_18px_rgba(68,39,17,0.16)] ${storefrontStyles.headerMutedText}`}>
                     {moneyFormatter.format(cartCount)}
                   </span>
                 ) : null}
