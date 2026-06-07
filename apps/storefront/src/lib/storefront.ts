@@ -327,11 +327,13 @@ const getProducts = cache(async (_queryKey: string, query: ProductQuery): Promis
   const payload = await requestCached<{ data?: ProductSummary[] } | ProductSummary[]>(`/products?${params.toString()}`)
   const products = filterEligibleProducts(toArray<ProductSummary>(payload))
 
-  if (!query.ids?.length) {
+  const ids = query.ids ?? []
+
+  if (!ids.length) {
     return products
   }
 
-  const order = new Map(query.ids.map((id, index) => [Number(id), index]))
+  const order = new Map(ids.map((id, index) => [Number(id), index]))
   return [...products].sort((left, right) => (order.get(left.id) ?? 999) - (order.get(right.id) ?? 999))
 })
 
@@ -367,11 +369,13 @@ async function getProductsNoStore(query: ProductQuery): Promise<ProductSummary[]
   const payload = await requestNoStore<PaginatedResponse<ProductSummary> | ProductSummary[]>(`/products?${params.toString()}`)
   const products = filterEligibleProducts(toArray<ProductSummary>(payload))
 
-  if (!query.ids?.length) {
+  const ids = query.ids ?? []
+
+  if (!ids.length) {
     return products
   }
 
-  const order = new Map(query.ids.map((id, index) => [Number(id), index]))
+  const order = new Map(ids.map((id, index) => [Number(id), index]))
   return [...products].sort((left, right) => (order.get(left.id) ?? 999) - (order.get(right.id) ?? 999))
 }
 
@@ -380,6 +384,8 @@ async function getProductsNoStoreWithMeta(query: ProductQuery): Promise<{
   total: number
   page: number
   lastPage: number
+  minPrice: number | null
+  maxPrice: number | null
 }> {
   const params = new URLSearchParams()
 
@@ -422,11 +428,13 @@ async function getProductsNoStoreWithMeta(query: ProductQuery): Promise<{
       ? payload.meta.maxPrice
       : null
 
-  if (!query.ids?.length) {
+  const ids = query.ids ?? []
+
+  if (!ids.length) {
     return { products, total, page, lastPage, minPrice, maxPrice }
   }
 
-  const order = new Map(query.ids.map((id, index) => [Number(id), index]))
+  const order = new Map(ids.map((id, index) => [Number(id), index]))
   return {
     products: [...products].sort((left, right) => (order.get(left.id) ?? 999) - (order.get(right.id) ?? 999)),
     total,
