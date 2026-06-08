@@ -28,7 +28,9 @@ import { OrdersPage } from './pages/OrdersPage'
 import { OrdersWorkspacePage } from './pages/OrdersWorkspacePage'
 import { PageBuilderPage } from './pages/PageBuilderPage'
 import { PageBuilderWorkspacePage } from './pages/PageBuilderWorkspacePage'
+import { PaymentGatewayWorkspacePage } from './pages/PaymentGatewayWorkspacePage'
 import { SettingsPage } from './pages/SettingsPage'
+import { SmsSettingsWorkspacePage } from './pages/SmsSettingsWorkspacePage'
 import { ProductsPage } from './pages/ProductsPage'
 import { ProductWorkspacePage } from './pages/ProductWorkspacePage'
 import { SettlementsPage } from './pages/SettlementsPage'
@@ -68,7 +70,7 @@ function buildNav(currentRoute: AdminRoute, session: AuthSession): NavSection[] 
         { key: 'pageBuilder', label: 'صفحه‌ساز استور', hint: 'landing pageها، homepage و چیدمان بلاک‌های storefront', active: currentRoute === 'pageBuilder' || currentRoute === 'pageBuilderWorkspace' },
         { key: 'alerts', label: 'هشدارها و اعلان ها', hint: 'outbox و رخدادهای مهم عملیاتی', active: currentRoute === 'alerts' },
         { key: 'accessControl', label: 'کاربران و دسترسی', hint: 'مدیریت user، role و permission', active: currentRoute === 'accessControl' || currentRoute === 'accessControlWorkspace', badge: hasPermission(session, 'assignPermissions', 'AdminRole') ? 'قابل ویرایش' : 'فقط مشاهده' },
-        { key: 'settings', label: 'تنظیمات', hint: 'تنظیمات سراسری سرویس‌ها و یکپارچه‌سازی‌ها', active: currentRoute === 'settings' },
+        { key: 'settings', label: 'تنظیمات', hint: 'تنظیمات سراسری سرویس‌ها و یکپارچه‌سازی‌ها', active: currentRoute === 'settings' || currentRoute === 'smsSettingsWorkspace' || currentRoute === 'paymentGatewayWorkspace' },
       ],
     },
   ]
@@ -179,6 +181,18 @@ function getPageMeta(route: AdminRoute) {
         title: 'تنظیمات سراسری سرویس‌ها و یکپارچه‌سازی‌ها',
         description: 'پیکربندی سرویس‌های بیرونی مثل OTP واقعی و سایر integrationها از این route انجام می‌شود.',
       }
+    case 'smsSettingsWorkspace':
+      return {
+        eyebrow: 'sms workspace',
+        title: 'workspace تنظیمات پیامکی',
+        description: 'تنظیمات پنل پیامکی و تست OTP در این workspace مدیریت می‌شود.',
+      }
+    case 'paymentGatewayWorkspace':
+      return {
+        eyebrow: 'payment workspace',
+        title: 'workspace تنظیمات درگاه پرداخت',
+        description: 'تنظیمات زرین‌پال و سایر gatewayها در این workspace نگهداری می‌شود.',
+      }
     case 'contentWorkspace':
       return {
         eyebrow: 'ویرایشگر محتوایی',
@@ -253,6 +267,9 @@ function renderRoute(
     onBackToPageBuilder: () => void
     onOpenAccessControlWorkspace: () => void
     onBackToAccessControl: () => void
+    onOpenSmsWorkspace: () => void
+    onOpenPaymentGatewayWorkspace: () => void
+    onBackToSettings: () => void
   },
 ) {
   switch (route) {
@@ -289,7 +306,11 @@ function renderRoute(
     case 'pageBuilder':
       return <PageBuilderPage onCreatePage={options.onOpenPageBuilderWorkspaceForCreate} onEditPage={options.onOpenPageBuilderWorkspaceForEdit} session={session} />
     case 'settings':
-      return <SettingsPage session={session} />
+      return <SettingsPage onOpenPaymentGatewayWorkspace={options.onOpenPaymentGatewayWorkspace} onOpenSmsWorkspace={options.onOpenSmsWorkspace} />
+    case 'smsSettingsWorkspace':
+      return <SmsSettingsWorkspacePage onBack={options.onBackToSettings} session={session} />
+    case 'paymentGatewayWorkspace':
+      return <PaymentGatewayWorkspacePage onBack={options.onBackToSettings} session={session} />
     case 'pageBuilderWorkspace':
       return <PageBuilderWorkspacePage mode={options.pageBuilderWorkspaceMode} onBack={options.onBackToPageBuilder} pageId={options.pageBuilderWorkspacePageId} session={session} />
     case 'contentWorkspace':
@@ -617,6 +638,18 @@ export default function App() {
     handleNavigate('accessControl')
   }
 
+  function handleOpenSmsWorkspace() {
+    handleNavigate('smsSettingsWorkspace')
+  }
+
+  function handleOpenPaymentGatewayWorkspace() {
+    handleNavigate('paymentGatewayWorkspace')
+  }
+
+  function handleBackToSettings() {
+    handleNavigate('settings')
+  }
+
   if (!session) {
     return (
       <LoginPage
@@ -715,6 +748,9 @@ export default function App() {
         onBackToPageBuilder: handleBackToPageBuilder,
         onOpenAccessControlWorkspace: handleOpenAccessControlWorkspace,
         onBackToAccessControl: handleBackToAccessControl,
+        onOpenSmsWorkspace: handleOpenSmsWorkspace,
+        onOpenPaymentGatewayWorkspace: handleOpenPaymentGatewayWorkspace,
+        onBackToSettings: handleBackToSettings,
       })}
     </AppShell>
   )

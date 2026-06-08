@@ -45,6 +45,21 @@ export type SmsSettingsResponse = {
   hasApiKey?: boolean
 }
 
+export type PaymentGatewayConfigResponse = {
+  id: number
+  key: string
+  displayName: string
+  driver: string
+  isActive: boolean
+  isDefault: boolean
+  sandboxMode: boolean
+  priority: number
+  merchantConfig?: Record<string, unknown> | null
+  callbackUrl?: string | null
+  returnUrl?: string | null
+  notes?: string | null
+}
+
 export type StorefrontPagePayload = {
   id: string
   title: string
@@ -187,6 +202,45 @@ export const adminApi = {
     return request<{ message: string; expiresAt: string }>('/admin/settings/sms/test', {
       method: 'POST',
       body: JSON.stringify({ phoneNumber }),
+    }, session.accessToken)
+  },
+  getPaymentGateways(session: AuthSession) {
+    return request<PaymentGatewayConfigResponse[]>('/payments/gateways/admin', {}, session.accessToken)
+  },
+  createPaymentGateway(session: AuthSession, body: {
+    key: string
+    displayName: string
+    driver: string
+    sandboxMode?: boolean
+    isActive?: boolean
+    isDefault?: boolean
+    priority?: number
+    merchantConfig?: Record<string, unknown>
+    callbackUrl?: string
+    returnUrl?: string
+    notes?: string
+  }) {
+    return request<PaymentGatewayConfigResponse>('/payments/gateways/admin', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  updatePaymentGateway(session: AuthSession, id: number, body: {
+    key?: string
+    displayName?: string
+    driver?: string
+    sandboxMode?: boolean
+    isActive?: boolean
+    isDefault?: boolean
+    priority?: number
+    merchantConfig?: Record<string, unknown>
+    callbackUrl?: string
+    returnUrl?: string
+    notes?: string
+  }) {
+    return request<PaymentGatewayConfigResponse>(`/payments/gateways/admin/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
     }, session.accessToken)
   },
 

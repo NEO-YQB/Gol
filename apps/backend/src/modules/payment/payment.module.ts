@@ -4,6 +4,7 @@ import { PaymentService } from './payment.service';
 import { PaymentGatewayController } from './payment-gateway.controller';
 import { PaymentGatewayService } from './payment-gateway.service';
 import { MockPaymentGatewayAdapter } from './adapters/mock-payment-gateway.adapter';
+import { ZarinpalPaymentGatewayAdapter } from './adapters/zarinpal-payment-gateway.adapter';
 import { PaymentGatewayRegistryService } from './payment-gateway-registry.service';
 import { PaymentCallbackController } from './payment-callback.controller';
 import { PaymentExpirySweeperService } from './payment-expiry-sweeper.service';
@@ -14,6 +15,7 @@ import { PaymentExpirySweeperService } from './payment-expiry-sweeper.service';
     PaymentService,
     PaymentGatewayService,
     MockPaymentGatewayAdapter,
+    ZarinpalPaymentGatewayAdapter,
     PaymentGatewayRegistryService,
     PaymentExpirySweeperService,
   ],

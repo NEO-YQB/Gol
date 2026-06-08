@@ -77,6 +77,25 @@ type CreatedOrder = {
   totalAmount: string | number
 }
 
+type PaymentInitiationResult = {
+  message: string
+  payment: {
+    id: number
+    orderId: number
+    status: string
+    authority: string
+    paymentUrl: string
+  }
+  gateway: {
+    id: number
+    key: string
+    displayName: string
+    driver: string
+    authority: string
+    paymentUrl: string
+  }
+}
+
 function formatMoney(value: number) {
   return `${new Intl.NumberFormat('fa-IR').format(value)} تومان`
 }
@@ -115,6 +134,7 @@ export function StorefrontCheckoutPage() {
   const [recipientName, setRecipientName] = useState('')
   const [recipientPhone, setRecipientPhone] = useState('')
   const [nationalId, setNationalId] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'ONLINE'>('ONLINE')
 
   useEffect(() => {
     const token = readStoredToken()
@@ -258,7 +278,7 @@ export function StorefrontCheckoutPage() {
         },
         body: JSON.stringify({
           addressId: selectedAddressId,
-          paymentMethod: 'COD',
+          paymentMethod,
           deliveryType,
           deliveryWindowLabel: deliveryWindowLabel || undefined,
           couponCode: appliedCouponCode || undefined,
@@ -272,6 +292,32 @@ export function StorefrontCheckoutPage() {
           ? (payload as { message?: string[] }).message?.[0]
           : (payload as { message?: string }).message
         throw new Error(message || 'ثبت سفارش با خطا مواجه شد')
+      }
+
+      if (paymentMethod === 'ONLINE') {
+        const orderPayload = payload as CreatedOrder
+        const initiateResponse = await fetch('/api/payments/initiate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            orderId: orderPayload.id,
+            gatewayKey: 'zarinpal-sandbox',
+          }),
+        })
+
+        const initiatePayload = (await initiateResponse.json()) as PaymentInitiationResult | { message?: string | string[] }
+        if (!initiateResponse.ok) {
+          const message = Array.isArray((initiatePayload as { message?: string | string[] }).message)
+            ? (initiatePayload as { message?: string[] }).message?.[0]
+            : (initiatePayload as { message?: string }).message
+          throw new Error(message || 'شروع پرداخت آنلاین با خطا مواجه شد')
+        }
+
+        window.location.href = (initiatePayload as PaymentInitiationResult).gateway.paymentUrl
+        return
       }
 
       const refreshedCart = await getCart(token).catch(() => null)
@@ -442,6 +488,25 @@ export function StorefrontCheckoutPage() {
             <h2 className="text-2xl font-black text-[#173126]">ارسال و تخفیف</h2>
             <div className="mt-5 grid gap-5">
               <div className="grid gap-3 md:grid-cols-2">
+                {[
+                  { value: 'ONLINE', title: 'پرداخت آنلاین', description: 'اتصال مستقیم به زرین‌پال sandbox' },
+                  { value: 'COD', title: 'پرداخت در محل', description: 'ثبت سفارش بدون انتقال به درگاه' },
+                ].map((method) => (
+                  <button
+                    className={`rounded-[24px] border px-4 py-4 text-right transition ${paymentMethod === method.value ? 'border-[#173126] bg-[#173126] text-white' : 'border-[#e8ded2] bg-[#fbf8f3] text-[#173126]'}`}
+                    key={method.value}
+                    onClick={() => setPaymentMethod(method.value as 'COD' | 'ONLINE')}
+                    type="button"
+                  >
+                    <strong className="block text-sm font-black">{method.title}</strong>
+                    <span className={`mt-2 block text-xs leading-6 ${paymentMethod === method.value ? 'text-white/78' : 'text-[#7b6d5d]'}`}>
+                      {method.description}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
                 {availableDeliveryTypes.map((type) => {
                   const isExpress = type === 'EXPRESS'
                   return (
@@ -554,7 +619,7 @@ export function StorefrontCheckoutPage() {
                 onClick={handleSubmitOrder}
                 type="button"
               >
-                {submitting ? 'در حال ثبت سفارش...' : 'ثبت سفارش و ادامه'}
+                {submitting ? 'در حال ثبت سفارش...' : paymentMethod === 'ONLINE' ? 'ثبت سفارش و انتقال به پرداخت' : 'ثبت سفارش و ادامه'}
               </button>
               <Link className="inline-flex items-center justify-center rounded-full border border-[#d8ccbf] bg-white px-5 py-3 text-sm font-bold text-[#173126]" href="/cart">
                 بازگشت به سبد خرید

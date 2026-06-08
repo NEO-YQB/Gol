@@ -5,6 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { DomainEventType, OrderActorType, OrderStatus, PaymentMethod, PaymentReviewStatus, PaymentStatus, Prisma } from '@prisma/client';
 import { subject } from '@casl/ability';
 import { DomainEventsService } from '../../common/services/domain-events.service';
@@ -635,12 +636,19 @@ export class PaymentService {
   async handleGatewayCallback(
     gatewayKey: string,
     payload: Record<string, unknown>,
+    query: Record<string, string | string[] | undefined>,
+    response?: Response,
   ) {
     const gatewayConfig = await this.paymentGatewayService.resolveGatewaySelection({
       gatewayKey,
     });
 
-    const authority = this.extractStringValue(payload, ['authority', 'Authority']);
+    const callbackPayload = {
+      ...query,
+      ...payload,
+    } as Record<string, unknown>;
+
+    const authority = this.extractStringValue(callbackPayload, ['authority', 'Authority']);
     const paymentId = this.extractNumericValue(payload, ['paymentId', 'PaymentId']);
 
     let payment: Awaited<ReturnType<PaymentService['getPaymentOrThrow']>> | null = null;
@@ -660,6 +668,108 @@ export class PaymentService {
       await this.expirePaymentIfNeeded(payment.id);
       const refreshedPayment = await this.getPaymentOrThrow(payment.id);
 
+      const status = this.extractStringValue(callbackPayload, ['Status', 'status']);
+      const isSuccess = status?.toUpperCase() === 'OK';
+      const refId = this.extractStringValue(callbackPayload, ['RefID', 'ref_id', 'refId']);
+
+      if (gatewayConfig.driver === 'zarinpal' && authority && isSuccess) {
+        const adapter = this.paymentGatewayRegistry.getAdapter(gatewayConfig.driver);
+        const verificationResult = await adapter.verify({
+          payment: refreshedPayment,
+          refId,
+          success: isSuccess,
+        });
+
+        const nextOrderPaymentStatus = verificationResult.success
+          ? PaymentStatus.PAID
+          : PaymentStatus.FAILED;
+        const nextOrderStatus = verificationResult.success
+          ? refreshedPayment.order.status === OrderStatus.PENDING
+            ? OrderStatus.PAID
+            : refreshedPayment.order.status
+          : OrderStatus.PENDING;
+
+        await this.prisma.$transaction([
+          this.prisma.payment.update({
+            where: { id: refreshedPayment.id },
+            data: {
+              status: nextOrderPaymentStatus,
+              refId: verificationResult.refId ?? null,
+              failureReason: verificationResult.failureReason ?? null,
+              verifiedAt: verificationResult.success ? new Date() : null,
+              rawVerifyData: this.toInputJson({
+                callbackReceivedAt: new Date().toISOString(),
+                gatewayKey,
+                authority,
+                payload: callbackPayload,
+                verification: verificationResult.rawData ?? null,
+              }),
+            },
+          }),
+          this.prisma.order.update({
+            where: { id: refreshedPayment.orderId },
+            data: {
+              paymentStatus: nextOrderPaymentStatus,
+              status: nextOrderStatus,
+            },
+          }),
+          ...(verificationResult.success && refreshedPayment.order.status === OrderStatus.PENDING
+            ? [
+                this.prisma.orderStatusHistory.create({
+                  data: {
+                    orderId: refreshedPayment.orderId,
+                    fromStatus: refreshedPayment.order.status,
+                    toStatus: OrderStatus.PAID,
+                    actorType: OrderActorType.CUSTOMER,
+                    actorUserId: refreshedPayment.userId,
+                    note: `پرداخت آنلاین با ${gatewayConfig.displayName} تایید شد`,
+                  },
+                }),
+              ]
+            : []),
+          this.prisma.domainEvent.create({
+            data: {
+              eventType: verificationResult.success
+                ? DomainEventType.PAYMENT_SUCCEEDED
+                : DomainEventType.PAYMENT_FAILED,
+              aggregateType: 'payment',
+              aggregateId: refreshedPayment.id,
+              actorUserId: refreshedPayment.userId,
+              storeId: refreshedPayment.order.storeId,
+              orderId: refreshedPayment.orderId,
+              paymentId: refreshedPayment.id,
+              summary: verificationResult.success
+                ? `پرداخت سفارش #${refreshedPayment.orderId} موفق شد`
+                : `پرداخت سفارش #${refreshedPayment.orderId} ناموفق شد`,
+              payload: this.toInputJson({
+                refId: verificationResult.refId ?? null,
+                failureReason: verificationResult.failureReason ?? null,
+              }),
+            },
+          }),
+        ]);
+
+        if (response && gatewayConfig.returnUrl) {
+          const target = new URL(gatewayConfig.returnUrl);
+          target.searchParams.set('status', verificationResult.success ? 'PAID' : 'FAILED');
+          target.searchParams.set('authority', authority);
+          target.searchParams.set('orderId', String(refreshedPayment.orderId));
+          if (verificationResult.refId) target.searchParams.set('refId', verificationResult.refId);
+          if (verificationResult.failureReason) target.searchParams.set('message', verificationResult.failureReason);
+          return response.redirect(target.toString());
+        }
+
+        return {
+          received: true,
+          gatewayKey: gatewayConfig.key,
+          matchedPaymentId: payment.id,
+          verified: verificationResult.success,
+          message: verificationResult.success
+            ? 'callback زرین‌پال دریافت و پرداخت تایید شد'
+            : 'callback زرین‌پال دریافت شد اما verify ناموفق بود',
+        };
+      }
+
       await this.prisma.payment.update({
         where: { id: refreshedPayment.id },
         data: {
@@ -667,10 +777,19 @@ export class PaymentService {
             callbackReceivedAt: new Date().toISOString(),
             gatewayKey,
             authority: authority ?? null,
-            payload,
+            payload: callbackPayload,
           }),
         },
       });
+    }
+
+    if (response && gatewayConfig.returnUrl) {
+      const target = new URL(gatewayConfig.returnUrl);
+      target.searchParams.set('status', 'FAILED');
+      if (authority) target.searchParams.set('authority', authority);
+      if (payment?.orderId) target.searchParams.set('orderId', String(payment.orderId));
+      target.searchParams.set('message', payment ? 'پرداخت تایید نشد' : 'callback دریافت شد اما payment متناظر پیدا نشد');
+      return response.redirect(target.toString());
     }
 
     return {

@@ -1,13 +1,17 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { MockPaymentGatewayAdapter } from './adapters/mock-payment-gateway.adapter';
 import { PaymentGatewayAdapter } from './adapters/payment-gateway.adapter';
+import { ZarinpalPaymentGatewayAdapter } from './adapters/zarinpal-payment-gateway.adapter';
 
 @Injectable()
 export class PaymentGatewayRegistryService {
   private readonly adapters: PaymentGatewayAdapter[];
 
-  constructor(mockAdapter: MockPaymentGatewayAdapter) {
-    this.adapters = [mockAdapter];
+  constructor(
+    mockAdapter: MockPaymentGatewayAdapter,
+    zarinpalAdapter: ZarinpalPaymentGatewayAdapter,
+  ) {
+    this.adapters = [mockAdapter, zarinpalAdapter];
   }
 
   getSupportedDrivers() {
