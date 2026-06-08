@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { DeliveryType, PaymentMethod } from '@prisma/client';
-import { IsEnum, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString, Matches, MaxLength, Min } from 'class-validator';
 
 export class CreateOrderFromCartDto {
   @ApiProperty({ example: 3 })
@@ -28,4 +28,9 @@ export class CreateOrderFromCartDto {
   @IsString()
   @MaxLength(100)
   couponCode?: string;
+
+  @ApiProperty({ example: '0012345678' })
+  @IsString()
+  @Matches(/^\d{10}$/)
+  nationalId!: string;
 }

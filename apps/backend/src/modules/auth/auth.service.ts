@@ -96,6 +96,7 @@ export class AuthService {
         id: user.id,
         phoneNumber: user.phoneNumber,
         fullName: user.fullName,
+        nationalId: user.nationalId,
         roles: roleNames,
         needsProfileCompletion: !user.fullName,
       },
@@ -122,17 +123,33 @@ export class AuthService {
       id: user.id,
       phoneNumber: user.phoneNumber,
       fullName: user.fullName,
+      nationalId: user.nationalId,
       roles: user.roles.map((userRole) => userRole.role.name),
       needsProfileCompletion: !user.fullName,
       createdAt: user.createdAt,
     };
   }
 
-  async completeProfile(userId: number, fullName: string) {
+  async completeProfile(userId: number, fullName: string, nationalId?: string) {
+    if (nationalId?.trim()) {
+      const existingUser = await this.prisma.user.findFirst({
+        where: {
+          nationalId: nationalId.trim(),
+          id: { not: userId },
+        },
+        select: { id: true },
+      });
+
+      if (existingUser) {
+        throw new BadRequestException('این کد ملی قبلاً برای حساب دیگری ثبت شده است');
+      }
+    }
+
     const user = await this.prisma.user.update({
       where: { id: userId },
       data: {
         fullName: fullName.trim(),
+        nationalId: nationalId?.trim() || null,
       },
       include: {
         roles: {
@@ -147,6 +164,7 @@ export class AuthService {
       id: user.id,
       phoneNumber: user.phoneNumber,
       fullName: user.fullName,
+      nationalId: user.nationalId,
       roles: user.roles.map((userRole) => userRole.role.name),
       needsProfileCompletion: !user.fullName,
     };
@@ -160,6 +178,7 @@ export class AuthService {
           id: true,
           phoneNumber: true,
           fullName: true,
+          nationalId: true,
           createdAt: true,
         },
       }),

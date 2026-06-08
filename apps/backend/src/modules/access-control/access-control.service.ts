@@ -31,6 +31,7 @@ export class AccessControlService {
           { phoneNumber: { contains: search.trim(), mode: 'insensitive' } },
           { fullName: { contains: search.trim(), mode: 'insensitive' } },
           { email: { contains: search.trim(), mode: 'insensitive' } },
+          { nationalId: { contains: search.trim(), mode: 'insensitive' } },
         ],
       });
     }
@@ -186,6 +187,7 @@ export class AccessControlService {
         phoneNumber: dto.phoneNumber,
         fullName: dto.fullName,
         email: dto.email,
+        nationalId: dto.nationalId,
         isActive: dto.isActive ?? true,
         roles: uniqueRoleIds.length
           ? {
@@ -624,6 +626,7 @@ export class AccessControlService {
     phoneNumber: string;
     email?: string | null;
     fullName?: string | null;
+    nationalId?: string | null;
     isActive: boolean;
     roles?: Array<{
       role: {
@@ -681,6 +684,7 @@ export class AccessControlService {
       phoneNumber: user.phoneNumber,
       email: user.email,
       fullName: user.fullName,
+      nationalId: user.nationalId ?? null,
       isActive: user.isActive,
       roles: roles.map(({ permissions, ...roleMeta }) => roleMeta),
       effectivePermissions: Array.from(effectivePermissionsMap.values()),

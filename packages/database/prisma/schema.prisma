@@ -12,6 +12,7 @@ model User {
   phoneNumber   String   @unique
   email         String?  @unique
   fullName      String?
+  nationalId    String?  @unique
   isActive      Boolean  @default(true)
   
   roles         UsersOnRoles[]
@@ -660,6 +661,7 @@ model Order {
   shippingCity         String?
   shippingLat          Float?
   shippingLng          Float?
+  customerNationalId   String?
   storeId              Int?
   store                Store?        @relation(fields: [storeId], references: [id])
   storeName            String?

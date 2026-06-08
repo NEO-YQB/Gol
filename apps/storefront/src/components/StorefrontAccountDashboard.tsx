@@ -165,6 +165,10 @@ export function StorefrontAccountDashboard() {
                 <strong className="mt-1 block text-base text-[#173126]">{summary.profile.fullName || 'ثبت نشده'}</strong>
               </div>
               <div className="rounded-[22px] bg-[#f9f4ec] px-4 py-4" dir="ltr">
+                <span className="block text-xs font-bold text-[#92785a]">کد ملی</span>
+                <strong className="mt-1 block text-base text-[#173126]">{summary.profile.nationalId || 'ثبت نشده'}</strong>
+              </div>
+              <div className="rounded-[22px] bg-[#f9f4ec] px-4 py-4" dir="ltr">
                 <span className="block text-xs font-bold text-[#92785a]">شماره موبایل</span>
                 <strong className="mt-1 block text-base text-[#173126]">{summary.profile.phoneNumber}</strong>
               </div>

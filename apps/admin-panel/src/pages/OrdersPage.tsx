@@ -12,6 +12,7 @@ const exceptionsPerPage = 5
 const orderColumns = [
   { key: 'id', label: 'شناسه' },
   { key: 'customer', label: 'مشتری' },
+  { key: 'nationalId', label: 'کد ملی' },
   { key: 'status', label: 'وضعیت سفارش' },
   { key: 'payment', label: 'پرداخت' },
   { key: 'settlement', label: 'تسویه' },
@@ -237,6 +238,7 @@ export function OrdersPage({
       currentOrders.map((item, index) => ({
         id: readText(item, ['id'], String(index + 1)),
         customer: getCustomerText(item),
+        nationalId: readText(item, ['customerNationalId'], '—'),
         status: getOrderStatusLabel(getOrderStatus(item)),
         payment: getPaymentStatusLabel(getPaymentStatus(item)),
         settlement: getSettlementStatusLabel(getSettlementStatus(item)),

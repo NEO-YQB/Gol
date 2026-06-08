@@ -145,6 +145,7 @@ export class OrderService {
       deliveryType: dto.deliveryType,
       deliveryWindowLabel: dto.deliveryWindowLabel,
       couponCode: dto.couponCode,
+      nationalId: dto.nationalId,
       clearCartId: cart.id,
     });
   }
@@ -434,6 +435,7 @@ export class OrderService {
       deliveryType?: DeliveryType;
       deliveryWindowLabel?: string;
       couponCode?: string;
+      nationalId?: string;
       clearCartId?: number;
     },
   ) {
@@ -489,6 +491,20 @@ export class OrderService {
       coupon: pricing.coupon as Record<string, unknown> | null,
     });
 
+    if (options.nationalId?.trim()) {
+      const existingUser = await this.prisma.user.findFirst({
+        where: {
+          nationalId: options.nationalId.trim(),
+          id: { not: user.id },
+        },
+        select: { id: true },
+      });
+
+      if (existingUser) {
+        throw new BadRequestException('این کد ملی قبلاً برای حساب دیگری ثبت شده است');
+      }
+    }
+
     const orderCreateInput: Prisma.OrderUncheckedCreateInput = {
       userId: user.id,
       totalAmount: new Prisma.Decimal(totalAmount),
@@ -536,6 +552,7 @@ export class OrderService {
       shippingCity: options.address?.city ?? null,
       shippingLat: options.address?.lat ?? null,
       shippingLng: options.address?.lng ?? null,
+      customerNationalId: options.nationalId?.trim() || null,
       storeId: store.id,
       storeName: store.name,
       storeSlug: store.slug,
@@ -569,6 +586,15 @@ export class OrderService {
     };
 
     return this.prisma.$transaction(async (tx) => {
+      if (options.nationalId?.trim()) {
+        await tx.user.update({
+          where: { id: user.id },
+          data: {
+            nationalId: options.nationalId.trim(),
+          },
+        });
+      }
+
       const order = await tx.order.create({
         data: orderCreateInput,
         include: this.getOrderInclude(),
@@ -1002,6 +1028,14 @@ export class OrderService {
   private getOrderInclude() {
     return {
       payment: true,
+      user: {
+        select: {
+          id: true,
+          fullName: true,
+          phoneNumber: true,
+          nationalId: true,
+        },
+      },
       store: {
         select: {
           id: true,
@@ -1055,6 +1089,9 @@ export class OrderService {
 
     return {
       ...order,
+      customerName: order.user?.fullName ?? null,
+      customerPhoneNumber: order.user?.phoneNumber ?? null,
+      customerNationalId: order.customerNationalId ?? order.user?.nationalId ?? null,
       timeline: order.statusHistories,
       auditTrail: order.domainEvents,
       latestOperationalFlags,

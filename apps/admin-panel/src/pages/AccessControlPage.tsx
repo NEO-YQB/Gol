@@ -18,6 +18,7 @@ type PermissionRecord = Record<string, unknown>
 
 const userColumns = [
   { key: 'name', label: 'کاربر' },
+  { key: 'nationalId', label: 'کد ملی' },
   { key: 'roles', label: 'نقش های اصلی' },
   { key: 'status', label: 'وضعیت' },
   { key: 'scope', label: 'دامنه دسترسی' },
@@ -109,6 +110,7 @@ export function AccessControlPage({ session, onOpenWorkspace }: AccessControlPag
       users.map((user, index) => ({
         id: readText(user, ['id'], String(index)),
         name: getUserLabel(user),
+        nationalId: readText(user, ['nationalId'], '—'),
         roles: getUserRoles(user).slice(0, 2).join(' / ') || 'بدون نقش',
         status: readBoolean(user, ['isActive'], true) ? 'فعال' : 'غیرفعال',
         scope: toArray(user.effectivePermissions).length

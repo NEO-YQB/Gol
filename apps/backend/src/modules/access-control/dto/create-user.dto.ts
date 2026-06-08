@@ -17,6 +17,12 @@ export class CreateUserDto {
   @IsEmail()
   email?: string;
 
+  @ApiPropertyOptional({ example: '0012345678' })
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{10}$/)
+  nationalId?: string;
+
   @ApiPropertyOptional({ example: true })
   @IsOptional()
   @IsBoolean()

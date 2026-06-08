@@ -125,6 +125,6 @@ export class AuthController {
     @GetUser() user: { id: number },
     @Body() dto: CompleteProfileDto,
   ) {
-    return this.authService.completeProfile(user.id, dto.fullName);
+    return this.authService.completeProfile(user.id, dto.fullName, dto.nationalId);
   }
 }

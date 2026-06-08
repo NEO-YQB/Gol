@@ -12,6 +12,7 @@ function formatDate(value?: string) {
 export function StorefrontAccountProfile() {
   const [user, setUser] = useState<(StorefrontUser & { createdAt?: string }) | null>(null)
   const [fullName, setFullName] = useState('')
+  const [nationalId, setNationalId] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -29,14 +30,15 @@ export function StorefrontAccountProfile() {
       .then((payload) => {
         setUser(payload)
         setFullName(payload.fullName || '')
+        setNationalId(payload.nationalId || '')
       })
       .catch((requestError) => setError(requestError instanceof Error ? requestError.message : 'دریافت اطلاعات پروفایل با خطا مواجه شد'))
       .finally(() => setLoading(false))
   }, [])
 
   const hasChanges = useMemo(() => {
-    return fullName.trim() !== (user?.fullName || '').trim()
-  }, [fullName, user])
+    return fullName.trim() !== (user?.fullName || '').trim() || nationalId.trim() !== (user?.nationalId || '').trim()
+  }, [fullName, nationalId, user])
 
   async function handleSave() {
     const token = readStoredToken()
@@ -49,12 +51,13 @@ export function StorefrontAccountProfile() {
       setSaving(true)
       setError('')
       setMessage('')
-      const payload = await completeProfile(token, fullName.trim())
+      const payload = await completeProfile(token, fullName.trim(), nationalId.trim())
       setUser((current) => ({
         ...current,
         ...payload,
       }))
       setFullName(payload.fullName || '')
+      setNationalId(payload.nationalId || '')
       setMessage('اطلاعات پروفایل با موفقیت ذخیره شد.')
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'ذخیره اطلاعات با خطا مواجه شد')
@@ -105,6 +108,18 @@ export function StorefrontAccountProfile() {
               onChange={(event) => setFullName(event.target.value)}
               placeholder="مثلاً مریم احمدی"
               value={fullName}
+            />
+          </label>
+
+          <label className="grid gap-2 text-sm md:col-span-2">
+            <span className="font-bold text-[#173126]">کد ملی</span>
+            <input
+              className="rounded-[22px] border border-[#1f6a52]/12 bg-[#fbf7f1] px-4 py-3 text-left text-sm tracking-[0.28em] text-[#173126] outline-none transition placeholder:text-[#9a8a79] focus:border-[#1f6a52]/35"
+              inputMode="numeric"
+              maxLength={10}
+              onChange={(event) => setNationalId(event.target.value.replace(/\D/g, '').slice(0, 10))}
+              placeholder="0012345678"
+              value={nationalId}
             />
           </label>
 

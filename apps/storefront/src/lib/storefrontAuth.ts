@@ -9,6 +9,7 @@ export type StorefrontUser = {
   id: number
   phoneNumber: string
   fullName?: string | null
+  nationalId?: string | null
   roles: string[]
   needsProfileCompletion?: boolean
 }
@@ -18,6 +19,7 @@ export type StorefrontAccountSummary = {
     id: number
     phoneNumber: string
     fullName?: string | null
+    nationalId?: string | null
     createdAt: string
   }
   stats: {
@@ -310,13 +312,13 @@ export async function getCurrentUser(token: string) {
   })
 }
 
-export async function completeProfile(token: string, fullName: string) {
+export async function completeProfile(token: string, fullName: string, nationalId?: string) {
   return request<StorefrontUser>('/auth/complete-profile', {
     method: 'PATCH',
     headers: {
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ fullName }),
+    body: JSON.stringify({ fullName, nationalId }),
   })
 }
 

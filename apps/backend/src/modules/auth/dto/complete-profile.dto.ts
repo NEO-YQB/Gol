@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsNotEmpty, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 
 export class CompleteProfileDto {
   @ApiProperty({ example: 'مریم' })
@@ -7,4 +7,10 @@ export class CompleteProfileDto {
   @IsNotEmpty()
   @MaxLength(120)
   fullName!: string;
+
+  @ApiPropertyOptional({ example: '0012345678' })
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{10}$/)
+  nationalId?: string;
 }

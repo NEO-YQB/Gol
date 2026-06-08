@@ -262,6 +262,7 @@ export function StorefrontCheckoutPage() {
           deliveryType,
           deliveryWindowLabel: deliveryWindowLabel || undefined,
           couponCode: appliedCouponCode || undefined,
+          nationalId,
         }),
       })
 

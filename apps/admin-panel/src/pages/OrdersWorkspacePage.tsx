@@ -195,6 +195,10 @@ function getAddressLabel(order: OrderRecord) {
   return line || 'آدرس سفارش در جزئیات فعلی برنگشته است.'
 }
 
+function getNationalIdLabel(order: OrderRecord) {
+  return readText(order, ['customerNationalId', 'user.nationalId'], 'ثبت نشده')
+}
+
 function getExceptionLabel(reason: string) {
   switch (reason) {
     case 'PAYMENT_STATE_NEEDS_ATTENTION':
@@ -576,6 +580,7 @@ export function OrdersWorkspacePage({
   const summaryItems = [
     { label: 'شناسه سفارش', value: readText(currentOrder, ['id'], '—') },
     { label: 'مشتری', value: getCustomerLabel(currentOrder) },
+    { label: 'کد ملی', value: getNationalIdLabel(currentOrder) },
     { label: 'فروشگاه', value: getStoreLabel(currentOrder) },
     { label: 'وضعیت سفارش', value: getOrderStatusLabel(orderStatus) },
     { label: 'وضعیت پرداخت', value: getPaymentStatusLabel(paymentStatus) },

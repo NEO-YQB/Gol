@@ -6,6 +6,7 @@ export class CustomerAccountSummaryDto {
     id: number;
     phoneNumber: string;
     fullName: string | null;
+    nationalId: string | null;
     createdAt: Date;
   };
 
