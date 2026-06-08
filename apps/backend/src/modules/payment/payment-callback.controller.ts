@@ -1,4 +1,4 @@
-import { Body, Controller, Param, Post, Query, Res } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Res } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { PaymentService } from './payment.service';
@@ -7,6 +7,16 @@ import { PaymentService } from './payment.service';
 @Controller('payments/callback')
 export class PaymentCallbackController {
   constructor(private readonly paymentService: PaymentService) {}
+
+  @Get(':gatewayKey')
+  @ApiOperation({ summary: 'دریافت callback مرورگری از gateway و route کردن به payment مربوطه' })
+  receiveCallbackViaGet(
+    @Param('gatewayKey') gatewayKey: string,
+    @Query() query: Record<string, string | string[] | undefined>,
+    @Res() response: Response,
+  ) {
+    return this.paymentService.handleGatewayCallback(gatewayKey, {}, query, response);
+  }
 
   @Post(':gatewayKey')
   @ApiOperation({ summary: 'دریافت callback خام از gateway و route کردن به payment مربوطه' })
