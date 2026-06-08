@@ -676,7 +676,7 @@ export class PaymentService {
         const adapter = this.paymentGatewayRegistry.getAdapter(gatewayConfig.driver);
         const verificationResult = await adapter.verify({
           payment: refreshedPayment,
-          refId,
+          refId: refId ?? undefined,
           success: isSuccess,
         });
 
