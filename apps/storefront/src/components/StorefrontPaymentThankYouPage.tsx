@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { getOrderDetail, readStoredToken, type StorefrontOrderDetail } from '../lib/storefrontAuth'
+import { translateOrderStatus, translatePaymentMethod, translatePaymentStatus } from '../lib/storefrontOrderLabels'
 import { storefrontShared } from './storefrontShared'
 
 export function StorefrontPaymentThankYouPage() {
@@ -174,15 +175,15 @@ export function StorefrontPaymentThankYouPage() {
               <div className="mt-4 space-y-3 text-sm text-[#5f564c]">
                 <div className="flex items-center justify-between gap-4">
                   <span>وضعیت سفارش</span>
-                  <strong className="text-[#173126]">{order?.status || (isSuccess ? 'PAID' : 'FAILED')}</strong>
+                  <strong className="text-[#173126]">{translateOrderStatus(order?.status || (isSuccess ? 'PAID' : 'FAILED'))}</strong>
                 </div>
                 <div className="flex items-center justify-between gap-4">
                   <span>وضعیت پرداخت</span>
-                  <strong className="text-[#173126]">{order?.paymentStatus || status || '—'}</strong>
+                  <strong className="text-[#173126]">{translatePaymentStatus(order?.paymentStatus || status || '—')}</strong>
                 </div>
                 <div className="flex items-center justify-between gap-4">
                   <span>روش پرداخت</span>
-                  <strong className="text-[#173126]">{order?.paymentMethod || 'درگاه آنلاین'}</strong>
+                  <strong className="text-[#173126]">{translatePaymentMethod(order?.paymentMethod || 'ONLINE')}</strong>
                 </div>
                 <div className="flex items-center justify-between gap-4">
                   <span>هزینه ارسال</span>

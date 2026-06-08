@@ -159,6 +159,15 @@ export type StorefrontOrderDetail = {
   createdAt?: string
   storeName?: string | null
   storeSlug?: string | null
+  timeline?: Array<{
+    id: number
+    fromStatus?: string | null
+    toStatus: string
+    actorType?: string | null
+    reason?: string | null
+    note?: string | null
+    createdAt: string
+  }>
   orderItems: Array<{
     id: number
     quantity: number

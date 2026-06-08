@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { getAccountSummary, readStoredToken, type StorefrontAccountSummary } from '../lib/storefrontAuth'
+import { translateOrderStatus, translatePaymentStatus } from '../lib/storefrontOrderLabels'
 
 function formatMoney(value: number) {
   return `${new Intl.NumberFormat('fa-IR').format(value)} تومان`
@@ -10,40 +11,6 @@ function formatMoney(value: number) {
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('fa-IR', { dateStyle: 'medium' }).format(new Date(value))
-}
-
-function mapOrderStatus(status: string) {
-  switch (status) {
-    case 'PENDING':
-      return 'در انتظار بررسی'
-    case 'PAID':
-      return 'پرداخت شده'
-    case 'ACCEPTED':
-      return 'پذیرفته شده'
-    case 'PROCESSING':
-      return 'در حال آماده‌سازی'
-    case 'SHIPPED':
-      return 'ارسال شده'
-    case 'DELIVERED':
-      return 'تحویل داده شده'
-    default:
-      return status
-  }
-}
-
-function mapPaymentStatus(status: string) {
-  switch (status) {
-    case 'PENDING':
-      return 'در انتظار پرداخت'
-    case 'PAID':
-      return 'پرداخت موفق'
-    case 'FAILED':
-      return 'پرداخت ناموفق'
-    case 'REFUNDED':
-      return 'بازگشت وجه'
-    default:
-      return status
-  }
 }
 
 export function StorefrontAccountDashboard() {
@@ -95,7 +62,7 @@ export function StorefrontAccountDashboard() {
             <div className="mt-4 flex flex-wrap gap-2 text-xs font-bold text-white/85">
               {summary.stats.latestOrderStatus ? (
                 <span className="rounded-full border border-white/15 bg-white/10 px-3 py-2">
-                  {`آخرین وضعیت سفارش: ${mapOrderStatus(summary.stats.latestOrderStatus)}`}
+                  {`آخرین وضعیت سفارش: ${translateOrderStatus(summary.stats.latestOrderStatus)}`}
                 </span>
               ) : null}
               {summary.stats.defaultAddressTitle ? (
@@ -131,7 +98,7 @@ export function StorefrontAccountDashboard() {
           </div>
           <div className="mt-5 grid gap-3">
             {summary.recentOrders.length ? summary.recentOrders.map((order) => (
-              <article className="rounded-[26px] border border-[#1f6a52]/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(248,242,233,0.92))] px-5 py-5" key={order.id}>
+              <Link className="block rounded-[26px] border border-[#1f6a52]/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(248,242,233,0.92))] px-5 py-5 transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(52,36,17,0.08)]" href={`/account/orders/${order.id}`} key={order.id}>
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
                     <strong className="block text-lg font-black text-[#173126]">{`سفارش #${order.id}`}</strong>
@@ -140,13 +107,13 @@ export function StorefrontAccountDashboard() {
                   </div>
                   <div className="flex flex-col items-start gap-2 md:items-end">
                     <span className="inline-flex rounded-full border border-[#1f6a52]/10 bg-[#edf8f2] px-3 py-1.5 text-xs font-bold text-[#1f6a52]">
-                      {mapOrderStatus(order.status)}
+                      {translateOrderStatus(order.status)}
                     </span>
-                    <span className="text-xs font-bold text-[#92785a]">{mapPaymentStatus(order.paymentStatus)}</span>
+                    <span className="text-xs font-bold text-[#92785a]">{translatePaymentStatus(order.paymentStatus)}</span>
                     <strong className="text-sm text-[#173126]">{formatMoney(order.totalAmount)}</strong>
                   </div>
                 </div>
-              </article>
+              </Link>
             )) : (
               <div className="rounded-[26px] border border-dashed border-[#dcc5a7] bg-[#fbf7f1] px-5 py-8 text-sm text-[#6e6152]">
                 هنوز سفارشی برای این حساب ثبت نشده است.
