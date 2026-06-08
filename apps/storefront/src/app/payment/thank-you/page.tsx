@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { StorefrontPaymentThankYouPage } from '../../../components/StorefrontPaymentThankYouPage'
 import { StorefrontShell } from '../../../components/StorefrontShell'
 import { buildArchiveMetadata } from '../../../lib/storefront'
@@ -15,7 +16,9 @@ export async function generateMetadata() {
 export default function PaymentThankYouPage() {
   return (
     <StorefrontShell>
-      <StorefrontPaymentThankYouPage />
+      <Suspense fallback={null}>
+        <StorefrontPaymentThankYouPage />
+      </Suspense>
     </StorefrontShell>
   )
 }
