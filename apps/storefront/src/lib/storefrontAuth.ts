@@ -135,6 +135,41 @@ export type StorefrontCart = {
   updatedAt: string
 }
 
+export type StorefrontOrderDetail = {
+  id: number
+  status: string
+  paymentStatus: string
+  paymentMethod?: string | null
+  totalAmount: number | string
+  subtotalAmount?: number | string
+  deliveryFee?: number | string
+  discountAmount?: number | string
+  couponCode?: string | null
+  couponTitle?: string | null
+  customerName?: string | null
+  customerPhoneNumber?: string | null
+  customerNationalId?: string | null
+  shippingAddressTitle?: string | null
+  shippingAddressText?: string | null
+  shippingCity?: string | null
+  deliveryType?: string | null
+  deliveryWindowLabel?: string | null
+  estimatedDeliveryMinHours?: number | null
+  estimatedDeliveryMaxHours?: number | null
+  createdAt?: string
+  storeName?: string | null
+  storeSlug?: string | null
+  orderItems: Array<{
+    id: number
+    quantity: number
+    price: number | string
+    productName?: string | null
+    productSlug?: string | null
+    productImage?: string | null
+    storeName?: string | null
+  }>
+}
+
 export type SendOtpResponse = {
   message: string
   expiresAt: string
@@ -324,6 +359,15 @@ export async function completeProfile(token: string, fullName: string, nationalI
 
 export async function getAccountSummary(token: string) {
   return request<StorefrontAccountSummary>('/auth/account-summary', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    cache: 'no-store',
+  })
+}
+
+export async function getOrderDetail(token: string, orderId: number | string) {
+  return request<StorefrontOrderDetail>(`/orders/${orderId}`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
