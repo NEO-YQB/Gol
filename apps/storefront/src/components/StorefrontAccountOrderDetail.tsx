@@ -97,10 +97,16 @@ export function StorefrontAccountOrderDetail({ orderId }: { orderId: number }) {
       <section className="overflow-hidden rounded-[34px] border border-white/55 bg-[linear-gradient(180deg,rgba(248,252,249,0.88),rgba(255,255,255,0.76))] px-6 py-6 shadow-[0_24px_58px_rgba(52,36,17,0.08)] backdrop-blur-[18px]">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
+            <Link
+              className="inline-flex items-center rounded-full border border-[#1f6a52]/12 bg-white/75 px-4 py-2 text-sm font-bold text-[#173126] transition hover:bg-white"
+              href="/account"
+            >
+              بازگشت به سفارش‌ها
+            </Link>
             <span className="rounded-full bg-[#edf8f2] px-3 py-1 text-xs font-bold text-[#1f6a52]">{translateOrderStatus(order.status)}</span>
             <h2 className="mt-4 text-3xl font-black text-[#173126]">{`فاکتور سفارش #${order.id}`}</h2>
             <p className="mt-3 text-sm leading-8 text-[#6e6152]">
-              {`${order.customerName || 'مشتری گرامی'}، در این بخش می‌توانی وضعیت لحظه‌ای سفارش، اقلام، پرداخت و زمان‌بندی تحویل را کامل ببینی.`}
+              {`${order.customerName || 'مشتری گرامی'}، اینجا می‌توانی وضعیت سفارش، اقلام، پرداخت و زمان‌بندی تحویل را کامل ببینی.`}
             </p>
           </div>
           <div className="rounded-[24px] border border-white/60 bg-white/65 px-4 py-4 text-sm text-[#5f564c]">
@@ -124,7 +130,6 @@ export function StorefrontAccountOrderDetail({ orderId }: { orderId: number }) {
         <div className="rounded-[32px] bg-white/80 px-6 py-6 shadow-[0_14px_34px_rgba(52,36,17,0.06)]">
           <div className="flex items-end justify-between gap-4">
             <div>
-              <span className="text-xs font-bold uppercase tracking-[0.22em] text-[#9f7e56]">Invoice Items</span>
               <h3 className="mt-2 text-2xl font-black text-[#173126]">اقلام سفارش</h3>
             </div>
           </div>
@@ -148,7 +153,6 @@ export function StorefrontAccountOrderDetail({ orderId }: { orderId: number }) {
 
         <div className="grid gap-5">
           <section className="rounded-[32px] bg-white/80 px-6 py-6 shadow-[0_14px_34px_rgba(52,36,17,0.06)]">
-            <span className="text-xs font-bold uppercase tracking-[0.22em] text-[#9f7e56]">Summary</span>
             <h3 className="mt-2 text-2xl font-black text-[#173126]">خلاصه مالی</h3>
             <div className="mt-5 grid gap-3 text-sm">
               <div className="rounded-[22px] bg-[#f9f4ec] px-4 py-4"><span className="block text-xs font-bold text-[#92785a]">مبلغ کالاها</span><strong className="mt-1 block text-base text-[#173126]">{formatMoney(order.subtotalAmount)}</strong></div>
@@ -159,7 +163,6 @@ export function StorefrontAccountOrderDetail({ orderId }: { orderId: number }) {
           </section>
 
           <section className="rounded-[32px] bg-white/80 px-6 py-6 shadow-[0_14px_34px_rgba(52,36,17,0.06)]">
-            <span className="text-xs font-bold uppercase tracking-[0.22em] text-[#9f7e56]">Delivery</span>
             <h3 className="mt-2 text-2xl font-black text-[#173126]">تحویل و گیرنده</h3>
             <div className="mt-5 space-y-3 text-sm leading-8 text-[#6e6152]">
               <p><strong className="text-[#173126]">گیرنده:</strong> {order.customerName || '—'}</p>
@@ -173,7 +176,6 @@ export function StorefrontAccountOrderDetail({ orderId }: { orderId: number }) {
       </section>
 
       <section className="rounded-[32px] bg-white/80 px-6 py-6 shadow-[0_14px_34px_rgba(52,36,17,0.06)]">
-        <span className="text-xs font-bold uppercase tracking-[0.22em] text-[#9f7e56]">Timeline</span>
         <h3 className="mt-2 text-2xl font-black text-[#173126]">روند وضعیت سفارش</h3>
         <div className="mt-5 grid gap-3">
           {order.timeline?.length ? order.timeline.map((item) => (

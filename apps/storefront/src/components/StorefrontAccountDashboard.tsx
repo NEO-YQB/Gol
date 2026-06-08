@@ -92,7 +92,6 @@ export function StorefrontAccountDashboard() {
         <div className="rounded-[32px] bg-white/80 px-6 py-6 shadow-[0_14px_34px_rgba(52,36,17,0.06)]">
           <div className="flex items-end justify-between gap-4">
             <div>
-              <span className="text-xs font-bold uppercase tracking-[0.22em] text-[#9f7e56]">Recent Orders</span>
               <h3 className="mt-2 text-2xl font-black text-[#173126]">آخرین سفارش‌ها</h3>
             </div>
           </div>
@@ -124,7 +123,6 @@ export function StorefrontAccountDashboard() {
 
         <div className="grid gap-5">
           <section className="rounded-[32px] bg-white/80 px-6 py-6 shadow-[0_14px_34px_rgba(52,36,17,0.06)]">
-            <span className="text-xs font-bold uppercase tracking-[0.22em] text-[#9f7e56]">Profile</span>
             <h3 className="mt-2 text-2xl font-black text-[#173126]">اطلاعات پایه</h3>
             <div className="mt-5 grid gap-3 text-sm">
               <div className="rounded-[22px] bg-[#f9f4ec] px-4 py-4">
@@ -147,7 +145,6 @@ export function StorefrontAccountDashboard() {
           </section>
 
           <section className="rounded-[32px] bg-white/80 px-6 py-6 shadow-[0_14px_34px_rgba(52,36,17,0.06)]">
-            <span className="text-xs font-bold uppercase tracking-[0.22em] text-[#9f7e56]">Addresses</span>
             <h3 className="mt-2 text-2xl font-black text-[#173126]">آدرس‌های ذخیره‌شده</h3>
             <div className="mt-5 grid gap-3">
               {summary.addresses.length ? summary.addresses.map((address) => (

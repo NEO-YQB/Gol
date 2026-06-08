@@ -244,15 +244,6 @@ export function StorefrontPaymentThankYouPage() {
             در حال آماده‌سازی جزئیات کامل سفارش...
           </div>
         ) : null}
-
-        <div className="mt-6 flex flex-wrap justify-center gap-3">
-          <Link className="rounded-full bg-[#173126] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#29513f]" href="/account">
-            رفتن به حساب کاربری
-          </Link>
-          <Link className="rounded-full border border-[#1f6a52]/15 bg-white/90 px-5 py-2.5 text-sm font-bold text-[#173126]" href="/shop">
-            بازگشت به فروشگاه
-          </Link>
-        </div>
       </div>
     </section>
   )
