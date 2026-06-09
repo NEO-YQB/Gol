@@ -102,9 +102,9 @@ export function ProductCarouselSection({ block }: { block: { id: string; data: R
         {title ? <h2 className="text-3xl font-black text-[#173126]">{title}</h2> : <div />}
         <StorefrontPill text={`${products.length} محصول`} />
       </div>
-      <div className="flex justify-center gap-5 overflow-x-auto pb-2">
+      <div className="flex items-stretch justify-center gap-5 overflow-x-auto pb-2">
         {products.map((product) => (
-          <ProductCard key={product.id} product={product} />
+          <ProductCard className="h-full min-h-[100%] min-w-[280px]" key={product.id} product={product} />
         ))}
       </div>
     </section>

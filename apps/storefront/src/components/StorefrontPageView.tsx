@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic'
 import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { type EnrichedStorefrontPage } from '../lib/storefront'
 import { StorefrontFooter } from './StorefrontFooter'
+import { StorefrontToastHost } from './StorefrontToastHost'
 import { StorefrontHeader } from './StorefrontHeader'
 import { CategoryCirclesSection, HeroSection } from './StorefrontSections'
 import { storefrontShared } from './storefrontShared'
@@ -96,6 +97,7 @@ export function StorefrontPageView({ page }: { page: EnrichedStorefrontPage }) {
       <StorefrontHeader heroTouchesTop={heroTouchesTop} page={page} />
       <main className={storefrontShared.pageShell}>
         <div className={`${storefrontShared.pageContainer} ${heroTouchesTop ? 'pt-0' : 'pt-4'}`}>
+          <StorefrontToastHost />
           {page.blocks.map((block, index) => {
             const loadingMode = resolveBlockLoadingMode(block)
 
