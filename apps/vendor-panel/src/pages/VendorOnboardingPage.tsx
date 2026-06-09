@@ -433,12 +433,24 @@ export function VendorOnboardingPage({
   function handleCropZoomChange(nextZoom: number) {
     setCropState((current) => {
       if (!current) return current
-      const nextState = { ...current, zoom: Math.max(current.minZoom, nextZoom) }
+      const clampedZoom = Math.max(current.minZoom, nextZoom)
+      const anchorX = PRODUCT_IMAGE_CROP_SIZE / 2
+      const anchorY = PRODUCT_IMAGE_CROP_SIZE / 2
+      const currentScale = current.baseScale * current.zoom
+      const nextScale = current.baseScale * clampedZoom
+      const imageX = (anchorX - current.offsetX) / currentScale
+      const imageY = (anchorY - current.offsetY) / currentScale
+      const nextState = {
+        ...current,
+        zoom: clampedZoom,
+        offsetX: anchorX - imageX * nextScale,
+        offsetY: anchorY - imageY * nextScale,
+      }
       const bounds = getCropBounds(nextState)
       return {
         ...nextState,
-        offsetX: clamp(current.offsetX, bounds.minOffsetX, bounds.maxOffsetX),
-        offsetY: clamp(current.offsetY, bounds.minOffsetY, bounds.maxOffsetY),
+        offsetX: clamp(nextState.offsetX, bounds.minOffsetX, bounds.maxOffsetX),
+        offsetY: clamp(nextState.offsetY, bounds.minOffsetY, bounds.maxOffsetY),
       }
     })
   }
@@ -769,6 +781,7 @@ export function VendorOnboardingPage({
                 className="product-image-cropper__viewport"
                 onMouseDown={(event) => {
                   if (!cropState) return
+                  event.preventDefault()
                   cropDragRef.current = {
                     startX: event.clientX,
                     startY: event.clientY,
@@ -787,6 +800,7 @@ export function VendorOnboardingPage({
                   alt="پیش‌نمایش برش تصویر"
                   className="product-image-cropper__image"
                   draggable={false}
+                  onDragStart={(event) => event.preventDefault()}
                   src={cropState.sourceUrl}
                   style={{
                     width: cropState.naturalWidth * cropState.baseScale * cropState.zoom,

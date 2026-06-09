@@ -1614,8 +1614,9 @@
 .product-image-cropper__image {
   position: absolute;
   top: 0;
-  right: 0;
+  left: 0;
   max-width: none;
+  pointer-events: none;
 }
 
 .product-image-cropper__frame {
