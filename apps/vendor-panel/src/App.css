@@ -1533,3 +1533,108 @@
     grid-template-columns: 1fr;
   }
 }
+
+.product-image-cropper {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+}
+
+.product-image-cropper__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.68);
+}
+
+.product-image-cropper__panel {
+  position: relative;
+  z-index: 1;
+  width: min(92vw, 920px);
+  padding: 20px;
+  border-radius: 28px;
+  background: rgba(255, 253, 248, 0.98);
+  box-shadow: var(--fm-shadow-lifted);
+  display: grid;
+  gap: 16px;
+}
+
+.product-image-cropper__header,
+.product-image-cropper__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.product-image-cropper__header div {
+  display: grid;
+  gap: 4px;
+}
+
+.product-image-cropper__header strong,
+.product-image-cropper__footer span {
+  color: var(--fm-text-primary);
+}
+
+.product-image-cropper__header span,
+.product-image-cropper__hint {
+  color: var(--fm-text-secondary);
+  line-height: 1.8;
+}
+
+.product-image-cropper__body {
+  display: grid;
+  grid-template-columns: minmax(320px, 360px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.product-image-cropper__viewport {
+  position: relative;
+  width: 320px;
+  height: 320px;
+  overflow: hidden;
+  border-radius: 24px;
+  background: #f1e8dc;
+  border: 1px solid var(--fm-border-soft);
+  cursor: grab;
+  user-select: none;
+}
+
+.product-image-cropper__viewport:active {
+  cursor: grabbing;
+}
+
+.product-image-cropper__image {
+  position: absolute;
+  top: 0;
+  right: 0;
+  max-width: none;
+}
+
+.product-image-cropper__frame {
+  position: absolute;
+  inset: 0;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: inset 0 0 0 999px rgba(17, 24, 39, 0.22);
+  pointer-events: none;
+}
+
+.product-image-cropper__controls {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+@media (max-width: 900px) {
+  .product-image-cropper__body {
+    grid-template-columns: 1fr;
+  }
+
+  .product-image-cropper__viewport {
+    margin: 0 auto;
+  }
+}

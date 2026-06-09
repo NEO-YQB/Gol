@@ -41,6 +41,53 @@ type ProductOption = {
   label: string
 }
 
+type ProductImageCropTarget = 'main' | 'gallery'
+
+type ProductImageCropState = {
+  target: ProductImageCropTarget
+  files: File[]
+  currentIndex: number
+  sourceUrl: string
+  naturalWidth: number
+  naturalHeight: number
+  baseScale: number
+  minZoom: number
+  zoom: number
+  offsetX: number
+  offsetY: number
+}
+
+const PRODUCT_IMAGE_CROP_SIZE = 320
+const PRODUCT_IMAGE_MAX_EXPORT_SIZE = 800
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max)
+}
+
+function getCropBounds(state: Pick<ProductImageCropState, 'naturalWidth' | 'naturalHeight' | 'baseScale' | 'zoom'>) {
+  const displayWidth = state.naturalWidth * state.baseScale * state.zoom
+  const displayHeight = state.naturalHeight * state.baseScale * state.zoom
+  return {
+    minOffsetX: Math.min(0, PRODUCT_IMAGE_CROP_SIZE - displayWidth),
+    maxOffsetX: 0,
+    minOffsetY: Math.min(0, PRODUCT_IMAGE_CROP_SIZE - displayHeight),
+    maxOffsetY: 0,
+  }
+}
+
+function centerCropOffsets(naturalWidth: number, naturalHeight: number) {
+  const baseScale = Math.max(PRODUCT_IMAGE_CROP_SIZE / naturalWidth, PRODUCT_IMAGE_CROP_SIZE / naturalHeight)
+  const displayWidth = naturalWidth * baseScale
+  const displayHeight = naturalHeight * baseScale
+  return {
+    baseScale,
+    minZoom: 1,
+    zoom: 1,
+    offsetX: (PRODUCT_IMAGE_CROP_SIZE - displayWidth) / 2,
+    offsetY: (PRODUCT_IMAGE_CROP_SIZE - displayHeight) / 2,
+  }
+}
+
 const productColumns = [
   { key: 'id', label: 'شناسه' },
   { key: 'name', label: 'محصول' },
@@ -215,6 +262,7 @@ function mapCompositions(record: ProductRecord): CompositionRow[] {
 export function ProductsPage({ session }: { session: AuthSession }) {
   const mainImageInputRef = useRef<HTMLInputElement | null>(null)
   const galleryInputRef = useRef<HTMLInputElement | null>(null)
+  const cropDragRef = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null)
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -234,6 +282,8 @@ export function ProductsPage({ session }: { session: AuthSession }) {
   const [editorOpen, setEditorOpen] = useState(false)
   const [storeId, setStoreId] = useState<number>(0)
   const [form, setForm] = useState<ProductFormState>(initialFormState)
+  const [cropState, setCropState] = useState<ProductImageCropState | null>(null)
+  const [processingCrop, setProcessingCrop] = useState(false)
 
   const galleryImages = useMemo(() => getGalleryImages(form.imagesText), [form.imagesText])
   const galleryAltItems = useMemo(
@@ -244,6 +294,203 @@ export function ProductsPage({ session }: { session: AuthSession }) {
         .filter(Boolean),
     [form.galleryAltText],
   )
+
+  useEffect(() => {
+    return () => {
+      if (cropState?.sourceUrl) {
+        URL.revokeObjectURL(cropState.sourceUrl)
+      }
+    }
+  }, [cropState])
+
+  useEffect(() => {
+    function handlePointerMove(event: MouseEvent) {
+      if (!cropDragRef.current) return
+      setCropState((current) => {
+        if (!current) return current
+        const bounds = getCropBounds(current)
+        return {
+          ...current,
+          offsetX: clamp(cropDragRef.current!.originX + (event.clientX - cropDragRef.current!.startX), bounds.minOffsetX, bounds.maxOffsetX),
+          offsetY: clamp(cropDragRef.current!.originY + (event.clientY - cropDragRef.current!.startY), bounds.minOffsetY, bounds.maxOffsetY),
+        }
+      })
+    }
+
+    function handlePointerUp() {
+      cropDragRef.current = null
+    }
+
+    window.addEventListener('mousemove', handlePointerMove)
+    window.addEventListener('mouseup', handlePointerUp)
+    return () => {
+      window.removeEventListener('mousemove', handlePointerMove)
+      window.removeEventListener('mouseup', handlePointerUp)
+    }
+  }, [])
+
+  async function readImageDimensions(sourceUrl: string) {
+    return await new Promise<{ width: number; height: number }>((resolve, reject) => {
+      const image = new Image()
+      image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight })
+      image.onerror = () => reject(new Error('خواندن ابعاد تصویر ناموفق بود'))
+      image.src = sourceUrl
+    })
+  }
+
+  async function openProductImageCropper(target: ProductImageCropTarget, files: File[]) {
+    if (!files.length) return
+    setFormError(null)
+    setFormMessage(null)
+    await loadCropperFile(target, files, 0)
+  }
+
+  async function loadCropperFile(target: ProductImageCropTarget, files: File[], index: number) {
+    const file = files[index]
+    if (!file) return
+
+    if (cropState?.sourceUrl) {
+      URL.revokeObjectURL(cropState.sourceUrl)
+    }
+
+    const sourceUrl = URL.createObjectURL(file)
+    try {
+      const { width, height } = await readImageDimensions(sourceUrl)
+      const next = centerCropOffsets(width, height)
+      setCropState({
+        target,
+        files,
+        currentIndex: index,
+        sourceUrl,
+        naturalWidth: width,
+        naturalHeight: height,
+        baseScale: next.baseScale,
+        minZoom: next.minZoom,
+        zoom: next.zoom,
+        offsetX: next.offsetX,
+        offsetY: next.offsetY,
+      })
+    } catch (cropError) {
+      URL.revokeObjectURL(sourceUrl)
+      setFormError(cropError instanceof Error ? cropError.message : 'آماده‌سازی کراپ تصویر ناموفق بود')
+    }
+  }
+
+  function closeCropper() {
+    if (cropState?.sourceUrl) {
+      URL.revokeObjectURL(cropState.sourceUrl)
+    }
+    cropDragRef.current = null
+    setCropState(null)
+    setProcessingCrop(false)
+  }
+
+  async function exportCroppedFile(state: ProductImageCropState) {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const element = new Image()
+      element.onload = () => resolve(element)
+      element.onerror = () => reject(new Error('بارگذاری تصویر برای کراپ ناموفق بود'))
+      element.src = state.sourceUrl
+    })
+
+    const displayScale = state.baseScale * state.zoom
+    const sourceCropSize = PRODUCT_IMAGE_CROP_SIZE / displayScale
+    const sourceX = clamp(-state.offsetX / displayScale, 0, Math.max(0, state.naturalWidth - sourceCropSize))
+    const sourceY = clamp(-state.offsetY / displayScale, 0, Math.max(0, state.naturalHeight - sourceCropSize))
+    const outputSize = Math.min(PRODUCT_IMAGE_MAX_EXPORT_SIZE, Math.round(sourceCropSize))
+    const canvas = document.createElement('canvas')
+    canvas.width = outputSize
+    canvas.height = outputSize
+    const context = canvas.getContext('2d')
+    if (!context) {
+      throw new Error('آماده‌سازی canvas برای کراپ ناموفق بود')
+    }
+
+    context.drawImage(image, sourceX, sourceY, sourceCropSize, sourceCropSize, 0, 0, outputSize, outputSize)
+
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((result) => {
+        if (result) resolve(result)
+        else reject(new Error('ساخت فایل کراپ‌شده ناموفق بود'))
+      }, 'image/png')
+    })
+
+    const original = state.files[state.currentIndex]
+    return new File([blob], original?.name || `product-${Date.now()}.png`, { type: 'image/png' })
+  }
+
+  async function uploadCroppedMainImage(file: File) {
+    const uploaded = await vendorApi.uploadProductImage(session, file)
+    setForm((current) => ({ ...current, mainImage: uploaded.url, mainImageAlt: current.mainImageAlt || current.name || 'تصویر اصلی محصول' }))
+    setFormMessage('تصویر اصلی آپلود شد و در فرم قرار گرفت.')
+  }
+
+  async function uploadCroppedGalleryImage(file: File) {
+    const uploaded = await vendorApi.uploadGalleryImages(session, [file])
+    const nextUrls = uploaded.map((item) => item.url)
+    setForm((current) => {
+      const merged = Array.from(new Set([...getGalleryImages(current.imagesText), ...nextUrls]))
+      const nextAlts = [
+        ...current.galleryAltText
+          .split('\n')
+          .map((item) => item.trim())
+          .filter(Boolean),
+        ...uploaded.map(() => current.name || 'تصویر گالری محصول'),
+      ]
+      return { ...current, imagesText: merged.join('\n'), galleryAltText: nextAlts.join('\n') }
+    })
+    setFormMessage('تصاویر گالری آپلود شدند و به فرم اضافه شدند.')
+  }
+
+  async function handleCropConfirm() {
+    if (!cropState) return
+    setProcessingCrop(true)
+    setFormError(null)
+    setFormMessage(null)
+
+    try {
+      const croppedFile = await exportCroppedFile(cropState)
+      if (cropState.target === 'main') {
+        setUploadingMainImage(true)
+        await uploadCroppedMainImage(croppedFile)
+      } else {
+        setUploadingGallery(true)
+        await uploadCroppedGalleryImage(croppedFile)
+      }
+
+      const nextIndex = cropState.currentIndex + 1
+      if (nextIndex < cropState.files.length) {
+        await loadCropperFile(cropState.target, cropState.files, nextIndex)
+      } else {
+        closeCropper()
+      }
+    } catch (cropError) {
+      setFormError(cropError instanceof Error ? cropError.message : 'کراپ و آپلود تصویر ناموفق بود')
+    } finally {
+      setProcessingCrop(false)
+      setUploadingMainImage(false)
+      setUploadingGallery(false)
+      if (mainImageInputRef.current) {
+        mainImageInputRef.current.value = ''
+      }
+      if (galleryInputRef.current) {
+        galleryInputRef.current.value = ''
+      }
+    }
+  }
+
+  function handleCropZoomChange(nextZoom: number) {
+    setCropState((current) => {
+      if (!current) return current
+      const nextState = { ...current, zoom: Math.max(current.minZoom, nextZoom) }
+      const bounds = getCropBounds(nextState)
+      return {
+        ...nextState,
+        offsetX: clamp(current.offsetX, bounds.minOffsetX, bounds.maxOffsetX),
+        offsetY: clamp(current.offsetY, bounds.minOffsetY, bounds.maxOffsetY),
+      }
+    })
+  }
 
   async function loadProductData(activeRef = { current: true }) {
     const health = await vendorApi.getHealthSummary(session)
@@ -466,58 +713,15 @@ export function ProductsPage({ session }: { session: AuthSession }) {
   }
 
   async function handleMainImageChoose(fileList: FileList | null) {
-    const file = fileList?.[0]
-    if (!file) return
-
-    setUploadingMainImage(true)
-    setFormError(null)
-    setFormMessage(null)
-
-    try {
-      const uploaded = await vendorApi.uploadProductImage(session, file)
-      setForm((current) => ({ ...current, mainImage: uploaded.url, mainImageAlt: current.mainImageAlt || current.name || 'تصویر اصلی محصول' }))
-      setFormMessage('تصویر اصلی آپلود شد و در فرم قرار گرفت.')
-    } catch (uploadError) {
-      setFormError(uploadError instanceof Error ? uploadError.message : 'آپلود تصویر اصلی ناموفق بود')
-    } finally {
-      setUploadingMainImage(false)
-      if (mainImageInputRef.current) {
-        mainImageInputRef.current.value = ''
-      }
-    }
+    const files = fileList ? Array.from(fileList) : []
+    if (!files.length) return
+    await openProductImageCropper('main', files)
   }
 
   async function handleGalleryChoose(fileList: FileList | null) {
     const files = fileList ? Array.from(fileList) : []
     if (!files.length) return
-
-    setUploadingGallery(true)
-    setFormError(null)
-    setFormMessage(null)
-
-    try {
-      const uploaded = await vendorApi.uploadGalleryImages(session, files)
-      const nextUrls = uploaded.map((item) => item.url)
-      setForm((current) => {
-        const merged = Array.from(new Set([...getGalleryImages(current.imagesText), ...nextUrls]))
-        const nextAlts = [
-          ...current.galleryAltText
-            .split('\n')
-            .map((item) => item.trim())
-            .filter(Boolean),
-          ...uploaded.map(() => current.name || 'تصویر گالری محصول'),
-        ]
-        return { ...current, imagesText: merged.join('\n'), galleryAltText: nextAlts.join('\n') }
-      })
-      setFormMessage('تصاویر گالری آپلود شدند و به فرم اضافه شدند.')
-    } catch (uploadError) {
-      setFormError(uploadError instanceof Error ? uploadError.message : 'آپلود تصاویر گالری ناموفق بود')
-    } finally {
-      setUploadingGallery(false)
-      if (galleryInputRef.current) {
-        galleryInputRef.current.value = ''
-      }
-    }
+    await openProductImageCropper('gallery', files)
   }
 
   async function handleSubmit() {
@@ -1090,6 +1294,74 @@ export function ProductsPage({ session }: { session: AuthSession }) {
           </SectionCard>
         ) : null}
       </LoadableState>
+
+      {cropState ? (
+        <div className="product-image-cropper" dir="rtl">
+          <div className="product-image-cropper__backdrop" onClick={closeCropper} />
+          <div className="product-image-cropper__panel">
+            <div className="product-image-cropper__header">
+              <div>
+                <strong>{cropState.target === 'main' ? 'برش تصویر اصلی' : 'برش تصویر گالری'}</strong>
+                <span>برش اجباری 1:1 با خروجی حداکثر 800×800 و بدون بزرگ‌نمایی مصنوعی</span>
+              </div>
+              <button className="fm-button fm-button--ghost" disabled={processingCrop} onClick={closeCropper} type="button">
+                بستن
+              </button>
+            </div>
+
+            <div className="product-image-cropper__body">
+              <div
+                className="product-image-cropper__viewport"
+                onMouseDown={(event) => {
+                  if (!cropState) return
+                  cropDragRef.current = {
+                    startX: event.clientX,
+                    startY: event.clientY,
+                    originX: cropState.offsetX,
+                    originY: cropState.offsetY,
+                  }
+                }}
+                role="presentation"
+              >
+                <img
+                  alt="پیش‌نمایش برش تصویر"
+                  className="product-image-cropper__image"
+                  draggable={false}
+                  src={cropState.sourceUrl}
+                  style={{
+                    width: cropState.naturalWidth * cropState.baseScale * cropState.zoom,
+                    height: cropState.naturalHeight * cropState.baseScale * cropState.zoom,
+                    transform: `translate(${cropState.offsetX}px, ${cropState.offsetY}px)`,
+                  }}
+                />
+                <div className="product-image-cropper__frame" />
+              </div>
+
+              <div className="product-image-cropper__controls">
+                <label className="fm-field">
+                  <span>بزرگ‌نمایی</span>
+                  <input
+                    max="3"
+                    min={cropState.minZoom}
+                    onChange={(event) => handleCropZoomChange(Number(event.target.value))}
+                    step="0.01"
+                    type="range"
+                    value={cropState.zoom}
+                  />
+                </label>
+                <p className="product-image-cropper__hint">برای جابه‌جایی، تصویر را با ماوس بکش. هر فایل قبل از آپلود نهایی همین‌جا برش می‌خورد.</p>
+              </div>
+            </div>
+
+            <div className="product-image-cropper__footer">
+              <span>فایل {cropState.currentIndex + 1} از {cropState.files.length}</span>
+              <button className="fm-button fm-button--primary" disabled={processingCrop} onClick={() => void handleCropConfirm()} type="button">
+                {processingCrop ? 'در حال پردازش...' : 'تایید و ادامه'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

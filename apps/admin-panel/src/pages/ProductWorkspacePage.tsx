@@ -567,13 +567,11 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
     const uploaded = await adminApi.uploadGalleryImages(session, [file])
     setProductForm((current) => {
       const currentImages = current.imagesText
-        .split('
-')
+        .split('\n')
         .map((item) => item.trim())
         .filter(Boolean)
       const currentAlts = current.galleryAltText
-        .split('
-')
+        .split('\n')
         .map((item) => item.trim())
         .filter(Boolean)
       const nextImages = [...currentImages, ...uploaded.map((item) => item.url)]
@@ -581,10 +579,8 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
 
       return {
         ...current,
-        imagesText: nextImages.join('
-'),
-        galleryAltText: nextAlts.join('
-'),
+        imagesText: nextImages.join('\n'),
+        galleryAltText: nextAlts.join('\n'),
       }
     })
   }
@@ -639,64 +635,15 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
   }
 
   async function handleMainImageChoose(fileList: FileList | null) {
-    const file = fileList?.[0]
-    if (!file) return
-
-    setUploadingMainImage(true)
-    setError(null)
-
-    try {
-      const uploaded = await adminApi.uploadProductImage(session, file)
-      setProductForm((current) => ({
-        ...current,
-        mainImage: uploaded.url,
-        mainImageAlt: current.mainImageAlt.trim() || current.name.trim() || 'تصویر اصلی محصول',
-      }))
-    } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : 'آپلود تصویر اصلی ناموفق بود')
-    } finally {
-      setUploadingMainImage(false)
-      if (mainImageInputRef.current) {
-        mainImageInputRef.current.value = ''
-      }
-    }
+    const files = fileList ? Array.from(fileList) : []
+    if (!files.length) return
+    await openProductImageCropper('main', files)
   }
 
   async function handleGalleryChoose(fileList: FileList | null) {
     const files = fileList ? Array.from(fileList) : []
     if (!files.length) return
-
-    setUploadingGallery(true)
-    setError(null)
-
-    try {
-      const uploaded = await adminApi.uploadGalleryImages(session, files)
-      setProductForm((current) => {
-        const currentImages = current.imagesText
-          .split('\n')
-          .map((item) => item.trim())
-          .filter(Boolean)
-        const currentAlts = current.galleryAltText
-          .split('\n')
-          .map((item) => item.trim())
-          .filter(Boolean)
-        const nextImages = [...currentImages, ...uploaded.map((item) => item.url)]
-        const nextAlts = [...currentAlts, ...uploaded.map(() => current.name.trim() || 'تصویر گالری محصول')]
-
-        return {
-          ...current,
-          imagesText: nextImages.join('\n'),
-          galleryAltText: nextAlts.join('\n'),
-        }
-      })
-    } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : 'آپلود گالری ناموفق بود')
-    } finally {
-      setUploadingGallery(false)
-      if (galleryInputRef.current) {
-        galleryInputRef.current.value = ''
-      }
-    }
+    await openProductImageCropper('gallery', files)
   }
 
   async function handleRequestChanges() {
