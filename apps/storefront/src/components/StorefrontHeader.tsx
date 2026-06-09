@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import type { CategorySummary, EnrichedStorefrontPage, ProductTypeSummary } from '../lib/storefront'
 import { resolveAssetUrl } from '../lib/storefront'
@@ -29,6 +29,7 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
   const [productTypes, setProductTypes] = useState<ProductTypeSummary[]>([])
   const [openDesktopMenu, setOpenDesktopMenu] = useState<'categories' | 'productTypes' | 'cart' | null>(null)
   const router = useRouter()
+  const headerRef = useRef<HTMLElement | null>(null)
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const theme = useMemo(() => resolveHeaderTheme(page), [page])
@@ -113,6 +114,26 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
         }
       })
       .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    function handlePointerDown(event: MouseEvent | TouchEvent) {
+      const target = event.target
+      if (!(target instanceof Node)) return
+      if (headerRef.current?.contains(target)) return
+
+      setOpenDesktopMenu(null)
+      setIsUserMenuOpen(false)
+      setIsAuthMenuOpen(false)
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('touchstart', handlePointerDown)
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('touchstart', handlePointerDown)
+    }
   }, [])
 
   async function handleSendOtp() {
@@ -221,7 +242,7 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
   const headerVars = buildHeaderThemeVars(theme, shouldShowGlass)
 
   return (
-    <header className={`${storefrontStyles.headerRoot} ${shouldFloat ? 'px-4 pt-4 md:px-8' : 'px-0 pt-0'}`} style={headerVars}>
+    <header className={`${storefrontStyles.headerRoot} ${shouldFloat ? 'px-4 pt-4 md:px-8' : 'px-0 pt-0'}`} ref={headerRef} style={headerVars}>
       <div
         className={`${storefrontStyles.headerShellBase} ${shouldFloat ? 'max-w-[1280px] rounded-[28px] px-5 py-3 md:px-7' : 'max-w-[1440px] px-4 py-5 md:px-8'} ${shouldShowGlass ? storefrontStyles.headerGlass : 'border-transparent bg-transparent shadow-none backdrop-blur-0'}`}
       >
@@ -237,7 +258,7 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
             <div className={storefrontStyles.headerDropdownRoot}>
               <button
                 className={storefrontStyles.headerDropdownTrigger}
-                onClick={() => toggleDesktopMenu('categories')}
+                onClick={() => { setIsUserMenuOpen(false); setIsAuthMenuOpen(false); toggleDesktopMenu('categories') }}
                 type="button"
               >
                 دسته‌بندی‌ها
@@ -250,7 +271,7 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
             <div className={storefrontStyles.headerDropdownRoot}>
               <button
                 className={storefrontStyles.headerDropdownTrigger}
-                onClick={() => toggleDesktopMenu('productTypes')}
+                onClick={() => { setIsUserMenuOpen(false); setIsAuthMenuOpen(false); toggleDesktopMenu('productTypes') }}
                 type="button"
               >
                 نوع محصولات
@@ -291,7 +312,7 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
           </button>
 
           <div className={storefrontStyles.headerDropdownRoot}>
-            <button className={`${storefrontStyles.headerAction} relative`} onClick={() => toggleDesktopMenu('cart')} type="button">
+            <button className={`${storefrontStyles.headerAction} relative`} onClick={() => { setIsUserMenuOpen(false); setIsAuthMenuOpen(false); toggleDesktopMenu('cart') }} type="button">
               <span className="relative inline-flex">
                 <CartIcon />
                 {cartCount > 0 ? (
@@ -352,7 +373,7 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
             <div className="relative">
               <button
                 className={`inline-flex items-center gap-3 rounded-full border px-4 py-2 text-right text-sm font-bold shadow-[0_14px_30px_rgba(15,32,25,0.12)] transition-all duration-300 ${storefrontStyles.headerGlass} ${storefrontStyles.headerText}`}
-                onClick={() => setIsUserMenuOpen((current) => !current)}
+                onClick={() => { setOpenDesktopMenu(null); setIsAuthMenuOpen(false); setIsUserMenuOpen((current) => !current) }}
                 type="button"
               >
                 <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[var(--header-action-bg)] text-[var(--header-action-text)]">
@@ -364,7 +385,7 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
                 </span>
               </button>
               {isUserMenuOpen ? (
-                <div className={storefrontStyles.userMenuPanel}>
+                <div className={`${storefrontStyles.userMenuPanel} w-[min(92vw,320px)]`}>
                   <div className="grid gap-2">
                     {[
                       { label: 'پنل کاربری', href: '/account' },
@@ -384,7 +405,7 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
             </div>
           ) : (
             <div className="relative flex items-center gap-2">
-              <button className={storefrontStyles.headerAction} onClick={() => setIsAuthMenuOpen((current) => !current)} type="button">
+              <button className={storefrontStyles.headerAction} onClick={() => { setOpenDesktopMenu(null); setIsUserMenuOpen(false); setIsAuthMenuOpen((current) => !current) }} type="button">
                 <UserIcon />
                 <span className="hidden md:inline">ورود و ثبت نام</span>
               </button>
@@ -395,7 +416,7 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
                       <strong className={`block text-sm ${storefrontStyles.headerText}`}>
                         {authStep === 'phone' ? 'ورود یا ثبت نام' : authStep === 'code' ? 'کد تایید' : 'چی صدا کنم تو را؟'}
                       </strong>
-                      <p className={`mt-1 text-xs leading-6 ${storefrontStyles.headerMutedText}`}>
+                      <p className="mt-1 text-xs leading-6 text-[var(--header-dropdown-panel-text)]/80">
                         {authStep === 'phone'
                           ? 'شماره تماس خودت را وارد کن تا کد تایید برایت ارسال شود.'
                           : authStep === 'code'
@@ -405,7 +426,7 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
                     </div>
                     {authStep === 'phone' ? (
                       <label className="grid gap-2 text-sm">
-                        <span className={storefrontStyles.headerText}>شماره تماس</span>
+                        <span className="text-[var(--header-dropdown-panel-text)]">شماره تماس</span>
                         <input
                           className="rounded-2xl border border-[var(--header-glass-border)] bg-white/50 px-4 py-3 text-right text-sm text-[#173126] outline-none placeholder:text-[#8d7b67]"
                           inputMode="tel"
@@ -417,7 +438,7 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
                     ) : null}
                     {authStep === 'code' ? (
                       <label className="grid gap-2 text-sm">
-                        <span className={storefrontStyles.headerText}>کد تایید</span>
+                        <span className="text-[var(--header-dropdown-panel-text)]">کد تایید</span>
                         <input
                           className="rounded-2xl border border-[var(--header-glass-border)] bg-white/50 px-4 py-3 text-center text-sm tracking-[0.4em] text-[#173126] outline-none placeholder:text-[#8d7b67]"
                           inputMode="numeric"
@@ -429,7 +450,7 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
                     ) : null}
                     {authStep === 'name' ? (
                       <label className="grid gap-2 text-sm">
-                        <span className={storefrontStyles.headerText}>نام زیبای شما</span>
+                        <span className="text-[var(--header-dropdown-panel-text)]">نام زیبای شما</span>
                         <input
                           className="rounded-2xl border border-[var(--header-glass-border)] bg-white/50 px-4 py-3 text-right text-sm text-[#173126] outline-none placeholder:text-[#8d7b67]"
                           onChange={(event) => setFullName(event.target.value)}

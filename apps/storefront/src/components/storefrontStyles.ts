@@ -34,9 +34,9 @@ export const storefrontStyles = {
   headerAction:
     'inline-flex items-center gap-2 rounded-full bg-[var(--header-action-bg)] px-4 py-2 text-sm font-bold text-[var(--header-action-text)] shadow-[0_14px_30px_rgba(15,32,25,0.14)] transition-all duration-300 hover:translate-y-[-1px]',
   userMenuPanel:
-    'absolute left-0 top-[calc(100%+8px)] min-w-[220px] rounded-[24px] border border-[var(--header-glass-border)] bg-[var(--header-glass-bg)] p-3 text-[var(--header-text)] shadow-[0_20px_45px_rgba(20,29,25,0.16)] backdrop-blur-2xl',
+    'absolute left-0 top-[calc(100%+10px)] z-30 min-w-[260px] rounded-[24px] border border-[var(--header-dropdown-panel-border)] bg-[var(--header-dropdown-panel-bg)] p-3 text-[var(--header-dropdown-panel-text)] shadow-[0_20px_45px_rgba(20,29,25,0.16)] backdrop-blur-2xl',
   userMenuItem:
-    'rounded-2xl border border-[var(--header-glass-border)] bg-[var(--header-glass-bg)] px-4 py-3 text-sm font-bold text-[var(--header-text)] transition-colors hover:bg-white/20',
+    'flex items-center justify-between gap-3 rounded-2xl border border-[var(--header-dropdown-panel-border)] bg-white/45 px-4 py-3 text-sm font-bold text-[var(--header-dropdown-panel-text)] transition-colors hover:bg-[var(--header-dropdown-panel-hover-bg)]',
   mobileMenuPanel:
     'pointer-events-auto mx-4 mt-3 overflow-hidden rounded-[28px] border border-[var(--header-glass-border)] bg-[var(--header-glass-bg)] text-[var(--header-text)] shadow-[0_20px_45px_rgba(20,29,25,0.16)] backdrop-blur-2xl transition-all duration-300 ease-out md:hidden',
 }
