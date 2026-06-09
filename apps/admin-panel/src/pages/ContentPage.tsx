@@ -371,6 +371,39 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
     [authors, categories, tags],
   )
 
+  const workflowGuidance = [
+    {
+      title: 'برای اطلاع‌رسانی دقیق',
+      description: 'عنوان شفاف، خلاصه کوتاه و دسته‌بندی درست باعث می‌شود مقاله سریع‌تر پیدا و بهتر درک شود.',
+    },
+    {
+      title: 'برای آموزش بهتر',
+      description: 'محتوای آموزشی را مرحله‌ای بنویس، از تگ و کلیدواژه مشخص استفاده کن و متن را با اسلاگ روشن منتشر کن.',
+    },
+    {
+      title: 'برای آمادگی سئو',
+      description: 'Meta title، meta description و focus keyword را قبل از انتشار کامل کن تا پایش‌های سئویی کمتر شوند.',
+    },
+  ]
+
+  const taxonomyHealthCards = [
+    {
+      label: 'دسته‌بندی‌ها',
+      value: formatPersianNumber(categories.length),
+      note: 'برای پیدا شدن مقاله در ساختار محتوایی',
+    },
+    {
+      label: 'برچسب‌ها',
+      value: formatPersianNumber(tags.length),
+      note: 'برای خوشه‌بندی موضوعات و لینک‌سازی داخلی',
+    },
+    {
+      label: 'نویسنده‌ها',
+      value: formatPersianNumber(authors.length),
+      note: 'برای مالکیت تحریریه و اعتماد محتوا',
+    },
+  ]
+
   const articleSelectionPageCount = Math.max(1, Math.ceil(filteredArticles.length / articleSelectionPageSize))
   const articleSelectionItems = filteredArticles.slice(
     (articleSelectionPage - 1) * articleSelectionPageSize,
@@ -389,18 +422,27 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
 
         <SectionCard
           eyebrow="کارتابل محتوا"
-          title="صف محتوا و سئو"
-          description="این سطح فقط برای پایش، فیلتر، مرتب‌سازی ذهنی و انتخاب آیتم است. ساخت و ویرایش کامل مقاله در میزکار جدا انجام می‌شود."
-          hint="اول مقاله را با فیلترها پیدا کن، بعد خلاصه‌اش را ببین و فقط اگر نیاز به ویرایش داشتی وارد میزکار جدا شو."
+          title="خلاصه محتوا، سئو و آمادگی انتشار"
+          description="این صفحه برای دید سریع تیم محتوا ساخته شده است: پیدا کردن مقاله، فهم وضعیت آموزشی و اطلاع‌رسانی، و تصمیم برای ورود به میزکار ویرایش."
+          hint="اول از همین‌جا مقاله را پیدا کن، خلاصه کیفیت محتوا را ببین، بعد فقط در صورت نیاز وارد میزکار ویرایش شو."
           actions={
             <div className="content-header-actions">
-              <Pill tone="primary">عملیات تحریریه</Pill>
+              <Pill tone="primary">تحریریه و سئو</Pill>
               <button className="content-primary-action" onClick={onCreateArticle} type="button">
                 مقاله جدید
               </button>
             </div>
           }
         >
+          <div className="content-brief-grid">
+            {workflowGuidance.map((item) => (
+              <article className="content-brief-card" key={item.title}>
+                <strong>{item.title}</strong>
+                <p>{item.description}</p>
+              </article>
+            ))}
+          </div>
+
           <div className="content-toolbar content-toolbar--dense">
             <div className="content-queue-grid">
               {queueSummary.map((item) => (
@@ -411,14 +453,21 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
               ))}
             </div>
 
-            <div className="fm-field content-search">
-              <label htmlFor="content-search">جستجو</label>
-              <input
-                id="content-search"
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="عنوان، اسلاگ، نویسنده، دسته‌بندی یا تگ"
-                value={search}
-              />
+            <div className="content-search-row">
+              <div className="fm-field content-search">
+                <label htmlFor="content-search">جستجو</label>
+                <input
+                  id="content-search"
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="عنوان، اسلاگ، نویسنده، دسته‌بندی یا تگ"
+                  value={search}
+                />
+              </div>
+
+              <div className="content-search-help">
+                <strong>راهنمای سریع</strong>
+                <span>اگر مقاله آموزشی است، دسته و تگ را دقیق‌تر انتخاب کن. اگر مقاله اطلاع‌رسانی است، عنوان و خلاصه را شفاف‌تر نگه دار.</span>
+              </div>
             </div>
 
             <div className="content-select-grid">
@@ -556,8 +605,8 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
               <SectionCard
                 eyebrow="مقاله انتخاب‌شده"
                 title={selectedArticleId ? `خلاصه مقاله #${selectedArticleId}` : 'هیچ مقاله‌ای انتخاب نشده'}
-                description="این بلوک برای تصمیم سریع است. برای نگارش، سئو و دسته‌بندی دقیق باید وارد میزکار جدا شوی."
-                hint="این خلاصه برای تصمیم سریع است؛ اگر لازم بود متن، سئو یا دسته‌ها را تغییر دهی، وارد میزکار شو."
+                description="این بلوک برای تصمیم سریع تحریریه است: آیا مقاله برای اطلاع‌رسانی یا آموزش آماده‌تر شده و آیا metadata آن کامل است یا نه."
+                hint="اگر متن نیاز به بازنویسی آموزشی، شفاف‌سازی اطلاع‌رسانی یا تکمیل سئو دارد، ادامه کار را در میزکار انجام بده."
                 actions={
                   selectedArticleId ? (
                     <button className="content-secondary-action" onClick={() => onEditArticle(selectedArticleId)} type="button">
@@ -590,7 +639,7 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
                     <article className="content-detail-item content-detail-item--wide">
                       <span>گام بعدی روی این مقاله</span>
                       <strong>
-                        برای ویرایش متن، سئو، نویسنده، دسته‌بندی و برچسب‌ها وارد میزکار متمرکز شو تا فرم سنگین از کارتابل اصلی جدا بماند.
+                        اگر این محتوا آموزشی است، ساختار مرحله‌ای، برچسب‌ها و کلیدواژه را کامل‌تر کن؛ اگر اطلاع‌رسانی است، عنوان، خلاصه و پیام اصلی را شفاف‌تر نگه دار.
                       </strong>
                     </article>
                   </div>
@@ -602,24 +651,24 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
 
               <SectionCard
                 eyebrow="تاکسونومی و پایش"
-                title="دسته‌بندی و پایش محتوایی"
-                description="دید روی دسته‌بندی، برچسب، نویسنده و پایش‌ها از همین صفحه حفظ می‌شود، ولی مدیریت سنگین در میزکار ویرایش انجام می‌شود."
-                hint="اگر تعداد پایش‌ها زیاد شد، آن‌ها را صفحه‌به‌صفحه بخوان تا بخش خلاصه بیش از حد کشیده نشود."
+                title="سلامت ساختار محتوا و سیگنال‌های سئو"
+                description="در این بخش می‌بینی ساختار محتوایی چقدر تمیز است، چه چیزهایی برای آموزش و اطلاع‌رسانی بهتر نیاز به نظم بیشتری دارند و کدام پایش‌ها باید زودتر رسیدگی شوند."
+                hint="اگر پایش‌ها زیاد شدند، اول موارد مربوط به metadata و دسته‌بندی را رسیدگی کن؛ این‌ها روی پیدا شدن و فهم محتوا اثر مستقیم دارند."
                 actions={<Pill tone="warning">بلوغ سئو</Pill>}
               >
                 <div className="content-taxonomy-summary">
-                  <article>
-                    <span>دسته‌بندی‌ها</span>
-                    <strong>{formatPersianNumber(categories.length)}</strong>
-                  </article>
-                  <article>
-                    <span>برچسب‌ها</span>
-                    <strong>{formatPersianNumber(tags.length)}</strong>
-                  </article>
-                  <article>
-                    <span>نویسنده‌ها</span>
-                    <strong>{formatPersianNumber(authors.length)}</strong>
-                  </article>
+                  {taxonomyHealthCards.map((item) => (
+                    <article key={item.label}>
+                      <span>{item.label}</span>
+                      <strong>{item.value}</strong>
+                      <small>{item.note}</small>
+                    </article>
+                  ))}
+                </div>
+
+                <div className="content-education-banner">
+                  <strong>چک‌لیست محتوای تمیز</strong>
+                  <p>برای صفحه‌های آموزشی، مسیر یادگیری را ساده و مرحله‌ای نگه دار. برای صفحه‌های اطلاع‌رسانی، پیام اصلی را زودتر نشان بده و از دسته‌بندی و تگ‌های پراکنده دوری کن.</p>
                 </div>
                 <div className="content-preview-grid">
                   <article className="content-preview-card">
