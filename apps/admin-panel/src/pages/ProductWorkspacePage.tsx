@@ -465,6 +465,18 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
     }
   }, [])
 
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (!cropState || processingCrop) return
+      if (event.key === 'Escape') {
+        closeCropper()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [cropState, processingCrop])
+
   async function readImageDimensions(sourceUrl: string) {
     return await new Promise<{ width: number; height: number }>((resolve, reject) => {
       const image = new Image()
@@ -630,6 +642,33 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
         ...nextState,
         offsetX: clamp(current.offsetX, bounds.minOffsetX, bounds.maxOffsetX),
         offsetY: clamp(current.offsetY, bounds.minOffsetY, bounds.maxOffsetY),
+      }
+    })
+  }
+
+  function nudgeCropPosition(deltaX: number, deltaY: number) {
+    setCropState((current) => {
+      if (!current) return current
+      const bounds = getCropBounds(current)
+      return {
+        ...current,
+        offsetX: clamp(current.offsetX + deltaX, bounds.minOffsetX, bounds.maxOffsetX),
+        offsetY: clamp(current.offsetY + deltaY, bounds.minOffsetY, bounds.maxOffsetY),
+      }
+    })
+  }
+
+  function resetCropPosition() {
+    setCropState((current) => {
+      if (!current) return current
+      const next = centerCropOffsets(current.naturalWidth, current.naturalHeight)
+      return {
+        ...current,
+        baseScale: next.baseScale,
+        minZoom: next.minZoom,
+        zoom: next.zoom,
+        offsetX: next.offsetX,
+        offsetY: next.offsetY,
       }
     })
   }
@@ -1288,8 +1327,8 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
           <div className="product-image-cropper__panel">
             <div className="product-image-cropper__header">
               <div>
-                <strong>کراپ اجباری تصویر محصول</strong>
-                <span>{`نسبت 1:1 · خروجی حداکثر ${PRODUCT_IMAGE_MAX_EXPORT_SIZE}×${PRODUCT_IMAGE_MAX_EXPORT_SIZE}`}</span>
+                <strong>تنظیم قاب تصویر</strong>
+                <span>{`1:1 · ${PRODUCT_IMAGE_MAX_EXPORT_SIZE}×${PRODUCT_IMAGE_MAX_EXPORT_SIZE}`}</span>
               </div>
               <button className="content-secondary-action" onClick={closeCropper} type="button">
                 بستن
@@ -1307,10 +1346,16 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
                     originY: cropState.offsetY,
                   }
                 }}
+                onWheel={(event) => {
+                  event.preventDefault()
+                  const delta = event.deltaY > 0 ? -0.08 : 0.08
+                  handleCropZoomChange(Number((cropState.zoom + delta).toFixed(2)))
+                }}
               >
                 <img
                   alt="Crop preview"
                   className="product-image-cropper__image"
+                  draggable={false}
                   src={cropState.sourceUrl}
                   style={{
                     width: cropState.naturalWidth * cropState.baseScale * cropState.zoom,
@@ -1322,26 +1367,40 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
               </div>
 
               <div className="product-image-cropper__controls">
-                <label className="content-select-field">
-                  <span>بزرگ‌نمایی</span>
-                  <input
-                    max="3"
-                    min={String(cropState.minZoom)}
-                    onChange={(event) => handleCropZoomChange(Number(event.target.value))}
-                    step="0.01"
-                    type="range"
-                    value={cropState.zoom}
-                  />
-                </label>
-                <span className="product-image-cropper__hint">تصویر را با drag جابه‌جا کن تا کادر مربع نهایی را تنظیم کنی.</span>
-                <span className="product-image-cropper__hint">فقط برای تصاویر محصول، کراپ 1:1 و resize حداکثر 800×800 اعمال می‌شود.</span>
+                <div className="product-image-cropper__toolbar">
+                  <button className="product-image-cropper__tool" onClick={() => handleCropZoomChange(Number((cropState.zoom - 0.08).toFixed(2)))} type="button">
+                    −
+                  </button>
+                  <label className="product-image-cropper__slider">
+                    <input
+                      max="3"
+                      min={String(cropState.minZoom)}
+                      onChange={(event) => handleCropZoomChange(Number(event.target.value))}
+                      step="0.01"
+                      type="range"
+                      value={cropState.zoom}
+                    />
+                  </label>
+                  <button className="product-image-cropper__tool" onClick={() => handleCropZoomChange(Number((cropState.zoom + 0.08).toFixed(2)))} type="button">
+                    +
+                  </button>
+                  <button className="product-image-cropper__tool product-image-cropper__tool--reset" onClick={resetCropPosition} type="button">
+                    ریست
+                  </button>
+                </div>
+                <div className="product-image-cropper__nudge">
+                  <button className="product-image-cropper__nudge-button" onClick={() => nudgeCropPosition(0, -12)} type="button">↑</button>
+                  <button className="product-image-cropper__nudge-button" onClick={() => nudgeCropPosition(12, 0)} type="button">→</button>
+                  <button className="product-image-cropper__nudge-button" onClick={() => nudgeCropPosition(0, 12)} type="button">↓</button>
+                  <button className="product-image-cropper__nudge-button" onClick={() => nudgeCropPosition(-12, 0)} type="button">←</button>
+                </div>
               </div>
             </div>
 
             <div className="product-image-cropper__footer">
               <span>{`تصویر ${formatPersianNumber(cropState.currentIndex + 1)} از ${formatPersianNumber(cropState.files.length)}`}</span>
               <button className="content-primary-action" disabled={processingCrop} onClick={() => void handleCropConfirm()} type="button">
-                {processingCrop ? 'در حال پردازش...' : 'تایید کراپ و آپلود'}
+                {processingCrop ? 'در حال پردازش...' : 'تایید'}
               </button>
             </div>
           </div>

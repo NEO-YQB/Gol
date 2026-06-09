@@ -329,6 +329,18 @@ export function ProductsPage({ session }: { session: AuthSession }) {
     }
   }, [])
 
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (!cropState || processingCrop) return
+      if (event.key === 'Escape') {
+        closeCropper()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [cropState, processingCrop])
+
   async function readImageDimensions(sourceUrl: string) {
     return await new Promise<{ width: number; height: number }>((resolve, reject) => {
       const image = new Image()
@@ -488,6 +500,33 @@ export function ProductsPage({ session }: { session: AuthSession }) {
         ...nextState,
         offsetX: clamp(current.offsetX, bounds.minOffsetX, bounds.maxOffsetX),
         offsetY: clamp(current.offsetY, bounds.minOffsetY, bounds.maxOffsetY),
+      }
+    })
+  }
+
+  function nudgeCropPosition(deltaX: number, deltaY: number) {
+    setCropState((current) => {
+      if (!current) return current
+      const bounds = getCropBounds(current)
+      return {
+        ...current,
+        offsetX: clamp(current.offsetX + deltaX, bounds.minOffsetX, bounds.maxOffsetX),
+        offsetY: clamp(current.offsetY + deltaY, bounds.minOffsetY, bounds.maxOffsetY),
+      }
+    })
+  }
+
+  function resetCropPosition() {
+    setCropState((current) => {
+      if (!current) return current
+      const next = centerCropOffsets(current.naturalWidth, current.naturalHeight)
+      return {
+        ...current,
+        baseScale: next.baseScale,
+        minZoom: next.minZoom,
+        zoom: next.zoom,
+        offsetX: next.offsetX,
+        offsetY: next.offsetY,
       }
     })
   }
@@ -1301,8 +1340,8 @@ export function ProductsPage({ session }: { session: AuthSession }) {
           <div className="product-image-cropper__panel">
             <div className="product-image-cropper__header">
               <div>
-                <strong>{cropState.target === 'main' ? 'برش تصویر اصلی' : 'برش تصویر گالری'}</strong>
-                <span>برش اجباری 1:1 با خروجی حداکثر 800×800 و بدون بزرگ‌نمایی مصنوعی</span>
+                <strong>{cropState.target === 'main' ? 'تنظیم قاب تصویر اصلی' : 'تنظیم قاب گالری'}</strong>
+                <span>1:1 · 800×800</span>
               </div>
               <button className="fm-button fm-button--ghost" disabled={processingCrop} onClick={closeCropper} type="button">
                 بستن
@@ -1321,6 +1360,11 @@ export function ProductsPage({ session }: { session: AuthSession }) {
                     originY: cropState.offsetY,
                   }
                 }}
+                onWheel={(event) => {
+                  event.preventDefault()
+                  const delta = event.deltaY > 0 ? -0.08 : 0.08
+                  handleCropZoomChange(Number((cropState.zoom + delta).toFixed(2)))
+                }}
                 role="presentation"
               >
                 <img
@@ -1338,25 +1382,34 @@ export function ProductsPage({ session }: { session: AuthSession }) {
               </div>
 
               <div className="product-image-cropper__controls">
-                <label className="fm-field">
-                  <span>بزرگ‌نمایی</span>
-                  <input
-                    max="3"
-                    min={cropState.minZoom}
-                    onChange={(event) => handleCropZoomChange(Number(event.target.value))}
-                    step="0.01"
-                    type="range"
-                    value={cropState.zoom}
-                  />
-                </label>
-                <p className="product-image-cropper__hint">برای جابه‌جایی، تصویر را با ماوس بکش. هر فایل قبل از آپلود نهایی همین‌جا برش می‌خورد.</p>
+                <div className="product-image-cropper__toolbar">
+                  <button className="product-image-cropper__tool" onClick={() => handleCropZoomChange(Number((cropState.zoom - 0.08).toFixed(2)))} type="button">−</button>
+                  <label className="product-image-cropper__slider">
+                    <input
+                      max="3"
+                      min={cropState.minZoom}
+                      onChange={(event) => handleCropZoomChange(Number(event.target.value))}
+                      step="0.01"
+                      type="range"
+                      value={cropState.zoom}
+                    />
+                  </label>
+                  <button className="product-image-cropper__tool" onClick={() => handleCropZoomChange(Number((cropState.zoom + 0.08).toFixed(2)))} type="button">+</button>
+                  <button className="product-image-cropper__tool product-image-cropper__tool--reset" onClick={resetCropPosition} type="button">ریست</button>
+                </div>
+                <div className="product-image-cropper__nudge">
+                  <button className="product-image-cropper__nudge-button" onClick={() => nudgeCropPosition(0, -12)} type="button">↑</button>
+                  <button className="product-image-cropper__nudge-button" onClick={() => nudgeCropPosition(12, 0)} type="button">→</button>
+                  <button className="product-image-cropper__nudge-button" onClick={() => nudgeCropPosition(0, 12)} type="button">↓</button>
+                  <button className="product-image-cropper__nudge-button" onClick={() => nudgeCropPosition(-12, 0)} type="button">←</button>
+                </div>
               </div>
             </div>
 
             <div className="product-image-cropper__footer">
               <span>فایل {cropState.currentIndex + 1} از {cropState.files.length}</span>
               <button className="fm-button fm-button--primary" disabled={processingCrop} onClick={() => void handleCropConfirm()} type="button">
-                {processingCrop ? 'در حال پردازش...' : 'تایید و ادامه'}
+                {processingCrop ? 'در حال پردازش...' : 'تایید'}
               </button>
             </div>
           </div>

@@ -258,6 +258,18 @@ export function VendorOnboardingPage({
     }
   }, [])
 
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (!cropState || processingCrop) return
+      if (event.key === 'Escape') {
+        closeCropper()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [cropState, processingCrop])
+
   const stats = useMemo(() => [
     { label: 'مرحله فعال', value: stepLabel(activeStep), delta: 'wizard فروشنده', detail: 'فقط همین مرحله نمایش داده می‌شود', tone: 'primary' as const },
     { label: 'وضعیت درخواست', value: applicationState === 'approved' ? 'تایید شده' : applicationState === 'under_review' ? 'در بررسی' : applicationState === 'submitted' ? 'ارسال شده' : 'پیش‌نویس', delta: storeName, detail: 'نمایش وضعیت فعلی فروشنده', tone: 'warning' as const },
@@ -427,6 +439,33 @@ export function VendorOnboardingPage({
         ...nextState,
         offsetX: clamp(current.offsetX, bounds.minOffsetX, bounds.maxOffsetX),
         offsetY: clamp(current.offsetY, bounds.minOffsetY, bounds.maxOffsetY),
+      }
+    })
+  }
+
+  function nudgeCropPosition(deltaX: number, deltaY: number) {
+    setCropState((current) => {
+      if (!current) return current
+      const bounds = getCropBounds(current)
+      return {
+        ...current,
+        offsetX: clamp(current.offsetX + deltaX, bounds.minOffsetX, bounds.maxOffsetX),
+        offsetY: clamp(current.offsetY + deltaY, bounds.minOffsetY, bounds.maxOffsetY),
+      }
+    })
+  }
+
+  function resetCropPosition() {
+    setCropState((current) => {
+      if (!current) return current
+      const next = centerCropOffsets(current.naturalWidth, current.naturalHeight)
+      return {
+        ...current,
+        baseScale: next.baseScale,
+        minZoom: next.minZoom,
+        zoom: next.zoom,
+        offsetX: next.offsetX,
+        offsetY: next.offsetY,
       }
     })
   }
@@ -717,8 +756,8 @@ export function VendorOnboardingPage({
           <div className="product-image-cropper__panel">
             <div className="product-image-cropper__header">
               <div>
-                <strong>{cropState.target === 'productMain' ? 'برش تصویر اصلی محصول نمونه' : 'برش تصویر گالری محصول نمونه'}</strong>
-                <span>برش اجباری 1:1 با خروجی حداکثر 800×800 و بدون بزرگ‌نمایی مصنوعی</span>
+                <strong>{cropState.target === 'productMain' ? 'تنظیم قاب تصویر اصلی' : 'تنظیم قاب گالری'}</strong>
+                <span>1:1 · 800×800</span>
               </div>
               <button className="fm-button fm-button--ghost" disabled={processingCrop} onClick={closeCropper} type="button">
                 بستن
@@ -737,6 +776,11 @@ export function VendorOnboardingPage({
                     originY: cropState.offsetY,
                   }
                 }}
+                onWheel={(event) => {
+                  event.preventDefault()
+                  const delta = event.deltaY > 0 ? -0.08 : 0.08
+                  handleCropZoomChange(Number((cropState.zoom + delta).toFixed(2)))
+                }}
                 role="presentation"
               >
                 <img
@@ -754,25 +798,34 @@ export function VendorOnboardingPage({
               </div>
 
               <div className="product-image-cropper__controls">
-                <label className="fm-field">
-                  <span>بزرگ‌نمایی</span>
-                  <input
-                    max="3"
-                    min={cropState.minZoom}
-                    onChange={(event) => handleCropZoomChange(Number(event.target.value))}
-                    step="0.01"
-                    type="range"
-                    value={cropState.zoom}
-                  />
-                </label>
-                <p className="product-image-cropper__hint">این کراپ فقط برای تصاویر محصول نمونه اعمال می‌شود.</p>
+                <div className="product-image-cropper__toolbar">
+                  <button className="product-image-cropper__tool" onClick={() => handleCropZoomChange(Number((cropState.zoom - 0.08).toFixed(2)))} type="button">−</button>
+                  <label className="product-image-cropper__slider">
+                    <input
+                      max="3"
+                      min={cropState.minZoom}
+                      onChange={(event) => handleCropZoomChange(Number(event.target.value))}
+                      step="0.01"
+                      type="range"
+                      value={cropState.zoom}
+                    />
+                  </label>
+                  <button className="product-image-cropper__tool" onClick={() => handleCropZoomChange(Number((cropState.zoom + 0.08).toFixed(2)))} type="button">+</button>
+                  <button className="product-image-cropper__tool product-image-cropper__tool--reset" onClick={resetCropPosition} type="button">ریست</button>
+                </div>
+                <div className="product-image-cropper__nudge">
+                  <button className="product-image-cropper__nudge-button" onClick={() => nudgeCropPosition(0, -12)} type="button">↑</button>
+                  <button className="product-image-cropper__nudge-button" onClick={() => nudgeCropPosition(12, 0)} type="button">→</button>
+                  <button className="product-image-cropper__nudge-button" onClick={() => nudgeCropPosition(0, 12)} type="button">↓</button>
+                  <button className="product-image-cropper__nudge-button" onClick={() => nudgeCropPosition(-12, 0)} type="button">←</button>
+                </div>
               </div>
             </div>
 
             <div className="product-image-cropper__footer">
               <span>فایل {cropState.currentIndex + 1} از {cropState.files.length}</span>
               <button className="fm-button fm-button--primary" disabled={processingCrop} onClick={() => void handleCropConfirm()} type="button">
-                {processingCrop ? 'در حال پردازش...' : 'تایید و ادامه'}
+                {processingCrop ? 'در حال پردازش...' : 'تایید'}
               </button>
             </div>
           </div>
