@@ -485,26 +485,6 @@ export function VendorOnboardingPage({
     }
   }
 
-  async function uploadGalleryFiles(files: FileList | null) {
-    if (!files?.length) return
-    setUploading('gallery')
-    setUploadProgress((current) => ({ ...current, gallery: 25 }))
-    setError(null)
-    try {
-      const result = await vendorApi.uploadOnboardingGallery(session, Array.from(files))
-      setUploadProgress((current) => ({ ...current, gallery: 100 }))
-      updateDraft('productGalleryImages', [...draft.productGalleryImages, ...result.map((item) => item.url)])
-      setMessage('گالری محصول با موفقیت بارگذاری شد.')
-    } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : 'بارگذاری گالری ناموفق بود')
-    } finally {
-      window.setTimeout(() => {
-        setUploading(null)
-        setUploadProgress((current) => ({ ...current, gallery: 0 }))
-      }, 400)
-    }
-  }
-
   function nextStep() {
     const index = stepOrder.indexOf(activeStep)
     if (index < stepOrder.length - 1) setActiveStep(stepOrder[index + 1])
