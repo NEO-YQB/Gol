@@ -110,6 +110,9 @@ export class ContentService {
 
   async createArticleCategory(dto: CreateArticleCategoryDto) {
     await this.ensureArticleCategorySlugAvailable(dto.slug);
+    if (!dto.parentId) {
+      await this.ensureTopLevelArticleCategorySlugDoesNotConflictWithArticle(dto.slug);
+    }
     if (dto.parentId) {
       await this.ensureArticleCategoryExists(dto.parentId);
     }
@@ -258,6 +261,11 @@ export class ContentService {
     if (dto.slug) {
       await this.ensureArticleCategorySlugAvailable(dto.slug, id);
     }
+    const nextParentId = dto.parentId !== undefined ? dto.parentId : current?.parentId;
+    const nextSlug = dto.slug ?? current?.slug;
+    if (nextSlug && !nextParentId) {
+      await this.ensureTopLevelArticleCategorySlugDoesNotConflictWithArticle(nextSlug);
+    }
     if (dto.parentId !== undefined) {
       if (dto.parentId === id) {
         throw new ConflictException('دسته‌بندی نمی‌تواند والد خودش باشد');
@@ -377,6 +385,7 @@ export class ContentService {
   ) {
     const { tagIds, ...articleData } = dto;
     await this.ensureArticleSlugAvailable(dto.slug);
+    await this.ensureArticleSlugDoesNotConflictWithTopLevelCategory(dto.slug);
     const author = await this.ensureAuthorExists(dto.authorId);
     await this.ensureArticleCategoryExists(dto.categoryId);
     await this.assertUserCanOperateAuthor(user, author.userId);
@@ -465,6 +474,7 @@ export class ContentService {
 
     if (dto.slug) {
       await this.ensureArticleSlugAvailable(dto.slug, id);
+      await this.ensureArticleSlugDoesNotConflictWithTopLevelCategory(dto.slug);
     }
 
     if (dto.authorId) {
@@ -1246,6 +1256,31 @@ export class ContentService {
     });
     if (article && article.id !== currentId) {
       throw new ConflictException('اسلاگ مقاله تکراری است');
+    }
+  }
+
+  private async ensureArticleSlugDoesNotConflictWithTopLevelCategory(slug: string) {
+    const category = await this.prisma.articleCategory.findFirst({
+      where: {
+        slug,
+        parentId: null,
+      },
+      select: { id: true },
+    });
+
+    if (category) {
+      throw new ConflictException('اسلاگ مقاله با اسلاگ دسته‌بندی اصلی مجله تداخل دارد');
+    }
+  }
+
+  private async ensureTopLevelArticleCategorySlugDoesNotConflictWithArticle(slug: string) {
+    const article = await this.prisma.article.findFirst({
+      where: { slug },
+      select: { id: true },
+    });
+
+    if (article) {
+      throw new ConflictException('اسلاگ دسته‌بندی اصلی مجله با اسلاگ مقاله تداخل دارد');
     }
   }
 

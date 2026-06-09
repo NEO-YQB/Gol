@@ -38,6 +38,7 @@ export function StorefrontArticleDetailPage({ detail }: Props) {
   const toc = resolveHeadingIds(article.content, article.tableOfContents || [])
   const html = contentWithAnchors(article.content)
   const breadcrumbItems = detail.breadcrumbs?.items || []
+  const categoryPath = breadcrumbItems.slice(1, -1).map((item) => item.slug).join('/') || article.category.slug
 
   return (
     <div className="space-y-8">
@@ -50,7 +51,7 @@ export function StorefrontArticleDetailPage({ detail }: Props) {
                 ? '/mag'
                 : index === breadcrumbItems.length - 1
                   ? `/mag/${article.slug}`
-                  : buildMagCategoryHref(item.slug)
+                  : buildMagCategoryHref(breadcrumbItems.slice(1, index + 1).map((entry) => entry.slug).join('/'))
             return (
               <span className="flex items-center gap-2" key={`${item.position}-${item.slug}`}>
                 <span className="text-[#b8a18a]">/</span>
@@ -66,7 +67,7 @@ export function StorefrontArticleDetailPage({ detail }: Props) {
           <div className="px-6 py-8 md:px-8">
             <div className="flex flex-wrap gap-2 text-xs font-bold text-white/82">
               <Link className="rounded-full border border-white/16 bg-white/10 px-3 py-2" href="/mag">مجله گلینو</Link>
-              <Link className="rounded-full border border-white/16 bg-white/10 px-3 py-2" href={buildMagCategoryHref(article.category.slug)}>{article.category.title}</Link>
+              <Link className="rounded-full border border-white/16 bg-white/10 px-3 py-2" href={buildMagCategoryHref(categoryPath)}>{article.category.title}</Link>
             </div>
             <h1 className="mt-5 text-3xl font-black leading-[1.8] md:text-[2.8rem]">{article.title}</h1>
             {article.excerpt ? <p className="mt-4 max-w-3xl text-sm leading-8 text-white/84">{article.excerpt}</p> : null}
@@ -138,7 +139,7 @@ export function StorefrontArticleDetailPage({ detail }: Props) {
               <Link className="rounded-full bg-[#173126] px-4 py-2 text-sm font-bold text-white" href="/mag">
                 آرشیو مقالات
               </Link>
-              <Link className="rounded-full border border-[#1f6a52]/12 bg-white px-4 py-2 text-sm font-bold text-[#173126]" href={buildMagCategoryHref(article.category.slug)}>
+              <Link className="rounded-full border border-[#1f6a52]/12 bg-white px-4 py-2 text-sm font-bold text-[#173126]" href={buildMagCategoryHref(categoryPath)}>
                 مقالات این دسته
               </Link>
             </div>
