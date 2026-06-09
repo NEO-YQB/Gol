@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
-import { StorefrontArticleArchivePage } from '../../../../../components/StorefrontArticleArchivePage'
-import { StorefrontShell } from '../../../../../components/StorefrontShell'
+import { StorefrontArticleArchivePage } from '../../../../components/StorefrontArticleArchivePage'
+import { StorefrontShell } from '../../../../components/StorefrontShell'
 import {
   buildArchiveMetadata,
   buildBreadcrumbJsonLd,
@@ -9,7 +9,7 @@ import {
   getStorefrontArticleCategoryArchive,
   getStorefrontLatestArticles,
   resolveArticleCategoryPath,
-} from '../../../../../lib/storefront'
+} from '../../../../lib/storefront'
 
 async function resolveArchiveFromSegments(slugSegments: string[]) {
   const slug = slugSegments[slugSegments.length - 1] || ''
