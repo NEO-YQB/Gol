@@ -1,10 +1,7 @@
 FROM node:22-bookworm-slim AS installer
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y openssl python3 make g++ gcc libc6-dev pkg-config build-essential libvips-dev && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y openssl python3 make g++ imagemagick webp && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-
-ENV npm_config_build_from_source=true
-ENV SHARP_FORCE_GLOBAL_LIBVIPS=true
 
 COPY package*.json ./
 COPY apps/backend/package*.json ./apps/backend/
@@ -14,7 +11,7 @@ RUN npm install --include=optional
 
 FROM node:22-bookworm-slim AS builder
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y openssl python3 make g++ gcc libc6-dev pkg-config build-essential libvips-dev && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y openssl python3 make g++ imagemagick webp && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 COPY --from=installer /app/node_modules ./node_modules
@@ -22,12 +19,11 @@ COPY package*.json ./
 COPY apps/backend ./apps/backend
 COPY packages/database ./packages/database
 
-RUN npx prisma generate --schema=packages/database/prisma/schema.prisma && \
-    npm run build -w packages/database -w apps/backend
+RUN npx prisma generate --schema=packages/database/prisma/schema.prisma &&     npm run build -w packages/database -w apps/backend
 
 FROM node:22-bookworm-slim AS runner
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y openssl curl python3 make g++ gcc libc6-dev pkg-config build-essential libvips-dev && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y openssl curl imagemagick webp && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 ENV NODE_ENV=production

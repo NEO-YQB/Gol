@@ -1,8 +1,11 @@
 import { BadRequestException, Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
-import { mkdir, writeFile } from 'fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'fs/promises';
+import { tmpdir } from 'os';
 import { join } from 'path';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 import { v4 as uuidv4 } from 'uuid';
 
 type UploadFolder = 'products' | 'documents';
@@ -26,6 +29,8 @@ type UploadedImageResponse = {
     thumbnail: UploadedImageVariant | null;
   };
 };
+
+const execFileAsync = promisify(execFile);
 
 @Injectable()
 export class FilesService {
@@ -97,25 +102,21 @@ export class FilesService {
   }
 
   async uploadProductImage(file: Express.Multer.File) {
-    return this.uploadImage(file, 'products', false);
+    return this.uploadImage(file, 'products');
   }
 
   async uploadGalleryImages(files: Express.Multer.File[]) {
-    return Promise.all(files.map((file) => this.uploadImage(file, 'products', false)));
+    return Promise.all(files.map((file) => this.uploadImage(file, 'products')));
   }
 
   async uploadDocumentImage(file: Express.Multer.File) {
-    return this.uploadImage(file, 'documents', false);
+    return this.uploadImage(file, 'documents');
   }
 
-  private async uploadImage(
-    file: Express.Multer.File,
-    folder: UploadFolder,
-    requireWebp: boolean,
-  ): Promise<UploadedImageResponse> {
+  private async uploadImage(file: Express.Multer.File, folder: UploadFolder): Promise<UploadedImageResponse> {
     this.validateImageFile(file);
 
-    const imageAsset = await this.prepareImageAsset(file, folder, requireWebp);
+    const imageAsset = await this.prepareImageAsset(file, folder);
     return this.persistImageAsset(imageAsset, folder);
   }
 
@@ -127,36 +128,26 @@ export class FilesService {
     return value === 'true' || value === '1';
   }
 
-  private async prepareImageAsset(
-    file: Express.Multer.File,
-    folder: UploadFolder,
-    requireWebp: boolean,
-  ) {
-    let sharp: ((input?: Buffer) => any) | null = null;
+  private async prepareImageAsset(file: Express.Multer.File, folder: UploadFolder) {
+    const workspace = await mkdtemp(join(tmpdir(), 'gol-upload-'));
+    const inputPath = join(workspace, 'input');
+    const originalPath = join(workspace, 'original.webp');
 
     try {
-      const sharpModule = await import('sharp');
-      sharp = sharpModule.default;
-    } catch (error) {
-      this.logger.error(`Failed to load sharp for ${folder} upload`, error instanceof Error ? error.stack : String(error));
-      throw new InternalServerErrorException('سرویس پردازش تصویر در دسترس نیست.');
-    }
-
-    try {
-      const metadata = await sharp(file.buffer).metadata();
-      const baseName = this.buildFileName();
-      const originalKey = `${folder}/${baseName}`;
-      const originalBuffer = await sharp(file.buffer).webp({ quality: 82 }).toBuffer();
-      const large = await this.buildVariant(sharp, file.buffer, folder, 'lg', 1440);
-      const medium = await this.buildVariant(sharp, file.buffer, folder, 'md', 960);
-      const thumbnail = await this.buildVariant(sharp, file.buffer, folder, 'thumb', 480);
+      await writeFile(inputPath, file.buffer);
+      const metadata = await this.identifyImage(inputPath);
+      await this.convertToWebp(inputPath, originalPath, 82);
+      const originalBuffer = await readFile(originalPath);
+      const large = await this.buildVariant(inputPath, folder, 'lg', 1440, workspace);
+      const medium = await this.buildVariant(inputPath, folder, 'md', 960, workspace);
+      const thumbnail = await this.buildVariant(inputPath, folder, 'thumb', 480, workspace);
 
       return {
         original: {
-          key: originalKey,
+          key: `${folder}/${this.buildFileName()}`,
           buffer: originalBuffer,
-          width: metadata.width ?? null,
-          height: metadata.height ?? null,
+          width: metadata.width,
+          height: metadata.height,
         },
         large,
         medium,
@@ -169,36 +160,56 @@ export class FilesService {
         error instanceof Error ? error.stack : String(error),
       );
       throw new InternalServerErrorException('تبدیل تصویر به webp انجام نشد.');
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
     }
   }
 
+  private async identifyImage(path: string) {
+    const { stdout } = await execFileAsync('identify', ['-format', '%w %h', path]);
+    const [widthText, heightText] = stdout.trim().split(/\s+/);
+    const width = Number(widthText);
+    const height = Number(heightText);
+
+    if (!Number.isFinite(width) || !Number.isFinite(height)) {
+      throw new Error('Could not determine image dimensions');
+    }
+
+    return { width, height };
+  }
+
+  private async convertToWebp(inputPath: string, outputPath: string, quality: number, width?: number) {
+    const args = ['-quiet', '-q', String(quality)];
+    if (width) {
+      args.push('-resize', String(width), '0');
+    }
+    args.push(inputPath, '-o', outputPath);
+    await execFileAsync('cwebp', args);
+  }
+
   private async buildVariant(
-    sharp: (input?: Buffer) => any,
-    sourceBuffer: Buffer,
+    inputPath: string,
     folder: UploadFolder,
     suffix: string,
     width: number,
+    workspace: string,
   ) {
     try {
-      const instance = sharp(sourceBuffer);
-      const metadata = await instance.metadata();
-
+      const metadata = await this.identifyImage(inputPath);
       if (!metadata.width || metadata.width <= width) {
         return null;
       }
 
-      const resized = await sharp(sourceBuffer)
-        .resize({ width, withoutEnlargement: true })
-        .webp({ quality: 82 })
-        .toBuffer();
-
-      const resizedMetadata = await sharp(resized).metadata();
+      const outputPath = join(workspace, `${suffix}.webp`);
+      await this.convertToWebp(inputPath, outputPath, 82, width);
+      const outputBuffer = await readFile(outputPath);
+      const outputMeta = await this.identifyImage(outputPath);
 
       return {
         key: `${folder}/${uuidv4()}-${suffix}.webp`,
-        buffer: resized,
-        width: resizedMetadata.width ?? width,
-        height: resizedMetadata.height ?? null,
+        buffer: outputBuffer,
+        width: outputMeta.width,
+        height: outputMeta.height,
       };
     } catch (error) {
       this.logger.warn(
@@ -290,5 +301,4 @@ export class FilesService {
   ) {
     return asset ? this.toUploadedVariant(asset, baseUrl) : null;
   }
-
 }
