@@ -297,14 +297,10 @@ export function CategoryWorkspacePage({ session, onBack }: CategoryWorkspacePage
                 const name = readText(category, ['name'], 'بدون نام')
                 const childCount = toArray(category.children).length
                 const descendants = countDescendants(category)
-                const parentName =
-                  category.depth > 0
-                    ? readText(
-                        categoryOptions.find((item) => readText(item, ['id'], '') === readText(category, ['parentId'], '')),
-                        ['name'],
-                        'نامشخص',
-                      )
-                    : 'بدون والد'
+                const parentCategory = categoryOptions.find(
+                  (item) => readText(item, ['id'], '') === readText(category, ['parentId'], ''),
+                )
+                const parentName = parentCategory ? readText(parentCategory, ['name'], 'نامشخص') : 'بدون والد'
 
                 return (
                   <button
