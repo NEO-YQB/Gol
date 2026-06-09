@@ -297,12 +297,13 @@ export function ProductsPage({ session }: { session: AuthSession }) {
   )
 
   useEffect(() => {
+    const sourceUrl = cropState?.sourceUrl
     return () => {
-      if (cropState?.sourceUrl) {
-        URL.revokeObjectURL(cropState.sourceUrl)
+      if (sourceUrl) {
+        URL.revokeObjectURL(sourceUrl)
       }
     }
-  }, [cropState])
+  }, [cropState?.sourceUrl])
 
   useEffect(() => {
     function handlePointerMove(event: MouseEvent) {

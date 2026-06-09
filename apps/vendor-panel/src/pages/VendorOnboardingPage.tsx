@@ -226,12 +226,13 @@ export function VendorOnboardingPage({
   }, [session])
 
   useEffect(() => {
+    const sourceUrl = cropState?.sourceUrl
     return () => {
-      if (cropState?.sourceUrl) {
-        URL.revokeObjectURL(cropState.sourceUrl)
+      if (sourceUrl) {
+        URL.revokeObjectURL(sourceUrl)
       }
     }
-  }, [cropState])
+  }, [cropState?.sourceUrl])
 
   useEffect(() => {
     function handlePointerMove(event: MouseEvent) {

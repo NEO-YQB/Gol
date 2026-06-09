@@ -433,12 +433,13 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
 
 
   useEffect(() => {
+    const sourceUrl = cropState?.sourceUrl
     return () => {
-      if (cropState?.sourceUrl) {
-        URL.revokeObjectURL(cropState.sourceUrl)
+      if (sourceUrl) {
+        URL.revokeObjectURL(sourceUrl)
       }
     }
-  }, [cropState])
+  }, [cropState?.sourceUrl])
 
   useEffect(() => {
     function handlePointerMove(event: MouseEvent) {
