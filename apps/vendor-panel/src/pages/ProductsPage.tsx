@@ -553,6 +553,27 @@ export function ProductsPage({ session }: { session: AuthSession }) {
     })
   }
 
+  function removeGalleryImage(index: number) {
+    setForm((current) => {
+      const nextImages = current.imagesText
+        .split('\n')
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .filter((_, itemIndex) => itemIndex !== index)
+      const nextAlts = current.galleryAltText
+        .split('\n')
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .filter((_, itemIndex) => itemIndex !== index)
+
+      return {
+        ...current,
+        imagesText: nextImages.join('\n'),
+        galleryAltText: nextAlts.join('\n'),
+      }
+    })
+  }
+
   async function loadProductData(activeRef = { current: true }) {
     const health = await vendorApi.getHealthSummary(session)
     if (!activeRef.current) return
@@ -1150,9 +1171,12 @@ export function ProductsPage({ session }: { session: AuthSession }) {
                           {galleryImages.length ? (
                             <div className="vendor-products-gallery-preview">
                               {galleryImages.map((url, index) => (
-                                <article className="vendor-products-gallery-item" key={url}>
+                                <article className="vendor-products-gallery-item" key={`${url}-${index}`}>
+                                  <button className="vendor-products-gallery-remove" onClick={() => removeGalleryImage(index)} type="button" aria-label={`حذف تصویر ${index + 1}`}>
+                                    ×
+                                  </button>
                                   <img alt={galleryAltItems[index] || 'پیش‌نمایش گالری محصول'} src={url} />
-                                  <span>{galleryAltItems[index] || url}</span>
+                                  <span>{galleryAltItems[index] || 'ALT ثبت نشده'}</span>
                                 </article>
                               ))}
                             </div>
