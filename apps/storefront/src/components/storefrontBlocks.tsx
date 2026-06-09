@@ -97,10 +97,10 @@ export function ProductCard({ product, className = '' }: { product: ProductSumma
             )
           ) : null}
         </div>
-        <div className="mt-3 flex items-end justify-between gap-3">
-          <div className="space-y-1">
-            {hasDiscount ? <div className="min-h-[1.25rem] text-sm text-[#9c8a75] line-through">{`${price} تومان`}</div> : null}
-            <div className="text-lg font-extrabold text-[#d06c54]">{hasDiscount ? `${discountPrice} تومان` : `${price} تومان`}</div>
+        <div className="mt-3 flex min-h-[3.25rem] items-end justify-between gap-3">
+          <div className="flex min-h-[3.25rem] flex-col justify-end space-y-1">
+            <div className="min-h-[1.25rem] text-sm text-[#9c8a75] line-through">{hasDiscount ? `${price} تومان` : ''}</div>
+            <div className="min-h-[1.5rem] text-lg font-extrabold text-[#d06c54]">{hasDiscount ? `${discountPrice} تومان` : `${price} تومان`}</div>
           </div>
         </div>
         <div className="mt-auto flex flex-wrap gap-2 pt-4">
