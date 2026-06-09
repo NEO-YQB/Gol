@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { resolveAssetUrl, type CategorySummary, type ProductSummary, type StoreSummary } from '../lib/storefront'
 import { addCartItem, getCart, readStoredToken } from '../lib/storefrontAuth'
-import { emitStorefrontToast } from './storefrontToast'
+import { emitStorefrontAuthRequired, emitStorefrontToast } from './storefrontToast'
 import { storefrontShared } from './storefrontShared'
 import { storefrontStyles } from './storefrontStyles'
 
@@ -116,6 +116,7 @@ export function ProductCard({ product, className = '' }: { product: ProductSumma
               const token = readStoredToken()
               if (!token) {
                 emitStorefrontToast({ message: 'برای افزودن محصول به سبد خرید، ابتدا وارد حساب کاربری شوید.', duration: 8000 })
+                emitStorefrontAuthRequired()
                 return
               }
 

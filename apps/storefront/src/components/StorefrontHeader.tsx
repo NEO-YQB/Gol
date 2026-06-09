@@ -10,6 +10,7 @@ import { STOREFRONT_CART_UPDATED_EVENT } from '../lib/storefrontCartEvents'
 import { CartIcon, MenuIcon, UserIcon } from './storefrontIcons'
 import { storefrontStyles } from './storefrontStyles'
 import { buildHeaderThemeVars, resolveHeaderTheme } from './storefrontTheme'
+import { STOREFRONT_AUTH_REQUIRED_EVENT } from './storefrontToast'
 
 export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStorefrontPage; heroTouchesTop: boolean }) {
   const [isScrolled, setIsScrolled] = useState(false)
@@ -134,6 +135,19 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
       document.removeEventListener('mousedown', handlePointerDown)
       document.removeEventListener('touchstart', handlePointerDown)
     }
+  }, [])
+
+  useEffect(() => {
+    function handleAuthRequired() {
+      setOpenDesktopMenu(null)
+      setIsUserMenuOpen(false)
+      setIsAuthMenuOpen(true)
+      setAuthStep('phone')
+      setAuthError('')
+    }
+
+    window.addEventListener(STOREFRONT_AUTH_REQUIRED_EVENT, handleAuthRequired)
+    return () => window.removeEventListener(STOREFRONT_AUTH_REQUIRED_EVENT, handleAuthRequired)
   }, [])
 
   async function handleSendOtp() {
