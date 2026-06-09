@@ -7,6 +7,6 @@ export function buildMagArticleHref(slug: string) {
   return `/mag/${slug}`
 }
 
-export function buildMagCategoryHref(slug: string) {
-  return `/mag/category/${slug}`
+export function buildMagCategoryHref(slugOrPath: string) {
+  return `/mag/category/${slugOrPath}`
 }

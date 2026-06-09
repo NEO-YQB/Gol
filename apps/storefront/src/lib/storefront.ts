@@ -167,6 +167,7 @@ export type ArticleCategorySummary = {
   id: number
   title: string
   slug: string
+  parentId?: number | null
   description?: string | null
   metaTitle?: string | null
   metaDescription?: string | null
@@ -409,6 +410,29 @@ export async function getStorefrontLatestArticles(limit = 5): Promise<ArticleSum
 
 export async function getStorefrontArticleCategories(): Promise<ArticleCategorySummary[]> {
   return getArticleCategories()
+}
+
+export function resolveArticleCategoryPath(
+  categories: ArticleCategorySummary[],
+  categoryOrSlug: ArticleCategorySummary | string,
+) {
+  const slug = typeof categoryOrSlug === 'string' ? categoryOrSlug : categoryOrSlug.slug
+  const bySlug = categories.find((item) => item.slug === slug)
+  if (!bySlug) {
+    return slug
+  }
+
+  const chain: string[] = [bySlug.slug]
+  let currentParentId = bySlug.parentId ?? null
+
+  while (currentParentId) {
+    const parent = categories.find((item) => item.id === currentParentId)
+    if (!parent) break
+    chain.unshift(parent.slug)
+    currentParentId = parent.parentId ?? null
+  }
+
+  return chain.join('/')
 }
 
 export async function getStorefrontArticleArchive({

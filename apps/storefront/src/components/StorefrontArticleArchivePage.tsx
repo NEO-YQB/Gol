@@ -2,6 +2,7 @@ import Link from 'next/link'
 import {
   type ArticleCategorySummary,
   type ArticleSummary,
+  resolveArticleCategoryPath,
 } from '../lib/storefront'
 import { storefrontShared } from './storefrontShared'
 import { buildMagArticleHref, buildMagCategoryHref, formatArticleDate } from './storefrontArticleShared'
@@ -113,7 +114,7 @@ export function StorefrontArticleArchivePage({
                   ? 'bg-[#173126] text-white'
                   : 'border border-[#1f6a52]/12 bg-[#f8f2e8] text-[#173126] hover:bg-white'
               }`}
-              href={buildMagCategoryHref(category.slug)}
+              href={buildMagCategoryHref(resolveArticleCategoryPath(categories, category))}
               key={category.id}
             >
               {category.title}
@@ -132,7 +133,14 @@ export function StorefrontArticleArchivePage({
                 </Link>
                 <div>
                   <div className="flex flex-wrap gap-2 text-xs font-bold text-[#92785a]">
-                    {article.category ? <Link className="rounded-full bg-[#f4ecdf] px-3 py-1" href={buildMagCategoryHref(article.category.slug)}>{article.category.title}</Link> : null}
+                    {article.category ? (
+                      <Link
+                        className="rounded-full bg-[#f4ecdf] px-3 py-1"
+                        href={buildMagCategoryHref(resolveArticleCategoryPath(categories, article.category.slug))}
+                      >
+                        {article.category.title}
+                      </Link>
+                    ) : null}
                     {article.publishedAt ? <span>{formatArticleDate(article.publishedAt)}</span> : null}
                     {article.readingTimeMinutes ? <span>{`${new Intl.NumberFormat('fa-IR').format(article.readingTimeMinutes)} دقیقه مطالعه`}</span> : null}
                   </div>
@@ -176,7 +184,7 @@ export function StorefrontArticleArchivePage({
             <h3 className="text-lg font-black text-[#173126]">دسته‌بندی‌ها</h3>
             <div className="mt-4 grid gap-3">
               {categories.map((category) => (
-                <Link className="flex items-center justify-between rounded-[20px] bg-[#f9f4ec] px-4 py-3 text-sm font-bold text-[#173126]" href={buildMagCategoryHref(category.slug)} key={category.id}>
+                <Link className="flex items-center justify-between rounded-[20px] bg-[#f9f4ec] px-4 py-3 text-sm font-bold text-[#173126]" href={buildMagCategoryHref(resolveArticleCategoryPath(categories, category))} key={category.id}>
                   <span>{category.title}</span>
                   <span className="text-xs text-[#92785a]">{new Intl.NumberFormat('fa-IR').format(category._count?.articles || 0)}</span>
                 </Link>
