@@ -1,7 +1,10 @@
 FROM node:22-bookworm-slim AS installer
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y openssl python3 make g++ && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y openssl python3 make g++ pkg-config libvips-dev && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
+
+ENV npm_config_build_from_source=true
+ENV SHARP_FORCE_GLOBAL_LIBVIPS=true
 
 COPY package*.json ./
 COPY apps/backend/package*.json ./apps/backend/
@@ -11,7 +14,7 @@ RUN npm install --include=optional
 
 FROM node:22-bookworm-slim AS builder
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y openssl python3 make g++ && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y openssl python3 make g++ pkg-config libvips-dev && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 COPY --from=installer /app/node_modules ./node_modules
@@ -24,7 +27,7 @@ RUN npx prisma generate --schema=packages/database/prisma/schema.prisma && \
 
 FROM node:22-bookworm-slim AS runner
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y openssl curl python3 make g++ && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y openssl curl python3 make g++ pkg-config libvips-dev && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 ENV NODE_ENV=production
