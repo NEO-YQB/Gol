@@ -1,8 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { mkdir, writeFile } from 'fs/promises';
-import { extname, join } from 'path';
+import { join } from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
 type UploadFolder = 'products' | 'documents';
@@ -29,6 +29,7 @@ type UploadedImageResponse = {
 
 @Injectable()
 export class FilesService {
+  private readonly logger = new Logger(FilesService.name);
   private readonly client: S3Client | null;
   private readonly bucket: string | null;
   private readonly publicUrl: string | null;
@@ -131,9 +132,17 @@ export class FilesService {
     folder: UploadFolder,
     requireWebp: boolean,
   ) {
+    let sharp: ((input?: Buffer) => any) | null = null;
+
     try {
       const sharpModule = await import('sharp');
-      const sharp = sharpModule.default;
+      sharp = sharpModule.default;
+    } catch (error) {
+      this.logger.error(`Failed to load sharp for ${folder} upload`, error instanceof Error ? error.stack : String(error));
+      throw new InternalServerErrorException('سرویس پردازش تصویر در دسترس نیست.');
+    }
+
+    try {
       const metadata = await sharp(file.buffer).metadata();
       const baseName = this.buildFileName();
       const originalKey = `${folder}/${baseName}`;
@@ -154,20 +163,12 @@ export class FilesService {
         thumbnail,
         contentType: 'image/webp',
       };
-    } catch {
-      const fallbackKey = `${folder}/${this.buildFallbackFileName(file.originalname)}`;
-      return {
-        original: {
-          key: fallbackKey,
-          buffer: file.buffer,
-          width: null,
-          height: null,
-        },
-        large: null,
-        medium: null,
-        thumbnail: null,
-        contentType: file.mimetype || 'application/octet-stream',
-      };
+    } catch (error) {
+      this.logger.error(
+        `Failed to convert image to webp for ${folder} upload: ${file.originalname}`,
+        error instanceof Error ? error.stack : String(error),
+      );
+      throw new InternalServerErrorException('تبدیل تصویر به webp انجام نشد.');
     }
   }
 
@@ -178,26 +179,34 @@ export class FilesService {
     suffix: string,
     width: number,
   ) {
-    const instance = sharp(sourceBuffer);
-    const metadata = await instance.metadata();
+    try {
+      const instance = sharp(sourceBuffer);
+      const metadata = await instance.metadata();
 
-    if (!metadata.width || metadata.width <= width) {
+      if (!metadata.width || metadata.width <= width) {
+        return null;
+      }
+
+      const resized = await sharp(sourceBuffer)
+        .resize({ width, withoutEnlargement: true })
+        .webp({ quality: 82 })
+        .toBuffer();
+
+      const resizedMetadata = await sharp(resized).metadata();
+
+      return {
+        key: `${folder}/${uuidv4()}-${suffix}.webp`,
+        buffer: resized,
+        width: resizedMetadata.width ?? width,
+        height: resizedMetadata.height ?? null,
+      };
+    } catch (error) {
+      this.logger.warn(
+        `Failed to build ${suffix} variant for ${folder} upload`,
+        error instanceof Error ? error.stack : String(error),
+      );
       return null;
     }
-
-    const resized = await sharp(sourceBuffer)
-      .resize({ width, withoutEnlargement: true })
-      .webp({ quality: 82 })
-      .toBuffer();
-
-    const resizedMetadata = await sharp(resized).metadata();
-
-    return {
-      key: `${folder}/${uuidv4()}-${suffix}.webp`,
-      buffer: resized,
-      width: resizedMetadata.width ?? width,
-      height: resizedMetadata.height ?? null,
-    };
   }
 
   private async persistImageAsset(
@@ -282,9 +291,4 @@ export class FilesService {
     return asset ? this.toUploadedVariant(asset, baseUrl) : null;
   }
 
-  private buildFallbackFileName(originalName: string) {
-    const extension = extname(originalName).toLowerCase();
-    const normalizedExtension = extension || '.bin';
-    return `${uuidv4()}${normalizedExtension}`;
-  }
 }
