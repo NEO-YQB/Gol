@@ -1,6 +1,6 @@
 FROM node:22-bookworm-slim AS installer
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y openssl python3 make g++ imagemagick webp && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y openssl python3 make g++ && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 COPY package*.json ./
@@ -11,7 +11,7 @@ RUN npm install --include=optional
 
 FROM node:22-bookworm-slim AS builder
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y openssl python3 make g++ imagemagick webp && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y openssl python3 make g++ && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 COPY --from=installer /app/node_modules ./node_modules
@@ -23,7 +23,7 @@ RUN npx prisma generate --schema=packages/database/prisma/schema.prisma &&     n
 
 FROM node:22-bookworm-slim AS runner
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y openssl curl imagemagick webp && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y openssl curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 ENV NODE_ENV=production

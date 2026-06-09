@@ -1,11 +1,9 @@
 import { BadRequestException, Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'fs/promises';
-import { tmpdir } from 'os';
+import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
-import { execFile } from 'child_process';
-import { promisify } from 'util';
+import sharp from 'sharp';
 import { v4 as uuidv4 } from 'uuid';
 
 type UploadFolder = 'products' | 'documents';
@@ -29,8 +27,6 @@ type UploadedImageResponse = {
     thumbnail: UploadedImageVariant | null;
   };
 };
-
-const execFileAsync = promisify(execFile);
 
 @Injectable()
 export class FilesService {
@@ -129,25 +125,29 @@ export class FilesService {
   }
 
   private async prepareImageAsset(file: Express.Multer.File, folder: UploadFolder) {
-    const workspace = await mkdtemp(join(tmpdir(), 'gol-upload-'));
-    const inputPath = join(workspace, 'input');
-    const originalPath = join(workspace, 'original.webp');
-
     try {
-      await writeFile(inputPath, file.buffer);
-      const metadata = await this.identifyImage(inputPath);
-      await this.convertToWebp(inputPath, originalPath, 82);
-      const originalBuffer = await readFile(originalPath);
-      const large = await this.buildVariant(inputPath, folder, 'lg', 1440, workspace);
-      const medium = await this.buildVariant(inputPath, folder, 'md', 960, workspace);
-      const thumbnail = await this.buildVariant(inputPath, folder, 'thumb', 480, workspace);
+      const metadata = await sharp(file.buffer, { failOn: 'warning' }).metadata();
+      const originalWidth = metadata.width ?? null;
+      const originalHeight = metadata.height ?? null;
+
+      if (!originalWidth || !originalHeight) {
+        throw new Error('Could not determine image dimensions');
+      }
+
+      const originalOutput = await sharp(file.buffer, { failOn: 'warning' })
+        .rotate()
+        .webp({ quality: 82 })
+        .toBuffer({ resolveWithObject: true });
+      const large = await this.buildVariant(file.buffer, folder, 'lg', 1440, originalWidth);
+      const medium = await this.buildVariant(file.buffer, folder, 'md', 960, originalWidth);
+      const thumbnail = await this.buildVariant(file.buffer, folder, 'thumb', 480, originalWidth);
 
       return {
         original: {
           key: `${folder}/${this.buildFileName()}`,
-          buffer: originalBuffer,
-          width: metadata.width,
-          height: metadata.height,
+          buffer: originalOutput.data,
+          width: originalOutput.info.width,
+          height: originalOutput.info.height,
         },
         large,
         medium,
@@ -156,64 +156,45 @@ export class FilesService {
       };
     } catch (error) {
       this.logger.error(
-        `Failed to convert image to webp for ${folder} upload: ${file.originalname}`,
+        `Failed to process image with sharp for ${folder} upload: ${file.originalname}`,
         error instanceof Error ? error.stack : String(error),
       );
-      throw new InternalServerErrorException('تبدیل تصویر به webp انجام نشد.');
-    } finally {
-      await rm(workspace, { recursive: true, force: true });
+      throw new InternalServerErrorException('پردازش تصویر انجام نشد.');
     }
-  }
-
-  private async identifyImage(path: string) {
-    const { stdout } = await execFileAsync('identify', ['-format', '%w %h', path]);
-    const [widthText, heightText] = stdout.trim().split(/\s+/);
-    const width = Number(widthText);
-    const height = Number(heightText);
-
-    if (!Number.isFinite(width) || !Number.isFinite(height)) {
-      throw new Error('Could not determine image dimensions');
-    }
-
-    return { width, height };
-  }
-
-  private async convertToWebp(inputPath: string, outputPath: string, quality: number, width?: number) {
-    const args = ['-quiet', '-q', String(quality)];
-    if (width) {
-      args.push('-resize', String(width), '0');
-    }
-    args.push(inputPath, '-o', outputPath);
-    await execFileAsync('cwebp', args);
   }
 
   private async buildVariant(
-    inputPath: string,
+    inputBuffer: Buffer,
     folder: UploadFolder,
     suffix: string,
     width: number,
-    workspace: string,
+    originalWidth: number,
   ) {
     try {
-      const metadata = await this.identifyImage(inputPath);
-      if (!metadata.width || metadata.width <= width) {
+      if (originalWidth <= width) {
         return null;
       }
 
-      const outputPath = join(workspace, `${suffix}.webp`);
-      await this.convertToWebp(inputPath, outputPath, 82, width);
-      const outputBuffer = await readFile(outputPath);
-      const outputMeta = await this.identifyImage(outputPath);
+      const transformer = sharp(inputBuffer, { failOn: 'warning' })
+        .rotate()
+        .resize({
+          width,
+          height: width,
+          fit: 'inside',
+          withoutEnlargement: true,
+        })
+        .webp({ quality: 82 });
+      const output = await transformer.toBuffer({ resolveWithObject: true });
 
       return {
         key: `${folder}/${uuidv4()}-${suffix}.webp`,
-        buffer: outputBuffer,
-        width: outputMeta.width,
-        height: outputMeta.height,
+        buffer: output.data,
+        width: output.info.width,
+        height: output.info.height,
       };
     } catch (error) {
       this.logger.warn(
-        `Failed to build ${suffix} variant for ${folder} upload`,
+        `Failed to build ${suffix} variant with sharp for ${folder} upload`,
         error instanceof Error ? error.stack : String(error),
       );
       return null;
