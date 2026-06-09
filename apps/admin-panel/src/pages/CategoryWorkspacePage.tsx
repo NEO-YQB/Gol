@@ -46,6 +46,11 @@ function flattenCategories(categories: CategoryRecord[], depth = 0): Array<Categ
   })
 }
 
+function countDescendants(category: CategoryRecord): number {
+  const children = toArray(category.children)
+  return children.length + children.reduce((sum, child) => sum + countDescendants(child), 0)
+}
+
 function mapCategoryToForm(category: CategoryRecord): CategoryFormState {
   return {
     name: readText(category, ['name'], ''),
@@ -63,6 +68,11 @@ function mapCategoryToForm(category: CategoryRecord): CategoryFormState {
 function toOptionalText(value: string) {
   const normalized = value.trim()
   return normalized.length > 0 ? normalized : undefined
+}
+
+function getCategoryDepthLabel(depth: number) {
+  if (depth <= 0) return 'ریشه'
+  return `سطح ${depth + 1}`
 }
 
 export function CategoryWorkspacePage({ session, onBack }: CategoryWorkspacePageProps) {
@@ -117,6 +127,8 @@ export function CategoryWorkspacePage({ session, onBack }: CategoryWorkspacePage
   }, [categories, selectedCategoryId])
 
   const categoryOptions = useMemo(() => flattenCategories(categories), [categories])
+  const selectedCategory =
+    selectedCategoryId === 'new' ? null : categoryOptions.find((item) => readText(item, ['id'], '') === selectedCategoryId) ?? null
 
   async function reloadCategories(nextSelectedId?: string) {
     const payload = await adminApi.getCategories(session)
@@ -225,13 +237,20 @@ export function CategoryWorkspacePage({ session, onBack }: CategoryWorkspacePage
         <SectionCard
           eyebrow="catalog taxonomy"
           title="مدیریت دسته‌بندی محصولات"
-          description="ساخت، ویرایش و سازمان‌دهی دسته‌بندی‌های مادر و فرزند محصولات به همراه تصویر و سئوی هر دسته."
+          description="ساخت، ویرایش و سازمان‌دهی دسته‌بندی‌های مادر و فرزند محصولات با دید درختی، تصویر و SEO هر دسته."
           actions={
             <div className="page-builder-workspace__actions">
               <button className="fm-button fm-button--ghost" onClick={onBack} type="button">
                 بازگشت
               </button>
-              <button className="fm-button fm-button--secondary" onClick={() => { setSelectedCategoryId('new'); setForm(createEmptyCategoryForm()) }} type="button">
+              <button
+                className="fm-button fm-button--secondary"
+                onClick={() => {
+                  setSelectedCategoryId('new')
+                  setForm(createEmptyCategoryForm())
+                }}
+                type="button"
+              >
                 دسته جدید
               </button>
               {selectedCategoryId !== 'new' ? (
@@ -248,101 +267,175 @@ export function CategoryWorkspacePage({ session, onBack }: CategoryWorkspacePage
           <div className="page-builder-workspace__pills">
             <Pill>{selectedCategoryId === 'new' ? 'دسته جدید' : `شناسه ${selectedCategoryId}`}</Pill>
             <Pill>{`${categoryOptions.length} دسته / زیر‌دسته`}</Pill>
+            <Pill>{selectedCategory ? getCategoryDepthLabel(selectedCategory.depth) : 'آماده ساخت'}</Pill>
           </div>
         </SectionCard>
 
-        <SectionCard
-          eyebrow="category manager"
-          title="فرم دسته‌بندی"
-          description="همین‌جا دسته مادر، توضیح، تصویر و SEO دسته را تنظیم کن."
-        >
-          <div className="fm-grid page-builder-form-grid">
-            <label className="fm-field page-builder-field--wide">
-              <span>انتخاب دسته برای ویرایش</span>
-              <select onChange={(event) => setSelectedCategoryId(event.target.value)} value={selectedCategoryId}>
-                <option value="new">دسته جدید</option>
-                {categoryOptions.map((category) => {
-                  const id = readText(category, ['id'], '')
-                  const name = readText(category, ['name'], 'بدون نام')
-                  const prefix = category.depth > 0 ? `${'-- '.repeat(category.depth)}` : ''
-                  return (
-                    <option key={id} value={id}>
-                      {`${prefix}${name}`}
-                    </option>
-                  )
-                })}
-              </select>
-            </label>
+        <div className="category-workspace-layout">
+          <SectionCard
+            eyebrow="tree navigator"
+            title="ساختار درختی دسته‌بندی‌ها"
+            description="ابتدا یک دسته را از درخت انتخاب کن یا دسته جدید بساز. عمق، والد و تعداد فرزندها همین‌جا مشخص است."
+          >
+            <div className="category-workspace-tree">
+              <button
+                className={`category-tree-card ${selectedCategoryId === 'new' ? 'is-active' : ''}`}
+                onClick={() => {
+                  setSelectedCategoryId('new')
+                  setForm(createEmptyCategoryForm())
+                }}
+                type="button"
+              >
+                <span className="category-tree-card__content">
+                  <strong className="category-tree-card__title">+ ساخت دسته جدید</strong>
+                  <span className="category-tree-card__meta">یک node جدید در taxonomy بساز</span>
+                </span>
+              </button>
 
-            <label className="fm-field">
-              <span>نام دسته</span>
-              <input onChange={(event) => updateForm('name', event.target.value)} type="text" value={form.name} />
-            </label>
-            <label className="fm-field">
-              <span>اسلاگ</span>
-              <input onChange={(event) => updateForm('slug', event.target.value)} type="text" value={form.slug} />
-            </label>
-            <label className="fm-field">
-              <span>دسته والد</span>
-              <select onChange={(event) => updateForm('parentId', event.target.value)} value={form.parentId}>
-                <option value="">بدون والد / دسته اصلی</option>
-                {categoryOptions
-                  .filter((category) => readText(category, ['id'], '') !== selectedCategoryId)
-                  .map((category) => {
+              {categoryOptions.map((category) => {
+                const id = readText(category, ['id'], '')
+                const name = readText(category, ['name'], 'بدون نام')
+                const childCount = toArray(category.children).length
+                const descendants = countDescendants(category)
+                const parentName =
+                  category.depth > 0
+                    ? readText(
+                        categoryOptions.find((item) => readText(item, ['id'], '') === readText(category, ['parentId'], '')),
+                        ['name'],
+                        'نامشخص',
+                      )
+                    : 'بدون والد'
+
+                return (
+                  <button
+                    key={id}
+                    className={`category-tree-card ${selectedCategoryId === id ? 'is-active' : ''}`}
+                    onClick={() => setSelectedCategoryId(id)}
+                    style={{ ['--category-depth' as string]: String(category.depth) }}
+                    type="button"
+                  >
+                    <span className="category-tree-card__branch" aria-hidden="true">
+                      {category.depth > 0 ? '└' : '•'}
+                    </span>
+                    <span className="category-tree-card__content">
+                      <strong className="category-tree-card__title">{name}</strong>
+                      <span className="category-tree-card__meta">{`${getCategoryDepthLabel(category.depth)} · والد: ${parentName}`}</span>
+                      <span className="category-tree-card__meta">{`${childCount} فرزند مستقیم · ${descendants} آیتم در زیر‌درخت`}</span>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            eyebrow="category manager"
+            title="فرم دسته‌بندی"
+            description="همین‌جا دسته مادر، توضیح، تصویر و SEO دسته را تنظیم کن."
+          >
+            <div className="fm-grid page-builder-form-grid">
+              <label className="fm-field page-builder-field--wide">
+                <span>انتخاب دسته برای ویرایش</span>
+                <select onChange={(event) => setSelectedCategoryId(event.target.value)} value={selectedCategoryId}>
+                  <option value="new">دسته جدید</option>
+                  {categoryOptions.map((category) => {
                     const id = readText(category, ['id'], '')
                     const name = readText(category, ['name'], 'بدون نام')
-                    const prefix = category.depth > 0 ? `${'-- '.repeat(category.depth)}` : ''
+                    const prefix = category.depth > 0 ? `${'— '.repeat(category.depth)}` : ''
                     return (
                       <option key={id} value={id}>
                         {`${prefix}${name}`}
                       </option>
                     )
                   })}
-              </select>
-            </label>
+                </select>
+              </label>
 
-            <label className="fm-field page-builder-field--wide">
-              <span>توضیحات دسته</span>
-              <textarea onChange={(event) => updateForm('description', event.target.value)} rows={4} value={form.description} />
-            </label>
-
-            <label className="fm-field page-builder-field--wide">
-              <span>تصویر دسته</span>
-              <input onChange={(event) => updateForm('image', event.target.value)} type="text" value={form.image} />
-            </label>
-            <div className="admin-products-upload-card page-builder-field--wide">
-              <div className="admin-products-upload-actions">
-                <button className="content-secondary-action" disabled={uploadingImage} onClick={() => imageInputRef.current?.click()} type="button">
-                  {uploadingImage ? 'در حال آپلود...' : 'آپلود تصویر دسته'}
-                </button>
-                <span className="admin-products-upload-hint">تصویر از همان سرویس upload سراسری استفاده می‌کند.</span>
-              </div>
-              {form.image.trim() ? (
-                <div className="admin-products-image-preview">
-                  <img alt="Preview category" src={form.image} />
+              <div className="category-workspace-summary page-builder-field--wide">
+                <div>
+                  <strong>{selectedCategory ? readText(selectedCategory, ['name'], 'بدون نام') : 'دسته جدید'}</strong>
+                  <span>{selectedCategory ? getCategoryDepthLabel(selectedCategory.depth) : 'هنوز ذخیره نشده'}</span>
                 </div>
-              ) : null}
+                <div>
+                  <strong>{form.parentId ? 'دارای والد' : 'دسته ریشه'}</strong>
+                  <span>{form.parentId ? 'در حال اتصال به دسته بالادست' : 'در بالاترین سطح taxonomy'}</span>
+                </div>
+                <div>
+                  <strong>{form.isCampaign ? 'کمپینی' : 'استاندارد'}</strong>
+                  <span>{form.isIndexed ? 'قابل ایندکس' : 'No-index'}</span>
+                </div>
+              </div>
+
+              <label className="fm-field">
+                <span>نام دسته</span>
+                <input onChange={(event) => updateForm('name', event.target.value)} type="text" value={form.name} />
+              </label>
+              <label className="fm-field">
+                <span>اسلاگ</span>
+                <input onChange={(event) => updateForm('slug', event.target.value)} type="text" value={form.slug} />
+              </label>
+              <label className="fm-field">
+                <span>دسته والد</span>
+                <select onChange={(event) => updateForm('parentId', event.target.value)} value={form.parentId}>
+                  <option value="">بدون والد / دسته اصلی</option>
+                  {categoryOptions
+                    .filter((category) => readText(category, ['id'], '') !== selectedCategoryId)
+                    .map((category) => {
+                      const id = readText(category, ['id'], '')
+                      const name = readText(category, ['name'], 'بدون نام')
+                      const prefix = category.depth > 0 ? `${'— '.repeat(category.depth)}` : ''
+                      return (
+                        <option key={id} value={id}>
+                          {`${prefix}${name}`}
+                        </option>
+                      )
+                    })}
+                </select>
+              </label>
+
+              <label className="fm-field page-builder-field--wide">
+                <span>توضیحات دسته</span>
+                <textarea onChange={(event) => updateForm('description', event.target.value)} rows={4} value={form.description} />
+              </label>
+
+              <label className="fm-field page-builder-field--wide">
+                <span>تصویر دسته</span>
+                <input onChange={(event) => updateForm('image', event.target.value)} type="text" value={form.image} />
+              </label>
+              <div className="admin-products-upload-card page-builder-field--wide">
+                <div className="admin-products-upload-actions">
+                  <button className="content-secondary-action" disabled={uploadingImage} onClick={() => imageInputRef.current?.click()} type="button">
+                    {uploadingImage ? 'در حال آپلود...' : 'آپلود تصویر دسته'}
+                  </button>
+                  <span className="admin-products-upload-hint">تصویر از همان سرویس upload سراسری استفاده می‌کند.</span>
+                </div>
+                {form.image.trim() ? (
+                  <div className="admin-products-image-preview">
+                    <img alt="Preview category" src={form.image} />
+                  </div>
+                ) : null}
+              </div>
+
+              <label className="fm-field">
+                <span>Meta title</span>
+                <input onChange={(event) => updateForm('metaTitle', event.target.value)} type="text" value={form.metaTitle} />
+              </label>
+              <label className="fm-field">
+                <span>Meta description</span>
+                <textarea onChange={(event) => updateForm('metaDescription', event.target.value)} rows={3} value={form.metaDescription} />
+              </label>
+
+              <label className="fm-field page-builder-checkbox">
+                <span>ایندکس در SEO</span>
+                <input checked={form.isIndexed} onChange={(event) => updateForm('isIndexed', event.target.checked)} type="checkbox" />
+              </label>
+              <label className="fm-field page-builder-checkbox">
+                <span>دسته کمپین است</span>
+                <input checked={form.isCampaign} onChange={(event) => updateForm('isCampaign', event.target.checked)} type="checkbox" />
+              </label>
             </div>
-
-            <label className="fm-field">
-              <span>Meta title</span>
-              <input onChange={(event) => updateForm('metaTitle', event.target.value)} type="text" value={form.metaTitle} />
-            </label>
-            <label className="fm-field">
-              <span>Meta description</span>
-              <textarea onChange={(event) => updateForm('metaDescription', event.target.value)} rows={3} value={form.metaDescription} />
-            </label>
-
-            <label className="fm-field page-builder-checkbox">
-              <span>ایندکس در SEO</span>
-              <input checked={form.isIndexed} onChange={(event) => updateForm('isIndexed', event.target.checked)} type="checkbox" />
-            </label>
-            <label className="fm-field page-builder-checkbox">
-              <span>دسته کمپین است</span>
-              <input checked={form.isCampaign} onChange={(event) => updateForm('isCampaign', event.target.checked)} type="checkbox" />
-            </label>
-          </div>
-        </SectionCard>
+          </SectionCard>
+        </div>
       </LoadableState>
     </div>
   )

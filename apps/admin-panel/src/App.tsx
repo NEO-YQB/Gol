@@ -157,6 +157,18 @@ function getPageMeta(route: AdminRoute) {
         title: 'workspace متمرکز ایجاد، ویرایش و بازبینی محصول',
         description: 'فرم‌های سنگین، سئو، preview و جزئیات محتوایی محصول باید در این surface focused انجام شوند، نه در کارتابل اصلی.',
       }
+    case 'categoryWorkspace':
+      return {
+        eyebrow: 'taxonomy workspace',
+        title: 'میزکار دسته‌بندی با ساختار درختی و مدیریت parent/child',
+        description: 'این workspace برای ساخت، ویرایش و حذف دسته‌ها با دید درختی، SEO و سازمان‌دهی taxonomy محصولات طراحی شده است.',
+      }
+    case 'productTypeWorkspace':
+      return {
+        eyebrow: 'catalog type workspace',
+        title: 'میزکار نوع محصول و تعریف المان‌های مجاز',
+        description: 'در این workspace نوع‌های محصول، تصویر، سئو و سازگاری آن‌ها با المان‌های مجاز catalog مدیریت می‌شود.',
+      }
     case 'content':
       return {
         eyebrow: 'کارتابل محتوا',

@@ -112,6 +112,22 @@ const routeRequirements: Partial<Record<AdminRoute, AccessRequirement>> = {
       { action: 'update', subject: 'Product' },
     ],
   },
+  categoryWorkspace: {
+    anyOf: [
+      { action: 'manage', subject: 'all' },
+      { action: 'read', subject: 'Product' },
+      { action: 'create', subject: 'Product' },
+      { action: 'update', subject: 'Product' },
+    ],
+  },
+  productTypeWorkspace: {
+    anyOf: [
+      { action: 'manage', subject: 'all' },
+      { action: 'read', subject: 'Product' },
+      { action: 'create', subject: 'Product' },
+      { action: 'update', subject: 'Product' },
+    ],
+  },
   pageBuilder: {
     roles: ['ADMIN'],
   },
