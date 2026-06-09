@@ -144,6 +144,7 @@ export function VendorOnboardingPage({
   const [cropState, setCropState] = useState<ProductImageCropState | null>(null)
   const [processingCrop, setProcessingCrop] = useState(false)
   const cropDragRef = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null)
+  const cropSuppressClickRef = useRef(false)
   const fileInputRefs = {
     license: useRef<HTMLInputElement | null>(null),
     idFront: useRef<HTMLInputElement | null>(null),
@@ -235,6 +236,9 @@ export function VendorOnboardingPage({
   useEffect(() => {
     function handlePointerMove(event: MouseEvent) {
       if (!cropDragRef.current) return
+      if (Math.abs(event.clientX - cropDragRef.current.startX) > 3 || Math.abs(event.clientY - cropDragRef.current.startY) > 3) {
+        cropSuppressClickRef.current = true
+      }
       setCropState((current) => {
         if (!current) return current
         const bounds = getCropBounds(current)
@@ -248,6 +252,11 @@ export function VendorOnboardingPage({
 
     function handlePointerUp() {
       cropDragRef.current = null
+      if (cropSuppressClickRef.current) {
+        window.setTimeout(() => {
+          cropSuppressClickRef.current = false
+        }, 0)
+      }
     }
 
     window.addEventListener('mousemove', handlePointerMove)
@@ -764,8 +773,14 @@ export function VendorOnboardingPage({
 
       {cropState ? (
         <div className="product-image-cropper" dir="rtl">
-          <div className="product-image-cropper__backdrop" onClick={closeCropper} />
-          <div className="product-image-cropper__panel">
+          <div
+            className="product-image-cropper__backdrop"
+            onClick={() => {
+              if (cropSuppressClickRef.current) return
+              closeCropper()
+            }}
+          />
+          <div className="product-image-cropper__panel" onClick={(event) => event.stopPropagation()}>
             <div className="product-image-cropper__header">
               <div>
                 <strong>{cropState.target === 'productMain' ? 'تنظیم قاب تصویر اصلی' : 'تنظیم قاب گالری'}</strong>
@@ -782,6 +797,7 @@ export function VendorOnboardingPage({
                 onMouseDown={(event) => {
                   if (!cropState) return
                   event.preventDefault()
+                  cropSuppressClickRef.current = false
                   cropDragRef.current = {
                     startX: event.clientX,
                     startY: event.clientY,
@@ -793,6 +809,14 @@ export function VendorOnboardingPage({
                   event.preventDefault()
                   const delta = event.deltaY > 0 ? -0.08 : 0.08
                   handleCropZoomChange(Number((cropState.zoom + delta).toFixed(2)))
+                }}
+                onClick={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                }}
+                onMouseUp={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
                 }}
                 role="presentation"
               >
