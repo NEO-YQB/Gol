@@ -155,11 +155,99 @@ export type ArticleSummary = {
   excerpt?: string | null
   coverImage?: string | null
   publishedAt?: string | null
+  readingTimeMinutes?: number | null
   category?: {
     id: number
     title: string
     slug: string
   } | null
+}
+
+export type ArticleCategorySummary = {
+  id: number
+  title: string
+  slug: string
+  description?: string | null
+  metaTitle?: string | null
+  metaDescription?: string | null
+  canonicalUrl?: string | null
+  robotsIndex?: boolean
+  robotsFollow?: boolean
+  redirectFromSlug?: string | null
+  _count?: {
+    articles?: number
+  }
+}
+
+export type PublicArticleDetail = {
+  article: {
+    id: number
+    title: string
+    slug: string
+    excerpt?: string | null
+    coverImage?: string | null
+    content: string
+    focusKeyword?: string | null
+    readingTimeMinutes?: number | null
+    tableOfContents?: Array<{ level: number; text: string }> | null
+    publishedAt?: string | null
+    updatedAt?: string | null
+    metaTitle?: string | null
+    metaDescription?: string | null
+    canonicalUrl?: string | null
+    robotsIndex?: boolean
+    robotsFollow?: boolean
+    ogTitle?: string | null
+    ogDescription?: string | null
+    ogImage?: string | null
+    author: {
+      id: number
+      name: string
+      slug: string
+      bio?: string | null
+      seoBio?: string | null
+      avatarImage?: string | null
+    }
+    category: {
+      id: number
+      title: string
+      slug: string
+    }
+    tags: Array<{
+      tag: {
+        id: number
+        title: string
+        slug: string
+      }
+    }>
+  }
+  seo: {
+    canonicalUrl?: string | null
+    robotsIndex?: boolean
+    robotsFollow?: boolean
+    metaTitle?: string | null
+    metaDescription?: string | null
+    ogTitle?: string | null
+    ogDescription?: string | null
+    ogImage?: string | null
+  }
+  breadcrumbs?: {
+    items?: Array<{ position: number; name: string; slug: string }>
+  }
+  structuredData?: Record<string, unknown>
+}
+
+export type PublicArticleListing = {
+  data: ArticleSummary[]
+  meta: {
+    total: number
+    page: number
+    lastPage: number
+  }
+}
+
+export type PublicCategoryArticleListing = PublicArticleListing & {
+  category: ArticleCategorySummary
 }
 
 export type EnrichedBlock = Record<string, unknown> & {
@@ -307,6 +395,77 @@ const getArticles = cache(async (limit: number): Promise<ArticleSummary[]> => {
   const payload = await requestCached<{ data?: ArticleSummary[] } | ArticleSummary[]>(`/content/public/articles?${params.toString()}`)
   return toArray<ArticleSummary>(payload)
 })
+
+const getArticleCategories = cache(async (): Promise<ArticleCategorySummary[]> => {
+  const payload = await requestCached<{ data?: ArticleCategorySummary[] } | ArticleCategorySummary[]>(
+    '/content/public/categories?limit=100&page=1',
+  )
+  return toArray<ArticleCategorySummary>(payload)
+})
+
+export async function getStorefrontLatestArticles(limit = 5): Promise<ArticleSummary[]> {
+  return getArticles(limit)
+}
+
+export async function getStorefrontArticleCategories(): Promise<ArticleCategorySummary[]> {
+  return getArticleCategories()
+}
+
+export async function getStorefrontArticleArchive({
+  page = 1,
+  limit = 12,
+  search = '',
+  sort = 'NEWEST',
+}: {
+  page?: number
+  limit?: number
+  search?: string
+  sort?: 'NEWEST' | 'OLDEST'
+}): Promise<PublicArticleListing> {
+  const params = new URLSearchParams()
+  params.set('page', String(page))
+  params.set('limit', String(limit))
+  params.set('sort', sort)
+  if (search.trim()) params.set('search', search.trim())
+
+  return requestNoStore<PublicArticleListing>(`/content/public/articles?${params.toString()}`)
+}
+
+export async function getStorefrontArticleBySlug(slug: string): Promise<PublicArticleDetail | null> {
+  try {
+    return await requestNoStore<PublicArticleDetail>(`/content/public/articles/${slug}`)
+  } catch {
+    return null
+  }
+}
+
+export async function getStorefrontArticleCategoryArchive({
+  slug,
+  page = 1,
+  limit = 12,
+  search = '',
+  sort = 'NEWEST',
+}: {
+  slug: string
+  page?: number
+  limit?: number
+  search?: string
+  sort?: 'NEWEST' | 'OLDEST'
+}): Promise<PublicCategoryArticleListing | null> {
+  const params = new URLSearchParams()
+  params.set('page', String(page))
+  params.set('limit', String(limit))
+  params.set('sort', sort)
+  if (search.trim()) params.set('search', search.trim())
+
+  try {
+    return await requestNoStore<PublicCategoryArticleListing>(
+      `/content/public/categories/${slug}?${params.toString()}`,
+    )
+  } catch {
+    return null
+  }
+}
 
 export type StorefrontElementType = 'BASE' | 'FLOWER' | 'FILLER' | 'ACCESSORY'
 
@@ -1053,6 +1212,25 @@ export function buildCollectionPageJsonLd({
     name: title,
     description,
     url: path,
+  }
+}
+
+export function buildArticleJsonLd(article: PublicArticleDetail['article']) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: article.metaTitle || article.title,
+    description: article.metaDescription || article.excerpt || undefined,
+    image: article.ogImage ? [resolveAssetUrl(article.ogImage)] : article.coverImage ? [resolveAssetUrl(article.coverImage)] : undefined,
+    datePublished: article.publishedAt || undefined,
+    dateModified: article.updatedAt || undefined,
+    mainEntityOfPage: `/mag/${article.slug}`,
+    author: {
+      '@type': 'Person',
+      name: article.author.name,
+    },
+    articleSection: article.category?.title || undefined,
+    keywords: article.focusKeyword || undefined,
   }
 }
 
