@@ -705,19 +705,15 @@ export default function App() {
       userRole={session.user.roles.join(' / ') || 'کاربر احراز هویت شده'}
       pageEyebrow={pageMeta.eyebrow}
       pageTitle={pageMeta.title}
-      pageDescription={pageMeta.description}
+      pageDescription=""
       navSections={navSections}
       onNavigate={(next) => handleNavigate(next as AdminRoute)}
       actions={[
         { label: adminRouteLabels[route], tone: 'ghost' },
         { label: currentScope, tone: 'secondary' },
-        { label: 'permission-aware', tone: 'primary' },
       ]}
     >
       <div className="admin-toolbar-note">
-        <Pill tone="success">OTP + JWT</Pill>
-        <Pill tone="warning">Bootstrap دسترسی</Pill>
-        <Pill>{session.user.phoneNumber}</Pill>
         <Pill>{currentScope}</Pill>
         <button className="admin-logout" onClick={handleLogout} type="button">
           خروج از پنل

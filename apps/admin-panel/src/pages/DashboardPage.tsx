@@ -1,5 +1,5 @@
 import { SectionCard, Spotlight, StatCard } from '@flower-marketplace/frontend-core'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { adminApi, apiConfig } from '../lib/api'
 import { makeFeed, toArray } from '../lib/normalize'
@@ -26,12 +26,6 @@ type DashboardPayload = {
     title: string
     description: string
     metrics: Array<{ label: string; value: string }>
-  }
-  notes: {
-    eyebrow: string
-    title: string
-    description: string
-    bullets: string[]
   }
 }
 
@@ -83,16 +77,6 @@ async function buildDashboardPayload(session: AuthSession): Promise<DashboardPay
           { label: 'سطح پنل', value: 'مدیر کل' },
         ],
       },
-      notes: {
-        eyebrow: 'اولویت امروز',
-        title: 'ادمین باید از اینجا تصویر کامل و سریع بگیرد',
-        description: 'در سطح مدیر کل، این داشبورد فقط برای شروع تصمیم است؛ کار سنگین در workspaceهای تخصصی انجام می شود.',
-        bullets: [
-          'هشدارهای باز را قبل از انباشته شدن ببند یا snooze کن.',
-          'سفارش های مسئله دار را به workspace سفارش بفرست.',
-          'تیکت هایی که به مالی رسیده اند را در lane مالی و پشتیبانی هماهنگ کن.',
-        ],
-      },
     }
   }
 
@@ -121,16 +105,6 @@ async function buildDashboardPayload(session: AuthSession): Promise<DashboardPay
           { label: 'پایش', value: String(countOf(audits)) },
           { label: 'نویسنده', value: String(countOf(authors)) },
           { label: 'نشست', value: 'تحریریه / سئو' },
-        ],
-      },
-      notes: {
-        eyebrow: 'گام بعدی',
-        title: 'تمرکز این نقش باید روی کیفیت و انتشار باشد',
-        description: 'این نقش لازم نیست با laneهای مالی یا هشدارهای unrelated درگیر شود؛ فقط تصمیم های محتوایی را در سطح اول ببیند.',
-        bullets: [
-          'مقاله های ناقص از نظر برچسب یا کلیدواژه را اولویت بندی کن.',
-          'ویرایش و انتشار را از workspace محتوایی انجام بده.',
-          'taxonomy را قبل از رشد listingها منسجم نگه دار.',
         ],
       },
     }
@@ -162,16 +136,6 @@ async function buildDashboardPayload(session: AuthSession): Promise<DashboardPay
           { label: 'نشست', value: 'مالی و تسویه' },
         ],
       },
-      notes: {
-        eyebrow: 'دستور کار',
-        title: 'تمرکز این نقش باید روی خطاها و استثناهای مالی بماند',
-        description: 'لایه اول برای اپراتور مالی باید کوتاه، شفاف و قابل اقدام باشد.',
-        bullets: [
-          'کیف پول های مسئله دار را در workspace مالی دنبال کن.',
-          'خلاصه refundها را با تیکت ها و سفارش های مرتبط تطبیق بده.',
-          'از این سطح فقط وارد مسیرهای مالی و settlement شو.',
-        ],
-      },
     }
   }
 
@@ -198,16 +162,6 @@ async function buildDashboardPayload(session: AuthSession): Promise<DashboardPay
           { label: 'پیگیری', value: String(countOf(followUps)) },
           { label: 'کاربر فعلی', value: session.user.fullName || session.user.phoneNumber },
           { label: 'نشست', value: 'پشتیبانی' },
-        ],
-      },
-      notes: {
-        eyebrow: 'اقدام سریع',
-        title: 'این نقش باید فقط آنچه برای رسیدگی لازم است ببیند',
-        description: 'سطح اول پشتیبانی باید واضح، کم نویز و queue-oriented باشد.',
-        bullets: [
-          'ticketهای باز و follow-upهای overdue را زودتر بررسی کن.',
-          'در صورت نیاز به تصمیم مالی، تیکت را به lane مناسب escalate کن.',
-          'جزئیات و noteها را در workspace پشتیبانی ثبت کن.',
         ],
       },
     }
@@ -239,16 +193,6 @@ async function buildDashboardPayload(session: AuthSession): Promise<DashboardPay
           { label: 'نشست', value: 'مدیریت دسترسی' },
         ],
       },
-      notes: {
-        eyebrow: 'حساسیت این نقش',
-        title: 'هر تغییر دسترسی باید آگاهانه و کم خطا انجام شود',
-        description: 'این نقش باید داده های access-control را بدون نویز اضافی و با summaryهای قابل تصمیم ببیند.',
-        bullets: [
-          'کاربر جدید را با کمترین نقش لازم بساز.',
-          'نقش های پرقدرت را فقط در صورت نیاز واقعی assign کن.',
-          'پیش از تغییر permission، دامنه اثر آن را در workspace بررسی کن.',
-        ],
-      },
     }
   }
 
@@ -260,24 +204,15 @@ async function buildDashboardPayload(session: AuthSession): Promise<DashboardPay
       { label: 'وضعیت پنل', value: 'آماده', delta: 'قابل استفاده', detail: 'اگر route مجاز داشته باشی، از navigation وارد lane مرتبط شو', tone: 'danger' },
     ],
     feed: [],
-    spotlight: {
-      eyebrow: 'نشست محدود',
-      title: 'این نشست با دسترسی محدود وارد شده است',
-      description: 'اگر routeهای کمی می بینی، به این دلیل است که shell دقیقا بر اساس permissionهای موثر پنل را محدود کرده است.',
-      metrics: [
+      spotlight: {
+        eyebrow: 'نشست محدود',
+        title: 'این نشست با دسترسی محدود وارد شده است',
+        description: '',
+        metrics: [
         { label: 'کاربر فعلی', value: session.user.fullName || session.user.phoneNumber },
         { label: 'نقش ها', value: session.user.roles.join(' / ') || '—' },
         { label: 'دسترسی موثر', value: String(session.bootstrap?.effectivePermissions.length ?? 0) },
         { label: 'API پایه', value: apiConfig.baseUrl },
-      ],
-    },
-    notes: {
-      eyebrow: 'راهنمای سریع',
-      title: 'هر آنچه می بینی بر اساس نقش واقعی تو فیلتر شده است',
-      description: 'در این پروژه، پنل برای هر کاربر عمدا تمام routeها را نشان نمی دهد.',
-      bullets: [
-        'از همان routeهایی استفاده کن که در navigation برایت باز شده اند.',
-        'اگر نیاز به سطح بیشتری داری، role و permission باید از سمت مدیر دسترسی تنظیم شود.',
       ],
     },
   }
@@ -313,8 +248,6 @@ export function DashboardPage({ session }: { session: AuthSession }) {
     }
   }, [session])
 
-  const notes = useMemo(() => payload?.notes.bullets ?? [], [payload])
-
   return (
     <div className="fm-stack role-dashboard-page">
       <LoadableState error={error} loading={loading}>
@@ -329,29 +262,13 @@ export function DashboardPage({ session }: { session: AuthSession }) {
         <Spotlight
           eyebrow={payload.spotlight.eyebrow}
           title={payload.spotlight.title}
-          description={payload.spotlight.description}
+          description=""
           metrics={payload.spotlight.metrics}
         />
       ) : null}
 
-      {payload ? (
-        <SectionCard eyebrow={payload.notes.eyebrow} title={payload.notes.title} description={payload.notes.description}>
-          <div className="dashboard-note-list dashboard-note-list--role-aware">
-            {notes.length ? (
-              notes.map((item) => (
-                <article className="dashboard-note-item" key={item}>
-                  <strong>{item}</strong>
-                </article>
-              ))
-            ) : (
-              <div className="fm-message">برای این نقش هنوز یادداشت عملیاتی ثبت نشده است.</div>
-            )}
-          </div>
-        </SectionCard>
-      ) : null}
-
       {payload?.feed?.length ? (
-        <SectionCard eyebrow="رخدادهای مرتبط" title="فقط فید مرتبط با همین نقش" description="در سطح اول فقط رخدادهایی نشان داده می شوند که برای تصمیم همین نقش مفید باشند.">
+        <SectionCard eyebrow="رخدادها" title="فید مرتبط" description="">
           <div className="dashboard-feed-list">
             {payload.feed.map((item) => (
               <article className="dashboard-feed-item" key={item.id}>

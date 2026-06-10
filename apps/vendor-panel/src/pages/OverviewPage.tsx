@@ -106,22 +106,18 @@ export function OverviewPage({ session }: { session: AuthSession }) {
       </LoadableState>
 
       <Spotlight
-        eyebrow="نمای کلی فروشنده"
+        eyebrow="نمای کلی"
         title={`نمای کلی فروشگاه ${storeName}`}
-        description="این صفحه از summaryهای واقعی backend پر می‌شود تا فروشنده خیلی سریع بفهمد وضعیت سفارش، پول، کیفیت و محدودیت‌های فروشگاهش چیست."
+        description=""
         metrics={[
-          { label: 'API base', value: apiConfig.baseUrl },
           { label: 'نشست', value: 'فعال' },
           { label: 'کارتابل', value: 'فروشنده' },
           { label: 'کاربر', value: session.user.fullName || session.user.phoneNumber },
+          { label: 'API', value: apiConfig.baseUrl },
         ]}
       />
 
-      <SectionCard
-        eyebrow="یادداشت policy"
-        title="خلاصه policy موثر"
-        description="خروجی policy restrictions باید برای فروشنده واضح و قابل‌اقدام باشد، نه مبهم و سیستمی."
-      >
+      <SectionCard eyebrow="Policy" title="وضعیت محدودیت‌ها" description="">
         <div className="vendor-note-card">{policyNote}</div>
       </SectionCard>
     </div>

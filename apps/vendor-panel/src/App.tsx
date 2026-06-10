@@ -307,19 +307,16 @@ export default function App() {
       userRole={session.user.roles.join(' / ') || 'کاربر فروشنده'}
       pageEyebrow={pageMeta.eyebrow}
       pageTitle={pageMeta.title}
-      pageDescription={pageMeta.description}
+      pageDescription=""
       navSections={buildNav(route)}
       onNavigate={(next) => setRoute(next as VendorRoute)}
       actions={[
         { label: vendorRouteLabels[route], tone: 'ghost' },
         { label: 'نشست فعال', tone: 'ghost' },
-        { label: 'متصل به بک‌اند فروشنده', tone: 'primary' },
       ]}
     >
       <div className="vendor-toolbar-note">
-        <Pill tone="success">OTP + JWT</Pill>
-        <Pill tone="warning">خلاصه‌های فروشنده فعال</Pill>
-        <Pill>{session.user.phoneNumber}</Pill>
+        <Pill tone="success">نشست فعال</Pill>
         <button className="vendor-logout" onClick={handleLogout} type="button">خروج از پنل</button>
       </div>
       {renderRoute(route, session, setRoute, selectedOrder, setSelectedOrder)}
