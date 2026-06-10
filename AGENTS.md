@@ -39,6 +39,10 @@ Backend coverage uses Jest and Supertest. Follow existing backend naming:
 Frontend work currently relies on build and manual verification. At minimum, confirm changed workspaces build successfully with `npm run build --workspace=<workspace>`.
 - از این به بعد در این پروژه، AI نباید خودش `npm` commandها، build، test یا verification runtime را اجرا کند؛ کاربر شخصاً این بررسی‌ها را انجام می‌دهد.
 - AI باید در پاسخ نهایی همیشه یک متن commit پیشنهادی و آماده‌استفاده هم ارائه کند تا کاربر بتواند همان scope را commit و deploy کند.
+- از این به بعد برای setup، ساخت پروژه، ساخت package، اجرای dev server، build، test و هر کار مشابه، AI باید همیشه commandهای لازم را ساده، مرحله‌به‌مرحله و قابل‌کپی به کاربر بدهد.
+- AI باید فرض کند کاربر ممکن است با `Flutter`، `Dart` یا setup موبایل آشنا نباشد؛ پس باید commandها را روشن و کوتاه توضیح دهد.
+- اگر یک مرحله نیاز به دستور ترمینال دارد، AI نباید فقط توضیح مفهومی بدهد و باید command دقیق همان مرحله را هم به کاربر بدهد.
+- اگر AI خودش مجاز به اجرای command خاصی نیست یا طبق قواعد پروژه نباید آن را اجرا کند، باید همان دستور را مستقیم به کاربر بدهد تا کاربر دستی اجرا کند.
 
 ## Commit & Pull Request Guidelines
 Recent history uses Conventional Commit style, for example:
