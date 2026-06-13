@@ -5,17 +5,20 @@ class AuthSession {
     required this.accessToken,
     required this.phoneNumber,
     this.bootstrap,
+    this.isPreview = false,
   });
 
   final String accessToken;
   final String phoneNumber;
   final VendorBootstrap? bootstrap;
+  final bool isPreview;
 
   Map<String, dynamic> toJson() {
     return {
       'accessToken': accessToken,
       'phoneNumber': phoneNumber,
       'bootstrap': bootstrap?.toJson(),
+      'isPreview': isPreview,
     };
   }
 
@@ -26,6 +29,7 @@ class AuthSession {
       bootstrap: json['bootstrap'] is Map<String, dynamic>
           ? VendorBootstrap.fromJson(json['bootstrap'] as Map<String, dynamic>)
           : null,
+      isPreview: json['isPreview'] as bool? ?? false,
     );
   }
 }

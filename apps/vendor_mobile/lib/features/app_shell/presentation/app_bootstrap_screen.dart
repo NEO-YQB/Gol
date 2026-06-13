@@ -8,7 +8,7 @@ import '../../auth/domain/auth_session.dart';
 import '../../auth/domain/vendor_bootstrap.dart';
 import '../../auth/presentation/login_screen.dart';
 import '../../auth/presentation/otp_verification_screen.dart';
-import '../../dashboard/presentation/dashboard_screen.dart';
+import 'vendor_app_shell.dart';
 
 enum _BootstrapStep {
   checkingSession,
@@ -109,6 +109,41 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
     }
   }
 
+  Future<void> _handleEnterPreviewMode() async {
+    const previewBootstrap = VendorBootstrap(
+      roles: ['VENDOR'],
+      store: BootstrapStore(
+        id: 0,
+        isVerified: true,
+        name: 'پیش‌نمایش فروشگاه',
+        slug: 'preview-store',
+      ),
+      vendorOnboarding: VendorOnboardingState(
+        applicationStatus: 'APPROVED',
+        productStatus: 'APPROVED',
+        storeActivatedAt: null,
+      ),
+    );
+
+    const previewSession = AuthSession(
+      accessToken: 'dev-preview-token',
+      phoneNumber: '09120000000',
+      bootstrap: previewBootstrap,
+      isPreview: true,
+    );
+
+    await _authSessionStorage.save(previewSession);
+
+    if (!mounted) return;
+    setState(() {
+      _session = previewSession;
+      _phoneNumber = previewSession.phoneNumber;
+      _step = _BootstrapStep.authenticated;
+      _loginErrorMessage = null;
+      _otpErrorMessage = null;
+    });
+  }
+
   void _handleBackToLogin() {
     setState(() {
       _step = _BootstrapStep.login;
@@ -189,6 +224,7 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
       case _BootstrapStep.login:
         return LoginScreen(
           onSubmitPhone: _handleSubmitPhone,
+          onEnterPreviewMode: _handleEnterPreviewMode,
           isLoading: _isSendingOtp,
           errorMessage: _loginErrorMessage,
         );
@@ -201,12 +237,8 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
           errorMessage: _otpErrorMessage,
         );
       case _BootstrapStep.authenticated:
-        return DashboardScreen(
-          accessToken: _session?.accessToken ?? '',
-          phoneNumber: _session?.phoneNumber ?? _phoneNumber,
-          storeName: _session?.bootstrap?.store?.name.isNotEmpty == true
-              ? _session!.bootstrap!.store!.name
-              : 'فروشگاه شما',
+        return VendorAppShell(
+          session: _session!,
           onLogout: _handleLogout,
         );
     }

@@ -7,6 +7,7 @@ import '../../../shared/widgets/app_glass_card.dart';
 import '../../../shared/widgets/app_metric_tile.dart';
 import '../../../shared/widgets/app_section_heading.dart';
 import '../../../shared/widgets/app_shell_background.dart';
+import '../../orders/presentation/orders_screen.dart';
 import '../data/dashboard_api_service.dart';
 import '../domain/dashboard_summary.dart';
 
@@ -16,12 +17,14 @@ class DashboardScreen extends StatelessWidget {
     required this.accessToken,
     required this.phoneNumber,
     required this.storeName,
+    required this.isPreview,
     required this.onLogout,
   });
 
   final String accessToken;
   final String phoneNumber;
   final String storeName;
+  final bool isPreview;
   final Future<void> Function() onLogout;
 
   @override
@@ -125,6 +128,23 @@ class DashboardScreen extends StatelessWidget {
                             description:
                                 'یک خلاصه شفاف و premium از وضعیت مالی، عملیاتی و سلامت فروشگاه.',
                           ),
+                          if (isPreview) ...[
+                            const SizedBox(height: AppSpacing.lg),
+                            Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: AppColors.secondary.withValues(alpha: 0.10),
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                              child: Text(
+                                'حالت پیش‌نمایش فعال است و داده‌های این صفحه واقعی نیستند.',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: AppColors.secondary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: AppSpacing.xl),
                           Container(
                             padding: const EdgeInsets.all(18),

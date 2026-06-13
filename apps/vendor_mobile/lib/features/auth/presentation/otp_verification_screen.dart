@@ -141,9 +141,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                               child: Text(
                                 widget.isLoading
                                     ? 'در حال بررسی کد و ورود...'
-                                    : AppConfig.enableDevOtpBypass
-                                        ? 'برای تست سریع می‌توانی کد 12345 را وارد کنی. ورود خودکار انجام می‌شود.'
-                                        : 'به‌محض کامل شدن کد، ورود خودکار انجام می‌شود.',
+                                    : 'به‌محض کامل شدن کد، ورود خودکار انجام می‌شود.',
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   color: AppColors.textSecondary,
                                 ),

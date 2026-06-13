@@ -11,11 +11,13 @@ class LoginScreen extends StatefulWidget {
   const LoginScreen({
     super.key,
     required this.onSubmitPhone,
+    required this.onEnterPreviewMode,
     this.isLoading = false,
     this.errorMessage,
   });
 
   final Future<void> Function(String phoneNumber) onSubmitPhone;
+  final Future<void> Function() onEnterPreviewMode;
   final bool isLoading;
   final String? errorMessage;
 
@@ -142,6 +144,17 @@ class _LoginScreenState extends State<LoginScreen> {
                       ],
                     ),
                   ),
+                  if (AppConfig.enableDevOtpBypass) ...[
+                    const SizedBox(height: AppSpacing.md),
+                    OutlinedButton(
+                      onPressed: widget.isLoading
+                          ? null
+                          : () async {
+                              await widget.onEnterPreviewMode();
+                            },
+                      child: const Text('ورود تستی بدون پیامک'),
+                    ),
+                  ],
                   const SizedBox(height: 18),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -155,7 +168,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       if (AppConfig.enableDevOtpBypass) ...[
                         const SizedBox(height: AppSpacing.md),
                         Text(
-                          'حالت تست فعال است: برای ورود می‌توانی در مرحله بعد کد 12345 را وارد کنی و پیامک واقعی ارسال نمی‌شود.',
+                          'حالت تست فعال است: اگر بخواهی پیش‌نمایش بدون هزینه ببینی، از دکمه ورود تستی استفاده کن. برای داده واقعی، از ورود عادی استفاده کن.',
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: AppColors.secondary,
                             fontWeight: FontWeight.w700,
