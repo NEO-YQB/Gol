@@ -4,9 +4,13 @@ class LoginScreen extends StatefulWidget {
   const LoginScreen({
     super.key,
     required this.onSubmitPhone,
+    this.isLoading = false,
+    this.errorMessage,
   });
 
-  final ValueChanged<String> onSubmitPhone;
+  final Future<void> Function(String phoneNumber) onSubmitPhone;
+  final bool isLoading;
+  final String? errorMessage;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -50,20 +54,32 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextField(
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
+                  enabled: !widget.isLoading,
                   decoration: const InputDecoration(
                     labelText: 'شماره موبایل',
                     hintText: 'مثلاً 09121234567',
                     border: OutlineInputBorder(),
                   ),
                 ),
+                if (widget.errorMessage != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    widget.errorMessage!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 FilledButton(
-                  onPressed: () {
+                  onPressed: widget.isLoading
+                      ? null
+                      : () async {
                     final phoneNumber = _phoneController.text.trim();
                     if (phoneNumber.isEmpty) return;
-                    widget.onSubmitPhone(phoneNumber);
+                    await widget.onSubmitPhone(phoneNumber);
                   },
-                  child: const Text('ارسال کد تایید'),
+                  child: Text(widget.isLoading ? 'در حال ارسال...' : 'ارسال کد تایید'),
                 ),
               ],
             ),

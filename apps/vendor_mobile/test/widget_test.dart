@@ -8,5 +8,6 @@ void main() {
 
     expect(find.text('ورود فروشنده'), findsOneWidget);
     expect(find.text('ارسال کد تایید'), findsOneWidget);
+    expect(find.text('شماره موبایل'), findsOneWidget);
   });
 }
