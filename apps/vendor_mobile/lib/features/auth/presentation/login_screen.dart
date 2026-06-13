@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_glass_card.dart';
@@ -11,13 +10,11 @@ class LoginScreen extends StatefulWidget {
   const LoginScreen({
     super.key,
     required this.onSubmitPhone,
-    required this.onEnterPreviewMode,
     this.isLoading = false,
     this.errorMessage,
   });
 
   final Future<void> Function(String phoneNumber) onSubmitPhone;
-  final Future<void> Function() onEnterPreviewMode;
   final bool isLoading;
   final String? errorMessage;
 
@@ -144,38 +141,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       ],
                     ),
                   ),
-                  if (AppConfig.enableDevOtpBypass) ...[
-                    const SizedBox(height: AppSpacing.md),
-                    OutlinedButton(
-                      onPressed: widget.isLoading
-                          ? null
-                          : () async {
-                              await widget.onEnterPreviewMode();
-                            },
-                      child: const Text('ورود تستی بدون پیامک'),
-                    ),
-                  ],
                   const SizedBox(height: 18),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'تجربه نسخه اول بر پایه سرعت، سادگی و حس premium طراحی می‌شود.',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      if (AppConfig.enableDevOtpBypass) ...[
-                        const SizedBox(height: AppSpacing.md),
-                        Text(
-                          'حالت تست فعال است: اگر بخواهی پیش‌نمایش بدون هزینه ببینی، از دکمه ورود تستی استفاده کن. برای داده واقعی، از ورود عادی استفاده کن.',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: AppColors.secondary,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ],
+                  Text(
+                    'تجربه نسخه اول بر پایه سرعت، سادگی و حس premium طراحی می‌شود.',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ],
               ),

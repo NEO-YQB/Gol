@@ -7,7 +7,6 @@ import '../../../shared/widgets/app_glass_card.dart';
 import '../../../shared/widgets/app_metric_tile.dart';
 import '../../../shared/widgets/app_section_heading.dart';
 import '../../../shared/widgets/app_shell_background.dart';
-import '../../orders/presentation/orders_screen.dart';
 import '../data/dashboard_api_service.dart';
 import '../domain/dashboard_summary.dart';
 
@@ -189,9 +188,10 @@ class DashboardScreen extends StatelessWidget {
                     const SizedBox(height: AppSpacing.lg),
                     AppMetricTile(
                       title: 'موجودی قابل برداشت',
-                      value: '${summary.availableBalance} تومان',
-                      subtitle: '${summary.heldBalance} تومان نگه‌داری‌شده',
+                      value: '${_formatMoney(summary.availableBalance)} تومان',
+                      subtitle: '${_formatMoney(summary.heldBalance)} تومان نگه‌داری‌شده',
                       accentColor: AppColors.primary,
+                      icon: Icons.account_balance_wallet_rounded,
                     ),
                     const SizedBox(height: AppSpacing.lg),
                     AppMetricTile(
@@ -199,6 +199,7 @@ class DashboardScreen extends StatelessWidget {
                       value: '${summary.processingSettlementsCount} مورد',
                       subtitle: '${summary.onHoldSettlementsCount} مورد hold',
                       accentColor: AppColors.accent,
+                      icon: Icons.currency_exchange_rounded,
                     ),
                     const SizedBox(height: AppSpacing.lg),
                     AppMetricTile(
@@ -206,6 +207,7 @@ class DashboardScreen extends StatelessWidget {
                       value: '${summary.openTicketsCount} مورد',
                       subtitle: '${summary.escalatedTicketsCount} ارجاع مالی',
                       accentColor: AppColors.secondary,
+                      icon: Icons.support_agent_rounded,
                     ),
                     const SizedBox(height: AppSpacing.lg),
                     AppMetricTile(
@@ -213,7 +215,10 @@ class DashboardScreen extends StatelessWidget {
                       value: '${summary.healthScore}',
                       subtitle: summary.healthStatus,
                       accentColor: AppColors.success,
+                      icon: Icons.favorite_rounded,
                     ),
+                    const SizedBox(height: AppSpacing.lg),
+                    _DashboardFocusStrip(summary: summary),
                     const SizedBox(height: AppSpacing.lg),
                     AppGlassCard(
                       child: Column(
@@ -230,6 +235,20 @@ class DashboardScreen extends StatelessWidget {
                               color: AppColors.textSecondary,
                             ),
                           ),
+                          if (summary.policyTimeline.isNotEmpty) ...[
+                            const SizedBox(height: AppSpacing.xl),
+                            Text(
+                              'آخرین رویدادهای مهم',
+                              style: theme.textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            ...summary.policyTimeline.map(
+                              (event) => Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: _PolicyTimelineItem(event: event),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -242,6 +261,232 @@ class DashboardScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+class _DashboardFocusStrip extends StatelessWidget {
+  const _DashboardFocusStrip({
+    required this.summary,
+  });
+
+  final DashboardSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AppGlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'فوکوس امروز',
+            style: theme.textTheme.titleMedium,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _FocusRow(
+            icon: Icons.bolt_rounded,
+            title: 'اولویت عملیاتی',
+            value: summary.processingSettlementsCount > 0
+                ? 'تسویه‌های در جریان را بررسی کن'
+                : 'سفارش‌های جدید را بدون تاخیر مدیریت کن',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _FocusRow(
+            icon: Icons.shield_rounded,
+            title: 'وضعیت سلامت',
+            value: _healthMessage(summary.healthStatus, summary.healthScore),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FocusRow extends StatelessWidget {
+  const _FocusRow({
+    required this.icon,
+    required this.title,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String title;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: AppColors.surfaceSoft,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Icon(
+            icon,
+            color: AppColors.primary,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: theme.textTheme.bodyLarge,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PolicyTimelineItem extends StatelessWidget {
+  const _PolicyTimelineItem({
+    required this.event,
+  });
+
+  final DashboardPolicyEvent event;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceSoft.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 12,
+            height: 12,
+            margin: const EdgeInsets.only(top: 6),
+            decoration: BoxDecoration(
+              color: _timelineAccent(event.aggregateType),
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _timelineLabel(event.aggregateType),
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  event.summary,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                if (event.createdAt != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    _formatDateTime(event.createdAt!),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _formatMoney(num value) {
+  final raw = value.toStringAsFixed(value % 1 == 0 ? 0 : 1);
+  final parts = raw.split('.');
+  final digits = parts.first;
+  final buffer = StringBuffer();
+
+  for (var index = 0; index < digits.length; index++) {
+    final reversedIndex = digits.length - index;
+    buffer.write(digits[index]);
+    if (reversedIndex > 1 && reversedIndex % 3 == 1) {
+      buffer.write(',');
+    }
+  }
+
+  if (parts.length > 1 && parts[1] != '0') {
+    buffer.write('.${parts[1]}');
+  }
+
+  return buffer.toString();
+}
+
+String _healthMessage(String status, num score) {
+  switch (status.toUpperCase()) {
+    case 'GOOD':
+      return 'وضعیت فروشگاه خوب است و امتیاز سلامت روی $score قرار دارد.';
+    case 'WARNING':
+      return 'وضعیت سلامت نیاز به توجه دارد و بهتر است عملکرد اخیر بررسی شود.';
+    case 'CRITICAL':
+      return 'وضعیت سلامت بحرانی است و باید سریع‌تر مشکلات عملیاتی بررسی شوند.';
+    default:
+      return 'آخرین وضعیت سلامت فروشگاه ثبت شده و آماده بررسی است.';
+  }
+}
+
+String _timelineLabel(String aggregateType) {
+  switch (aggregateType) {
+    case 'admin-alert':
+      return 'هشدار مدیریتی';
+    case 'review':
+      return 'بازبینی';
+    default:
+      return 'رویداد جدید';
+  }
+}
+
+Color _timelineAccent(String aggregateType) {
+  switch (aggregateType) {
+    case 'admin-alert':
+      return AppColors.secondary;
+    case 'review':
+      return AppColors.accent;
+    default:
+      return AppColors.primary;
+  }
+}
+
+String _formatDateTime(DateTime dateTime) {
+  final local = dateTime.toLocal();
+  final hh = local.hour.toString().padLeft(2, '0');
+  final mm = local.minute.toString().padLeft(2, '0');
+  final yyyy = local.year.toString().padLeft(4, '0');
+  final month = local.month.toString().padLeft(2, '0');
+  final day = local.day.toString().padLeft(2, '0');
+
+  return '$yyyy/$month/$day - $hh:$mm';
 }
 
 class _DashboardLoadingView extends StatelessWidget {

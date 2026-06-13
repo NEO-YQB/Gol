@@ -6,6 +6,6 @@ class AppConfig {
 
   static const enableDevOtpBypass = bool.fromEnvironment(
     'ENABLE_DEV_OTP_BYPASS',
-    defaultValue: true,
+    defaultValue: false,
   );
 }

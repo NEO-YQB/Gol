@@ -352,12 +352,17 @@ export class AuthService {
     });
 
     const smsSettings = await this.settingsService.getSmsSettingsForRuntime();
+    const shouldLogOtpInDev = process.env.NODE_ENV != 'production';
 
     if (options?.forceRealProvider) {
       this.settingsService.assertSmsSettingsConfigured(smsSettings);
     }
 
-    if (smsSettings?.apiKey && smsSettings.templateId) {
+    if (shouldLogOtpInDev) {
+      console.log(`[DEV OTP] ${phoneNumber} -> ${code} (expires: ${expiresAt.toISOString()})`);
+    }
+
+    if (!shouldLogOtpInDev && smsSettings?.apiKey && smsSettings.templateId) {
       await this.smsProviderService.sendSmsIrVerify({
         apiKey: smsSettings.apiKey,
         templateId: smsSettings.templateId,

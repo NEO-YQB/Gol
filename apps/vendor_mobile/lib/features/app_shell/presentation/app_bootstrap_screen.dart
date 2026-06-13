@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/constants/app_strings.dart';
 import '../../../shared/widgets/app_shell_background.dart';
 import '../../auth/data/auth_api_service.dart';
 import '../../auth/data/auth_session_storage.dart';
 import '../../auth/domain/auth_session.dart';
-import '../../auth/domain/vendor_bootstrap.dart';
 import '../../auth/presentation/login_screen.dart';
 import '../../auth/presentation/otp_verification_screen.dart';
 import 'vendor_app_shell.dart';
@@ -47,26 +45,32 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
     if (!mounted) return;
 
     if (storedSession != null) {
-      try {
-        final bootstrap = await _authApiService.getSessionBootstrap(
-          storedSession.accessToken,
-        );
-        final refreshedSession = AuthSession(
-          accessToken: storedSession.accessToken,
-          phoneNumber: storedSession.phoneNumber,
-          bootstrap: bootstrap,
-        );
-        await _authSessionStorage.save(refreshedSession);
-
-        if (!mounted) return;
-        setState(() {
-          _session = refreshedSession;
-          _phoneNumber = refreshedSession.phoneNumber;
-          _step = _BootstrapStep.authenticated;
-        });
-        return;
-      } catch (_) {
+      if (storedSession.accessToken == 'dev-preview-token' || storedSession.isPreview) {
         await _authSessionStorage.clear();
+      } else {
+        try {
+          final bootstrap = await _authApiService.getSessionBootstrap(
+            storedSession.accessToken,
+          );
+          _ensureVendorAccess(bootstrap.roles);
+
+          final refreshedSession = AuthSession(
+            accessToken: storedSession.accessToken,
+            phoneNumber: storedSession.phoneNumber,
+            bootstrap: bootstrap,
+          );
+          await _authSessionStorage.save(refreshedSession);
+
+          if (!mounted) return;
+          setState(() {
+            _session = refreshedSession;
+            _phoneNumber = refreshedSession.phoneNumber;
+            _step = _BootstrapStep.authenticated;
+          });
+          return;
+        } catch (_) {
+          await _authSessionStorage.clear();
+        }
       }
     }
 
@@ -109,41 +113,6 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
     }
   }
 
-  Future<void> _handleEnterPreviewMode() async {
-    const previewBootstrap = VendorBootstrap(
-      roles: ['VENDOR'],
-      store: BootstrapStore(
-        id: 0,
-        isVerified: true,
-        name: 'پیش‌نمایش فروشگاه',
-        slug: 'preview-store',
-      ),
-      vendorOnboarding: VendorOnboardingState(
-        applicationStatus: 'APPROVED',
-        productStatus: 'APPROVED',
-        storeActivatedAt: null,
-      ),
-    );
-
-    const previewSession = AuthSession(
-      accessToken: 'dev-preview-token',
-      phoneNumber: '09120000000',
-      bootstrap: previewBootstrap,
-      isPreview: true,
-    );
-
-    await _authSessionStorage.save(previewSession);
-
-    if (!mounted) return;
-    setState(() {
-      _session = previewSession;
-      _phoneNumber = previewSession.phoneNumber;
-      _step = _BootstrapStep.authenticated;
-      _loginErrorMessage = null;
-      _otpErrorMessage = null;
-    });
-  }
-
   void _handleBackToLogin() {
     setState(() {
       _step = _BootstrapStep.login;
@@ -162,6 +131,7 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
       final bootstrap = await _authApiService.getSessionBootstrap(
         session.accessToken,
       );
+      _ensureVendorAccess(bootstrap.roles);
       final nextSession = AuthSession(
         accessToken: session.accessToken,
         phoneNumber: session.phoneNumber,
@@ -189,6 +159,14 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
       setState(() {
         _isVerifyingOtp = false;
       });
+    }
+  }
+
+  void _ensureVendorAccess(List<String> roles) {
+    if (!roles.contains('VENDOR')) {
+      throw const AuthApiException(
+        'این شماره فروشنده فعال نیست یا دسترسی فروشنده ندارد.',
+      );
     }
   }
 
@@ -224,7 +202,6 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
       case _BootstrapStep.login:
         return LoginScreen(
           onSubmitPhone: _handleSubmitPhone,
-          onEnterPreviewMode: _handleEnterPreviewMode,
           isLoading: _isSendingOtp,
           errorMessage: _loginErrorMessage,
         );

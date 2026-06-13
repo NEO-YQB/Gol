@@ -11,12 +11,14 @@ class AppMetricTile extends StatelessWidget {
     required this.value,
     required this.subtitle,
     required this.accentColor,
+    this.icon = Icons.auto_awesome,
   });
 
   final String title;
   final String value;
   final String subtitle;
   final Color accentColor;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +36,7 @@ class AppMetricTile extends StatelessWidget {
               borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(
-              Icons.auto_awesome,
+              icon,
               color: accentColor,
             ),
           ),

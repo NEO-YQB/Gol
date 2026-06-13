@@ -10,6 +10,7 @@ class DashboardSummary {
     required this.healthScore,
     required this.healthStatus,
     required this.policyNote,
+    required this.policyTimeline,
   });
 
   final String storeName;
@@ -22,4 +23,19 @@ class DashboardSummary {
   final num healthScore;
   final String healthStatus;
   final String policyNote;
+  final List<DashboardPolicyEvent> policyTimeline;
+}
+
+class DashboardPolicyEvent {
+  const DashboardPolicyEvent({
+    required this.id,
+    required this.aggregateType,
+    required this.summary,
+    required this.createdAt,
+  });
+
+  final int id;
+  final String aggregateType;
+  final String summary;
+  final DateTime? createdAt;
 }

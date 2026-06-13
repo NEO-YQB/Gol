@@ -24,7 +24,6 @@ class VendorOrderSummary {
         'customerName',
         'customer',
         'recipientName',
-        'userId',
       ]),
       status: _readText(json, const ['status'], fallback: 'UNKNOWN'),
       paymentStatus:

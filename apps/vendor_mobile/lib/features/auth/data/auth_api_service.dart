@@ -5,7 +5,6 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 
 import '../../../core/config/app_config.dart';
-import '../domain/dev_auth_mode.dart';
 import '../domain/auth_session.dart';
 import '../domain/vendor_bootstrap.dart';
 
@@ -20,10 +19,6 @@ class AuthApiService {
   const AuthApiService();
 
   Future<void> sendOtp(String phoneNumber) async {
-    if (AppConfig.enableDevOtpBypass) {
-      return;
-    }
-
     try {
       final response = await http
           .post(
@@ -57,13 +52,6 @@ class AuthApiService {
   }
 
   Future<AuthSession> verifyOtp(String phoneNumber, String code) async {
-    if (AppConfig.enableDevOtpBypass && code == DevAuthMode.bypassCode) {
-      return AuthSession(
-        accessToken: 'dev-preview-token',
-        phoneNumber: phoneNumber,
-      );
-    }
-
     try {
       final response = await http
           .post(
