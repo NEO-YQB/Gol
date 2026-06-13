@@ -6,8 +6,6 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
-import { SettingsService } from '../settings/settings.service';
-import { SmsProviderService } from '../settings/sms-provider.service';
 import { OrderStatus } from '@prisma/client';
 
 @Injectable()
@@ -15,8 +13,6 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
-    private settingsService: SettingsService,
-    private smsProviderService: SmsProviderService,
   ) {}
 
   async verifyOtp(phoneNumber: string, code: string) {
@@ -351,27 +347,7 @@ export class AuthService {
       });
     });
 
-    const smsSettings = await this.settingsService.getSmsSettingsForRuntime();
-    const shouldLogOtpInDev = process.env.NODE_ENV != 'production';
-
-    if (options?.forceRealProvider) {
-      this.settingsService.assertSmsSettingsConfigured(smsSettings);
-    }
-
-    if (shouldLogOtpInDev) {
-      console.log(`[DEV OTP] ${phoneNumber} -> ${code} (expires: ${expiresAt.toISOString()})`);
-    }
-
-    if (!shouldLogOtpInDev && smsSettings?.apiKey && smsSettings.templateId) {
-      await this.smsProviderService.sendSmsIrVerify({
-        apiKey: smsSettings.apiKey,
-        templateId: smsSettings.templateId,
-        phoneNumber,
-        code,
-      });
-    } else {
-      console.log(`📱 OTP for ${phoneNumber}: ${code}`);
-    }
+    console.log(`[LOCAL OTP] ${phoneNumber} -> ${code} (expires: ${expiresAt.toISOString()})`);
     
     return { message: 'کد تایید ارسال شد', expiresAt };
   }
