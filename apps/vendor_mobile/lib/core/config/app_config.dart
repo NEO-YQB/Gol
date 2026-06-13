@@ -3,4 +3,9 @@ class AppConfig {
     'API_BASE_URL',
     defaultValue: 'https://api.golino.shop/v1',
   );
+
+  static const enableDevOtpBypass = bool.fromEnvironment(
+    'ENABLE_DEV_OTP_BYPASS',
+    defaultValue: true,
+  );
 }

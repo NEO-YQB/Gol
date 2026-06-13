@@ -1,56 +1,120 @@
 import 'package:flutter/material.dart';
 
+import 'app_colors.dart';
+
 class AppTheme {
   static ThemeData light() {
     const fontFamily = 'YekanBakh';
-    const primaryColor = Color(0xFF1F6A52);
-    const surfaceColor = Color(0xFFFFFDF8);
-    const canvasColor = Color(0xFFF6F1E8);
-    const textColor = Color(0xFF1F352B);
 
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: primaryColor,
+      seedColor: AppColors.primary,
       brightness: Brightness.light,
-      primary: primaryColor,
-      surface: surfaceColor,
+      primary: AppColors.primary,
+      secondary: AppColors.secondary,
+      surface: AppColors.surface,
+      error: AppColors.danger,
     );
 
     return ThemeData(
       useMaterial3: true,
       fontFamily: fontFamily,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: canvasColor,
+      scaffoldBackgroundColor: AppColors.canvas,
       appBarTheme: const AppBarTheme(
-        centerTitle: true,
-        backgroundColor: surfaceColor,
-        foregroundColor: textColor,
+        centerTitle: false,
+        backgroundColor: Colors.transparent,
+        foregroundColor: AppColors.textPrimary,
         elevation: 0,
       ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: AppColors.surface.withValues(alpha: 0.92),
+        labelStyle: const TextStyle(
+          color: AppColors.textSecondary,
+        ),
+        hintStyle: const TextStyle(
+          color: AppColors.textSecondary,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(22),
+          borderSide: const BorderSide(
+            color: AppColors.border,
+          ),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(22),
+          borderSide: const BorderSide(
+            color: AppColors.border,
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(22),
+          borderSide: const BorderSide(
+            color: AppColors.primary,
+            width: 1.4,
+          ),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          minimumSize: const Size.fromHeight(58),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          textStyle: const TextStyle(
+            fontFamily: fontFamily,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
       cardTheme: CardThemeData(
-        color: surfaceColor,
+        color: AppColors.surface,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(28),
         ),
       ),
       textTheme: const TextTheme(
+        headlineLarge: TextStyle(
+          fontFamily: fontFamily,
+          color: AppColors.textPrimary,
+          fontSize: 32,
+          height: 1.25,
+          fontWeight: FontWeight.w800,
+        ),
         headlineMedium: TextStyle(
           fontFamily: fontFamily,
-          color: textColor,
+          color: AppColors.textPrimary,
           fontSize: 24,
-          fontWeight: FontWeight.w700,
+          height: 1.3,
+          fontWeight: FontWeight.w800,
         ),
         titleMedium: TextStyle(
           fontFamily: fontFamily,
-          color: textColor,
+          color: AppColors.textPrimary,
           fontSize: 16,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
+        ),
+        bodyLarge: TextStyle(
+          fontFamily: fontFamily,
+          color: AppColors.textPrimary,
+          fontSize: 16,
+          height: 1.8,
         ),
         bodyMedium: TextStyle(
           fontFamily: fontFamily,
-          color: textColor,
+          color: AppColors.textPrimary,
           fontSize: 14,
           height: 1.7,
+        ),
+        labelMedium: TextStyle(
+          fontFamily: fontFamily,
+          color: AppColors.textSecondary,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );

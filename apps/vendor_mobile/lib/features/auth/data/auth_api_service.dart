@@ -5,7 +5,9 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 
 import '../../../core/config/app_config.dart';
+import '../domain/dev_auth_mode.dart';
 import '../domain/auth_session.dart';
+import '../domain/vendor_bootstrap.dart';
 
 class AuthApiException implements Exception {
   const AuthApiException(this.message, {this.statusCode});
@@ -18,6 +20,10 @@ class AuthApiService {
   const AuthApiService();
 
   Future<void> sendOtp(String phoneNumber) async {
+    if (AppConfig.enableDevOtpBypass) {
+      return;
+    }
+
     try {
       final response = await http
           .post(
@@ -51,6 +57,13 @@ class AuthApiService {
   }
 
   Future<AuthSession> verifyOtp(String phoneNumber, String code) async {
+    if (AppConfig.enableDevOtpBypass && code == DevAuthMode.bypassCode) {
+      return AuthSession(
+        accessToken: 'dev-preview-token',
+        phoneNumber: phoneNumber,
+      );
+    }
+
     try {
       final response = await http
           .post(
@@ -79,6 +92,55 @@ class AuthApiService {
         accessToken: payload['access_token'] as String? ?? '',
         phoneNumber: user['phoneNumber'] as String? ?? phoneNumber,
       );
+    } on TimeoutException {
+      throw const AuthApiException(
+        'پاسخی از سرور دریافت نشد. دوباره تلاش کن.',
+      );
+    } on SocketException {
+      throw const AuthApiException(
+        'اتصال به سرور برقرار نشد. اجرای backend و آدرس API را بررسی کن.',
+      );
+    }
+  }
+
+  Future<VendorBootstrap> getSessionBootstrap(String accessToken) async {
+    if (AppConfig.enableDevOtpBypass && accessToken == 'dev-preview-token') {
+      return const VendorBootstrap(
+        roles: ['VENDOR'],
+        store: BootstrapStore(
+          id: 0,
+          isVerified: true,
+          name: 'پیش‌نمایش فروشگاه',
+          slug: 'preview-store',
+        ),
+        vendorOnboarding: VendorOnboardingState(
+          applicationStatus: 'APPROVED',
+          productStatus: 'APPROVED',
+          storeActivatedAt: null,
+        ),
+      );
+    }
+
+    try {
+      final response = await http
+          .get(
+            Uri.parse('${AppConfig.apiBaseUrl}/auth/session-bootstrap'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $accessToken',
+            },
+          )
+          .timeout(const Duration(seconds: 12));
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw AuthApiException(
+          _extractErrorMessage(response.body, 'دریافت اطلاعات نشست ناموفق بود.'),
+          statusCode: response.statusCode,
+        );
+      }
+
+      final payload = jsonDecode(response.body) as Map<String, dynamic>;
+      return VendorBootstrap.fromJson(payload);
     } on TimeoutException {
       throw const AuthApiException(
         'پاسخی از سرور دریافت نشد. دوباره تلاش کن.',

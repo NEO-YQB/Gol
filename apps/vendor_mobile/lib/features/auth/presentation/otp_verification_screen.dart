@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/config/app_config.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/app_glass_card.dart';
+import '../../../shared/widgets/app_section_heading.dart';
+import '../../../shared/widgets/app_shell_background.dart';
+
 class OtpVerificationScreen extends StatefulWidget {
   const OtpVerificationScreen({
     super.key,
@@ -49,65 +56,106 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('تایید کد'),
-          leading: IconButton(
-            onPressed: widget.onBack,
-            icon: const Icon(Icons.arrow_back),
-          ),
-        ),
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'کد تایید را وارد کن',
-                  style: theme.textTheme.headlineMedium,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'کد ارسال‌شده به ${widget.phoneNumber} را وارد کن.',
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 24),
-                TextField(
-                  controller: _codeController,
-                  keyboardType: TextInputType.number,
-                  autofillHints: const [AutofillHints.oneTimeCode],
-                  maxLength: 5,
-                  enabled: !widget.isLoading,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(5),
-                  ],
-                  onChanged: (value) async {
-                    await _submitIfComplete(value);
-                  },
-                  decoration: const InputDecoration(
-                    labelText: 'کد تایید',
-                    hintText: 'مثلاً 12345',
-                    border: OutlineInputBorder(),
+        body: AppShellBackground(
+          child: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: IconButton(
+                      onPressed: widget.onBack,
+                      style: IconButton.styleFrom(
+                        backgroundColor: AppColors.surface.withValues(alpha: 0.85),
+                      ),
+                      icon: const Icon(Icons.arrow_back),
+                    ),
                   ),
-                ),
-                if (widget.errorMessage != null) ...[
                   const SizedBox(height: 12),
-                  Text(
-                    widget.errorMessage!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
+                  AppSectionHeading(
+                    eyebrow: 'تایید هوشمند',
+                    title: 'کد ۵ رقمی را وارد کن',
+                    description:
+                        'کد ارسال‌شده به ${widget.phoneNumber} را وارد کن. اگر auto fill فعال باشد، ورود خودکار انجام می‌شود.',
+                  ),
+                  const SizedBox(height: 28),
+                  AppGlassCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          'کد تایید',
+                          style: theme.textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        TextField(
+                          controller: _codeController,
+                          keyboardType: TextInputType.number,
+                          autofillHints: const [AutofillHints.oneTimeCode],
+                          maxLength: 5,
+                          enabled: !widget.isLoading,
+                          style: theme.textTheme.headlineMedium?.copyWith(
+                            letterSpacing: 6,
+                          ),
+                          textAlign: TextAlign.center,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(5),
+                          ],
+                          onChanged: (value) async {
+                            await _submitIfComplete(value);
+                          },
+                          decoration: const InputDecoration(
+                            labelText: 'کد ۵ رقمی',
+                            hintText: '12345',
+                            counterText: '',
+                          ),
+                        ),
+                        if (widget.errorMessage != null) ...[
+                          const SizedBox(height: AppSpacing.md),
+                          Text(
+                            widget.errorMessage!,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.error,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: AppSpacing.md),
+                        Row(
+                          children: [
+                            Container(
+                              width: 12,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: widget.isLoading
+                                    ? AppColors.accent
+                                    : AppColors.success,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Expanded(
+                              child: Text(
+                                widget.isLoading
+                                    ? 'در حال بررسی کد و ورود...'
+                                    : AppConfig.enableDevOtpBypass
+                                        ? 'برای تست سریع می‌توانی کد 12345 را وارد کنی. ورود خودکار انجام می‌شود.'
+                                        : 'به‌محض کامل شدن کد، ورود خودکار انجام می‌شود.',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ],
-                const SizedBox(height: 8),
-                Text(
-                  widget.isLoading
-                      ? 'در حال بررسی کد...'
-                      : 'به‌محض وارد شدن ۵ رقم، ورود خودکار انجام می‌شود.',
-                  style: theme.textTheme.bodyMedium,
-                ),
-              ],
+              ),
             ),
           ),
         ),
