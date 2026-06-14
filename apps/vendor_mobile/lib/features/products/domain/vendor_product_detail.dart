@@ -10,10 +10,15 @@ class VendorProductDetail {
     required this.mainImageAlt,
     required this.description,
     required this.shortDescription,
+    required this.metaTitle,
+    required this.metaDescription,
     required this.publicationStatus,
     required this.reviewNote,
     required this.isPurchasable,
     required this.isArchived,
+    required this.storeId,
+    required this.categoryId,
+    required this.productTypeId,
     required this.categoryName,
     required this.productTypeName,
     required this.storeName,
@@ -30,14 +35,19 @@ class VendorProductDetail {
   final String mainImageAlt;
   final String description;
   final String shortDescription;
+  final String metaTitle;
+  final String metaDescription;
   final String publicationStatus;
   final String reviewNote;
   final bool isPurchasable;
   final bool isArchived;
+  final int storeId;
+  final int categoryId;
+  final int productTypeId;
   final String categoryName;
   final String productTypeName;
   final String storeName;
-  final List<String> gallery;
+  final List<VendorProductGalleryItem> gallery;
 
   factory VendorProductDetail.fromJson(Map<String, dynamic> json) {
     return VendorProductDetail(
@@ -51,17 +61,32 @@ class VendorProductDetail {
       mainImageAlt: _readText(json, const ['mainImageAlt']),
       description: _readText(json, const ['description']),
       shortDescription: _readText(json, const ['shortDescription']),
+      metaTitle: _readText(json, const ['metaTitle']),
+      metaDescription: _readText(json, const ['metaDescription']),
       publicationStatus:
           _readText(json, const ['publicationStatus'], fallback: 'DRAFT'),
       reviewNote: _readText(json, const ['reviewNote']),
       isPurchasable: json['isPurchasable'] == true,
       isArchived: json['isArchived'] == true,
+      storeId: _asInt(json['storeId']),
+      categoryId: _asInt(json['categoryId']),
+      productTypeId: _asInt(json['productTypeId']),
       categoryName: _readNestedText(json['category'], const ['name']),
       productTypeName: _readNestedText(json['productType'], const ['name']),
       storeName: _readNestedText(json['store'], const ['name']),
       gallery: _readGallery(json),
     );
   }
+}
+
+class VendorProductGalleryItem {
+  const VendorProductGalleryItem({
+    required this.url,
+    required this.alt,
+  });
+
+  final String url;
+  final String alt;
 }
 
 int _asInt(Object? value) {
@@ -105,18 +130,27 @@ String _readNestedText(
   return _readText(value, keys, fallback: fallback);
 }
 
-List<String> _readGallery(Map<String, dynamic> json) {
+List<VendorProductGalleryItem> _readGallery(Map<String, dynamic> json) {
   final raw = json['gallery'];
   if (raw is List) {
     return raw
         .map((item) {
-          if (item is String) return item.trim();
-          if (item is Map<String, dynamic>) {
-            return _readText(item, const ['url', 'src']);
+          if (item is String) {
+            final url = item.trim();
+            if (url.isEmpty) return null;
+            return VendorProductGalleryItem(url: url, alt: '');
           }
-          return '';
+          if (item is Map<String, dynamic>) {
+            final url = _readText(item, const ['url', 'src']);
+            if (url.isEmpty) return null;
+            return VendorProductGalleryItem(
+              url: url,
+              alt: _readText(item, const ['alt']),
+            );
+          }
+          return null;
         })
-        .where((item) => item.isNotEmpty)
+        .whereType<VendorProductGalleryItem>()
         .toList();
   }
   return const [];
