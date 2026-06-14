@@ -36,6 +36,16 @@ dependencies:
   cupertino_icons: ^1.0.8
   http: ^1.2.2
   url_launcher: ^6.3.1
+  image_picker: ^1.1.2
+  image_cropper: ^9.1.0
+
+dependency_overrides:
+  flutter_plugin_android_lifecycle:
+    path: third_party/flutter_plugin_android_lifecycle-2.0.34
+  image_picker_android:
+    path: third_party/image_picker_android-0.8.13+17
+  url_launcher_android:
+    path: third_party/url_launcher_android-6.3.29
 
 dev_dependencies:
   flutter_test:

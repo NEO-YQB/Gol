@@ -8,6 +8,8 @@ import '../../../shared/widgets/app_glass_card.dart';
 import '../../auth/domain/auth_session.dart';
 import '../../dashboard/presentation/dashboard_screen.dart';
 import '../../orders/presentation/orders_screen.dart';
+import '../../products/presentation/products_screen.dart';
+import '../../store_profile/presentation/store_profile_screen.dart';
 
 enum VendorShellTab {
   dashboard,
@@ -96,10 +98,9 @@ class _VendorAppShellState extends State<VendorAppShell> {
           accessToken: widget.session.accessToken,
           embedded: true,
         ),
-      VendorShellTab.products => const _ShellPlaceholder(
-          title: 'محصولات',
-          description:
-              'لیست محصولات، جستجو و مدیریت پایه محصولات در مرحله بعدی اینجا قرار می‌گیرد.',
+      VendorShellTab.products => ProductsScreen(
+          accessToken: widget.session.accessToken,
+          storeId: widget.session.bootstrap?.store?.id ?? 0,
         ),
       VendorShellTab.discounts => const _ShellPlaceholder(
           title: 'تخفیف‌ها',
@@ -120,11 +121,18 @@ class _VendorAppShellState extends State<VendorAppShell> {
           description:
               'تیکت‌ها، گفتگو با پشتیبانی و پیگیری درخواست‌ها در milestone بعدی اینجا قرار می‌گیرد.',
         ),
-      VendorShellTab.profile => _ShellPlaceholder(
-          title: 'پروفایل فروشگاه',
-          description:
-              'تنظیمات و اطلاعات پایه فروشگاه در milestone بعدی وارد این بخش می‌شوند.',
-        ),
+      VendorShellTab.profile =>
+        (widget.session.bootstrap?.store?.slug ?? '').isEmpty
+            ? const _ShellPlaceholder(
+                title: 'پروفایل فروشگاه',
+                description:
+                    'هنوز اطلاعات فروشگاه برای این حساب کامل نشده است.',
+              )
+            : StoreProfileScreen(
+                accessToken: widget.session.accessToken,
+                storeId: widget.session.bootstrap?.store?.id ?? 0,
+                storeSlug: widget.session.bootstrap!.store!.slug,
+              ),
     };
 
     return Directionality(
