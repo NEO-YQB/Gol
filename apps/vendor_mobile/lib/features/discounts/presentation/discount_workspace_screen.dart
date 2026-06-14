@@ -45,6 +45,8 @@ class _DiscountWorkspaceScreenState extends State<DiscountWorkspaceScreen> {
   bool _isActive = true;
   bool _isExclusive = false;
   bool _allowCouponStacking = false;
+  DateTime? _startAt;
+  DateTime? _endAt;
 
   bool get _isEdit => widget.discountId != null;
 
@@ -120,8 +122,9 @@ class _DiscountWorkspaceScreenState extends State<DiscountWorkspaceScreen> {
     _descriptionController.text = discount.description;
     _valueController.text = discount.value.toString();
     _priorityController.text = discount.priority.toString();
-    _startAtController.text = discount.startAt;
-    _endAtController.text = discount.endAt;
+    _startAt = _parseDateTime(discount.startAt);
+    _endAt = _parseDateTime(discount.endAt);
+    _syncDateControllers();
     _selectedProductId = discount.productId;
     _valueType = discount.valueType;
     _isActive = discount.isActive;
@@ -135,6 +138,28 @@ class _DiscountWorkspaceScreenState extends State<DiscountWorkspaceScreen> {
         _selectedProductId == null) {
       setState(() {
         _errorMessage = 'عنوان، مقدار و محصول الزامی هستند.';
+      });
+      return;
+    }
+
+    final now = DateTime.now();
+    if (_startAt != null && _startAt!.isBefore(now)) {
+      setState(() {
+        _errorMessage = 'زمان شروع نمی‌تواند قبل از الان باشد.';
+      });
+      return;
+    }
+
+    if (_endAt != null && _endAt!.isBefore(now)) {
+      setState(() {
+        _errorMessage = 'زمان پایان نمی‌تواند قبل از الان باشد.';
+      });
+      return;
+    }
+
+    if (_startAt != null && _endAt != null && !_endAt!.isAfter(_startAt!)) {
+      setState(() {
+        _errorMessage = 'زمان پایان باید بعد از زمان شروع باشد.';
       });
       return;
     }
@@ -154,8 +179,8 @@ class _DiscountWorkspaceScreenState extends State<DiscountWorkspaceScreen> {
       'isActive': _isActive,
       'isExclusive': _isExclusive,
       'allowCouponStacking': _allowCouponStacking,
-      'startAt': _emptyToNull(_startAtController.text),
-      'endAt': _emptyToNull(_endAtController.text),
+      'startAt': _startAt?.toUtc().toIso8601String(),
+      'endAt': _endAt?.toUtc().toIso8601String(),
     };
 
     try {
@@ -203,6 +228,91 @@ class _DiscountWorkspaceScreenState extends State<DiscountWorkspaceScreen> {
         _errorMessage = error.message;
       });
     }
+  }
+
+  Future<void> _pickStartAt() async {
+    final picked = await _pickDateTime(
+      initial: _startAt,
+      firstDateTime: DateTime.now(),
+    );
+    if (picked == null) return;
+
+    setState(() {
+      _startAt = picked;
+      if (_endAt != null && !_endAt!.isAfter(picked)) {
+        _endAt = null;
+      }
+      _syncDateControllers();
+    });
+  }
+
+  Future<void> _pickEndAt() async {
+    final minBase = _startAt ?? DateTime.now();
+    final picked = await _pickDateTime(
+      initial: _endAt ?? minBase.add(const Duration(hours: 1)),
+      firstDateTime: minBase,
+    );
+    if (picked == null) return;
+
+    setState(() {
+      _endAt = picked;
+      _syncDateControllers();
+    });
+  }
+
+  Future<DateTime?> _pickDateTime({
+    required DateTime? initial,
+    required DateTime firstDateTime,
+  }) async {
+    final now = DateTime.now();
+    final safeInitial = (initial != null && initial.isAfter(firstDateTime))
+        ? initial
+        : firstDateTime.isAfter(now)
+            ? firstDateTime
+            : now;
+
+    final date = await showDatePicker(
+      context: context,
+      initialDate: safeInitial,
+      firstDate: DateTime(now.year, now.month, now.day),
+      lastDate: DateTime(now.year + 3),
+      helpText: 'انتخاب تاریخ',
+    );
+    if (date == null || !mounted) return null;
+
+    final earliestTime = date.year == firstDateTime.year &&
+            date.month == firstDateTime.month &&
+            date.day == firstDateTime.day
+        ? TimeOfDay.fromDateTime(firstDateTime.add(const Duration(minutes: 1)))
+        : const TimeOfDay(hour: 0, minute: 0);
+
+    final time = await showTimePicker(
+      context: context,
+      initialTime: safeInitial.isAfter(firstDateTime)
+          ? TimeOfDay.fromDateTime(safeInitial)
+          : earliestTime,
+      helpText: 'انتخاب زمان',
+    );
+    if (time == null) return null;
+
+    final picked = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      time.hour,
+      time.minute,
+    );
+
+    if (picked.isBefore(firstDateTime) || picked.isAtSameMomentAs(firstDateTime)) {
+      return firstDateTime.add(const Duration(minutes: 1));
+    }
+
+    return picked;
+  }
+
+  void _syncDateControllers() {
+    _startAtController.text = _formatDateTimeLabel(_startAt);
+    _endAtController.text = _formatDateTimeLabel(_endAt);
   }
 
   @override
@@ -343,17 +453,23 @@ class _DiscountWorkspaceScreenState extends State<DiscountWorkspaceScreen> {
                             const SizedBox(height: AppSpacing.md),
                             TextField(
                               controller: _startAtController,
+                              readOnly: true,
+                              onTap: _pickStartAt,
                               decoration: const InputDecoration(
-                                labelText: 'شروع (ISO اختیاری)',
-                                hintText: '2026-06-14T00:00:00.000Z',
+                                labelText: 'شروع',
+                                hintText: 'انتخاب تاریخ و زمان',
+                                suffixIcon: Icon(Icons.calendar_month_rounded),
                               ),
                             ),
                             const SizedBox(height: AppSpacing.md),
                             TextField(
                               controller: _endAtController,
+                              readOnly: true,
+                              onTap: _pickEndAt,
                               decoration: const InputDecoration(
-                                labelText: 'پایان (ISO اختیاری)',
-                                hintText: '2026-06-20T23:59:59.000Z',
+                                labelText: 'پایان',
+                                hintText: 'انتخاب تاریخ و زمان',
+                                suffixIcon: Icon(Icons.event_available_rounded),
                               ),
                             ),
                             const SizedBox(height: AppSpacing.md),
@@ -435,4 +551,19 @@ num? _parseNum(String value) {
 String? _emptyToNull(String value) {
   final trimmed = value.trim();
   return trimmed.isEmpty ? null : trimmed;
+}
+
+DateTime? _parseDateTime(String value) {
+  final trimmed = value.trim();
+  if (trimmed.isEmpty) return null;
+  return DateTime.tryParse(trimmed)?.toLocal();
+}
+
+String _formatDateTimeLabel(DateTime? value) {
+  if (value == null) return '';
+  final month = value.month.toString().padLeft(2, '0');
+  final day = value.day.toString().padLeft(2, '0');
+  final hour = value.hour.toString().padLeft(2, '0');
+  final minute = value.minute.toString().padLeft(2, '0');
+  return '${value.year}/$month/$day - $hour:$minute';
 }
