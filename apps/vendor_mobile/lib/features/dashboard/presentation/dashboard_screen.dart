@@ -97,158 +97,75 @@ class DashboardScreen extends StatelessWidget {
 
                 final summary = snapshot.data!;
 
+                final prefersReducedMotion =
+                    MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+
                 return ListView(
                   padding: const EdgeInsets.fromLTRB(24, 18, 24, 28),
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'داشبورد فروشنده',
-                            style: theme.textTheme.titleMedium,
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () async {
-                            await onLogout();
-                          },
-                          child: const Text('خروج'),
-                        ),
-                      ],
+                    _DashboardHeader(
+                      onLogout: onLogout,
                     ),
                     const SizedBox(height: 18),
-                    AppGlassCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          AppSectionHeading(
-                            eyebrow: 'نمای کلی امروز',
-                            title: 'فروشگاه ${summary.storeName}',
-                            description:
-                                'یک خلاصه شفاف و premium از وضعیت مالی، عملیاتی و سلامت فروشگاه.',
+                    TweenAnimationBuilder<double>(
+                      tween: Tween<double>(begin: 0, end: 1),
+                      duration: Duration(
+                        milliseconds: prefersReducedMotion ? 0 : 520,
+                      ),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, value, child) {
+                        return Opacity(
+                          opacity: value,
+                          child: Transform.translate(
+                            offset: Offset(0, 24 * (1 - value)),
+                            child: child,
                           ),
-                          if (isPreview) ...[
-                            const SizedBox(height: AppSpacing.lg),
-                            Container(
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
-                                color: AppColors.secondary.withValues(alpha: 0.10),
-                                borderRadius: BorderRadius.circular(18),
-                              ),
-                              child: Text(
-                                'حالت پیش‌نمایش فعال است و داده‌های این صفحه واقعی نیستند.',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: AppColors.secondary,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ],
-                          const SizedBox(height: AppSpacing.xl),
-                          Container(
-                            padding: const EdgeInsets.all(18),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(22),
-                              gradient: const LinearGradient(
-                                colors: [
-                                  AppColors.primary,
-                                  AppColors.primaryDark,
-                                ],
-                              ),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Color(0x221F6A52),
-                                  blurRadius: 26,
-                                  offset: Offset(0, 16),
-                                ),
-                              ],
-                            ),
+                        );
+                      },
+                      child: Column(
+                        children: [
+                          _HeroSummaryCard(
+                            summary: summary,
+                            phoneNumber: phoneNumber,
+                            isPreview: isPreview,
+                          ),
+                          const SizedBox(height: AppSpacing.lg),
+                          _MetricGrid(summary: summary),
+                          const SizedBox(height: AppSpacing.lg),
+                          _DashboardFocusStrip(summary: summary),
+                          const SizedBox(height: AppSpacing.lg),
+                          AppGlassCard(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'فروشنده فعال',
-                                  style: theme.textTheme.labelMedium?.copyWith(
-                                    color: Colors.white70,
-                                  ),
+                                  'وضعیت policy',
+                                  style: theme.textTheme.titleLarge,
                                 ),
-                                const SizedBox(height: AppSpacing.sm),
+                                const SizedBox(height: AppSpacing.md),
                                 Text(
-                                  phoneNumber,
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    color: Colors.white,
+                                  summary.policyNote,
+                                  style: theme.textTheme.bodyLarge?.copyWith(
+                                    color: AppColors.textSecondary,
                                   ),
                                 ),
+                                if (summary.policyTimeline.isNotEmpty) ...[
+                                  const SizedBox(height: AppSpacing.xl),
+                                  Text(
+                                    'آخرین رویدادهای مهم',
+                                    style: theme.textTheme.titleMedium,
+                                  ),
+                                  const SizedBox(height: AppSpacing.md),
+                                  ...summary.policyTimeline.map(
+                                    (event) => Padding(
+                                      padding: const EdgeInsets.only(bottom: 12),
+                                      child: _PolicyTimelineItem(event: event),
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    AppMetricTile(
-                      title: 'موجودی قابل برداشت',
-                      value: '${_formatMoney(summary.availableBalance)} تومان',
-                      subtitle: '${_formatMoney(summary.heldBalance)} تومان نگه‌داری‌شده',
-                      accentColor: AppColors.primary,
-                      icon: Icons.account_balance_wallet_rounded,
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    AppMetricTile(
-                      title: 'تسویه‌های در جریان',
-                      value: '${summary.processingSettlementsCount} مورد',
-                      subtitle: '${summary.onHoldSettlementsCount} مورد hold',
-                      accentColor: AppColors.accent,
-                      icon: Icons.currency_exchange_rounded,
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    AppMetricTile(
-                      title: 'تیکت‌های باز',
-                      value: '${summary.openTicketsCount} مورد',
-                      subtitle: '${summary.escalatedTicketsCount} ارجاع مالی',
-                      accentColor: AppColors.secondary,
-                      icon: Icons.support_agent_rounded,
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    AppMetricTile(
-                      title: 'امتیاز سلامت',
-                      value: '${summary.healthScore}',
-                      subtitle: summary.healthStatus,
-                      accentColor: AppColors.success,
-                      icon: Icons.favorite_rounded,
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    _DashboardFocusStrip(summary: summary),
-                    const SizedBox(height: AppSpacing.lg),
-                    AppGlassCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'وضعیت policy',
-                            style: theme.textTheme.titleMedium,
-                          ),
-                          const SizedBox(height: AppSpacing.md),
-                          Text(
-                            summary.policyNote,
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                          if (summary.policyTimeline.isNotEmpty) ...[
-                            const SizedBox(height: AppSpacing.xl),
-                            Text(
-                              'آخرین رویدادهای مهم',
-                              style: theme.textTheme.titleMedium,
-                            ),
-                            const SizedBox(height: AppSpacing.md),
-                            ...summary.policyTimeline.map(
-                              (event) => Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: _PolicyTimelineItem(event: event),
-                              ),
-                            ),
-                          ],
                         ],
                       ),
                     ),
@@ -259,6 +176,255 @@ class DashboardScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _DashboardHeader extends StatelessWidget {
+  const _DashboardHeader({
+    required this.onLogout,
+  });
+
+  final Future<void> Function() onLogout;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'داشبورد فروشنده',
+                style: theme.textTheme.titleMedium,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'نمای زنده و متمرکز از وضعیت امروز فروشگاه',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+        TextButton(
+          onPressed: () async {
+            await onLogout();
+          },
+          child: const Text('خروج'),
+        ),
+      ],
+    );
+  }
+}
+
+class _HeroSummaryCard extends StatelessWidget {
+  const _HeroSummaryCard({
+    required this.summary,
+    required this.phoneNumber,
+    required this.isPreview,
+  });
+
+  final DashboardSummary summary;
+  final String phoneNumber;
+  final bool isPreview;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AppGlassCard(
+      padding: const EdgeInsets.all(22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppSectionHeading(
+            eyebrow: 'نمای کلی امروز',
+            title: 'فروشگاه ${summary.storeName}',
+            description:
+                'یک خلاصه شفاف، سریع و premium از وضعیت مالی، عملیاتی و سلامت فروشگاه.',
+          ),
+          if (isPreview) ...[
+            const SizedBox(height: AppSpacing.lg),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.secondary.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: AppColors.secondary.withValues(alpha: 0.14),
+                ),
+              ),
+              child: Text(
+                'حالت پیش‌نمایش فعال است و داده‌های این صفحه واقعی نیستند.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: AppColors.secondary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: AppSpacing.xl),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(26),
+              gradient: const LinearGradient(
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+                colors: [
+                  AppColors.primarySoft,
+                  AppColors.primaryDark,
+                ],
+              ),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x221F6A52),
+                  blurRadius: 26,
+                  offset: Offset(0, 16),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'فروشنده فعال',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: Colors.white70,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  phoneNumber,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _HeroDataChip(
+                        label: 'قابل برداشت',
+                        value: '${_formatMoney(summary.availableBalance)} تومان',
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: _HeroDataChip(
+                        label: 'امتیاز سلامت',
+                        value: '${summary.healthScore}',
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroDataChip extends StatelessWidget {
+  const _HeroDataChip({
+    required this.label,
+    required this.value,
+  });
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.10),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: Colors.white70,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MetricGrid extends StatelessWidget {
+  const _MetricGrid({
+    required this.summary,
+  });
+
+  final DashboardSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: AppSpacing.lg,
+      crossAxisSpacing: AppSpacing.lg,
+      childAspectRatio: 1.12,
+      children: [
+        AppMetricTile(
+          title: 'موجودی قابل برداشت',
+          value: '${_formatMoney(summary.availableBalance)} تومان',
+          subtitle: '${_formatMoney(summary.heldBalance)} تومان نگه‌داری‌شده',
+          accentColor: AppColors.primary,
+          icon: Icons.account_balance_wallet_rounded,
+        ),
+        AppMetricTile(
+          title: 'تسویه‌های در جریان',
+          value: '${summary.processingSettlementsCount} مورد',
+          subtitle: '${summary.onHoldSettlementsCount} مورد hold',
+          accentColor: AppColors.accent,
+          icon: Icons.currency_exchange_rounded,
+        ),
+        AppMetricTile(
+          title: 'تیکت‌های باز',
+          value: '${summary.openTicketsCount} مورد',
+          subtitle: '${summary.escalatedTicketsCount} ارجاع مالی',
+          accentColor: AppColors.secondary,
+          icon: Icons.support_agent_rounded,
+        ),
+        AppMetricTile(
+          title: 'امتیاز سلامت',
+          value: '${summary.healthScore}',
+          subtitle: summary.healthStatus,
+          accentColor: AppColors.success,
+          icon: Icons.favorite_rounded,
+        ),
+      ],
     );
   }
 }

@@ -26,6 +26,12 @@ class AppTheme {
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
       ),
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+        },
+      ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.surface.withValues(alpha: 0.92),
@@ -60,12 +66,23 @@ class AppTheme {
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
           minimumSize: const Size.fromHeight(58),
+          elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
           textStyle: const TextStyle(
             fontFamily: fontFamily,
             fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.primaryDark,
+          textStyle: const TextStyle(
+            fontFamily: fontFamily,
+            fontSize: 14,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -92,6 +109,13 @@ class AppTheme {
           height: 1.3,
           fontWeight: FontWeight.w800,
         ),
+        titleLarge: TextStyle(
+          fontFamily: fontFamily,
+          color: AppColors.textPrimary,
+          fontSize: 20,
+          height: 1.35,
+          fontWeight: FontWeight.w800,
+        ),
         titleMedium: TextStyle(
           fontFamily: fontFamily,
           color: AppColors.textPrimary,
@@ -114,6 +138,18 @@ class AppTheme {
           fontFamily: fontFamily,
           color: AppColors.textSecondary,
           fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+        labelLarge: TextStyle(
+          fontFamily: fontFamily,
+          color: AppColors.textSecondary,
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+        ),
+        labelSmall: TextStyle(
+          fontFamily: fontFamily,
+          color: AppColors.textMuted,
+          fontSize: 11,
           fontWeight: FontWeight.w600,
         ),
       ),

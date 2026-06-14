@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
@@ -27,6 +28,20 @@ class AppShellBackground extends StatelessWidget {
       ),
       child: Stack(
         children: [
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: const Alignment(0.0, -0.85),
+                  radius: 1.25,
+                  colors: [
+                    Colors.white.withValues(alpha: 0.82),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
           Positioned(
             top: -90,
             right: -30,
@@ -52,6 +67,24 @@ class AppShellBackground extends StatelessWidget {
                 size: 170,
                 color: AppColors.accent.withValues(alpha: 0.12),
               ),
+            ),
+          ),
+          Positioned(
+            top: 100,
+            right: 120,
+            child: _MeshBlur(
+              width: 180,
+              height: 180,
+              color: AppColors.primary.withValues(alpha: 0.08),
+            ),
+          ),
+          Positioned(
+            bottom: 120,
+            left: 20,
+            child: _MeshBlur(
+              width: 220,
+              height: 150,
+              color: AppColors.secondary.withValues(alpha: 0.07),
             ),
           ),
           child,
@@ -85,6 +118,40 @@ class _GlowOrb extends StatelessWidget {
             spreadRadius: 10,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _MeshBlur extends StatelessWidget {
+  const _MeshBlur({
+    required this.width,
+    required this.height,
+    required this.color,
+  });
+
+  final double width;
+  final double height;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return ImageFiltered(
+      imageFilter: ImageFilter.blur(sigmaX: 26, sigmaY: 26),
+      child: Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(999),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              color,
+              color.withValues(alpha: color.a * 0.25),
+            ],
+          ),
+        ),
       ),
     );
   }
