@@ -23,6 +23,7 @@ class VendorProductDetail {
     required this.productTypeName,
     required this.storeName,
     required this.gallery,
+    required this.compositions,
   });
 
   final int id;
@@ -48,6 +49,7 @@ class VendorProductDetail {
   final String productTypeName;
   final String storeName;
   final List<VendorProductGalleryItem> gallery;
+  final List<VendorProductComposition> compositions;
 
   factory VendorProductDetail.fromJson(Map<String, dynamic> json) {
     return VendorProductDetail(
@@ -75,6 +77,7 @@ class VendorProductDetail {
       productTypeName: _readNestedText(json['productType'], const ['name']),
       storeName: _readNestedText(json['store'], const ['name']),
       gallery: _readGallery(json),
+      compositions: _readCompositions(json['composition']),
     );
   }
 }
@@ -87,6 +90,22 @@ class VendorProductGalleryItem {
 
   final String url;
   final String alt;
+}
+
+class VendorProductComposition {
+  const VendorProductComposition({
+    required this.elementId,
+    required this.elementName,
+    required this.elementType,
+    required this.unit,
+    required this.quantity,
+  });
+
+  final int elementId;
+  final String elementName;
+  final String elementType;
+  final String unit;
+  final num quantity;
 }
 
 int _asInt(Object? value) {
@@ -154,4 +173,22 @@ List<VendorProductGalleryItem> _readGallery(Map<String, dynamic> json) {
         .toList();
   }
   return const [];
+}
+
+List<VendorProductComposition> _readCompositions(Object? value) {
+  if (value is! List) return const [];
+
+  return value
+      .whereType<Map<String, dynamic>>()
+      .map(
+        (item) => VendorProductComposition(
+          elementId: _asInt(item['elementId'] ?? (item['element'] as Map<String, dynamic>?)?['id']),
+          elementName: _readNestedText(item['element'], const ['name']),
+          elementType: _readText(item, const ['elementType']),
+          unit: _readNestedText(item['element'], const ['unit']),
+          quantity: _asNum(item['quantity']),
+        ),
+      )
+      .where((item) => item.elementId > 0)
+      .toList();
 }

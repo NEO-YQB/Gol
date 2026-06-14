@@ -71,6 +71,37 @@ class ProductsApiService {
     }
   }
 
+  Future<List<ProductElementOption>> getProductElements() async {
+    try {
+      final response = await http
+          .get(
+            Uri.parse('${AppConfig.apiBaseUrl}/products/elements'),
+            headers: const {
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 12));
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw AuthApiException(
+          _extractErrorMessage(response.body, 'بارگذاری المان‌ها ناموفق بود.'),
+          statusCode: response.statusCode,
+        );
+      }
+
+      final payload = jsonDecode(response.body);
+      final rawItems = payload is List ? payload : const [];
+      return rawItems
+          .whereType<Map<String, dynamic>>()
+          .map(ProductElementOption.fromJson)
+          .toList();
+    } on TimeoutException {
+      throw const AuthApiException('پاسخی از سرور دریافت نشد. دوباره تلاش کن.');
+    } on SocketException {
+      throw const AuthApiException('اتصال به سرور برقرار نشد.');
+    }
+  }
+
   Future<String> uploadProductImage({
     required String accessToken,
     required File file,
@@ -298,10 +329,12 @@ class ProductTypeOption {
   const ProductTypeOption({
     required this.id,
     required this.name,
+    required this.allowedElementIds,
   });
 
   final int id;
   final String name;
+  final List<int> allowedElementIds;
 
   factory ProductTypeOption.fromJson(Map<String, dynamic> json) {
     return ProductTypeOption(
@@ -309,6 +342,32 @@ class ProductTypeOption {
       name: json['name']?.toString().trim().isNotEmpty == true
           ? json['name'].toString().trim()
           : 'نوع محصول',
+      allowedElementIds: _readAllowedElementIds(json['allowedElements']),
+    );
+  }
+}
+
+class ProductElementOption {
+  const ProductElementOption({
+    required this.id,
+    required this.name,
+    required this.type,
+    required this.unit,
+  });
+
+  final int id;
+  final String name;
+  final String type;
+  final String unit;
+
+  factory ProductElementOption.fromJson(Map<String, dynamic> json) {
+    return ProductElementOption(
+      id: _asInt(json['id']),
+      name: json['name']?.toString().trim().isNotEmpty == true
+          ? json['name'].toString().trim()
+          : 'المان',
+      type: json['type']?.toString().trim() ?? '',
+      unit: json['unit']?.toString().trim() ?? '',
     );
   }
 }
@@ -345,4 +404,21 @@ int _asInt(Object? value) {
   if (value is int) return value;
   if (value is num) return value.toInt();
   return int.tryParse('$value') ?? 0;
+}
+
+List<int> _readAllowedElementIds(Object? value) {
+  if (value is! List) return const [];
+
+  return value
+      .map((item) {
+        if (item is num) return item.toInt();
+        if (item is String) return int.tryParse(item.trim());
+        if (item is Map<String, dynamic>) {
+          return _asInt(item['id']);
+        }
+        return null;
+      })
+      .whereType<int>()
+      .where((item) => item > 0)
+      .toList();
 }

@@ -10,7 +10,6 @@ import '../../../shared/widgets/app_glass_card.dart';
 import '../../../shared/widgets/app_shell_background.dart';
 import '../../auth/data/auth_api_service.dart';
 import '../data/products_api_service.dart';
-import '../domain/vendor_product_detail.dart';
 import 'product_workspace_screen.dart';
 
 class CreateProductScreen extends StatefulWidget {
@@ -46,11 +45,13 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   String? _errorMessage;
   List<ProductCategoryOption> _categories = const [];
   List<ProductTypeOption> _productTypes = const [];
+  List<ProductElementOption> _elements = const [];
   int? _selectedCategoryId;
   int? _selectedProductTypeId;
   String _mainImageUrl = '';
   File? _pendingMainImageFile;
   List<_EditableGalleryItem> _gallery = const [];
+  List<_EditableCompositionItem> _compositions = const [];
 
   @override
   void initState() {
@@ -86,11 +87,13 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     try {
       final categories = await _apiService.getCategories();
       final types = await _apiService.getProductTypes();
+      final elements = await _apiService.getProductElements();
 
       if (!mounted) return;
       setState(() {
         _categories = categories;
         _productTypes = types;
+        _elements = elements;
         _selectedCategoryId =
             categories.isNotEmpty ? categories.first.id : null;
         _selectedProductTypeId = types.isNotEmpty ? types.first.id : null;
@@ -254,6 +257,16 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                 },
               )
               .toList(),
+          'compositions': _compositions
+              .where((item) => item.elementId != null)
+              .map(
+                (item) => {
+                  'elementId': item.elementId,
+                  'elementType': item.elementType,
+                  'quantity': item.quantity,
+                },
+              )
+              .toList(),
         },
       );
 
@@ -374,6 +387,33 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                               onChanged: (value) {
                                 setState(() {
                                   _selectedProductTypeId = value;
+                                  _compositions = const [];
+                                });
+                              },
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            _CompositionEditorCard(
+                              elements: _allowedElementsForSelectedType(),
+                              items: _compositions,
+                              onAdd: () {
+                                setState(() {
+                                  _compositions = [
+                                    ..._compositions,
+                                    _EditableCompositionItem.empty(),
+                                  ];
+                                });
+                              },
+                              onRemove: (index) {
+                                setState(() {
+                                  final next = [..._compositions];
+                                  next.removeAt(index);
+                                  _compositions = next;
+                                });
+                              },
+                              onChanged: (index, item) {
+                                setState(() {
+                                  _compositions = [..._compositions];
+                                  _compositions[index] = item;
                                 });
                               },
                             ),
@@ -481,6 +521,14 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
         ),
       ),
     );
+  }
+
+  List<ProductElementOption> _allowedElementsForSelectedType() {
+    final selectedType = _productTypes.where((item) => item.id == _selectedProductTypeId);
+    if (selectedType.isEmpty) return const [];
+    final allowedIds = selectedType.first.allowedElementIds;
+    if (allowedIds.isEmpty) return _elements;
+    return _elements.where((item) => allowedIds.contains(item.id)).toList();
   }
 }
 
@@ -723,6 +771,201 @@ class _EditableGalleryItem {
     return _EditableGalleryItem(
       url: url ?? this.url,
       alt: alt ?? this.alt,
+    );
+  }
+}
+
+class _EditableCompositionItem {
+  const _EditableCompositionItem({
+    required this.elementId,
+    required this.elementType,
+    required this.quantity,
+  });
+
+  final int? elementId;
+  final String elementType;
+  final num quantity;
+
+  factory _EditableCompositionItem.empty() {
+    return const _EditableCompositionItem(
+      elementId: null,
+      elementType: '',
+      quantity: 1,
+    );
+  }
+
+  _EditableCompositionItem copyWith({
+    int? elementId,
+    String? elementType,
+    num? quantity,
+    bool clearElementId = false,
+  }) {
+    return _EditableCompositionItem(
+      elementId: clearElementId ? null : (elementId ?? this.elementId),
+      elementType: elementType ?? this.elementType,
+      quantity: quantity ?? this.quantity,
+    );
+  }
+}
+
+class _CompositionEditorCard extends StatelessWidget {
+  const _CompositionEditorCard({
+    required this.elements,
+    required this.items,
+    required this.onAdd,
+    required this.onRemove,
+    required this.onChanged,
+  });
+
+  final List<ProductElementOption> elements;
+  final List<_EditableCompositionItem> items;
+  final VoidCallback onAdd;
+  final void Function(int index) onRemove;
+  final void Function(int index, _EditableCompositionItem item) onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceSoft.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Composition محصول',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ),
+              TextButton.icon(
+                onPressed: onAdd,
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('افزودن'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'المان را انتخاب کن و مقدارش را مشخص کن.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+          ),
+          if (items.isEmpty) ...[
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              'هنوز composition اضافه نشده است.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+            ),
+          ] else ...[
+            const SizedBox(height: AppSpacing.md),
+            ...List.generate(
+              items.length,
+              (index) => Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                child: _CompositionRow(
+                  elements: elements,
+                  item: items[index],
+                  onRemove: () => onRemove(index),
+                  onChanged: (item) => onChanged(index, item),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _CompositionRow extends StatelessWidget {
+  const _CompositionRow({
+    required this.elements,
+    required this.item,
+    required this.onRemove,
+    required this.onChanged,
+  });
+
+  final List<ProductElementOption> elements;
+  final _EditableCompositionItem item;
+  final VoidCallback onRemove;
+  final ValueChanged<_EditableCompositionItem> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final quantityController =
+        TextEditingController(text: item.quantity.toString());
+
+    return Column(
+      children: [
+        DropdownButtonFormField<int>(
+          value: item.elementId,
+          decoration: const InputDecoration(
+            labelText: 'المان',
+          ),
+          items: elements
+              .map(
+                (element) => DropdownMenuItem<int>(
+                  value: element.id,
+                  child: Text(
+                    element.unit.isEmpty
+                        ? element.name
+                        : '${element.name} (${element.unit})',
+                  ),
+                ),
+              )
+              .toList(),
+          onChanged: (value) {
+            ProductElementOption? element;
+            for (final candidate in elements) {
+              if (candidate.id == value) {
+                element = candidate;
+                break;
+              }
+            }
+            onChanged(
+              item.copyWith(
+                elementId: value,
+                elementType: element?.type ?? '',
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: quantityController,
+                keyboardType: TextInputType.number,
+                onChanged: (value) {
+                  onChanged(
+                    item.copyWith(
+                      quantity: num.tryParse(value.trim()) ?? item.quantity,
+                    ),
+                  );
+                },
+                decoration: const InputDecoration(
+                  labelText: 'مقدار',
+                ),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            TextButton.icon(
+              onPressed: onRemove,
+              icon: const Icon(Icons.delete_outline_rounded),
+              label: const Text('حذف'),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
