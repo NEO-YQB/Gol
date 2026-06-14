@@ -44,6 +44,25 @@ export type ProductSummary = {
   mainImageAlt?: string | null
   price: number
   discountPrice?: number | null
+  effectivePrice?: number
+  effectiveDiscountPrice?: number | null
+  pricing?: {
+    basePrice: number
+    finalPrice: number
+    discountAmount: number
+    hasDiscount: boolean
+    legacyDiscountApplied?: boolean
+    appliedRules?: Array<{
+      sourceType: 'vendor' | 'promotion'
+      sourceId: number
+      title: string
+      valueType: 'PERCENTAGE' | 'FIXED'
+      value: number
+      priority: number
+      allowCouponStacking: boolean
+      discountAmount: number
+    }>
+  }
   description?: string | null
   shortDescription?: string | null
   metaTitle?: string | null
@@ -1295,12 +1314,15 @@ export function buildProductJsonLd(product: StorefrontProductDetail) {
     ...(Array.isArray(product.gallery) ? product.gallery.map((item) => resolveAssetUrl(item.url)) : []),
   ].filter(Boolean)
 
+  const resolvedBasePrice = typeof product.effectivePrice === 'number' ? product.effectivePrice : product.price
+  const resolvedDiscountPrice =
+    typeof product.effectiveDiscountPrice === 'number' ? product.effectiveDiscountPrice : product.discountPrice
   const hasDiscount =
-    typeof product.discountPrice === 'number' &&
-    product.discountPrice > 0 &&
-    product.discountPrice < product.price
+    typeof resolvedDiscountPrice === 'number' &&
+    resolvedDiscountPrice > 0 &&
+    resolvedDiscountPrice < resolvedBasePrice
 
-  const price = hasDiscount ? Number(product.discountPrice) : product.price
+  const price = hasDiscount ? Number(resolvedDiscountPrice) : resolvedBasePrice
   const ratingValue = Number(product.store?.customerRatingAverage ?? 0)
   const reviewCount = Number(product.store?.customerRatingCount ?? 0)
 

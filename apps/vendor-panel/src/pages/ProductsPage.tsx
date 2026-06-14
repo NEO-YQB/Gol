@@ -146,11 +146,11 @@ function getProductQuantity(record: ProductRecord) {
 }
 
 function getProductPrice(record: ProductRecord) {
-  return Number(readText(record, ['price'], '0'))
+  return Number(readText(record, ['effectivePrice', 'price'], '0'))
 }
 
 function getDiscountPrice(record: ProductRecord) {
-  const raw = readText(record, ['discountPrice'], '')
+  const raw = readText(record, ['effectiveDiscountPrice', 'discountPrice'], '')
   if (!raw || raw === '—') return null
   const numeric = Number(raw)
   return Number.isNaN(numeric) ? null : numeric
@@ -695,7 +695,7 @@ export function ProductsPage({ session }: { session: AuthSession }) {
         label: 'دارای تخفیف',
         value: formatFaNumber(products.filter((item) => getDiscountPrice(item) !== null).length),
         delta: 'آماده promotion',
-        detail: 'محصول‌هایی که discountPrice دارند',
+        detail: 'محصول‌هایی که تخفیف مؤثر دارند',
         tone: 'success' as const,
       },
     ],

@@ -18,12 +18,14 @@ import slugify from 'slugify';
 import { Prisma, Product, ProductPublicationStatus, Store } from '@prisma/client';
 import { AbilityFactory } from '../auth/ability.factory';
 import { subject } from '@casl/ability';
+import { PricingService } from '../discount/pricing.service';
 
 @Injectable()
 export class ProductService {
   constructor(
     private prisma: PrismaService,
     private abilityFactory: AbilityFactory,
+    private pricingService: PricingService,
   ) {}
 
   async create(dto: CreateProductDto, user: { id: number; roles: string[] }) {
@@ -377,7 +379,8 @@ export class ProductService {
         include,
       });
 
-      const productsWithDistance = products.map((product) => ({
+      const pricedProducts = await this.pricingService.projectProductsPricing(products);
+      const productsWithDistance = pricedProducts.map((product) => ({
         ...product,
         aerialDistanceKm: this.calculateDistance(userLat, userLng, product.store?.lat, product.store?.lng),
       }));
@@ -436,8 +439,10 @@ export class ProductService {
       }),
     ]);
 
+    const pricedProducts = await this.pricingService.projectProductsPricing(products);
+
     return {
-      data: products,
+      data: pricedProducts,
       meta: {
         total,
         page,
@@ -461,7 +466,10 @@ export class ProductService {
       },
     });
     if (!product) throw new NotFoundException(`محصول یافت نشد`);
-    return product;
+    const [pricedProduct] = await this.pricingService.projectProductsPricing([
+      product,
+    ]);
+    return pricedProduct;
   }
 
   private calculateDistance(

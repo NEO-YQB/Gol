@@ -96,6 +96,93 @@ type CouponWithScopes = Coupon & {
 export class PricingService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async projectProductsPricing<
+    T extends {
+      id: number;
+      price: number;
+      discountPrice: number | null;
+      categoryId: number;
+      storeId?: number;
+      store: {
+        id: number;
+        name: string;
+        slug: string;
+        ownerId?: number;
+      };
+    },
+  >(products: T[]) {
+    if (products.length === 0) {
+      return [];
+    }
+
+    const productIds = products.map((item) => item.id);
+    const storeIds = products.map((item) => item.store.id);
+    const categoryIds = products.map((item) => item.categoryId);
+
+    const [vendorDiscounts, promotions] = await Promise.all([
+      this.findActiveVendorDiscounts(productIds),
+      this.findActivePlatformPromotions(productIds, storeIds, categoryIds),
+    ]);
+
+    return products.map((product) => {
+      const priceableProduct: PriceableProduct = {
+        id: product.id,
+        name: '',
+        slug: '',
+        mainImage: '',
+        quantity: 0,
+        price: Number(product.price),
+        discountPrice: product.discountPrice === null ? null : Number(product.discountPrice),
+        categoryId: product.categoryId,
+        store: {
+          id: product.store.id,
+          name: product.store.name,
+          slug: product.store.slug,
+          ownerId: product.store.ownerId ?? 0,
+        },
+      };
+
+      const resolved = this.resolveLine({
+        item: {
+          productId: product.id,
+          quantity: 1,
+          product: priceableProduct,
+        },
+        vendorDiscount:
+          vendorDiscounts.find((discount) => discount.productId === product.id) ?? null,
+        promotions: promotions.filter((promotion) =>
+          this.promotionMatchesProduct(promotion, priceableProduct),
+        ),
+      });
+
+      return {
+        ...product,
+        pricing: {
+          basePrice: resolved.pricing.baseUnitPrice,
+          finalPrice: resolved.pricing.finalUnitPriceBeforeCoupon,
+          discountAmount: resolved.pricing.lineDiscountAmount,
+          hasDiscount: resolved.pricing.finalUnitPriceBeforeCoupon < resolved.pricing.baseUnitPrice,
+          appliedRules: resolved.pricing.appliedRules.map((rule) => ({
+            sourceType: rule.sourceType,
+            sourceId: rule.sourceId,
+            title: rule.title,
+            valueType: rule.valueType,
+            value: rule.value,
+            priority: rule.priority,
+            allowCouponStacking: rule.allowCouponStacking,
+            discountAmount: rule.discountAmount,
+          })),
+          legacyDiscountApplied: resolved.pricing.legacyDiscountApplied,
+        },
+        effectivePrice: resolved.pricing.baseUnitPrice,
+        effectiveDiscountPrice:
+          resolved.pricing.finalUnitPriceBeforeCoupon < resolved.pricing.baseUnitPrice
+            ? resolved.pricing.finalUnitPriceBeforeCoupon
+            : null,
+      };
+    });
+  }
+
   async resolveCartPricing(input: {
     userId: number;
     items: RequestedItem[];

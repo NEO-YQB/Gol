@@ -38,7 +38,10 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
   const [activeImageUrl, setActiveImageUrl] = useState(allImages[0]?.url || product.mainImage)
   const activeImage = allImages.find((item) => item.url === activeImageUrl) || allImages[0]
   const [isAdding, setIsAdding] = useState(false)
-  const hasDiscount = typeof product.discountPrice === 'number' && product.discountPrice > 0 && product.discountPrice < product.price
+  const basePrice = typeof product.effectivePrice === 'number' ? product.effectivePrice : product.price
+  const discountPrice =
+    typeof product.effectiveDiscountPrice === 'number' ? product.effectiveDiscountPrice : product.discountPrice
+  const hasDiscount = typeof discountPrice === 'number' && discountPrice > 0 && discountPrice < basePrice
   const ratingAverage = Number(product.store?.customerRatingAverage ?? 0)
   const ratingCount = Number(product.store?.customerRatingCount ?? 0)
 
@@ -68,8 +71,8 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
           </div>
 
           <div className="rounded-[30px] border border-white/10 bg-black/10 px-5 py-5 lg:min-w-[320px]">
-            {hasDiscount ? <div className="text-sm text-white/62 line-through">{formatMoney(product.price)}</div> : null}
-            <strong className="mt-2 block text-3xl font-black">{formatMoney(hasDiscount ? Number(product.discountPrice) : product.price)}</strong>
+            {hasDiscount ? <div className="text-sm text-white/62 line-through">{formatMoney(basePrice)}</div> : null}
+            <strong className="mt-2 block text-3xl font-black">{formatMoney(hasDiscount ? Number(discountPrice) : basePrice)}</strong>
             <p className="mt-3 text-sm text-white/82">{product.isPurchasable ? 'این محصول آماده ثبت سفارش است.' : 'این محصول فعلاً برای خرید مستقیم فعال نیست.'}</p>
             <div className="mt-5 flex flex-wrap gap-3">
               <button

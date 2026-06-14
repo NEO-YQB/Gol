@@ -52,8 +52,11 @@ export function StorefrontPill({ text }: { text: string }) {
 export function ProductCard({ product, className = '' }: { product: ProductSummary; className?: string }) {
   const router = useRouter()
   const [isAdding, setIsAdding] = useState(false)
-  const price = formatPrice(product.price)
-  const effectiveDiscountPrice = getEffectiveDiscountPrice(product.price, product.discountPrice)
+  const basePrice = typeof product.effectivePrice === 'number' ? product.effectivePrice : product.price
+  const rawDiscountPrice =
+    typeof product.effectiveDiscountPrice === 'number' ? product.effectiveDiscountPrice : product.discountPrice
+  const price = formatPrice(basePrice)
+  const effectiveDiscountPrice = getEffectiveDiscountPrice(basePrice, rawDiscountPrice)
   const discountPrice = formatPrice(effectiveDiscountPrice)
   const hasDiscount = effectiveDiscountPrice !== null
   const distanceLabel = formatDistance(product.aerialDistanceKm)
