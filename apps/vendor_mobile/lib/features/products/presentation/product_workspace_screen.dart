@@ -9,6 +9,8 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_glass_card.dart';
 import '../../../shared/widgets/app_shell_background.dart';
 import '../../auth/data/auth_api_service.dart';
+import '../../discounts/data/vendor_discounts_api_service.dart';
+import '../../discounts/domain/vendor_discount.dart';
 import '../data/products_api_service.dart';
 import '../domain/vendor_product_detail.dart';
 
@@ -28,6 +30,7 @@ class ProductWorkspaceScreen extends StatefulWidget {
 
 class _ProductWorkspaceScreenState extends State<ProductWorkspaceScreen> {
   final _apiService = const ProductsApiService();
+  final _discountsApiService = const VendorDiscountsApiService();
   final _imagePicker = ImagePicker();
 
   late final TextEditingController _nameController;
@@ -51,6 +54,7 @@ class _ProductWorkspaceScreenState extends State<ProductWorkspaceScreen> {
   List<ProductTypeOption> _productTypes = const [];
   List<ProductElementOption> _elements = const [];
   List<_EditableCompositionItem> _compositions = const [];
+  List<VendorDiscount> _discounts = const [];
 
   @override
   void initState() {
@@ -92,12 +96,17 @@ class _ProductWorkspaceScreenState extends State<ProductWorkspaceScreen> {
       );
       final types = await typesFuture;
       final elements = await elementsFuture;
+      final discounts = await _discountsApiService.getDiscounts(
+        accessToken: widget.accessToken,
+        storeId: product.storeId,
+      );
 
       if (!mounted) return;
       setState(() {
         _product = product;
         _productTypes = types;
         _elements = elements;
+        _discounts = discounts.items.where((item) => item.productId == product.id).toList();
         _fillForm(product);
       });
     } on AuthApiException catch (error) {
@@ -111,6 +120,32 @@ class _ProductWorkspaceScreenState extends State<ProductWorkspaceScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  String _displayPriceLabel(VendorProductDetail product) {
+    final editedBasePrice = _parseNum(_priceController.text) ?? product.price;
+    final editedLegacyDiscount = _parseNum(_discountPriceController.text);
+    VendorDiscount? activeDiscount;
+    final now = DateTime.now();
+    for (final item in _discounts) {
+      if (item.productId != product.id || !item.isActive) continue;
+      final startAt = DateTime.tryParse(item.startAt)?.toLocal();
+      final endAt = DateTime.tryParse(item.endAt)?.toLocal();
+      if (startAt != null && now.isBefore(startAt)) continue;
+      if (endAt != null && now.isAfter(endAt)) continue;
+      activeDiscount = item;
+      break;
+    }
+
+    final resolved = activeDiscount != null
+        ? resolveDiscountedPrice(
+            basePrice: editedBasePrice,
+            discount: activeDiscount,
+            now: now,
+          )
+        : editedLegacyDiscount ?? editedBasePrice;
+
+    return _formatPrice(resolved);
   }
 
   void _fillForm(VendorProductDetail product) {
@@ -457,11 +492,7 @@ class _ProductWorkspaceScreenState extends State<ProductWorkspaceScreen> {
                                 name: _nameController.text.isEmpty
                                     ? product.name
                                     : _nameController.text,
-                                priceLabel: _formatPrice(
-                                  _parseNum(_discountPriceController.text) ??
-                                      _parseNum(_priceController.text) ??
-                                      product.price,
-                                ),
+                                priceLabel: _displayPriceLabel(product),
                                 status: _mapStatus(product.publicationStatus),
                                 imageUrl: _mainImageUrl,
                                 pendingImageFile: _pendingMainImageFile,

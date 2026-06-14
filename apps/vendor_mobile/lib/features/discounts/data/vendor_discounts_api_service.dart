@@ -239,3 +239,30 @@ class VendorDiscountsApiService {
     return fallback;
   }
 }
+
+num resolveDiscountedPrice({
+  required num basePrice,
+  required VendorDiscount discount,
+  required DateTime now,
+}) {
+  if (!discount.isActive) return basePrice;
+
+  final startAt = _parseDate(discount.startAt);
+  final endAt = _parseDate(discount.endAt);
+  if (startAt != null && now.isBefore(startAt)) return basePrice;
+  if (endAt != null && now.isAfter(endAt)) return basePrice;
+
+  if (discount.valueType == 'PERCENTAGE') {
+    final next = basePrice - ((basePrice * discount.value) / 100);
+    return next < 0 ? 0 : next;
+  }
+
+  final next = basePrice - discount.value;
+  return next < 0 ? 0 : next;
+}
+
+DateTime? _parseDate(String value) {
+  final trimmed = value.trim();
+  if (trimmed.isEmpty) return null;
+  return DateTime.tryParse(trimmed)?.toLocal();
+}

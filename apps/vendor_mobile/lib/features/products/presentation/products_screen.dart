@@ -6,6 +6,8 @@ import '../../../shared/widgets/app_glass_card.dart';
 import '../../../shared/widgets/app_section_heading.dart';
 import '../../../shared/widgets/app_shell_background.dart';
 import '../../auth/data/auth_api_service.dart';
+import '../../discounts/data/vendor_discounts_api_service.dart';
+import '../../discounts/domain/vendor_discount.dart';
 import '../data/products_api_service.dart';
 import '../domain/vendor_product_summary.dart';
 import 'create_product_screen.dart';
@@ -27,9 +29,11 @@ class ProductsScreen extends StatefulWidget {
 
 class _ProductsScreenState extends State<ProductsScreen> {
   final _apiService = const ProductsApiService();
+  final _discountsApiService = const VendorDiscountsApiService();
   final _searchController = TextEditingController();
 
   VendorProductListResponse? _response;
+  List<VendorDiscount> _discounts = const [];
   bool _isLoading = true;
   String? _errorMessage;
   String _statusFilter = 'ALL';
@@ -61,16 +65,23 @@ class _ProductsScreenState extends State<ProductsScreen> {
     });
 
     try {
-      final response = await _apiService.getProducts(
+      final productsFuture = _apiService.getProducts(
         accessToken: widget.accessToken,
         storeId: widget.storeId,
         search: _searchController.text,
         publicationStatus: _statusFilter == 'ALL' ? null : _statusFilter,
       );
+      final discountsFuture = _discountsApiService.getDiscounts(
+        accessToken: widget.accessToken,
+        storeId: widget.storeId,
+      );
+      final response = await productsFuture;
+      final discounts = await discountsFuture;
 
       if (!mounted) return;
       setState(() {
         _response = response;
+        _discounts = discounts.items;
       });
     } on AuthApiException catch (error) {
       if (!mounted) return;
@@ -190,6 +201,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       padding: const EdgeInsets.only(bottom: AppSpacing.md),
                       child: _ProductCard(
                         product: product,
+                        activeDiscount: _findActiveDiscount(product.id),
                         onOpen: () async {
                           await Navigator.of(context).push(
                             MaterialPageRoute(
@@ -212,21 +224,46 @@ class _ProductsScreenState extends State<ProductsScreen> {
       ),
     );
   }
+
+  VendorDiscount? _findActiveDiscount(int productId) {
+    final now = DateTime.now();
+    for (final item in _discounts) {
+      if (item.productId != productId || !item.isActive) continue;
+      final startAt = DateTime.tryParse(item.startAt)?.toLocal();
+      final endAt = DateTime.tryParse(item.endAt)?.toLocal();
+      if (startAt != null && now.isBefore(startAt)) continue;
+      if (endAt != null && now.isAfter(endAt)) continue;
+      return item;
+    }
+    return null;
+  }
 }
 
 class _ProductCard extends StatelessWidget {
   const _ProductCard({
     required this.product,
+    required this.activeDiscount,
     required this.onOpen,
   });
 
   final VendorProductSummary product;
+  final VendorDiscount? activeDiscount;
   final VoidCallback onOpen;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final status = _mapStatus(product.publicationStatus);
+    final legacyPrice = product.discountPrice;
+    final discountedPrice = activeDiscount != null
+        ? resolveDiscountedPrice(
+            basePrice: product.price,
+            discount: activeDiscount!,
+            now: DateTime.now(),
+          )
+        : legacyPrice;
+    final hasDiscount =
+        discountedPrice != null && discountedPrice < product.price;
 
     return AppGlassCard(
       padding: const EdgeInsets.all(14),
@@ -247,13 +284,30 @@ class _ProductCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  _formatPrice(product.discountPrice ?? product.price),
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w800,
+                if (hasDiscount) ...[
+                  Text(
+                    _formatPrice(discountedPrice!),
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _formatPrice(product.price),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textSecondary,
+                      decoration: TextDecoration.lineThrough,
+                    ),
+                  ),
+                ] else
+                  Text(
+                    _formatPrice(product.price),
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 const SizedBox(height: 10),
                 Row(
                   children: [
