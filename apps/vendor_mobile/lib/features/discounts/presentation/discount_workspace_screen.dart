@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -271,18 +272,35 @@ class _DiscountWorkspaceScreenState extends State<DiscountWorkspaceScreen> {
             ? firstDateTime
             : now;
 
-    final date = await showDatePicker(
+    final initialJalali = Jalali.fromDateTime(safeInitial);
+    final firstJalali = Jalali.fromDateTime(firstDateTime);
+    final todayJalali = Jalali.fromDateTime(now);
+    final lastJalali = Jalali.fromDateTime(DateTime(now.year + 3, 12, 31));
+
+    final date = await showPersianDatePicker(
       context: context,
-      initialDate: safeInitial,
-      firstDate: DateTime(now.year, now.month, now.day),
-      lastDate: DateTime(now.year + 3),
+      initialDate: initialJalali,
+      firstDate: firstJalali,
+      lastDate: lastJalali,
+      currentDate: todayJalali,
       helpText: 'انتخاب تاریخ',
+      confirmText: 'تایید',
+      cancelText: 'انصراف',
+      locale: const Locale('fa', 'IR'),
+      textDirection: TextDirection.rtl,
     );
     if (date == null || !mounted) return null;
 
-    final earliestTime = date.year == firstDateTime.year &&
-            date.month == firstDateTime.month &&
-            date.day == firstDateTime.day
+    final gregorian = date.toGregorian();
+    final pickedDate = DateTime(
+      gregorian.year,
+      gregorian.month,
+      gregorian.day,
+    );
+
+    final earliestTime = pickedDate.year == firstDateTime.year &&
+            pickedDate.month == firstDateTime.month &&
+            pickedDate.day == firstDateTime.day
         ? TimeOfDay.fromDateTime(firstDateTime.add(const Duration(minutes: 1)))
         : const TimeOfDay(hour: 0, minute: 0);
 
@@ -296,9 +314,9 @@ class _DiscountWorkspaceScreenState extends State<DiscountWorkspaceScreen> {
     if (time == null) return null;
 
     final picked = DateTime(
-      date.year,
-      date.month,
-      date.day,
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
       time.hour,
       time.minute,
     );
@@ -561,9 +579,10 @@ DateTime? _parseDateTime(String value) {
 
 String _formatDateTimeLabel(DateTime? value) {
   if (value == null) return '';
-  final month = value.month.toString().padLeft(2, '0');
-  final day = value.day.toString().padLeft(2, '0');
+  final jalali = Jalali.fromDateTime(value);
+  final month = jalali.month.toString().padLeft(2, '0');
+  final day = jalali.day.toString().padLeft(2, '0');
   final hour = value.hour.toString().padLeft(2, '0');
   final minute = value.minute.toString().padLeft(2, '0');
-  return '${value.year}/$month/$day - $hour:$minute';
+  return '${jalali.year}/$month/$day - $hour:$minute';
 }
