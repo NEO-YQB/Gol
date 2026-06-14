@@ -8,6 +8,7 @@ import '../../../shared/widgets/app_shell_background.dart';
 import '../../auth/data/auth_api_service.dart';
 import '../data/products_api_service.dart';
 import '../domain/vendor_product_summary.dart';
+import 'create_product_screen.dart';
 import 'product_workspace_screen.dart';
 
 class ProductsScreen extends StatefulWidget {
@@ -113,6 +114,26 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: () async {
+                            await Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => CreateProductScreen(
+                                  accessToken: widget.accessToken,
+                                  storeId: widget.storeId,
+                                ),
+                              ),
+                            );
+                            if (!mounted) return;
+                            _loadProducts();
+                          },
+                          icon: const Icon(Icons.add_rounded),
+                          label: const Text('افزودن محصول'),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
                       TextField(
                         controller: _searchController,
                         textInputAction: TextInputAction.search,

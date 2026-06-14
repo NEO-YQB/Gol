@@ -12,6 +12,65 @@ import '../domain/vendor_product_summary.dart';
 class ProductsApiService {
   const ProductsApiService();
 
+  Future<List<ProductCategoryOption>> getCategories() async {
+    try {
+      final response = await http
+          .get(
+            Uri.parse('${AppConfig.apiBaseUrl}/categories'),
+            headers: const {
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 12));
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw AuthApiException(
+          _extractErrorMessage(response.body, 'بارگذاری دسته‌بندی‌ها ناموفق بود.'),
+          statusCode: response.statusCode,
+        );
+      }
+
+      final payload = jsonDecode(response.body);
+      final rawItems = payload is List ? payload : const [];
+      return _flattenCategories(rawItems);
+    } on TimeoutException {
+      throw const AuthApiException('پاسخی از سرور دریافت نشد. دوباره تلاش کن.');
+    } on SocketException {
+      throw const AuthApiException('اتصال به سرور برقرار نشد.');
+    }
+  }
+
+  Future<List<ProductTypeOption>> getProductTypes() async {
+    try {
+      final response = await http
+          .get(
+            Uri.parse('${AppConfig.apiBaseUrl}/product-types'),
+            headers: const {
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 12));
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw AuthApiException(
+          _extractErrorMessage(response.body, 'بارگذاری نوع محصول ناموفق بود.'),
+          statusCode: response.statusCode,
+        );
+      }
+
+      final payload = jsonDecode(response.body);
+      final rawItems = payload is List ? payload : const [];
+      return rawItems
+          .whereType<Map<String, dynamic>>()
+          .map(ProductTypeOption.fromJson)
+          .toList();
+    } on TimeoutException {
+      throw const AuthApiException('پاسخی از سرور دریافت نشد. دوباره تلاش کن.');
+    } on SocketException {
+      throw const AuthApiException('اتصال به سرور برقرار نشد.');
+    }
+  }
+
   Future<String> uploadProductImage({
     required String accessToken,
     required File file,
@@ -171,6 +230,38 @@ class ProductsApiService {
     }
   }
 
+  Future<VendorProductDetail> createProduct({
+    required String accessToken,
+    required Map<String, dynamic> input,
+  }) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('${AppConfig.apiBaseUrl}/products'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $accessToken',
+            },
+            body: jsonEncode(input),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw AuthApiException(
+          _extractErrorMessage(response.body, 'ساخت محصول ناموفق بود.'),
+          statusCode: response.statusCode,
+        );
+      }
+
+      final payload = jsonDecode(response.body) as Map<String, dynamic>;
+      return VendorProductDetail.fromJson(payload);
+    } on TimeoutException {
+      throw const AuthApiException('پاسخی از سرور دریافت نشد. دوباره تلاش کن.');
+    } on SocketException {
+      throw const AuthApiException('اتصال به سرور برقرار نشد.');
+    }
+  }
+
   String _extractErrorMessage(String body, String fallback) {
     if (body.isEmpty) return fallback;
 
@@ -191,4 +282,67 @@ class ProductsApiService {
 
     return fallback;
   }
+}
+
+class ProductCategoryOption {
+  const ProductCategoryOption({
+    required this.id,
+    required this.name,
+  });
+
+  final int id;
+  final String name;
+}
+
+class ProductTypeOption {
+  const ProductTypeOption({
+    required this.id,
+    required this.name,
+  });
+
+  final int id;
+  final String name;
+
+  factory ProductTypeOption.fromJson(Map<String, dynamic> json) {
+    return ProductTypeOption(
+      id: _asInt(json['id']),
+      name: json['name']?.toString().trim().isNotEmpty == true
+          ? json['name'].toString().trim()
+          : 'نوع محصول',
+    );
+  }
+}
+
+List<ProductCategoryOption> _flattenCategories(List<dynamic> rawItems) {
+  final output = <ProductCategoryOption>[];
+
+  void walk(List<dynamic> items, [String prefix = '']) {
+    for (final item in items) {
+      if (item is! Map<String, dynamic>) continue;
+      final id = _asInt(item['id']);
+      final name = item['name']?.toString().trim() ?? '';
+      if (id > 0 && name.isNotEmpty) {
+        output.add(
+          ProductCategoryOption(
+            id: id,
+            name: prefix.isEmpty ? name : '$prefix ← $name',
+          ),
+        );
+      }
+
+      final children = item['children'];
+      if (children is List && children.isNotEmpty) {
+        walk(children, name);
+      }
+    }
+  }
+
+  walk(rawItems);
+  return output;
+}
+
+int _asInt(Object? value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse('$value') ?? 0;
 }
