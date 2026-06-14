@@ -7,6 +7,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_glass_card.dart';
 import '../../auth/domain/auth_session.dart';
 import '../../dashboard/presentation/dashboard_screen.dart';
+import '../../discounts/presentation/discounts_screen.dart';
 import '../../orders/presentation/orders_screen.dart';
 import '../../products/presentation/products_screen.dart';
 import '../../store_profile/presentation/store_profile_screen.dart';
@@ -102,10 +103,9 @@ class _VendorAppShellState extends State<VendorAppShell> {
           accessToken: widget.session.accessToken,
           storeId: widget.session.bootstrap?.store?.id ?? 0,
         ),
-      VendorShellTab.discounts => const _ShellPlaceholder(
-          title: 'تخفیف‌ها',
-          description:
-              'مدیریت کد تخفیف و کمپین‌های فروش در milestone بعدی به این بخش وصل می‌شود.',
+      VendorShellTab.discounts => DiscountsScreen(
+          accessToken: widget.session.accessToken,
+          storeId: widget.session.bootstrap?.store?.id ?? 0,
         ),
       VendorShellTab.wallet => const _ShellPlaceholder(
           title: 'کیف پول و تسویه حساب',
