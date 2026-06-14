@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 
 import '../core/constants/app_strings.dart';
 import '../core/theme/app_theme.dart';
@@ -20,6 +21,8 @@ class VendorMobileApp extends StatelessWidget {
         Locale('en', 'US'),
       ],
       localizationsDelegates: const [
+        PersianMaterialLocalizations.delegate,
+        PersianCupertinoLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
