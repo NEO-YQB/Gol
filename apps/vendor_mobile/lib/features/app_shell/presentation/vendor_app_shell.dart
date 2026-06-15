@@ -11,6 +11,7 @@ import '../../discounts/presentation/discounts_screen.dart';
 import '../../orders/presentation/orders_screen.dart';
 import '../../products/presentation/products_screen.dart';
 import '../../store_profile/presentation/store_profile_screen.dart';
+import '../../support/presentation/support_screen.dart';
 import '../../wallet/presentation/wallet_screen.dart';
 
 enum VendorShellTab {
@@ -116,10 +117,9 @@ class _VendorAppShellState extends State<VendorAppShell> {
           title: 'اعلان‌ها',
           description: 'مرکز اعلان در مرحله بعدی به navigation اصلی وصل می‌شود.',
         ),
-      VendorShellTab.support => const _ShellPlaceholder(
-          title: 'پشتیبانی',
-          description:
-              'تیکت‌ها، گفتگو با پشتیبانی و پیگیری درخواست‌ها در milestone بعدی اینجا قرار می‌گیرد.',
+      VendorShellTab.support => SupportScreen(
+          accessToken: widget.session.accessToken,
+          embedded: true,
         ),
       VendorShellTab.profile =>
         (widget.session.bootstrap?.store?.slug ?? '').isEmpty
