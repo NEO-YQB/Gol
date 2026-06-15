@@ -32,27 +32,19 @@ function statusOptions(items: AlertRecord[]) {
   return ['ALL', ...unique]
 }
 
-export function AlertsPage({ session }: { session: AuthSession }) {
+export function AlertsPage({
+  session,
+  onOpenPushNotificationWorkspace,
+}: {
+  session: AuthSession
+  onOpenPushNotificationWorkspace: () => void
+}) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [alerts, setAlerts] = useState<AlertRecord[]>([])
   const [notifications, setNotifications] = useState<AlertRecord[]>([])
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null)
-  const [pushForm, setPushForm] = useState({
-    userId: '',
-    storeId: '',
-    orderId: '',
-    supportTicketId: '',
-    topic: 'order.updated',
-    title: '',
-    body: '',
-  })
-  const [pushState, setPushState] = useState<{ loading: boolean; message: string | null; error: string | null }>({
-    loading: false,
-    message: null,
-    error: null,
-  })
   const [dispatchState, setDispatchState] = useState<{ loadingId: string | null; message: string | null; error: string | null }>({
     loadingId: null,
     message: null,
@@ -153,40 +145,6 @@ export function AlertsPage({ session }: { session: AuthSession }) {
       ]
     : []
 
-  async function handleCreatePush(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setPushState({ loading: true, message: null, error: null })
-
-    try {
-      await adminApi.createPushNotification(session, {
-        userId: Number(pushForm.userId),
-        ...(pushForm.storeId.trim() ? { storeId: Number(pushForm.storeId) } : {}),
-        ...(pushForm.orderId.trim() ? { orderId: Number(pushForm.orderId) } : {}),
-        ...(pushForm.supportTicketId.trim() ? { supportTicketId: Number(pushForm.supportTicketId) } : {}),
-        topic: pushForm.topic.trim(),
-        title: pushForm.title.trim(),
-        body: pushForm.body.trim(),
-        payload: {
-          topic: pushForm.topic.trim(),
-          ...(pushForm.orderId.trim() ? { orderId: Number(pushForm.orderId) } : {}),
-          ...(pushForm.supportTicketId.trim() ? { supportTicketId: Number(pushForm.supportTicketId) } : {}),
-        },
-      })
-
-      setPushState({
-        loading: false,
-        message: 'پوش با موفقیت ساخته و ارسال شد.',
-        error: null,
-      })
-    } catch (pushError) {
-      setPushState({
-        loading: false,
-        message: null,
-        error: pushError instanceof Error ? pushError.message : 'ارسال push ناموفق بود.',
-      })
-    }
-  }
-
   async function handleDispatchPush(notificationId: string) {
     setDispatchState({ loadingId: notificationId, message: null, error: null })
 
@@ -213,7 +171,7 @@ export function AlertsPage({ session }: { session: AuthSession }) {
   return (
     <div className="fm-stack">
       <LoadableState error={error} loading={loading}>
-        <div className="fm-grid">
+        <div className="fm-grid alerts-summary-grid">
           {stats.map((item) => (
             <StatCard key={item.label} {...item} />
           ))}
@@ -295,75 +253,16 @@ export function AlertsPage({ session }: { session: AuthSession }) {
             <SectionCard
               eyebrow="عملیات اعلان"
               title="ارسال و مدیریت push"
-              description="از این بخش می‌توان push سفارشی ساخت، notificationهای outbox را دید و برای هر مورد dispatch مجدد PUSH انجام داد."
-              actions={<Pill tone="success">outbox</Pill>}
-            >
-              <form className="fm-stack" onSubmit={handleCreatePush}>
-                <div className="fm-grid fm-grid--2">
-                  <label className="fm-field">
-                    <span>شناسه کاربر</span>
-                    <input
-                      required
-                      value={pushForm.userId}
-                      onChange={(event) => setPushForm((prev) => ({ ...prev, userId: event.target.value }))}
-                    />
-                  </label>
-                  <label className="fm-field">
-                    <span>شناسه فروشگاه</span>
-                    <input
-                      value={pushForm.storeId}
-                      onChange={(event) => setPushForm((prev) => ({ ...prev, storeId: event.target.value }))}
-                    />
-                  </label>
-                  <label className="fm-field">
-                    <span>شناسه سفارش</span>
-                    <input
-                      value={pushForm.orderId}
-                      onChange={(event) => setPushForm((prev) => ({ ...prev, orderId: event.target.value }))}
-                    />
-                  </label>
-                  <label className="fm-field">
-                    <span>شناسه تیکت</span>
-                    <input
-                      value={pushForm.supportTicketId}
-                      onChange={(event) => setPushForm((prev) => ({ ...prev, supportTicketId: event.target.value }))}
-                    />
-                  </label>
-                  <label className="fm-field">
-                    <span>topic</span>
-                    <input
-                      required
-                      value={pushForm.topic}
-                      onChange={(event) => setPushForm((prev) => ({ ...prev, topic: event.target.value }))}
-                    />
-                  </label>
-                  <label className="fm-field">
-                    <span>عنوان push</span>
-                    <input
-                      required
-                      value={pushForm.title}
-                      onChange={(event) => setPushForm((prev) => ({ ...prev, title: event.target.value }))}
-                    />
-                  </label>
-                </div>
-                <label className="fm-field">
-                  <span>متن push</span>
-                  <textarea
-                    required
-                    rows={4}
-                    value={pushForm.body}
-                    onChange={(event) => setPushForm((prev) => ({ ...prev, body: event.target.value }))}
-                  />
-                </label>
-                <div className="fm-actions">
-                  <button className="fm-button fm-button--primary" disabled={pushState.loading} type="submit">
-                    {pushState.loading ? 'در حال ارسال push...' : 'ارسال push سفارشی'}
+              description="ارسال push سفارشی از workspace مستقل انجام می‌شود و اینجا فقط summary و dispatch مجدد outbox را می‌بینی."
+              actions={
+                <div className="flex flex-wrap gap-2">
+                  <Pill tone="success">outbox</Pill>
+                  <button className="fm-button fm-button--primary" onClick={onOpenPushNotificationWorkspace} type="button">
+                    ارسال پوش نوتیفیکیشن
                   </button>
-                  {pushState.message ? <div className="fm-message fm-message--success">{pushState.message}</div> : null}
-                  {pushState.error ? <div className="fm-message fm-message--error">{pushState.error}</div> : null}
                 </div>
-              </form>
-
+              }
+            >
               {dispatchState.message ? <div className="fm-message fm-message--success">{dispatchState.message}</div> : null}
               {dispatchState.error ? <div className="fm-message fm-message--error">{dispatchState.error}</div> : null}
 
