@@ -945,4 +945,16 @@ export const adminApi = {
   getNotifications(session: AuthSession) {
     return request<unknown>('/notifications/admin', {}, session.accessToken)
   },
+  dispatchNotification(session: AuthSession, notificationId: string, body: Record<string, unknown>) {
+    return request<unknown>(`/notifications/admin/${notificationId}/dispatch`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  createPushNotification(session: AuthSession, body: Record<string, unknown>) {
+    return request<unknown>('/notifications/admin/push', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
 }

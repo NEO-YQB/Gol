@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuar
 import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { GetUser } from '../../common/decorators/get-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { AdminCreatePushNotificationDto } from './dto/admin-create-push-notification.dto';
 import { AdminDispatchNotificationDto } from './dto/admin-dispatch-notification.dto';
 import { AdminListNotificationsQueryDto } from './dto/admin-list-notifications-query.dto';
 import { MarkNotificationStatusDto } from './dto/mark-notification-status.dto';
@@ -94,6 +95,31 @@ export class NotificationsController {
     @Body() dto: AdminDispatchNotificationDto,
   ) {
     return this.notificationsService.adminDispatch(user, id, dto);
+  }
+
+  @Post('admin/push')
+  @ApiOperation({ summary: 'ساخت و ارسال push سفارشی از پنل ادمین' })
+  @ApiOkResponse({
+    description: 'notification ساخته و dispatch شد',
+    schema: {
+      example: {
+        notification: {
+          id: 25,
+          topic: 'order.updated',
+          title: 'سفارش شما به‌روزرسانی شد',
+          body: 'وضعیت سفارش #۴۱۲ به آماده‌سازی تغییر کرد.',
+        },
+        dispatch: {
+          ok: true,
+        },
+      },
+    },
+  })
+  adminCreatePush(
+    @GetUser() user: { id: number; roles: string[] },
+    @Body() dto: AdminCreatePushNotificationDto,
+  ) {
+    return this.notificationsService.adminCreatePush(user, dto);
   }
 
   @Get('me')

@@ -8,6 +8,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationDispatchService } from './notification-dispatch.service';
 import { NotificationTemplatesService } from './notification-templates.service';
+import { AdminCreatePushNotificationDto } from './dto/admin-create-push-notification.dto';
 import { AdminDispatchNotificationDto } from './dto/admin-dispatch-notification.dto';
 import { AdminListNotificationsQueryDto } from './dto/admin-list-notifications-query.dto';
 import { MarkNotificationStatusDto } from './dto/mark-notification-status.dto';
@@ -207,6 +208,17 @@ export class NotificationsService {
 
   async adminDispatch(user: AuthenticatedUser, id: number, dto: AdminDispatchNotificationDto) {
     this.assertAdmin(user);
+    if (dto.title?.trim() || dto.body?.trim() || dto.data) {
+      await this.prisma.notification.update({
+        where: { id },
+        data: {
+          ...(dto.title?.trim() ? { title: dto.title.trim() } : {}),
+          ...(dto.body?.trim() ? { body: dto.body.trim() } : {}),
+          ...(dto.data ? { payload: dto.data as Prisma.InputJsonValue } : {}),
+        },
+      });
+    }
+
     const items = await this.dispatchService.simulateDispatch(id, {
       overrideChannel: dto.channel,
       overrideChannels: dto.channels,
@@ -218,6 +230,34 @@ export class NotificationsService {
     }
 
     return dto.channels?.length ? { results: items } : items[0];
+  }
+
+  async adminCreatePush(user: AuthenticatedUser, dto: AdminCreatePushNotificationDto) {
+    this.assertAdmin(user);
+
+    const notification = await this.enqueue(this.prisma, {
+      userId: dto.userId,
+      storeId: dto.storeId ?? null,
+      orderId: dto.orderId ?? null,
+      supportTicketId: dto.supportTicketId ?? null,
+      topic: dto.topic.trim(),
+      title: dto.title.trim(),
+      body: dto.body.trim(),
+      payload: dto.payload ?? null,
+      channel: NotificationChannel.PUSH,
+      channels: [NotificationChannel.IN_APP, NotificationChannel.PUSH],
+      dedupeKey: null,
+    });
+
+    const result = await this.dispatchService.simulateDispatch(notification.id, {
+      overrideChannels: [NotificationChannel.PUSH],
+      forceRetry: true,
+    });
+
+    return {
+      notification,
+      dispatch: result,
+    };
   }
 
   async myNotifications(user: AuthenticatedUser) {
