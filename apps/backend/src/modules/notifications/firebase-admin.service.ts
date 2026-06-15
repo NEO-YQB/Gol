@@ -26,7 +26,7 @@ export class FirebaseAdminService {
 
     const projectId = process.env.FIREBASE_PROJECT_ID?.trim();
     const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+    const privateKey = this.normalizePrivateKey(process.env.FIREBASE_PRIVATE_KEY);
 
     if (!projectId || !clientEmail || !privateKey) {
       return null;
@@ -50,5 +50,31 @@ export class FirebaseAdminService {
     );
 
     return this.app;
+  }
+
+  private normalizePrivateKey(rawValue?: string) {
+    if (!rawValue) {
+      return null;
+    }
+
+    let value = rawValue.trim();
+
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+
+    value = value
+      .replace(/\\n/g, '\n')
+      .replace(/\r\n/g, '\n')
+      .trim();
+
+    if (!value.includes('BEGIN PRIVATE KEY') || !value.includes('END PRIVATE KEY')) {
+      return null;
+    }
+
+    return value;
   }
 }
