@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/services/push_notification_service.dart';
 import '../../../shared/widgets/app_shell_background.dart';
 import '../../auth/data/auth_api_service.dart';
 import '../../auth/data/auth_session_storage.dart';
@@ -67,6 +68,7 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
             _phoneNumber = refreshedSession.phoneNumber;
             _step = _BootstrapStep.authenticated;
           });
+          await PushNotificationService.instance.getToken();
           return;
         } catch (_) {
           await _authSessionStorage.clear();
@@ -144,6 +146,7 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
         _session = nextSession;
         _step = _BootstrapStep.authenticated;
       });
+      await PushNotificationService.instance.getToken();
     } on AuthApiException catch (error) {
       if (!mounted) return;
       setState(() {

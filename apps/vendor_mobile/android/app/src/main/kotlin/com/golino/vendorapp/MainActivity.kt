@@ -1,4 +1,4 @@
-package com.example.vendor_mobile
+package com.golino.vendorapp
 
 import io.flutter.embedding.android.FlutterActivity
 
