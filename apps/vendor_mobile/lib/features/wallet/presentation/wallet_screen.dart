@@ -40,6 +40,7 @@ class _WalletScreenState extends State<WalletScreen> {
   final WalletApiService _apiService = const WalletApiService();
   WalletPeriod _period = WalletPeriod.month;
   late Future<VendorWalletSummary> _future;
+  bool _isRefreshing = false;
 
   @override
   void initState() {
@@ -57,9 +58,18 @@ class _WalletScreenState extends State<WalletScreen> {
   Future<void> _refresh() async {
     final next = _loadSummary();
     setState(() {
+      _isRefreshing = true;
       _future = next;
     });
-    await next;
+    try {
+      await next;
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRefreshing = false;
+        });
+      }
+    }
   }
 
   @override
@@ -68,6 +78,9 @@ class _WalletScreenState extends State<WalletScreen> {
       child: FutureBuilder<VendorWalletSummary>(
         future: _future,
         builder: (context, snapshot) {
+          final disableAnimations =
+              MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const _WalletLoadingView();
           }
@@ -93,31 +106,89 @@ class _WalletScreenState extends State<WalletScreen> {
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(24, 18, 24, 28),
               children: [
-                AppSectionHeading(
-                  eyebrow: 'مالی و تسویه',
-                  title: 'کیف پول فروشگاه',
-                  description: 'موجودی، گردش مالی و وضعیت settlementها را یکجا ببین.',
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                _PeriodSelector(
-                  selected: _period,
-                  onChanged: (period) {
-                    setState(() {
-                      _period = period;
-                      _future = _loadSummary();
-                    });
+                AnimatedSwitcher(
+                  duration: Duration(
+                    milliseconds: disableAnimations ? 0 : 220,
+                  ),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInOut,
+                  transitionBuilder: (child, animation) {
+                    return FadeTransition(
+                      opacity: animation,
+                      child: child,
+                    );
                   },
+                  child: AppSectionHeading(
+                    key: ValueKey(_period),
+                    eyebrow: 'مالی و تسویه',
+                    title: 'کیف پول فروشگاه',
+                    description: 'موجودی، گردش مالی و وضعیت تسویه‌ها را یکجا ببین.',
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                _WalletHeroCard(summary: summary),
+                TweenAnimationBuilder<double>(
+                  tween: Tween<double>(begin: 0, end: 1),
+                  duration: Duration(
+                    milliseconds: disableAnimations ? 0 : 280,
+                  ),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, value, child) {
+                    return Opacity(
+                      opacity: value,
+                      child: Transform.translate(
+                        offset: Offset(0, 12 * (1 - value)),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: _PeriodSelector(
+                    selected: _period,
+                    onChanged: (period) {
+                      setState(() {
+                        _period = period;
+                        _isRefreshing = true;
+                        _future = _loadSummary();
+                      });
+                      _future.whenComplete(() {
+                        if (mounted) {
+                          setState(() {
+                            _isRefreshing = false;
+                          });
+                        }
+                      });
+                    },
+                  ),
+                ),
                 const SizedBox(height: AppSpacing.lg),
-                _ActivityOverview(summary: summary),
+                _AnimatedSection(
+                  delayIndex: 0,
+                  disableAnimations: disableAnimations,
+                  child: _WalletHeroCard(summary: summary),
+                ),
                 const SizedBox(height: AppSpacing.lg),
-                _SettlementOverview(summary: summary),
+                _AnimatedSection(
+                  delayIndex: 1,
+                  disableAnimations: disableAnimations,
+                  child: _ActivityOverview(summary: summary),
+                ),
                 const SizedBox(height: AppSpacing.lg),
-                _TransactionList(items: summary.recentTransactions),
+                _AnimatedSection(
+                  delayIndex: 2,
+                  disableAnimations: disableAnimations,
+                  child: _SettlementOverview(summary: summary),
+                ),
                 const SizedBox(height: AppSpacing.lg),
-                _SettlementList(items: summary.recentSettlements),
+                _AnimatedSection(
+                  delayIndex: 3,
+                  disableAnimations: disableAnimations,
+                  child: _TransactionList(items: summary.recentTransactions),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                _AnimatedSection(
+                  delayIndex: 4,
+                  disableAnimations: disableAnimations,
+                  child: _SettlementList(items: summary.recentSettlements),
+                ),
               ],
             ),
           );
@@ -177,22 +248,33 @@ class _WalletHeroCard extends StatelessWidget {
                 ),
               ),
               Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topRight,
-                    end: Alignment.bottomLeft,
-                    colors: [
-                      AppColors.primarySoft,
-                      AppColors.primaryDark,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 260),
+                  curve: Curves.easeOutCubic,
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
+                      colors: [
+                        AppColors.primarySoft,
+                        AppColors.primaryDark,
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.18),
+                        blurRadius: 18,
+                        offset: const Offset(0, 10),
+                      ),
                     ],
                   ),
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: const Icon(
-                  Icons.account_balance_wallet_rounded,
-                  color: Colors.white,
+                  child: const Icon(
+                    Icons.account_balance_wallet_rounded,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ],
@@ -312,42 +394,53 @@ class _PeriodSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     return Directionality(
       textDirection: TextDirection.rtl,
-      child: SegmentedButton<WalletPeriod>(
-        showSelectedIcon: false,
-        style: ButtonStyle(
-          backgroundColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) {
-              return AppColors.primary.withValues(alpha: 0.14);
-            }
-            return AppColors.surface.withValues(alpha: 0.82);
-          }),
-          foregroundColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) {
-              return AppColors.primaryDark;
-            }
-            return AppColors.textSecondary;
-          }),
-          side: WidgetStateProperty.all(
-            const BorderSide(color: AppColors.border),
-          ),
-          padding: WidgetStateProperty.all(
-            const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-          ),
-        ),
-        segments: WalletPeriod.values
-            .map(
-              (period) => ButtonSegment<WalletPeriod>(
-                value: period,
-                label: Text(period.label),
+      child: AppGlassCard(
+        padding: const EdgeInsets.all(8),
+        borderRadius: 22,
+        backgroundColor: AppColors.surfaceMuted,
+        child: SegmentedButton<WalletPeriod>(
+          showSelectedIcon: false,
+          style: ButtonStyle(
+            animationDuration: const Duration(milliseconds: 240),
+            backgroundColor: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.selected)) {
+                return AppColors.primary.withValues(alpha: 0.14);
+              }
+              return Colors.transparent;
+            }),
+            foregroundColor: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.selected)) {
+                return AppColors.primaryDark;
+              }
+              return AppColors.textSecondary;
+            }),
+            side: WidgetStateProperty.all(
+              BorderSide.none,
+            ),
+            shape: WidgetStateProperty.all(
+              RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
               ),
-            )
-            .toList(),
-        selected: {selected},
-        onSelectionChanged: (selection) {
-          if (selection.isNotEmpty) {
-            onChanged(selection.first);
-          }
-        },
+            ),
+            padding: WidgetStateProperty.all(
+              const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            ),
+          ),
+          segments: WalletPeriod.values
+              .map(
+                (period) => ButtonSegment<WalletPeriod>(
+                  value: period,
+                  label: Text(period.label),
+                ),
+              )
+              .toList(),
+          selected: {selected},
+          onSelectionChanged: (selection) {
+            if (selection.isNotEmpty) {
+              onChanged(selection.first);
+            }
+          },
+        ),
       ),
     );
   }
@@ -536,28 +629,41 @@ class _MiniChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.surface.withValues(alpha: 0.86),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            _toPersianDigits(value),
-            style: theme.textTheme.titleMedium,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: AppColors.textSecondary,
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0.96, end: 1),
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutBack,
+      builder: (context, scale, child) {
+        return Transform.scale(
+          scale: scale,
+          child: child,
+        );
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 240),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.surface.withValues(alpha: 0.86),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              _toPersianDigits(value),
+              style: theme.textTheme.titleMedium,
             ),
-          ),
-        ],
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -616,7 +722,9 @@ class _TransactionTile extends StatelessWidget {
     final positive = item.direction.toUpperCase() == 'CREDIT';
     final accent = positive ? AppColors.success : AppColors.secondary;
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 240),
+      curve: Curves.easeOutCubic,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.surfaceMuted.withValues(alpha: 0.82),
@@ -658,19 +766,22 @@ class _TransactionTile extends StatelessWidget {
                   ),
                 ],
                 const SizedBox(height: 6),
-                Text(
-                  _formatDateTime(item.createdAt),
-                  style: theme.textTheme.labelSmall,
+                AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 220),
+                  style: theme.textTheme.labelSmall ?? const TextStyle(),
+                  child: Text(_formatDateTime(item.createdAt)),
                 ),
               ],
             ),
           ),
           const SizedBox(width: AppSpacing.md),
-          Text(
-            '${positive ? '+' : '-'}${_formatMoney(item.amount)}',
+          AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 220),
             style: theme.textTheme.titleMedium?.copyWith(
-              color: accent,
-            ),
+                  color: accent,
+                ) ??
+                const TextStyle(),
+            child: Text('${positive ? '+' : '-'}${_formatMoney(item.amount)}'),
           ),
         ],
       ),
@@ -729,7 +840,9 @@ class _SettlementTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 240),
+      curve: Curves.easeOutCubic,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.surfaceMuted.withValues(alpha: 0.82),
@@ -763,13 +876,52 @@ class _SettlementTile extends StatelessWidget {
           ),
           if (item.settlementEligibleAt != null) ...[
             const SizedBox(height: 6),
-            Text(
-              'قابل آزادسازی: ${_formatDateTime(item.settlementEligibleAt)}',
-              style: theme.textTheme.labelSmall,
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              child: Text(
+                'قابل آزادسازی: ${_formatDateTime(item.settlementEligibleAt)}',
+                key: ValueKey(item.id),
+                style: theme.textTheme.labelSmall,
+              ),
             ),
           ],
         ],
       ),
+    );
+  }
+}
+
+class _AnimatedSection extends StatelessWidget {
+  const _AnimatedSection({
+    required this.delayIndex,
+    required this.disableAnimations,
+    required this.child,
+  });
+
+  final int delayIndex;
+  final bool disableAnimations;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final duration = Duration(
+      milliseconds: disableAnimations ? 0 : 260 + (delayIndex * 60),
+    );
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: duration,
+      curve: Curves.easeOutCubic,
+      builder: (context, value, builtChild) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, 18 * (1 - value)),
+            child: builtChild,
+          ),
+        );
+      },
+      child: child,
     );
   }
 }
