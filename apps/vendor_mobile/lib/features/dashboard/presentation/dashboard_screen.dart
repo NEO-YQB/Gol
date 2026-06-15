@@ -132,8 +132,6 @@ class DashboardScreen extends StatelessWidget {
                           const SizedBox(height: AppSpacing.lg),
                           _MetricGrid(summary: summary),
                           const SizedBox(height: AppSpacing.lg),
-                          _DashboardFocusStrip(summary: summary),
-                          const SizedBox(height: AppSpacing.lg),
                           AppGlassCard(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -201,13 +199,6 @@ class _DashboardHeader extends StatelessWidget {
                 'داشبورد فروشنده',
                 style: theme.textTheme.titleMedium,
               ),
-              const SizedBox(height: 4),
-              Text(
-                'نمای زنده و متمرکز از وضعیت امروز فروشگاه',
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
             ],
           ),
         ),
@@ -245,33 +236,10 @@ class _HeroSummaryCard extends StatelessWidget {
           AppSectionHeading(
             eyebrow: 'نمای کلی امروز',
             title: 'فروشگاه ${summary.storeName}',
-            description:
-                'یک خلاصه شفاف، سریع و premium از وضعیت مالی، عملیاتی و سلامت فروشگاه.',
+            description: '',
           ),
-          if (isPreview) ...[
-            const SizedBox(height: AppSpacing.lg),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 12,
-              ),
-              decoration: BoxDecoration(
-                color: AppColors.secondary.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: AppColors.secondary.withValues(alpha: 0.14),
-                ),
-              ),
-              child: Text(
-                'حالت پیش‌نمایش فعال است و داده‌های این صفحه واقعی نیستند.',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: AppColors.secondary,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
-          const SizedBox(height: AppSpacing.xl),
+          if (isPreview) const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: AppSpacing.lg),
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -394,128 +362,31 @@ class _MetricGrid extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: AppSpacing.lg,
       crossAxisSpacing: AppSpacing.lg,
-      childAspectRatio: 1.12,
+      childAspectRatio: 0.94,
       children: [
         AppMetricTile(
           title: 'موجودی قابل برداشت',
           value: '${_formatMoney(summary.availableBalance)} تومان',
-          subtitle: '${_formatMoney(summary.heldBalance)} تومان نگه‌داری‌شده',
           accentColor: AppColors.primary,
           icon: Icons.account_balance_wallet_rounded,
         ),
         AppMetricTile(
           title: 'تسویه‌های در جریان',
           value: '${summary.processingSettlementsCount} مورد',
-          subtitle: '${summary.onHoldSettlementsCount} مورد hold',
           accentColor: AppColors.accent,
           icon: Icons.currency_exchange_rounded,
         ),
         AppMetricTile(
           title: 'تیکت‌های باز',
           value: '${summary.openTicketsCount} مورد',
-          subtitle: '${summary.escalatedTicketsCount} ارجاع مالی',
           accentColor: AppColors.secondary,
           icon: Icons.support_agent_rounded,
         ),
         AppMetricTile(
           title: 'امتیاز سلامت',
           value: '${summary.healthScore}',
-          subtitle: summary.healthStatus,
           accentColor: AppColors.success,
           icon: Icons.favorite_rounded,
-        ),
-      ],
-    );
-  }
-}
-
-class _DashboardFocusStrip extends StatelessWidget {
-  const _DashboardFocusStrip({
-    required this.summary,
-  });
-
-  final DashboardSummary summary;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return AppGlassCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'فوکوس امروز',
-            style: theme.textTheme.titleMedium,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          _FocusRow(
-            icon: Icons.bolt_rounded,
-            title: 'اولویت عملیاتی',
-            value: summary.processingSettlementsCount > 0
-                ? 'تسویه‌های در جریان را بررسی کن'
-                : 'سفارش‌های جدید را بدون تاخیر مدیریت کن',
-          ),
-          const SizedBox(height: AppSpacing.md),
-          _FocusRow(
-            icon: Icons.shield_rounded,
-            title: 'وضعیت سلامت',
-            value: _healthMessage(summary.healthStatus, summary.healthScore),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FocusRow extends StatelessWidget {
-  const _FocusRow({
-    required this.icon,
-    required this.title,
-    required this.value,
-  });
-
-  final IconData icon;
-  final String title;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            color: AppColors.surfaceSoft,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Icon(
-            icon,
-            color: AppColors.primary,
-          ),
-        ),
-        const SizedBox(width: AppSpacing.md),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                value,
-                style: theme.textTheme.bodyLarge,
-              ),
-            ],
-          ),
         ),
       ],
     );
@@ -607,19 +478,6 @@ String _formatMoney(num value) {
   }
 
   return buffer.toString();
-}
-
-String _healthMessage(String status, num score) {
-  switch (status.toUpperCase()) {
-    case 'GOOD':
-      return 'وضعیت فروشگاه خوب است و امتیاز سلامت روی $score قرار دارد.';
-    case 'WARNING':
-      return 'وضعیت سلامت نیاز به توجه دارد و بهتر است عملکرد اخیر بررسی شود.';
-    case 'CRITICAL':
-      return 'وضعیت سلامت بحرانی است و باید سریع‌تر مشکلات عملیاتی بررسی شوند.';
-    default:
-      return 'آخرین وضعیت سلامت فروشگاه ثبت شده و آماده بررسی است.';
-  }
 }
 
 String _timelineLabel(String aggregateType) {

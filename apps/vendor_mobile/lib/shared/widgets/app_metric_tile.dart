@@ -9,14 +9,14 @@ class AppMetricTile extends StatelessWidget {
     super.key,
     required this.title,
     required this.value,
-    required this.subtitle,
     required this.accentColor,
+    this.subtitle,
     this.icon = Icons.auto_awesome,
   });
 
   final String title;
   final String value;
-  final String subtitle;
+  final String? subtitle;
   final Color accentColor;
   final IconData icon;
 
@@ -78,13 +78,15 @@ class AppMetricTile extends StatelessWidget {
                   height: 1.15,
                 ),
               ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                subtitle,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: AppColors.textSecondary,
+              if (subtitle != null && subtitle!.trim().isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  subtitle!,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ],
