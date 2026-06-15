@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Notification, NotificationChannel, NotificationDelivery, NotificationStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { FirebaseAdminService } from './firebase-admin.service';
@@ -71,6 +71,8 @@ class MockExternalNotificationAdapter implements NotificationAdapter {
 }
 
 class PushNotificationAdapter implements NotificationAdapter {
+  private readonly logger = new Logger(PushNotificationAdapter.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly firebaseAdminService: FirebaseAdminService,
@@ -88,19 +90,31 @@ class PushNotificationAdapter implements NotificationAdapter {
       };
     }
 
+    const recipientUserIds = await this.resolveRecipientUserIds(context.notification);
+
+    this.logger.log(
+      `Preparing PUSH dispatch for notification=${context.notification.id} topic=${context.notification.topic} recipients=${recipientUserIds.join(',') || 'none'} storeId=${context.notification.storeId ?? 'null'}`,
+    );
+
     const devices = await this.prisma.pushDevice.findMany({
       where: {
-        userId: context.notification.userId,
+        userId: {
+          in: recipientUserIds,
+        },
         isActive: true,
       },
       select: {
         id: true,
+        userId: true,
         token: true,
       },
       take: 20,
     });
 
     if (devices.length === 0) {
+      this.logger.warn(
+        `No active PUSH devices found for notification=${context.notification.id} recipients=${recipientUserIds.join(',') || 'none'}`,
+      );
       return {
         ok: false,
         failureReason: 'هیچ device token فعالی برای این کاربر ثبت نشده است',
@@ -135,8 +149,16 @@ class PushNotificationAdapter implements NotificationAdapter {
       data,
       android: {
         priority: 'high',
+        notification: {
+          channelId: 'vendor_push_channel',
+          sound: 'default',
+        },
       },
     });
+
+    this.logger.log(
+      `PUSH dispatch result notification=${context.notification.id} success=${response.successCount} failure=${response.failureCount} devices=${devices.length}`,
+    );
 
     const invalidTokens = response.responses
       .map((item, index) => ({
@@ -155,6 +177,9 @@ class PushNotificationAdapter implements NotificationAdapter {
       .filter(Boolean);
 
     if (invalidTokens.length > 0) {
+      this.logger.warn(
+        `Deactivating invalid PUSH tokens for notification=${context.notification.id} count=${invalidTokens.length}`,
+      );
       await this.prisma.pushDevice.updateMany({
         where: {
           token: { in: invalidTokens },
@@ -167,12 +192,19 @@ class PushNotificationAdapter implements NotificationAdapter {
 
     if (response.successCount === 0) {
       const firstError = response.responses.find((item) => !item.success)?.error;
+      this.logger.error(
+        `PUSH dispatch failed notification=${context.notification.id} error=${firstError?.code ?? 'unknown'} ${firstError?.message ?? ''}`,
+      );
       return {
         ok: false,
         failureReason: firstError?.message ?? 'ارسال PUSH ناموفق بود',
         providerResponse: {
           successCount: response.successCount,
           failureCount: response.failureCount,
+          recipientUserIds,
+          deviceUserIds: devices.map((item) => item.userId),
+          firstErrorCode: firstError?.code ?? null,
+          firstErrorMessage: firstError?.message ?? null,
         },
       };
     }
@@ -183,8 +215,31 @@ class PushNotificationAdapter implements NotificationAdapter {
       providerResponse: {
         successCount: response.successCount,
         failureCount: response.failureCount,
+        recipientUserIds,
+        deviceUserIds: devices.map((item) => item.userId),
       },
     };
+  }
+
+  private async resolveRecipientUserIds(notification: Notification) {
+    const recipientIds = new Set<number>();
+
+    if (notification.userId != null) {
+      recipientIds.add(notification.userId);
+    }
+
+    if (notification.storeId != null) {
+      const store = await this.prisma.store.findUnique({
+        where: { id: notification.storeId },
+        select: { ownerId: true },
+      });
+
+      if (store?.ownerId != null) {
+        recipientIds.add(store.ownerId);
+      }
+    }
+
+    return [...recipientIds];
   }
 }
 
