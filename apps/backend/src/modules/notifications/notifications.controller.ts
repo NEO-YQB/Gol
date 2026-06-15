@@ -5,6 +5,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AdminDispatchNotificationDto } from './dto/admin-dispatch-notification.dto';
 import { AdminListNotificationsQueryDto } from './dto/admin-list-notifications-query.dto';
 import { MarkNotificationStatusDto } from './dto/mark-notification-status.dto';
+import { RegisterPushDeviceDto } from './dto/register-push-device.dto';
 import { NotificationsService } from './notifications.service';
 
 @ApiTags('Notifications')
@@ -136,5 +137,25 @@ export class NotificationsController {
   })
   vendorNotifications(@GetUser() user: { id: number; roles: string[] }) {
     return this.notificationsService.vendorNotifications(user);
+  }
+
+  @Post('devices')
+  @ApiOperation({ summary: 'ثبت یا به‌روزرسانی device token برای push' })
+  @ApiOkResponse({
+    description: 'device token ذخیره شد',
+    schema: {
+      example: {
+        id: 1,
+        token: 'fcm_device_token_here',
+        platform: 'android',
+        isActive: true,
+      },
+    },
+  })
+  registerDevice(
+    @GetUser() user: { id: number; roles: string[] },
+    @Body() dto: RegisterPushDeviceDto,
+  ) {
+    return this.notificationsService.registerPushDevice(user, dto);
   }
 }

@@ -68,7 +68,13 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
             _phoneNumber = refreshedSession.phoneNumber;
             _step = _BootstrapStep.authenticated;
           });
-          await PushNotificationService.instance.getToken();
+          await PushNotificationService.instance.logToken(
+            forceRefresh: true,
+            reason: 'session-restore',
+          );
+          await PushNotificationService.instance.registerTokenForSession(
+            accessToken: refreshedSession.accessToken,
+          );
           return;
         } catch (_) {
           await _authSessionStorage.clear();
@@ -146,7 +152,13 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
         _session = nextSession;
         _step = _BootstrapStep.authenticated;
       });
-      await PushNotificationService.instance.getToken();
+      await PushNotificationService.instance.logToken(
+        forceRefresh: true,
+        reason: 'otp-login',
+      );
+      await PushNotificationService.instance.registerTokenForSession(
+        accessToken: nextSession.accessToken,
+      );
     } on AuthApiException catch (error) {
       if (!mounted) return;
       setState(() {

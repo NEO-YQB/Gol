@@ -1,3 +1,5 @@
+import com.android.build.gradle.LibraryExtension
+
 allprojects {
     repositories {
         google()
@@ -17,6 +19,19 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
+}
+
+subprojects {
+    plugins.withId("com.android.library") {
+        extensions.configure<LibraryExtension> {
+            compileSdk = 36
+            defaultConfig {
+                if (targetSdk == null || targetSdk!! < 36) {
+                    targetSdk = 36
+                }
+            }
+        }
+    }
 }
 
 tasks.register<Delete>("clean") {

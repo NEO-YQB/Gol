@@ -27,6 +27,7 @@ model User {
   reviews       Review[]
   notifications Notification[]
   notificationDeliveries NotificationDelivery[]
+  pushDevices   PushDevice[]
   authoredArticles Article[]
   contentAuthor Author?
   createdPages Page[] @relation("PageCreatedBy")
@@ -39,6 +40,23 @@ model User {
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+model PushDevice {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token       String   @unique
+  platform    String
+  deviceLabel String?
+  appVersion  String?
+  isActive    Boolean  @default(true)
+  lastSeenAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, platform])
+  @@index([userId, isActive])
 }
 
 model Role {

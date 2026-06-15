@@ -11,6 +11,7 @@ import { NotificationTemplatesService } from './notification-templates.service';
 import { AdminDispatchNotificationDto } from './dto/admin-dispatch-notification.dto';
 import { AdminListNotificationsQueryDto } from './dto/admin-list-notifications-query.dto';
 import { MarkNotificationStatusDto } from './dto/mark-notification-status.dto';
+import { RegisterPushDeviceDto } from './dto/register-push-device.dto';
 
 type AuthenticatedUser = {
   id: number;
@@ -256,6 +257,53 @@ export class NotificationsService {
         deliveries: {
           orderBy: [{ createdAt: 'asc' }],
         },
+      },
+    });
+  }
+
+  async registerPushDevice(
+    user: AuthenticatedUser,
+    dto: RegisterPushDeviceDto,
+  ) {
+    const token = dto.token.trim();
+    if (!token) {
+      throw new NotFoundException('توکن دستگاه معتبر نیست');
+    }
+
+    await this.prisma.pushDevice.updateMany({
+      where: {
+        token,
+        userId: { not: user.id },
+      },
+      data: {
+        isActive: false,
+      },
+    });
+
+    return this.prisma.pushDevice.upsert({
+      where: { token },
+      update: {
+        userId: user.id,
+        platform: dto.platform,
+        deviceLabel: dto.deviceLabel?.trim() || null,
+        appVersion: dto.appVersion?.trim() || null,
+        isActive: true,
+        lastSeenAt: new Date(),
+      },
+      create: {
+        userId: user.id,
+        token,
+        platform: dto.platform,
+        deviceLabel: dto.deviceLabel?.trim() || null,
+        appVersion: dto.appVersion?.trim() || null,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        token: true,
+        platform: true,
+        isActive: true,
+        lastSeenAt: true,
       },
     });
   }

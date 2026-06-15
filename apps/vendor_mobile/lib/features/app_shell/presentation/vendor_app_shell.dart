@@ -1,7 +1,9 @@
 import 'dart:math' as math;
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/services/push_notification_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_glass_card.dart';
@@ -42,6 +44,7 @@ class VendorAppShell extends StatefulWidget {
 
 class _VendorAppShellState extends State<VendorAppShell> {
   VendorShellTab _currentTab = VendorShellTab.dashboard;
+  StreamSubscription<PushNavigationIntent>? _pushNavigationSubscription;
 
   List<_NavItemData> get _items => const [
         _NavItemData(
@@ -85,6 +88,35 @@ class _VendorAppShellState extends State<VendorAppShell> {
           icon: Icons.storefront_rounded,
         ),
       ];
+
+  @override
+  void initState() {
+    super.initState();
+    _pushNavigationSubscription = PushNotificationService.instance
+        .navigationStream
+        .listen(_handlePushNavigation);
+  }
+
+  @override
+  void dispose() {
+    _pushNavigationSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _handlePushNavigation(PushNavigationIntent intent) {
+    if (!mounted) return;
+
+    final topic = intent.topic.toLowerCase();
+    final nextTab = topic.contains('support')
+        ? VendorShellTab.support
+        : topic.contains('order')
+            ? VendorShellTab.orders
+            : VendorShellTab.notifications;
+
+    setState(() {
+      _currentTab = nextTab;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
