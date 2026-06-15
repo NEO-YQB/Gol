@@ -8,6 +8,7 @@ import '../../../shared/widgets/app_glass_card.dart';
 import '../../auth/domain/auth_session.dart';
 import '../../dashboard/presentation/dashboard_screen.dart';
 import '../../discounts/presentation/discounts_screen.dart';
+import '../../notifications/presentation/notifications_screen.dart';
 import '../../orders/presentation/orders_screen.dart';
 import '../../products/presentation/products_screen.dart';
 import '../../store_profile/presentation/store_profile_screen.dart';
@@ -113,9 +114,9 @@ class _VendorAppShellState extends State<VendorAppShell> {
           accessToken: widget.session.accessToken,
           embedded: true,
         ),
-      VendorShellTab.notifications => const _ShellPlaceholder(
-          title: 'اعلان‌ها',
-          description: 'مرکز اعلان در مرحله بعدی به navigation اصلی وصل می‌شود.',
+      VendorShellTab.notifications => NotificationsScreen(
+          accessToken: widget.session.accessToken,
+          embedded: true,
         ),
       VendorShellTab.support => SupportScreen(
           accessToken: widget.session.accessToken,
