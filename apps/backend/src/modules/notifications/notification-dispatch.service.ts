@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Notification, NotificationChannel, NotificationDelivery, NotificationStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { FirebaseAdminService } from './firebase-admin.service';
 import { NotificationTemplatesService } from './notification-templates.service';
 
 type AdapterDispatchResult = {
@@ -69,19 +70,140 @@ class MockExternalNotificationAdapter implements NotificationAdapter {
   }
 }
 
+class PushNotificationAdapter implements NotificationAdapter {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly firebaseAdminService: FirebaseAdminService,
+  ) {}
+
+  supports(channel: NotificationChannel) {
+    return channel === NotificationChannel.PUSH;
+  }
+
+  async dispatch(context: DispatchContext): Promise<AdapterDispatchResult> {
+    if (!this.firebaseAdminService.isConfigured()) {
+      return {
+        ok: false,
+        failureReason: 'تنظیمات Firebase Admin برای PUSH کامل نشده است',
+      };
+    }
+
+    const devices = await this.prisma.pushDevice.findMany({
+      where: {
+        userId: context.notification.userId,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        token: true,
+      },
+      take: 20,
+    });
+
+    if (devices.length === 0) {
+      return {
+        ok: false,
+        failureReason: 'هیچ device token فعالی برای این کاربر ثبت نشده است',
+      };
+    }
+
+    const messaging = this.firebaseAdminService.messaging;
+    if (!messaging) {
+      return {
+        ok: false,
+        failureReason: 'Firebase Messaging در backend در دسترس نیست',
+      };
+    }
+
+    const data: Record<string, string> = {
+      topic: context.notification.topic,
+    };
+
+    if (context.notification.orderId != null) {
+      data.orderId = String(context.notification.orderId);
+    }
+    if (context.notification.supportTicketId != null) {
+      data.supportTicketId = String(context.notification.supportTicketId);
+    }
+
+    const response = await messaging.sendEachForMulticast({
+      tokens: devices.map((item) => item.token),
+      notification: {
+        title: context.title,
+        body: context.body,
+      },
+      data,
+      android: {
+        priority: 'high',
+      },
+    });
+
+    const invalidTokens = response.responses
+      .map((item, index) => ({
+        item,
+        token: devices[index]?.token,
+      }))
+      .filter(
+        ({ item, token }) =>
+          Boolean(token) &&
+          !item.success &&
+          typeof item.error?.code === 'string' &&
+          (item.error.code.includes('registration-token-not-registered') ||
+            item.error.code.includes('invalid-registration-token')),
+      )
+      .map(({ token }) => token!)
+      .filter(Boolean);
+
+    if (invalidTokens.length > 0) {
+      await this.prisma.pushDevice.updateMany({
+        where: {
+          token: { in: invalidTokens },
+        },
+        data: {
+          isActive: false,
+        },
+      });
+    }
+
+    if (response.successCount === 0) {
+      const firstError = response.responses.find((item) => !item.success)?.error;
+      return {
+        ok: false,
+        failureReason: firstError?.message ?? 'ارسال PUSH ناموفق بود',
+        providerResponse: {
+          successCount: response.successCount,
+          failureCount: response.failureCount,
+        },
+      };
+    }
+
+    return {
+      ok: true,
+      providerMessageId: `push:${context.notification.id}:${context.delivery.id}`,
+      providerResponse: {
+        successCount: response.successCount,
+        failureCount: response.failureCount,
+      },
+    };
+  }
+}
+
 @Injectable()
 export class NotificationDispatchService {
-  private readonly adapters: NotificationAdapter[] = [
-    new InAppNotificationAdapter(),
-    new MockExternalNotificationAdapter(NotificationChannel.SMS),
-    new MockExternalNotificationAdapter(NotificationChannel.EMAIL),
-    new MockExternalNotificationAdapter(NotificationChannel.PUSH),
-  ];
+  private readonly adapters: NotificationAdapter[];
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly templatesService: NotificationTemplatesService,
-  ) {}
+    private readonly firebaseAdminService: FirebaseAdminService,
+  ) {
+    this.adapters = [
+      new InAppNotificationAdapter(),
+      new MockExternalNotificationAdapter(NotificationChannel.SMS),
+      new MockExternalNotificationAdapter(NotificationChannel.EMAIL),
+      new PushNotificationAdapter(this.prisma, this.firebaseAdminService),
+    ];
+  }
 
   async simulateDispatch(
     notificationId: number,

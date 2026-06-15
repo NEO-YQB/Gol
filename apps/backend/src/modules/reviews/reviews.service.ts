@@ -144,7 +144,7 @@ export class ReviewsService {
         orderId: order.id,
         rating: dto.rating,
       },
-      channels: ['IN_APP', 'SMS', 'EMAIL'],
+      channels: ['IN_APP', 'SMS', 'EMAIL', 'PUSH'],
       dedupeKey: `review-created:${review.id}`,
     });
 
