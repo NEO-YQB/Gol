@@ -2,6 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { App, cert, getApp, getApps, initializeApp } from 'firebase-admin/app';
 import { getMessaging, Messaging } from 'firebase-admin/messaging';
 
+type FirebaseServiceAccountShape = {
+  project_id?: string;
+  client_email?: string;
+  private_key?: string;
+};
+
 @Injectable()
 export class FirebaseAdminService {
   private app: App | null = null;
@@ -24,9 +30,11 @@ export class FirebaseAdminService {
       return this.app;
     }
 
-    const projectId = process.env.FIREBASE_PROJECT_ID?.trim();
-    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
-    const privateKey = this.normalizePrivateKey(process.env.FIREBASE_PRIVATE_KEY);
+    const serviceAccount = this.resolveServiceAccount();
+    const projectId = serviceAccount?.projectId ?? process.env.FIREBASE_PROJECT_ID?.trim() ?? null;
+    const clientEmail = serviceAccount?.clientEmail ?? process.env.FIREBASE_CLIENT_EMAIL?.trim() ?? null;
+    const privateKey =
+      serviceAccount?.privateKey ?? this.normalizePrivateKey(process.env.FIREBASE_PRIVATE_KEY);
 
     if (!projectId || !clientEmail || !privateKey) {
       return null;
@@ -50,6 +58,46 @@ export class FirebaseAdminService {
     );
 
     return this.app;
+  }
+
+  private resolveServiceAccount() {
+    const encodedJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON_BASE64?.trim();
+    if (encodedJson) {
+      try {
+        const decoded = Buffer.from(encodedJson, 'base64').toString('utf8');
+        return this.parseServiceAccountJson(decoded);
+      } catch {
+        return null;
+      }
+    }
+
+    const inlineJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim();
+    if (inlineJson) {
+      return this.parseServiceAccountJson(inlineJson);
+    }
+
+    return null;
+  }
+
+  private parseServiceAccountJson(rawJson: string) {
+    try {
+      const parsed = JSON.parse(rawJson) as FirebaseServiceAccountShape;
+      const projectId = parsed.project_id?.trim();
+      const clientEmail = parsed.client_email?.trim();
+      const privateKey = this.normalizePrivateKey(parsed.private_key);
+
+      if (!projectId || !clientEmail || !privateKey) {
+        return null;
+      }
+
+      return {
+        projectId,
+        clientEmail,
+        privateKey,
+      };
+    } catch {
+      return null;
+    }
   }
 
   private normalizePrivateKey(rawValue?: string) {
