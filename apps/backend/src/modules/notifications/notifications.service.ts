@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   NotificationChannel,
   NotificationStatus,
@@ -273,9 +273,29 @@ export class NotificationsService {
       forceRetry: true,
     });
 
+    const pushResult = result?.find((item) => item.delivery.channel === NotificationChannel.PUSH) ?? null;
+
+    if (!pushResult) {
+      throw new BadRequestException('نتیجه dispatch پوش از backend دریافت نشد');
+    }
+
+    if (!pushResult.ok) {
+      const providerResponse =
+        pushResult.delivery.providerResponse && typeof pushResult.delivery.providerResponse === 'object'
+          ? pushResult.delivery.providerResponse
+          : null;
+
+      throw new BadRequestException({
+        message: pushResult.reason ?? 'ارسال PUSH ناموفق بود',
+        deliveryId: pushResult.delivery.id,
+        notificationId: notification.id,
+        providerResponse,
+      });
+    }
+
     return {
       notification,
-      dispatch: result,
+      dispatch: pushResult,
     };
   }
 
