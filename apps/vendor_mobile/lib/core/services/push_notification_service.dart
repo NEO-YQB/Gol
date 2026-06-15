@@ -4,6 +4,7 @@ import 'dart:developer' as developer;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../../firebase_options.dart';
 import '../../features/notifications/data/push_device_api_service.dart';
@@ -54,7 +55,18 @@ class PushNotificationService {
   final _navigationController =
       StreamController<PushNavigationIntent>.broadcast();
   final PushDeviceApiService _pushDeviceApiService = const PushDeviceApiService();
+  final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
   bool _initialized = false;
+  bool _localNotificationsReady = false;
+
+  static const AndroidNotificationChannel _androidChannel =
+      AndroidNotificationChannel(
+        'vendor_push_channel',
+        'Vendor Push Notifications',
+        description: 'اعلان‌های عملیاتی فروشنده',
+        importance: Importance.max,
+      );
 
   Stream<PushNavigationIntent> get navigationStream =>
       _navigationController.stream;
@@ -81,6 +93,7 @@ class PushNotificationService {
         _firebaseMessagingBackgroundHandler,
       );
 
+      await _initializeLocalNotifications();
       await _requestPermission(messaging);
       await _logToken(messaging);
       await _handleInitialMessage();
@@ -215,6 +228,7 @@ class PushNotificationService {
         'Push foreground message: ${message.messageId} / ${message.notification?.title}',
         name: 'PushNotificationService',
       );
+      unawaited(_showForegroundNotification(message));
     });
 
     FirebaseMessaging.onMessageOpenedApp.listen((message) {
@@ -225,6 +239,53 @@ class PushNotificationService {
       );
       _navigationController.add(PushNavigationIntent.fromMessage(message));
     });
+  }
+
+  Future<void> _initializeLocalNotifications() async {
+    if (_localNotificationsReady) return;
+
+    const androidSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const settings = InitializationSettings(
+      android: androidSettings,
+    );
+
+    await _localNotifications.initialize(
+      settings,
+      onDidReceiveNotificationResponse: (_) {},
+    );
+
+    final androidPlugin = _localNotifications
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+
+    await androidPlugin?.createNotificationChannel(_androidChannel);
+    _localNotificationsReady = true;
+    _consoleLog('PUSH local notifications initialized');
+  }
+
+  Future<void> _showForegroundNotification(RemoteMessage message) async {
+    if (!_localNotificationsReady) return;
+
+    final notification = message.notification;
+    final title = notification?.title ?? 'اعلان جدید';
+    final body = notification?.body ?? 'یک اعلان جدید دریافت شد.';
+
+    await _localNotifications.show(
+      message.hashCode,
+      title,
+      body,
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          _androidChannel.id,
+          _androidChannel.name,
+          channelDescription: _androidChannel.description,
+          importance: Importance.max,
+          priority: Priority.high,
+          icon: '@mipmap/ic_launcher',
+        ),
+      ),
+    );
   }
 
   Future<void> _handleInitialMessage() async {
