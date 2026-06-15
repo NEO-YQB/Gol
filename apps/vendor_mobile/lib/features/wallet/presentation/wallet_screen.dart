@@ -373,30 +373,41 @@ class _ActivityOverview extends StatelessWidget {
             style: theme.textTheme.titleLarge,
           ),
           const SizedBox(height: AppSpacing.lg),
-          Row(
-            children: [
-              Expanded(
-                child: _StatBox(
-                  label: 'تعداد تراکنش',
-                  value: '${summary.transactionCount}',
-                  accent: AppColors.accent,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: _StatBox(
-                  label: 'ورودی',
-                  value: '${_formatMoney(summary.creditAmount)} تومان',
-                  accent: AppColors.success,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          _StatBox(
-            label: 'خروجی',
-            value: '${_formatMoney(summary.debitAmount)} تومان',
-            accent: AppColors.secondary,
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final itemWidth = (constraints.maxWidth - AppSpacing.md) / 2;
+
+              return Wrap(
+                spacing: AppSpacing.md,
+                runSpacing: AppSpacing.md,
+                children: [
+                  SizedBox(
+                    width: itemWidth,
+                    child: _StatBox(
+                      label: 'تعداد تراکنش',
+                      value: '${summary.transactionCount}',
+                      accent: AppColors.accent,
+                    ),
+                  ),
+                  SizedBox(
+                    width: itemWidth,
+                    child: _StatBox(
+                      label: 'ورودی',
+                      value: '${_formatMoney(summary.creditAmount)} تومان',
+                      accent: AppColors.success,
+                    ),
+                  ),
+                  SizedBox(
+                    width: itemWidth,
+                    child: _StatBox(
+                      label: 'خروجی',
+                      value: '${_formatMoney(summary.debitAmount)} تومان',
+                      accent: AppColors.secondary,
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -424,9 +435,13 @@ class _SettlementOverview extends StatelessWidget {
             style: theme.textTheme.titleLarge,
           ),
           const SizedBox(height: AppSpacing.lg),
-          Wrap(
-            spacing: AppSpacing.md,
-            runSpacing: AppSpacing.md,
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: AppSpacing.md,
+            crossAxisSpacing: AppSpacing.md,
+            childAspectRatio: 2.45,
             children: [
               _MiniChip(label: 'در انتظار', value: summary.pendingSettlementsCount),
               _MiniChip(label: 'قابل آزادسازی', value: summary.eligibleSettlementsCount),
@@ -529,7 +544,7 @@ class _MiniChip extends StatelessWidget {
         border: Border.all(color: AppColors.border),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
             _toPersianDigits(value),
