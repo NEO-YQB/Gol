@@ -11,6 +11,7 @@ import '../../discounts/presentation/discounts_screen.dart';
 import '../../orders/presentation/orders_screen.dart';
 import '../../products/presentation/products_screen.dart';
 import '../../store_profile/presentation/store_profile_screen.dart';
+import '../../wallet/presentation/wallet_screen.dart';
 
 enum VendorShellTab {
   dashboard,
@@ -107,10 +108,9 @@ class _VendorAppShellState extends State<VendorAppShell> {
           accessToken: widget.session.accessToken,
           storeId: widget.session.bootstrap?.store?.id ?? 0,
         ),
-      VendorShellTab.wallet => const _ShellPlaceholder(
-          title: 'کیف پول و تسویه حساب',
-          description:
-              'موجودی، گردش مالی و درخواست تسویه در مرحله بعدی داخل این بخش پیاده‌سازی می‌شود.',
+      VendorShellTab.wallet => WalletScreen(
+          accessToken: widget.session.accessToken,
+          embedded: true,
         ),
       VendorShellTab.notifications => const _ShellPlaceholder(
           title: 'اعلان‌ها',
