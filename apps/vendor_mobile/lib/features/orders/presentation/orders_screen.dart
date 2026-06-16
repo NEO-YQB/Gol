@@ -33,13 +33,13 @@ class _OrdersScreenState extends State<OrdersScreen> {
   final _searchController = TextEditingController();
 
   List<VendorOrderSummary> _orders = const [];
-  VendorOrderDetail? _selectedOrder;
   String? _screenErrorMessage;
   String? _actionErrorMessage;
   bool _isLoading = true;
   bool _isLoadingDetail = false;
   String? _busyAction;
   String _selectedFilter = 'ALL';
+  bool _showOnlyActionable = false;
 
   @override
   void initState() {
@@ -65,23 +65,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
       );
       if (!mounted) return;
 
-      final previousId = _selectedOrder?.id;
-
       setState(() {
         _orders = orders;
       });
-
-      if (orders.isEmpty) {
-        setState(() {
-          _selectedOrder = null;
-        });
-        return;
-      }
-
-      final nextId = orders.any((order) => order.id == previousId)
-          ? previousId!
-          : orders.first.id;
-      await _loadOrderDetail(nextId, silent: true);
     } on AuthApiException catch (error) {
       if (!mounted) return;
       setState(() {
@@ -110,9 +96,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
       );
 
       if (!mounted) return;
-      setState(() {
-        _selectedOrder = detail;
-      });
     } on AuthApiException catch (error) {
       if (!mounted) return;
       setState(() {
@@ -130,8 +113,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     String key,
     Future<VendorOrderDetail> Function() action,
   ) async {
-    final selectedOrder = _selectedOrder;
-    if (selectedOrder == null) return;
+    if (_orders.isEmpty) return;
 
     setState(() {
       _busyAction = key;
@@ -142,12 +124,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
       final detail = await action();
       if (!mounted) return;
 
-      setState(() {
-        _selectedOrder = detail;
-      });
-
       await _loadOrders();
-      await _loadOrderDetail(selectedOrder.id, silent: true);
+      await _loadOrderDetail(detail.id, silent: true);
     } on AuthApiException catch (error) {
       if (!mounted) return;
       setState(() {
@@ -162,15 +140,18 @@ class _OrdersScreenState extends State<OrdersScreen> {
   }
 
   Future<void> _openOrderDetails(VendorOrderSummary order) async {
-    await _loadOrderDetail(order.id);
-    if (!mounted || _selectedOrder == null) return;
+    final detail = await _ordersApiService.getOrderDetail(
+      accessToken: widget.accessToken,
+      orderId: order.id,
+    );
+    if (!mounted) return;
 
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => Directionality(
           textDirection: TextDirection.rtl,
           child: _OrderDetailsPage(
-            order: _selectedOrder!,
+            order: detail,
             isLoading: _isLoadingDetail,
             busyAction: _busyAction,
             errorMessage: _actionErrorMessage,
@@ -214,16 +195,28 @@ class _OrdersScreenState extends State<OrdersScreen> {
     final theme = Theme.of(context);
     final search = _searchController.text.trim().toLowerCase();
     final filteredOrders = _orders.where((order) {
+      final normalizedStatus = _translateOrderStatus(order.status).toLowerCase();
+      final normalizedPayment = _translatePaymentStatus(order.paymentStatus)
+          .toLowerCase();
       final matchesSearch =
           search.isEmpty ||
           order.customerName.toLowerCase().contains(search) ||
           order.id.toString().contains(search) ||
-          order.phoneNumber.toLowerCase().contains(search);
+          order.phoneNumber.toLowerCase().contains(search) ||
+          normalizedStatus.contains(search) ||
+          normalizedPayment.contains(search);
 
       final matchesFilter =
           _selectedFilter == 'ALL' || order.status == _selectedFilter;
 
-      return matchesSearch && matchesFilter;
+      final matchesActionable = !_showOnlyActionable ||
+          order.status == 'PENDING' ||
+          order.status == 'PAID' ||
+          order.status == 'ACCEPTED' ||
+          order.status == 'PROCESSING' ||
+          order.status == 'SHIPPED';
+
+      return matchesSearch && matchesFilter && matchesActionable;
     }).toList();
 
     final pendingOrdersCount = _orders.where((order) {
@@ -232,7 +225,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
     final deliveredOrdersCount = _orders
         .where((order) => order.status == 'DELIVERED')
         .length;
-    final selectedOrderId = _selectedOrder?.id;
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -294,10 +286,19 @@ class _OrdersScreenState extends State<OrdersScreen> {
                             child: TextField(
                               controller: _searchController,
                               onChanged: (_) => setState(() {}),
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'جستجو در سفارش‌ها',
-                                hintText: 'شناسه، مشتری یا شماره تماس',
-                                prefixIcon: Icon(Icons.search_rounded),
+                                hintText: 'شناسه، مشتری، تماس یا وضعیت',
+                                prefixIcon: const Icon(Icons.search_rounded),
+                                suffixIcon: _searchController.text.trim().isEmpty
+                                    ? null
+                                    : IconButton(
+                                        onPressed: () {
+                                          _searchController.clear();
+                                          setState(() {});
+                                        },
+                                        icon: const Icon(Icons.close_rounded),
+                                      ),
                               ),
                             ),
                           ),
@@ -314,6 +315,19 @@ class _OrdersScreenState extends State<OrdersScreen> {
                         ],
                       ),
                       const SizedBox(height: AppSpacing.md),
+                      SwitchListTile.adaptive(
+                        value: _showOnlyActionable,
+                        contentPadding: EdgeInsets.zero,
+                        activeColor: AppColors.primary,
+                        title: const Text('فقط سفارش‌های قابل اقدام'),
+                        subtitle: const Text('سفارش‌های معطل یا قابل رسیدگی را نگه دار'),
+                        onChanged: (value) {
+                          setState(() {
+                            _showOnlyActionable = value;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
                       SizedBox(
                         height: 42,
                         child: ListView(
@@ -345,7 +359,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
                             child: AppMetricTile(
                               title: 'سفارش‌های قابل مشاهده',
                               value: '${filteredOrders.length}',
-                              subtitle: 'نتیجه فیلتر و جستجوی فعلی',
+                              subtitle: _showOnlyActionable
+                                  ? 'فقط سفارش‌های قابل رسیدگی'
+                                  : 'نتیجه فیلتر و جستجوی فعلی',
                               accentColor: AppColors.primary,
                               icon: Icons.receipt_long_rounded,
                             ),
@@ -363,45 +379,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
                             ),
                             child: _OrderSummaryCard(
                               order: order,
-                              selected: selectedOrderId == order.id,
-                              onTap: () => _loadOrderDetail(order.id),
+                              selected: false,
+                              onTap: () => _openOrderDetails(order),
                               onOpenDetails: () => _openOrderDetails(order),
-                            ),
-                          ),
-                        ),
-                      const SizedBox(height: AppSpacing.lg),
-                      if (_selectedOrder != null)
-                        _OrderDetailSection(
-                          order: _selectedOrder!,
-                          isLoading: _isLoadingDetail,
-                          busyAction: _busyAction,
-                          errorMessage: _actionErrorMessage,
-                          onAccept: () => _runAction(
-                            'accept',
-                            () => _ordersApiService.acceptOrder(
-                              accessToken: widget.accessToken,
-                              orderId: _selectedOrder!.id,
-                            ),
-                          ),
-                          onShip: () => _runAction(
-                            'ship',
-                            () => _ordersApiService.shipOrder(
-                              accessToken: widget.accessToken,
-                              orderId: _selectedOrder!.id,
-                            ),
-                          ),
-                          onDeliver: () => _runAction(
-                            'deliver',
-                            () => _ordersApiService.deliverOrder(
-                              accessToken: widget.accessToken,
-                              orderId: _selectedOrder!.id,
-                            ),
-                          ),
-                          onCancel: () => _runAction(
-                            'cancel',
-                            () => _ordersApiService.cancelOrder(
-                              accessToken: widget.accessToken,
-                              orderId: _selectedOrder!.id,
                             ),
                           ),
                         ),
@@ -606,6 +586,13 @@ class _OrderSummaryCard extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.md),
               Text(order.customerName, style: theme.textTheme.headlineMedium),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                order.phoneNumber,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
               const SizedBox(height: AppSpacing.sm),
               Text(
                 'شناسه سفارش: ${order.id}',
@@ -642,14 +629,6 @@ class _OrderSummaryCard extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  if (selected)
-                    Text(
-                      'در حال نمایش',
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
                 ],
               ),
               const SizedBox(height: AppSpacing.md),
@@ -657,7 +636,7 @@ class _OrderSummaryCard extends StatelessWidget {
                 children: [
                   OutlinedButton.icon(
                     onPressed: () async {
-                      await _callCustomer(order.phoneNumber);
+                      await _callCustomer(context, order.phoneNumber);
                     },
                     icon: const Icon(Icons.call_rounded),
                     label: const Text('تماس با مشتری'),
@@ -666,8 +645,8 @@ class _OrderSummaryCard extends StatelessWidget {
                   Expanded(
                     child: FilledButton.icon(
                       onPressed: onOpenDetails,
-                      icon: const Icon(Icons.arrow_forward_rounded),
-                      label: const Text('جزئیات'),
+                      icon: const Icon(Icons.visibility_rounded),
+                      label: const Text('مشاهده و مدیریت'),
                     ),
                   ),
                 ],
@@ -840,7 +819,7 @@ class _OrderDetailSection extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.md),
               Text(
-                'همه چیز لازم برای رسیدگی به این سفارش اینجاست: خلاصه، وضعیت مالی، actionها و timeline.',
+                'جزئیات کامل سفارش، وضعیت مالی، محصولات، آدرس و actionهای لازم را از همین صفحه مدیریت کن.',
                 style: theme.textTheme.bodyLarge?.copyWith(
                   color: AppColors.textSecondary,
                 ),
@@ -870,6 +849,11 @@ class _OrderDetailSection extends StatelessWidget {
                     value: '${_formatMoney(order.totalAmount)} تومان',
                     icon: Icons.sell_rounded,
                   ),
+                  _DetailStatCard(
+                    label: 'قابل پرداخت',
+                    value: '${_formatMoney(order.payableAmount)} تومان',
+                    icon: Icons.receipt_rounded,
+                  ),
                 ],
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -883,6 +867,10 @@ class _OrderDetailSection extends StatelessWidget {
                     _IdentityRow(label: 'مشتری', value: order.customerName),
                     _IdentityRow(label: 'شماره تماس', value: order.phoneNumber),
                     _IdentityRow(
+                      label: 'کد/شناسه مشتری',
+                      value: order.customerNationalId,
+                    ),
+                    _IdentityRow(
                       label: 'ثبت سفارش',
                       value: _formatDateLabel(order.createdAt),
                     ),
@@ -891,6 +879,26 @@ class _OrderDetailSection extends StatelessWidget {
                       value: order.deliveryDate.isEmpty
                           ? 'هنوز ثبت نشده'
                           : _formatDateLabel(order.deliveryDate),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              AppGlassCard(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('آدرس و تحویل', style: theme.textTheme.titleMedium),
+                    const SizedBox(height: AppSpacing.md),
+                    _IdentityRow(
+                      label: 'عنوان آدرس',
+                      value: order.shippingAddressTitle,
+                    ),
+                    _IdentityRow(
+                      label: 'آدرس تحویل',
+                      value: order.shippingAddressText,
+                      expandValue: true,
                     ),
                   ],
                 ),
@@ -1017,6 +1025,13 @@ class _OrderDetailSection extends StatelessWidget {
                         _actionEnabled(order.availableActions, 'canCancel')
                         ? onCancel
                         : null,
+                  ),
+                  _ActionButton(
+                    label: 'تماس با مشتری',
+                    icon: Icons.call_rounded,
+                    tone: AppColors.textPrimary,
+                    isBusy: false,
+                    onPressed: () => _callCustomer(context, order.phoneNumber),
                   ),
                 ],
               ),
@@ -1242,10 +1257,15 @@ class _DetailStatCard extends StatelessWidget {
 }
 
 class _IdentityRow extends StatelessWidget {
-  const _IdentityRow({required this.label, required this.value});
+  const _IdentityRow({
+    required this.label,
+    required this.value,
+    this.expandValue = false,
+  });
 
   final String label;
   final String value;
+  final bool expandValue;
 
   @override
   Widget build(BuildContext context) {
@@ -1686,11 +1706,27 @@ String _formatDateLabel(String raw) {
   return '$yyyy/$month/$day - $hh:$mm';
 }
 
-Future<void> _callCustomer(String phoneNumber) async {
-  final normalized = phoneNumber.trim();
+Future<void> _callCustomer(BuildContext context, String phoneNumber) async {
+  final normalized = phoneNumber
+      .trim()
+      .replaceAll(' ', '')
+      .replaceAll('-', '')
+      .replaceAll('(', '')
+      .replaceAll(')', '');
   if (normalized.isEmpty || normalized == '—') return;
 
-  final uri = Uri(scheme: 'tel', path: normalized);
+  final uri = Uri.parse('tel:$normalized');
+  final canLaunch = await canLaunchUrl(uri);
 
-  await launchUrl(uri);
+  if (canLaunch) {
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+    return;
+  }
+
+  if (!context.mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text('امکان باز کردن شماره‌گیر روی این دستگاه وجود ندارد.'),
+    ),
+  );
 }

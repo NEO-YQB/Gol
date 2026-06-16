@@ -44,4 +44,5 @@ flutter {
 }
 
 dependencies {
+    implementation("com.google.firebase:firebase-messaging:24.0.3")
 }

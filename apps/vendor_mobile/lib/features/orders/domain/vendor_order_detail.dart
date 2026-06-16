@@ -6,9 +6,13 @@ class VendorOrderDetail {
     required this.settlementStatus,
     required this.customerName,
     required this.phoneNumber,
+    required this.customerNationalId,
     required this.totalAmount,
+    required this.payableAmount,
     required this.createdAt,
     required this.deliveryDate,
+    required this.shippingAddressTitle,
+    required this.shippingAddressText,
     required this.availableActions,
     required this.timeline,
     required this.auditTrail,
@@ -22,9 +26,13 @@ class VendorOrderDetail {
   final String settlementStatus;
   final String customerName;
   final String phoneNumber;
+  final String customerNationalId;
   final num totalAmount;
+  final num payableAmount;
   final String createdAt;
   final String deliveryDate;
+  final String shippingAddressTitle;
+  final String shippingAddressText;
   final Map<String, dynamic> availableActions;
   final List<VendorOrderTimelineEvent> timeline;
   final List<VendorOrderAuditEvent> auditTrail;
@@ -46,16 +54,34 @@ class VendorOrderDetail {
       ], fallback: '—'),
       phoneNumber: _readText(
         json,
-        const ['recipientPhoneNumber', 'phoneNumber'],
+        const ['customerPhoneNumber', 'recipientPhoneNumber', 'phoneNumber'],
+        fallback: '—',
+      ),
+      customerNationalId: _readText(
+        json,
+        const ['customerNationalId', 'nationalId'],
         fallback: '—',
       ),
       totalAmount: _asNum(
         json['totalAmount'] ?? json['payableAmount'] ?? json['finalAmount'],
       ),
+      payableAmount: _asNum(
+        json['payableAmount'] ?? json['finalAmount'] ?? json['totalAmount'],
+      ),
       createdAt: _readText(json, const ['createdAt', 'updatedAt']),
       deliveryDate: _readText(
         json,
         const ['deliveredAt', 'deliveryDate', 'scheduledFor'],
+      ),
+      shippingAddressTitle: _readText(
+        json,
+        const ['shippingAddressTitle', 'addressTitle'],
+        fallback: '—',
+      ),
+      shippingAddressText: _readText(
+        json,
+        const ['shippingAddressText', 'shippingAddress', 'address'],
+        fallback: '—',
       ),
       availableActions:
           (json['availableActions'] as Map<String, dynamic>?) ?? const {},
