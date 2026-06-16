@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 import '../../../auth/data/auth_api_service.dart';
+import '../../../discounts/data/vendor_discounts_api_service.dart';
 import '../../../discounts/domain/vendor_discount.dart';
 import '../../data/products_api_service.dart';
 import '../../data/repositories/products_repository.dart';
