@@ -5,10 +5,9 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_glass_card.dart';
 import '../../../shared/widgets/app_section_heading.dart';
 import '../../../shared/widgets/app_shell_background.dart';
-import '../../auth/data/auth_api_service.dart';
-import '../data/vendor_discounts_api_service.dart';
 import '../domain/vendor_discount.dart';
 import 'discount_workspace_screen.dart';
+import 'view_models/discounts_view_model.dart';
 
 class DiscountsScreen extends StatefulWidget {
   const DiscountsScreen({
@@ -25,60 +24,42 @@ class DiscountsScreen extends StatefulWidget {
 }
 
 class _DiscountsScreenState extends State<DiscountsScreen> {
-  final _apiService = const VendorDiscountsApiService();
-
-  VendorDiscountListResponse? _response;
-  bool _isLoading = true;
-  String? _errorMessage;
-  String _filter = 'ALL';
-
-  Future<void> _loadDiscounts() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final response = await _apiService.getDiscounts(
-        accessToken: widget.accessToken,
-        storeId: widget.storeId,
-        isActive: _filter == 'ALL' ? null : _filter == 'ACTIVE',
-      );
-
-      if (!mounted) return;
-      setState(() {
-        _response = response;
-      });
-    } on AuthApiException catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = error.message;
-      });
-    } finally {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
+  late final DiscountsViewModel _viewModel;
 
   @override
   void initState() {
     super.initState();
+    _viewModel = DiscountsViewModel(
+      accessToken: widget.accessToken,
+      storeId: widget.storeId,
+    );
     _loadDiscounts();
   }
 
   @override
+  void dispose() {
+    _viewModel.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadDiscounts() => _viewModel.loadDiscounts();
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final items = _response?.items ?? const <VendorDiscount>[];
 
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         body: AppShellBackground(
           child: SafeArea(
-            child: ListView(
+            child: ListenableBuilder(
+              listenable: _viewModel,
+              builder: (context, _) {
+                final state = _viewModel.state;
+                final items = state.items;
+
+                return ListView(
               padding: const EdgeInsets.fromLTRB(24, 18, 24, 120),
               children: [
                 Text(
@@ -120,31 +101,15 @@ class _DiscountsScreenState extends State<DiscountsScreen> {
                       const SizedBox(height: AppSpacing.md),
                       Row(
                         children: [
-                          _FilterChip(
-                            label: 'همه',
-                            active: _filter == 'ALL',
-                            onTap: () {
-                              setState(() => _filter = 'ALL');
-                              _loadDiscounts();
-                            },
-                          ),
-                          const SizedBox(width: AppSpacing.sm),
-                          _FilterChip(
-                            label: 'فعال',
-                            active: _filter == 'ACTIVE',
-                            onTap: () {
-                              setState(() => _filter = 'ACTIVE');
-                              _loadDiscounts();
-                            },
-                          ),
-                          const SizedBox(width: AppSpacing.sm),
-                          _FilterChip(
-                            label: 'غیرفعال',
-                            active: _filter == 'INACTIVE',
-                            onTap: () {
-                              setState(() => _filter = 'INACTIVE');
-                              _loadDiscounts();
-                            },
+                          ...DiscountsViewModel.filters.map(
+                            (item) => Padding(
+                              padding: const EdgeInsets.only(left: AppSpacing.sm),
+                              child: _FilterChip(
+                                label: item.label,
+                                active: state.filter == item.value,
+                                onTap: () => _viewModel.setFilter(item.value),
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -152,11 +117,11 @@ class _DiscountsScreenState extends State<DiscountsScreen> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                if (_isLoading)
+                if (state.isLoading)
                   const _LoadingState()
-                else if (_errorMessage != null)
+                else if (state.errorMessage != null)
                   _ErrorState(
-                    message: _errorMessage!,
+                    message: state.errorMessage!,
                     onRetry: _loadDiscounts,
                   )
                 else if (items.isEmpty)
@@ -184,7 +149,9 @@ class _DiscountsScreenState extends State<DiscountsScreen> {
                       ),
                     ),
                   ),
-              ],
+                  ],
+                );
+              },
             ),
           ),
         ),
