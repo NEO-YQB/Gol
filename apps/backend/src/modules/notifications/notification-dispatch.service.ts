@@ -131,6 +131,8 @@ class PushNotificationAdapter implements NotificationAdapter {
 
     const data: Record<string, string> = {
       topic: context.notification.topic,
+      title: context.title,
+      body: context.body,
     };
 
     if (context.notification.orderId != null) {

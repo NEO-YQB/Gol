@@ -33,16 +33,14 @@ export function PushNotificationWorkspacePage({ session, onBack }: Props) {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
-  const [dispatchMeta, setDispatchMeta] = useState('')
 
   async function handleSubmit() {
     try {
       setSaving(true)
       setError('')
       setMessage('')
-      setDispatchMeta('')
 
-      const result = await adminApi.createPushNotification(session, {
+      await adminApi.createPushNotification(session, {
         userId: Number(form.userId),
         ...(form.storeId.trim() ? { storeId: Number(form.storeId) } : {}),
         ...(form.orderId.trim() ? { orderId: Number(form.orderId) } : {}),
@@ -62,16 +60,6 @@ export function PushNotificationWorkspacePage({ session, onBack }: Props) {
       })
 
       setMessage('پوش نوتیفیکیشن با موفقیت ارسال شد.')
-      const dispatch = result && typeof result === 'object' && 'dispatch' in result ? (result as Record<string, unknown>).dispatch : null
-      const delivery =
-        dispatch && typeof dispatch === 'object' && 'delivery' in dispatch
-          ? (dispatch as Record<string, unknown>).delivery as Record<string, unknown> | null
-          : null
-      const providerResponse =
-        delivery && typeof delivery.providerResponse === 'object'
-          ? JSON.stringify(delivery.providerResponse, null, 2)
-          : ''
-      setDispatchMeta(providerResponse)
     } catch (requestError) {
       if (requestError instanceof Error && 'status' in requestError) {
         const payload = requestError as Error & { message: string }
@@ -185,9 +173,6 @@ export function PushNotificationWorkspacePage({ session, onBack }: Props) {
 
         {message ? <p className="mt-4 rounded-2xl bg-[#edf8f2] px-4 py-3 text-sm font-medium text-[#1f6a52]">{message}</p> : null}
         {error ? <p className="mt-4 rounded-2xl bg-[#fff1ee] px-4 py-3 text-sm font-medium text-[#b64b36]">{error}</p> : null}
-        {dispatchMeta ? (
-          <pre className="mt-4 overflow-x-auto rounded-2xl bg-[#0f172a] px-4 py-3 text-xs text-white">{dispatchMeta}</pre>
-        ) : null}
       </SectionCard>
     </div>
   )
