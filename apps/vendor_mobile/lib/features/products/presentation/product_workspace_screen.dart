@@ -8,11 +8,10 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_glass_card.dart';
 import '../../../shared/widgets/app_shell_background.dart';
-import '../../auth/data/auth_api_service.dart';
-import '../../discounts/data/vendor_discounts_api_service.dart';
-import '../../discounts/domain/vendor_discount.dart';
 import '../data/products_api_service.dart';
+import '../domain/product_editor_models.dart';
 import '../domain/vendor_product_detail.dart';
+import 'view_models/product_workspace_view_model.dart';
 
 class ProductWorkspaceScreen extends StatefulWidget {
   const ProductWorkspaceScreen({
@@ -29,9 +28,8 @@ class ProductWorkspaceScreen extends StatefulWidget {
 }
 
 class _ProductWorkspaceScreenState extends State<ProductWorkspaceScreen> {
-  final _apiService = const ProductsApiService();
-  final _discountsApiService = const VendorDiscountsApiService();
   final _imagePicker = ImagePicker();
+  late final ProductWorkspaceViewModel _viewModel;
 
   late final TextEditingController _nameController;
   late final TextEditingController _priceController;
@@ -41,24 +39,13 @@ class _ProductWorkspaceScreenState extends State<ProductWorkspaceScreen> {
   late final TextEditingController _descriptionController;
   late final TextEditingController _mainImageAltController;
 
-  VendorProductDetail? _product;
-  bool _isLoading = true;
-  bool _isSaving = false;
-  bool _isUploadingMainImage = false;
-  bool _isUploadingGallery = false;
-  String? _errorMessage;
-  String? _successMessage;
-  String _mainImageUrl = '';
-  File? _pendingMainImageFile;
-  List<_EditableGalleryItem> _gallery = const [];
-  List<ProductTypeOption> _productTypes = const [];
-  List<ProductElementOption> _elements = const [];
-  List<_EditableCompositionItem> _compositions = const [];
-  List<VendorDiscount> _discounts = const [];
-
   @override
   void initState() {
     super.initState();
+    _viewModel = ProductWorkspaceViewModel(
+      accessToken: widget.accessToken,
+      productSlug: widget.productSlug,
+    );
     _nameController = TextEditingController();
     _priceController = TextEditingController();
     _discountPriceController = TextEditingController();
@@ -71,6 +58,7 @@ class _ProductWorkspaceScreenState extends State<ProductWorkspaceScreen> {
 
   @override
   void dispose() {
+    _viewModel.dispose();
     _nameController.dispose();
     _priceController.dispose();
     _discountPriceController.dispose();
@@ -82,70 +70,16 @@ class _ProductWorkspaceScreenState extends State<ProductWorkspaceScreen> {
   }
 
   Future<void> _loadDetail() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final typesFuture = _apiService.getProductTypes();
-      final elementsFuture = _apiService.getProductElements();
-      final product = await _apiService.getProductDetail(
-        accessToken: widget.accessToken,
-        slug: widget.productSlug,
-      );
-      final types = await typesFuture;
-      final elements = await elementsFuture;
-      final discounts = await _discountsApiService.getDiscounts(
-        accessToken: widget.accessToken,
-        storeId: product.storeId,
-      );
-
-      if (!mounted) return;
-      setState(() {
-        _product = product;
-        _productTypes = types;
-        _elements = elements;
-        _discounts = discounts.items.where((item) => item.productId == product.id).toList();
-        _fillForm(product);
-      });
-    } on AuthApiException catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = error.message;
-      });
-    } finally {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
-    }
+    await _viewModel.loadDetail();
+    final product = _viewModel.state.product;
+    if (product != null && mounted) _fillForm(product);
   }
 
-  String _displayPriceLabel(VendorProductDetail product) {
-    final editedBasePrice = _parseNum(_priceController.text) ?? product.price;
-    final editedLegacyDiscount = _parseNum(_discountPriceController.text);
-    VendorDiscount? activeDiscount;
-    final now = DateTime.now();
-    for (final item in _discounts) {
-      if (item.productId != product.id || !item.isActive) continue;
-      final startAt = DateTime.tryParse(item.startAt)?.toLocal();
-      final endAt = DateTime.tryParse(item.endAt)?.toLocal();
-      if (startAt != null && now.isBefore(startAt)) continue;
-      if (endAt != null && now.isAfter(endAt)) continue;
-      activeDiscount = item;
-      break;
-    }
-
-    final resolved = activeDiscount != null
-        ? resolveDiscountedPrice(
-            basePrice: editedBasePrice,
-            discount: activeDiscount,
-            now: now,
-          )
-        : editedLegacyDiscount ?? editedBasePrice;
-
-    return _formatPrice(resolved);
+  String _displayPriceLabel() {
+    return _viewModel.displayPriceLabel(
+      price: _priceController.text,
+      discountPrice: _discountPriceController.text,
+    );
   }
 
   void _fillForm(VendorProductDetail product) {
@@ -156,112 +90,29 @@ class _ProductWorkspaceScreenState extends State<ProductWorkspaceScreen> {
     _shortDescriptionController.text = product.shortDescription;
     _descriptionController.text = product.description;
     _mainImageAltController.text = product.mainImageAlt;
-    _mainImageUrl = product.mainImage;
-    _pendingMainImageFile = null;
-    _gallery = product.gallery
-        .map(
-          (item) => _EditableGalleryItem(
-            url: item.url,
-            alt: item.alt,
-          ),
-        )
-        .toList();
-    _compositions = product.compositions
-        .map(
-          (item) => _EditableCompositionItem(
-            elementId: item.elementId,
-            elementType: item.elementType,
-            quantity: item.quantity,
-          ),
-        )
-        .toList();
   }
 
   Future<void> _pickMainImage() async {
-    if (_isSaving || _isUploadingMainImage) return;
-
     try {
       final file = await _pickCroppedImage(
         title: 'برش تصویر شاخص',
       );
       if (file == null || !mounted) return;
-
-      setState(() {
-        _isUploadingMainImage = true;
-        _pendingMainImageFile = file;
-        _errorMessage = null;
-        _successMessage = null;
-      });
-
-      final uploadedUrl = await _apiService.uploadProductImage(
-        accessToken: widget.accessToken,
-        file: file,
-      );
-
-      if (!mounted) return;
-      setState(() {
-        _mainImageUrl = uploadedUrl;
-        _isUploadingMainImage = false;
-        _successMessage = 'تصویر شاخص آپلود شد.';
-      });
-    } on AuthApiException catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _isUploadingMainImage = false;
-        _pendingMainImageFile = null;
-        _errorMessage = error.message;
-      });
+      await _viewModel.uploadMainImage(file);
     } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _isUploadingMainImage = false;
-        _pendingMainImageFile = null;
-        _errorMessage = 'انتخاب یا برش تصویر شاخص انجام نشد.';
-      });
+      // Picker cancellation is a no-op.
     }
   }
 
   Future<void> _pickGalleryImage() async {
-    if (_isSaving || _isUploadingGallery) return;
-
     try {
       final file = await _pickCroppedImage(
         title: 'برش تصویر گالری',
       );
       if (file == null || !mounted) return;
-
-      setState(() {
-        _isUploadingGallery = true;
-        _errorMessage = null;
-        _successMessage = null;
-      });
-
-      final uploadedUrl = await _apiService.uploadProductImage(
-        accessToken: widget.accessToken,
-        file: file,
-      );
-
-      if (!mounted) return;
-      setState(() {
-        _gallery = [
-          ..._gallery,
-          _EditableGalleryItem(url: uploadedUrl, alt: ''),
-        ];
-        _isUploadingGallery = false;
-        _successMessage = 'تصویر گالری اضافه شد.';
-      });
-    } on AuthApiException catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _isUploadingGallery = false;
-        _errorMessage = error.message;
-      });
+      await _viewModel.uploadGalleryImage(file);
     } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _isUploadingGallery = false;
-        _errorMessage = 'انتخاب یا برش تصویر گالری انجام نشد.';
-      });
+      // Picker cancellation is a no-op.
     }
   }
 
@@ -302,99 +153,36 @@ class _ProductWorkspaceScreenState extends State<ProductWorkspaceScreen> {
   }
 
   Future<void> _saveProduct() async {
-    final product = _product;
-    if (product == null) return;
-
-    if (_nameController.text.trim().isEmpty ||
-        _priceController.text.trim().isEmpty ||
-        _quantityController.text.trim().isEmpty ||
-        _mainImageUrl.trim().isEmpty) {
-      setState(() {
-        _errorMessage = 'نام، قیمت، موجودی و تصویر شاخص الزامی هستند.';
-        _successMessage = null;
-      });
-      return;
-    }
-
-    setState(() {
-      _isSaving = true;
-      _errorMessage = null;
-      _successMessage = null;
-    });
-
-    try {
-      final updated = await _apiService.updateProduct(
-        accessToken: widget.accessToken,
-        productId: product.id,
-        slug: product.slug,
-        input: {
-          'name': _nameController.text.trim(),
-          'price': _parseNum(_priceController.text) ?? product.price,
-          'discountPrice': _parseNum(_discountPriceController.text),
-          'quantity': _parseInt(_quantityController.text) ?? product.quantity,
-          'mainImage': _mainImageUrl,
-          'mainImageAlt': _mainImageAltController.text.trim().isEmpty
-              ? null
-              : _mainImageAltController.text.trim(),
-          'shortDescription': _emptyToNull(_shortDescriptionController.text),
-          'description': _emptyToNull(_descriptionController.text),
-          'storeId': product.storeId,
-          'categoryId': product.categoryId,
-          'productTypeId': product.productTypeId,
-          'gallery': _gallery
-              .where((item) => item.url.trim().isNotEmpty)
-              .map(
-                (item) => {
-                  'url': item.url.trim(),
-                  'alt': item.alt.trim().isEmpty ? null : item.alt.trim(),
-                },
-              )
-              .toList(),
-          'compositions': _compositions
-              .where((item) => item.elementId != null)
-              .map(
-                (item) => {
-                  'elementId': item.elementId,
-                  'elementType': item.elementType,
-                  'quantity': item.quantity,
-                },
-              )
-              .toList(),
-        },
-      );
-
-      if (!mounted) return;
-      setState(() {
-        _product = updated;
-        _fillForm(updated);
-        _successMessage = 'تغییرات محصول ذخیره شد.';
-      });
-    } on AuthApiException catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = error.message;
-      });
-    } finally {
-      if (!mounted) return;
-      setState(() {
-        _isSaving = false;
-      });
-    }
+    final updated = await _viewModel.saveProduct(
+      name: _nameController.text,
+      price: _priceController.text,
+      discountPrice: _discountPriceController.text,
+      quantity: _quantityController.text,
+      mainImageAlt: _mainImageAltController.text,
+      shortDescription: _shortDescriptionController.text,
+      description: _descriptionController.text,
+    );
+    if (updated != null && mounted) _fillForm(updated);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final product = _product;
 
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         body: AppShellBackground(
           child: SafeArea(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _errorMessage != null && product == null
+            child: ListenableBuilder(
+              listenable: _viewModel,
+              builder: (context, _) {
+                final state = _viewModel.state;
+                final product = state.product;
+
+                return state.isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : state.errorMessage != null && product == null
                     ? Center(
                         child: Padding(
                           padding: const EdgeInsets.all(24),
@@ -403,7 +191,7 @@ class _ProductWorkspaceScreenState extends State<ProductWorkspaceScreen> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
-                                  _errorMessage!,
+                                  state.errorMessage!,
                                   style: theme.textTheme.bodyLarge,
                                   textAlign: TextAlign.center,
                                 ),
@@ -468,9 +256,9 @@ class _ProductWorkspaceScreenState extends State<ProductWorkspaceScreen> {
                                 ),
                                 const SizedBox(height: AppSpacing.lg),
                               ],
-                              if (_successMessage != null) ...[
+                              if (state.successMessage != null) ...[
                                 Text(
-                                  _successMessage!,
+                                  state.successMessage!,
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     color: AppColors.success,
                                     fontWeight: FontWeight.w700,
@@ -478,9 +266,9 @@ class _ProductWorkspaceScreenState extends State<ProductWorkspaceScreen> {
                                 ),
                                 const SizedBox(height: AppSpacing.md),
                               ],
-                              if (_errorMessage != null) ...[
+                              if (state.errorMessage != null) ...[
                                 Text(
-                                  _errorMessage!,
+                                  state.errorMessage!,
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     color: Theme.of(context).colorScheme.error,
                                     fontWeight: FontWeight.w700,
@@ -492,10 +280,10 @@ class _ProductWorkspaceScreenState extends State<ProductWorkspaceScreen> {
                                 name: _nameController.text.isEmpty
                                     ? product.name
                                     : _nameController.text,
-                                priceLabel: _displayPriceLabel(product),
+                                priceLabel: _displayPriceLabel(),
                                 status: _mapStatus(product.publicationStatus),
-                                imageUrl: _mainImageUrl,
-                                pendingImageFile: _pendingMainImageFile,
+                                imageUrl: state.mainImageUrl,
+                                pendingImageFile: state.pendingMainImageFile,
                               ),
                               const SizedBox(height: AppSpacing.lg),
                               AppGlassCard(
@@ -557,56 +345,27 @@ class _ProductWorkspaceScreenState extends State<ProductWorkspaceScreen> {
                                       title: 'تصویر شاخص',
                                       description:
                                           'یک تصویر مربع 1:1 انتخاب کن. قبل از ذخیره، کراپ می‌شود.',
-                                      imageUrl: _mainImageUrl,
-                                      pendingFile: _pendingMainImageFile,
-                                      isUploading: _isUploadingMainImage,
+                                      imageUrl: state.mainImageUrl,
+                                      pendingFile: state.pendingMainImageFile,
+                                      isUploading: state.isUploadingMainImage,
                                       onUpload: _pickMainImage,
                                     ),
                                     const SizedBox(height: AppSpacing.lg),
                                     _GalleryEditorCard(
-                                      items: _gallery,
-                                      isUploading: _isUploadingGallery,
+                                      items: state.gallery,
+                                      isUploading: state.isUploadingGallery,
                                       onUpload: _pickGalleryImage,
-                                      onAltChanged: (index, value) {
-                                        setState(() {
-                                          _gallery = [..._gallery];
-                                          _gallery[index] =
-                                              _gallery[index].copyWith(alt: value);
-                                        });
-                                      },
-                                      onRemove: (index) {
-                                        setState(() {
-                                          final next = [..._gallery];
-                                          next.removeAt(index);
-                                          _gallery = next;
-                                        });
-                                      },
+                                      onAltChanged:
+                                          _viewModel.updateGalleryAlt,
+                                      onRemove: _viewModel.removeGalleryItem,
                                     ),
                                     const SizedBox(height: AppSpacing.lg),
                                     _CompositionEditorCard(
-                                      elements: _allowedElementsForCurrentType(),
-                                      items: _compositions,
-                                      onAdd: () {
-                                        setState(() {
-                                          _compositions = [
-                                            ..._compositions,
-                                            _EditableCompositionItem.empty(),
-                                          ];
-                                        });
-                                      },
-                                      onRemove: (index) {
-                                        setState(() {
-                                          final next = [..._compositions];
-                                          next.removeAt(index);
-                                          _compositions = next;
-                                        });
-                                      },
-                                      onChanged: (index, item) {
-                                        setState(() {
-                                          _compositions = [..._compositions];
-                                          _compositions[index] = item;
-                                        });
-                                      },
+                                      elements: state.allowedElements,
+                                      items: state.compositions,
+                                      onAdd: _viewModel.addComposition,
+                                      onRemove: _viewModel.removeComposition,
+                                      onChanged: _viewModel.updateComposition,
                                     ),
                                     const SizedBox(height: AppSpacing.lg),
                                     TextField(
@@ -628,9 +387,13 @@ class _ProductWorkspaceScreenState extends State<ProductWorkspaceScreen> {
                                     SizedBox(
                                       width: double.infinity,
                                       child: FilledButton(
-                                        onPressed: _isSaving ? null : _saveProduct,
+                                        onPressed: state.isSaving
+                                            ? null
+                                            : _saveProduct,
                                         child: Text(
-                                          _isSaving ? 'در حال ذخیره...' : 'ذخیره تغییرات',
+                                          state.isSaving
+                                              ? 'در حال ذخیره...'
+                                              : 'ذخیره تغییرات',
                                         ),
                                       ),
                                     ),
@@ -638,28 +401,13 @@ class _ProductWorkspaceScreenState extends State<ProductWorkspaceScreen> {
                                 ),
                               ),
                             ],
-                          ),
+                          );
+              },
+            ),
           ),
         ),
       ),
     );
-  }
-
-  List<ProductElementOption> _allowedElementsForCurrentType() {
-    final product = _product;
-    if (product == null) return const [];
-    ProductTypeOption? type;
-    for (final item in _productTypes) {
-      if (item.id == product.productTypeId) {
-        type = item;
-        break;
-      }
-    }
-    if (type == null) return _elements;
-    if (type.allowedElementIds.isEmpty) return _elements;
-    return _elements
-        .where((item) => type!.allowedElementIds.contains(item.id))
-        .toList();
   }
 }
 
@@ -802,7 +550,7 @@ class _GalleryEditorCard extends StatelessWidget {
     required this.onRemove,
   });
 
-  final List<_EditableGalleryItem> items;
+  final List<EditableGalleryItem> items;
   final bool isUploading;
   final VoidCallback onUpload;
   final void Function(int index, String value) onAltChanged;
@@ -875,7 +623,7 @@ class _GalleryItemEditor extends StatelessWidget {
     required this.onRemove,
   });
 
-  final _EditableGalleryItem item;
+  final EditableGalleryItem item;
   final ValueChanged<String> onAltChanged;
   final VoidCallback onRemove;
 
@@ -1019,59 +767,6 @@ class _ProductStatusView {
   final Color color;
 }
 
-class _EditableGalleryItem {
-  const _EditableGalleryItem({
-    required this.url,
-    required this.alt,
-  });
-
-  final String url;
-  final String alt;
-
-  _EditableGalleryItem copyWith({
-    String? url,
-    String? alt,
-  }) {
-    return _EditableGalleryItem(
-      url: url ?? this.url,
-      alt: alt ?? this.alt,
-    );
-  }
-}
-
-class _EditableCompositionItem {
-  const _EditableCompositionItem({
-    required this.elementId,
-    required this.elementType,
-    required this.quantity,
-  });
-
-  final int? elementId;
-  final String elementType;
-  final num quantity;
-
-  factory _EditableCompositionItem.empty() {
-    return const _EditableCompositionItem(
-      elementId: null,
-      elementType: '',
-      quantity: 1,
-    );
-  }
-
-  _EditableCompositionItem copyWith({
-    int? elementId,
-    String? elementType,
-    num? quantity,
-    bool clearElementId = false,
-  }) {
-    return _EditableCompositionItem(
-      elementId: clearElementId ? null : (elementId ?? this.elementId),
-      elementType: elementType ?? this.elementType,
-      quantity: quantity ?? this.quantity,
-    );
-  }
-}
-
 class _CompositionEditorCard extends StatelessWidget {
   const _CompositionEditorCard({
     required this.elements,
@@ -1082,10 +777,10 @@ class _CompositionEditorCard extends StatelessWidget {
   });
 
   final List<ProductElementOption> elements;
-  final List<_EditableCompositionItem> items;
+  final List<EditableCompositionItem> items;
   final VoidCallback onAdd;
   final void Function(int index) onRemove;
-  final void Function(int index, _EditableCompositionItem item) onChanged;
+  final void Function(int index, EditableCompositionItem item) onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -1161,9 +856,9 @@ class _CompositionRow extends StatelessWidget {
   });
 
   final List<ProductElementOption> elements;
-  final _EditableCompositionItem item;
+  final EditableCompositionItem item;
   final VoidCallback onRemove;
-  final ValueChanged<_EditableCompositionItem> onChanged;
+  final ValueChanged<EditableCompositionItem> onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -1267,32 +962,3 @@ _ProductStatusView _mapStatus(String value) {
   }
 }
 
-String _formatPrice(num value) {
-  final digits = value.toInt().toString();
-  final buffer = StringBuffer();
-  for (var i = 0; i < digits.length; i++) {
-    buffer.write(digits[i]);
-    final remaining = digits.length - i - 1;
-    if (remaining > 0 && remaining % 3 == 0) {
-      buffer.write(',');
-    }
-  }
-  return '${buffer.toString()} تومان';
-}
-
-int? _parseInt(String value) {
-  final trimmed = value.trim();
-  if (trimmed.isEmpty) return null;
-  return int.tryParse(trimmed);
-}
-
-num? _parseNum(String value) {
-  final trimmed = value.trim();
-  if (trimmed.isEmpty) return null;
-  return num.tryParse(trimmed);
-}
-
-String? _emptyToNull(String value) {
-  final trimmed = value.trim();
-  return trimmed.isEmpty ? null : trimmed;
-}

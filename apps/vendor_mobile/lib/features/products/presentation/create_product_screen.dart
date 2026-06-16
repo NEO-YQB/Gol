@@ -8,8 +8,9 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_glass_card.dart';
 import '../../../shared/widgets/app_shell_background.dart';
-import '../../auth/data/auth_api_service.dart';
 import '../data/products_api_service.dart';
+import '../domain/product_editor_models.dart';
+import 'view_models/create_product_view_model.dart';
 import 'product_workspace_screen.dart';
 
 class CreateProductScreen extends StatefulWidget {
@@ -27,8 +28,8 @@ class CreateProductScreen extends StatefulWidget {
 }
 
 class _CreateProductScreenState extends State<CreateProductScreen> {
-  final _apiService = const ProductsApiService();
   final _imagePicker = ImagePicker();
+  late final CreateProductViewModel _viewModel;
 
   late final TextEditingController _nameController;
   late final TextEditingController _priceController;
@@ -38,24 +39,13 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   late final TextEditingController _descriptionController;
   late final TextEditingController _mainImageAltController;
 
-  bool _isBootstrapping = true;
-  bool _isSaving = false;
-  bool _isUploadingMainImage = false;
-  bool _isUploadingGallery = false;
-  String? _errorMessage;
-  List<ProductCategoryOption> _categories = const [];
-  List<ProductTypeOption> _productTypes = const [];
-  List<ProductElementOption> _elements = const [];
-  int? _selectedCategoryId;
-  int? _selectedProductTypeId;
-  String _mainImageUrl = '';
-  File? _pendingMainImageFile;
-  List<_EditableGalleryItem> _gallery = const [];
-  List<_EditableCompositionItem> _compositions = const [];
-
   @override
   void initState() {
     super.initState();
+    _viewModel = CreateProductViewModel(
+      accessToken: widget.accessToken,
+      storeId: widget.storeId,
+    );
     _nameController = TextEditingController();
     _priceController = TextEditingController();
     _discountPriceController = TextEditingController();
@@ -68,6 +58,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
 
   @override
   void dispose() {
+    _viewModel.dispose();
     _nameController.dispose();
     _priceController.dispose();
     _discountPriceController.dispose();
@@ -78,104 +69,18 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     super.dispose();
   }
 
-  Future<void> _loadOptions() async {
-    setState(() {
-      _isBootstrapping = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final categories = await _apiService.getCategories();
-      final types = await _apiService.getProductTypes();
-      final elements = await _apiService.getProductElements();
-
-      if (!mounted) return;
-      setState(() {
-        _categories = categories;
-        _productTypes = types;
-        _elements = elements;
-        _selectedCategoryId =
-            categories.isNotEmpty ? categories.first.id : null;
-        _selectedProductTypeId = types.isNotEmpty ? types.first.id : null;
-      });
-    } on AuthApiException catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = error.message;
-      });
-    } finally {
-      if (!mounted) return;
-      setState(() {
-        _isBootstrapping = false;
-      });
-    }
-  }
+  Future<void> _loadOptions() => _viewModel.loadOptions();
 
   Future<void> _pickMainImage() async {
-    if (_isSaving || _isUploadingMainImage) return;
-
-    try {
-      final file = await _pickCroppedImage(title: 'برش تصویر شاخص');
-      if (file == null || !mounted) return;
-
-      setState(() {
-        _isUploadingMainImage = true;
-        _pendingMainImageFile = file;
-        _errorMessage = null;
-      });
-
-      final uploadedUrl = await _apiService.uploadProductImage(
-        accessToken: widget.accessToken,
-        file: file,
-      );
-
-      if (!mounted) return;
-      setState(() {
-        _mainImageUrl = uploadedUrl;
-        _isUploadingMainImage = false;
-      });
-    } on AuthApiException catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _isUploadingMainImage = false;
-        _pendingMainImageFile = null;
-        _errorMessage = error.message;
-      });
-    }
+    final file = await _pickCroppedImage(title: 'برش تصویر شاخص');
+    if (file == null || !mounted) return;
+    await _viewModel.uploadMainImage(file);
   }
 
   Future<void> _pickGalleryImage() async {
-    if (_isSaving || _isUploadingGallery) return;
-
-    try {
-      final file = await _pickCroppedImage(title: 'برش تصویر گالری');
-      if (file == null || !mounted) return;
-
-      setState(() {
-        _isUploadingGallery = true;
-        _errorMessage = null;
-      });
-
-      final uploadedUrl = await _apiService.uploadProductImage(
-        accessToken: widget.accessToken,
-        file: file,
-      );
-
-      if (!mounted) return;
-      setState(() {
-        _gallery = [
-          ..._gallery,
-          _EditableGalleryItem(url: uploadedUrl, alt: ''),
-        ];
-        _isUploadingGallery = false;
-      });
-    } on AuthApiException catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _isUploadingGallery = false;
-        _errorMessage = error.message;
-      });
-    }
+    final file = await _pickCroppedImage(title: 'برش تصویر گالری');
+    if (file == null || !mounted) return;
+    await _viewModel.uploadGalleryImage(file);
   }
 
   Future<File?> _pickCroppedImage({
@@ -215,81 +120,25 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   }
 
   Future<void> _createProduct() async {
-    if (_nameController.text.trim().isEmpty ||
-        _priceController.text.trim().isEmpty ||
-        _quantityController.text.trim().isEmpty ||
-        _mainImageUrl.trim().isEmpty ||
-        _selectedCategoryId == null ||
-        _selectedProductTypeId == null) {
-      setState(() {
-        _errorMessage =
-            'نام، قیمت، موجودی، تصویر شاخص، دسته‌بندی و نوع محصول الزامی هستند.';
-      });
-      return;
-    }
+    final created = await _viewModel.createProduct(
+      name: _nameController.text,
+      price: _priceController.text,
+      discountPrice: _discountPriceController.text,
+      quantity: _quantityController.text,
+      mainImageAlt: _mainImageAltController.text,
+      shortDescription: _shortDescriptionController.text,
+      description: _descriptionController.text,
+    );
 
-    setState(() {
-      _isSaving = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final created = await _apiService.createProduct(
-        accessToken: widget.accessToken,
-        input: {
-          'name': _nameController.text.trim(),
-          'price': _parseNum(_priceController.text) ?? 0,
-          'discountPrice': _parseNum(_discountPriceController.text),
-          'quantity': _parseInt(_quantityController.text) ?? 0,
-          'mainImage': _mainImageUrl,
-          'mainImageAlt': _emptyToNull(_mainImageAltController.text),
-          'shortDescription': _emptyToNull(_shortDescriptionController.text),
-          'description': _emptyToNull(_descriptionController.text),
-          'storeId': widget.storeId,
-          'categoryId': _selectedCategoryId,
-          'productTypeId': _selectedProductTypeId,
-          'gallery': _gallery
-              .where((item) => item.url.trim().isNotEmpty)
-              .map(
-                (item) => {
-                  'url': item.url.trim(),
-                  'alt': item.alt.trim().isEmpty ? null : item.alt.trim(),
-                },
-              )
-              .toList(),
-          'compositions': _compositions
-              .where((item) => item.elementId != null)
-              .map(
-                (item) => {
-                  'elementId': item.elementId,
-                  'elementType': item.elementType,
-                  'quantity': item.quantity,
-                },
-              )
-              .toList(),
-        },
-      );
-
-      if (!mounted) return;
-      await Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => ProductWorkspaceScreen(
-            accessToken: widget.accessToken,
-            productSlug: created.slug,
-          ),
+    if (created == null || !mounted) return;
+    await Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => ProductWorkspaceScreen(
+          accessToken: widget.accessToken,
+          productSlug: created.slug,
         ),
-      );
-    } on AuthApiException catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = error.message;
-      });
-    } finally {
-      if (!mounted) return;
-      setState(() {
-        _isSaving = false;
-      });
-    }
+      ),
+    );
   }
 
   @override
@@ -301,9 +150,14 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       child: Scaffold(
         body: AppShellBackground(
           child: SafeArea(
-            child: _isBootstrapping
-                ? const Center(child: CircularProgressIndicator())
-                : ListView(
+            child: ListenableBuilder(
+              listenable: _viewModel,
+              builder: (context, _) {
+                final state = _viewModel.state;
+
+                return state.isBootstrapping
+                    ? const Center(child: CircularProgressIndicator())
+                    : ListView(
                     padding: const EdgeInsets.fromLTRB(24, 18, 24, 28),
                     children: [
                       Row(
@@ -333,10 +187,10 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                                 color: AppColors.textSecondary,
                               ),
                             ),
-                            if (_errorMessage != null) ...[
+                            if (state.errorMessage != null) ...[
                               const SizedBox(height: AppSpacing.md),
                               Text(
-                                _errorMessage!,
+                                state.errorMessage!,
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   color: Theme.of(context).colorScheme.error,
                                   fontWeight: FontWeight.w700,
@@ -352,11 +206,11 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                             ),
                             const SizedBox(height: AppSpacing.md),
                             DropdownButtonFormField<int>(
-                              value: _selectedCategoryId,
+                              value: state.selectedCategoryId,
                               decoration: const InputDecoration(
                                 labelText: 'دسته‌بندی',
                               ),
-                              items: _categories
+                              items: state.categories
                                   .map(
                                     (item) => DropdownMenuItem<int>(
                                       value: item.id,
@@ -364,19 +218,15 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                                     ),
                                   )
                                   .toList(),
-                              onChanged: (value) {
-                                setState(() {
-                                  _selectedCategoryId = value;
-                                });
-                              },
+                              onChanged: _viewModel.selectCategory,
                             ),
                             const SizedBox(height: AppSpacing.md),
                             DropdownButtonFormField<int>(
-                              value: _selectedProductTypeId,
+                              value: state.selectedProductTypeId,
                               decoration: const InputDecoration(
                                 labelText: 'نوع محصول',
                               ),
-                              items: _productTypes
+                              items: state.productTypes
                                   .map(
                                     (item) => DropdownMenuItem<int>(
                                       value: item.id,
@@ -384,38 +234,15 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                                     ),
                                   )
                                   .toList(),
-                              onChanged: (value) {
-                                setState(() {
-                                  _selectedProductTypeId = value;
-                                  _compositions = const [];
-                                });
-                              },
+                              onChanged: _viewModel.selectProductType,
                             ),
                             const SizedBox(height: AppSpacing.md),
                             _CompositionEditorCard(
-                              elements: _allowedElementsForSelectedType(),
-                              items: _compositions,
-                              onAdd: () {
-                                setState(() {
-                                  _compositions = [
-                                    ..._compositions,
-                                    _EditableCompositionItem.empty(),
-                                  ];
-                                });
-                              },
-                              onRemove: (index) {
-                                setState(() {
-                                  final next = [..._compositions];
-                                  next.removeAt(index);
-                                  _compositions = next;
-                                });
-                              },
-                              onChanged: (index, item) {
-                                setState(() {
-                                  _compositions = [..._compositions];
-                                  _compositions[index] = item;
-                                });
-                              },
+                              elements: state.allowedElements,
+                              items: state.compositions,
+                              onAdd: _viewModel.addComposition,
+                              onRemove: _viewModel.removeComposition,
+                              onChanged: _viewModel.updateComposition,
                             ),
                             const SizedBox(height: AppSpacing.md),
                             Row(
@@ -459,30 +286,18 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                             const SizedBox(height: AppSpacing.lg),
                             _UploadCard(
                               title: 'تصویر شاخص',
-                              imageUrl: _mainImageUrl,
-                              pendingFile: _pendingMainImageFile,
-                              isUploading: _isUploadingMainImage,
+                              imageUrl: state.mainImageUrl,
+                              pendingFile: state.pendingMainImageFile,
+                              isUploading: state.isUploadingMainImage,
                               onUpload: _pickMainImage,
                             ),
                             const SizedBox(height: AppSpacing.lg),
                             _GalleryCreateCard(
-                              items: _gallery,
-                              isUploading: _isUploadingGallery,
+                              items: state.gallery,
+                              isUploading: state.isUploadingGallery,
                               onUpload: _pickGalleryImage,
-                              onAltChanged: (index, value) {
-                                setState(() {
-                                  _gallery = [..._gallery];
-                                  _gallery[index] =
-                                      _gallery[index].copyWith(alt: value);
-                                });
-                              },
-                              onRemove: (index) {
-                                setState(() {
-                                  final next = [..._gallery];
-                                  next.removeAt(index);
-                                  _gallery = next;
-                                });
-                              },
+                              onAltChanged: _viewModel.updateGalleryAlt,
+                              onRemove: _viewModel.removeGalleryItem,
                             ),
                             const SizedBox(height: AppSpacing.lg),
                             TextField(
@@ -504,9 +319,10 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                             SizedBox(
                               width: double.infinity,
                               child: FilledButton(
-                                onPressed: _isSaving ? null : _createProduct,
+                                onPressed:
+                                    state.isSaving ? null : _createProduct,
                                 child: Text(
-                                  _isSaving
+                                  state.isSaving
                                       ? 'در حال ثبت...'
                                       : 'ثبت محصول و ارسال برای تایید',
                                 ),
@@ -516,19 +332,13 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                         ),
                       ),
                     ],
-                  ),
+                  );
+              },
+            ),
           ),
         ),
       ),
     );
-  }
-
-  List<ProductElementOption> _allowedElementsForSelectedType() {
-    final selectedType = _productTypes.where((item) => item.id == _selectedProductTypeId);
-    if (selectedType.isEmpty) return const [];
-    final allowedIds = selectedType.first.allowedElementIds;
-    if (allowedIds.isEmpty) return _elements;
-    return _elements.where((item) => allowedIds.contains(item.id)).toList();
   }
 }
 
@@ -607,7 +417,7 @@ class _GalleryCreateCard extends StatelessWidget {
     required this.onRemove,
   });
 
-  final List<_EditableGalleryItem> items;
+  final List<EditableGalleryItem> items;
   final bool isUploading;
   final VoidCallback onUpload;
   final void Function(int index, String value) onAltChanged;
@@ -755,59 +565,6 @@ class _ImagePreview extends StatelessWidget {
   }
 }
 
-class _EditableGalleryItem {
-  const _EditableGalleryItem({
-    required this.url,
-    required this.alt,
-  });
-
-  final String url;
-  final String alt;
-
-  _EditableGalleryItem copyWith({
-    String? url,
-    String? alt,
-  }) {
-    return _EditableGalleryItem(
-      url: url ?? this.url,
-      alt: alt ?? this.alt,
-    );
-  }
-}
-
-class _EditableCompositionItem {
-  const _EditableCompositionItem({
-    required this.elementId,
-    required this.elementType,
-    required this.quantity,
-  });
-
-  final int? elementId;
-  final String elementType;
-  final num quantity;
-
-  factory _EditableCompositionItem.empty() {
-    return const _EditableCompositionItem(
-      elementId: null,
-      elementType: '',
-      quantity: 1,
-    );
-  }
-
-  _EditableCompositionItem copyWith({
-    int? elementId,
-    String? elementType,
-    num? quantity,
-    bool clearElementId = false,
-  }) {
-    return _EditableCompositionItem(
-      elementId: clearElementId ? null : (elementId ?? this.elementId),
-      elementType: elementType ?? this.elementType,
-      quantity: quantity ?? this.quantity,
-    );
-  }
-}
-
 class _CompositionEditorCard extends StatelessWidget {
   const _CompositionEditorCard({
     required this.elements,
@@ -818,10 +575,10 @@ class _CompositionEditorCard extends StatelessWidget {
   });
 
   final List<ProductElementOption> elements;
-  final List<_EditableCompositionItem> items;
+  final List<EditableCompositionItem> items;
   final VoidCallback onAdd;
   final void Function(int index) onRemove;
-  final void Function(int index, _EditableCompositionItem item) onChanged;
+  final void Function(int index, EditableCompositionItem item) onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -894,9 +651,9 @@ class _CompositionRow extends StatelessWidget {
   });
 
   final List<ProductElementOption> elements;
-  final _EditableCompositionItem item;
+  final EditableCompositionItem item;
   final VoidCallback onRemove;
-  final ValueChanged<_EditableCompositionItem> onChanged;
+  final ValueChanged<EditableCompositionItem> onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -968,21 +725,4 @@ class _CompositionRow extends StatelessWidget {
       ],
     );
   }
-}
-
-int? _parseInt(String value) {
-  final trimmed = value.trim();
-  if (trimmed.isEmpty) return null;
-  return int.tryParse(trimmed);
-}
-
-num? _parseNum(String value) {
-  final trimmed = value.trim();
-  if (trimmed.isEmpty) return null;
-  return num.tryParse(trimmed);
-}
-
-String? _emptyToNull(String value) {
-  final trimmed = value.trim();
-  return trimmed.isEmpty ? null : trimmed;
 }

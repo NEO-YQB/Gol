@@ -5,11 +5,9 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_glass_card.dart';
 import '../../../shared/widgets/app_section_heading.dart';
 import '../../../shared/widgets/app_shell_background.dart';
-import '../../auth/data/auth_api_service.dart';
-import '../../discounts/data/vendor_discounts_api_service.dart';
 import '../../discounts/domain/vendor_discount.dart';
-import '../data/products_api_service.dart';
 import '../domain/vendor_product_summary.dart';
+import 'view_models/products_view_model.dart';
 import 'create_product_screen.dart';
 import 'product_workspace_screen.dart';
 
@@ -28,214 +26,163 @@ class ProductsScreen extends StatefulWidget {
 }
 
 class _ProductsScreenState extends State<ProductsScreen> {
-  final _apiService = const ProductsApiService();
-  final _discountsApiService = const VendorDiscountsApiService();
   final _searchController = TextEditingController();
-
-  VendorProductListResponse? _response;
-  List<VendorDiscount> _discounts = const [];
-  bool _isLoading = true;
-  String? _errorMessage;
-  String _statusFilter = 'ALL';
-
-  static const _filters = <_ProductFilterItem>[
-    _ProductFilterItem(label: 'همه', value: 'ALL'),
-    _ProductFilterItem(label: 'منتشرشده', value: 'PUBLISHED'),
-    _ProductFilterItem(label: 'بازبینی', value: 'SUBMITTED'),
-    _ProductFilterItem(label: 'پیش‌نویس', value: 'DRAFT'),
-    _ProductFilterItem(label: 'برگشت‌خورده', value: 'CHANGES_REQUESTED'),
-  ];
+  late final ProductsViewModel _viewModel;
 
   @override
   void initState() {
     super.initState();
+    _viewModel = ProductsViewModel(
+      accessToken: widget.accessToken,
+      storeId: widget.storeId,
+    );
     _loadProducts();
   }
 
   @override
   void dispose() {
+    _viewModel.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadProducts() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final productsFuture = _apiService.getProducts(
-        accessToken: widget.accessToken,
-        storeId: widget.storeId,
-        search: _searchController.text,
-        publicationStatus: _statusFilter == 'ALL' ? null : _statusFilter,
-      );
-      final discountsFuture = _discountsApiService.getDiscounts(
-        accessToken: widget.accessToken,
-        storeId: widget.storeId,
-      );
-      final response = await productsFuture;
-      final discounts = await discountsFuture;
-
-      if (!mounted) return;
-      setState(() {
-        _response = response;
-        _discounts = discounts.items;
-      });
-    } on AuthApiException catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = error.message;
-      });
-    } finally {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
+  Future<void> _loadProducts() =>
+      _viewModel.loadProducts(search: _searchController.text);
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final products = _response?.items ?? const <VendorProductSummary>[];
 
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         body: AppShellBackground(
           child: SafeArea(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(24, 18, 24, 120),
-              children: [
-                Text(
-                  'محصولات',
-                  style: theme.textTheme.titleMedium,
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                const AppSectionHeading(
-                  eyebrow: 'کاتالوگ فروشنده',
-                  title: 'لیست محصول‌ها را خلوت، سریع و حرفه‌ای ببین',
-                  description:
-                      'در این مرحله فقط مهم‌ترین اطلاعات را می‌بینی؛ جزئیات کامل هر محصول داخل workspace جدا باز می‌شود.',
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                AppGlassCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: () async {
-                            await Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => CreateProductScreen(
-                                  accessToken: widget.accessToken,
-                                  storeId: widget.storeId,
-                                ),
+            child: ListenableBuilder(
+              listenable: _viewModel,
+              builder: (context, _) {
+                final state = _viewModel.state;
+                final products = state.products;
+
+                return ListView(
+                  padding: const EdgeInsets.fromLTRB(24, 18, 24, 120),
+                  children: [
+                    Text(
+                      'محصولات',
+                      style: theme.textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    const AppSectionHeading(
+                      eyebrow: 'کاتالوگ فروشنده',
+                      title: 'لیست محصول‌ها را خلوت، سریع و حرفه‌ای ببین',
+                      description:
+                          'در این مرحله فقط مهم‌ترین اطلاعات را می‌بینی؛ جزئیات کامل هر محصول داخل workspace جدا باز می‌شود.',
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    AppGlassCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.icon(
+                              onPressed: () async {
+                                await Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => CreateProductScreen(
+                                      accessToken: widget.accessToken,
+                                      storeId: widget.storeId,
+                                    ),
+                                  ),
+                                );
+                                if (!mounted) return;
+                                _loadProducts();
+                              },
+                              icon: const Icon(Icons.add_rounded),
+                              label: const Text('افزودن محصول'),
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          TextField(
+                            controller: _searchController,
+                            textInputAction: TextInputAction.search,
+                            onSubmitted: (_) => _loadProducts(),
+                            decoration: InputDecoration(
+                              labelText: 'جستجو در نام محصول',
+                              prefixIcon: const Icon(Icons.search_rounded),
+                              suffixIcon: IconButton(
+                                onPressed: _loadProducts,
+                                icon: const Icon(Icons.tune_rounded),
                               ),
-                            );
-                            if (!mounted) return;
-                            _loadProducts();
-                          },
-                          icon: const Icon(Icons.add_rounded),
-                          label: const Text('افزودن محصول'),
-                        ),
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          SizedBox(
+                            height: 38,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemBuilder: (context, index) {
+                                final item = ProductsViewModel.filters[index];
+                                final active = item.value == state.statusFilter;
+                                return _ProductFilterChip(
+                                  label: item.label,
+                                  active: active,
+                                  onTap: () => _viewModel.setStatusFilter(
+                                    value: item.value,
+                                    search: _searchController.text,
+                                  ),
+                                );
+                              },
+                              separatorBuilder: (_, _) =>
+                                  const SizedBox(width: AppSpacing.sm),
+                              itemCount: ProductsViewModel.filters.length,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: AppSpacing.md),
-                      TextField(
-                        controller: _searchController,
-                        textInputAction: TextInputAction.search,
-                        onSubmitted: (_) => _loadProducts(),
-                        decoration: InputDecoration(
-                          labelText: 'جستجو در نام محصول',
-                          prefixIcon: const Icon(Icons.search_rounded),
-                          suffixIcon: IconButton(
-                            onPressed: _loadProducts,
-                            icon: const Icon(Icons.tune_rounded),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    if (state.isLoading)
+                      const _ProductsLoadingState()
+                    else if (state.errorMessage != null)
+                      _ProductsErrorState(
+                        message: state.errorMessage!,
+                        onRetry: _loadProducts,
+                      )
+                    else if (products.isEmpty)
+                      const _ProductsEmptyState()
+                    else
+                      ...products.map(
+                        (product) => Padding(
+                          padding:
+                              const EdgeInsets.only(bottom: AppSpacing.md),
+                          child: _ProductCard(
+                            product: product,
+                            activeDiscount:
+                                _viewModel.findActiveDiscount(product.id),
+                            onOpen: () async {
+                              await Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => ProductWorkspaceScreen(
+                                    accessToken: widget.accessToken,
+                                    productSlug: product.slug,
+                                  ),
+                                ),
+                              );
+                              if (!mounted) return;
+                              _loadProducts();
+                            },
                           ),
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.md),
-                      SizedBox(
-                        height: 38,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemBuilder: (context, index) {
-                            final item = _filters[index];
-                            final active = item.value == _statusFilter;
-                            return _ProductFilterChip(
-                              label: item.label,
-                              active: active,
-                              onTap: () {
-                                setState(() {
-                                  _statusFilter = item.value;
-                                });
-                                _loadProducts();
-                              },
-                            );
-                          },
-                          separatorBuilder: (_, _) =>
-                              const SizedBox(width: AppSpacing.sm),
-                          itemCount: _filters.length,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                if (_isLoading)
-                  const _ProductsLoadingState()
-                else if (_errorMessage != null)
-                  _ProductsErrorState(
-                    message: _errorMessage!,
-                    onRetry: _loadProducts,
-                  )
-                else if (products.isEmpty)
-                  const _ProductsEmptyState()
-                else
-                  ...products.map(
-                    (product) => Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                      child: _ProductCard(
-                        product: product,
-                        activeDiscount: _findActiveDiscount(product.id),
-                        onOpen: () async {
-                          await Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => ProductWorkspaceScreen(
-                                accessToken: widget.accessToken,
-                                productSlug: product.slug,
-                              ),
-                            ),
-                          );
-                          if (!mounted) return;
-                          _loadProducts();
-                        },
-                      ),
-                    ),
-                  ),
-              ],
+                  ],
+                );
+              },
             ),
           ),
         ),
       ),
     );
-  }
-
-  VendorDiscount? _findActiveDiscount(int productId) {
-    final now = DateTime.now();
-    for (final item in _discounts) {
-      if (item.productId != productId || !item.isActive) continue;
-      final startAt = DateTime.tryParse(item.startAt)?.toLocal();
-      final endAt = DateTime.tryParse(item.endAt)?.toLocal();
-      if (startAt != null && now.isBefore(startAt)) continue;
-      if (endAt != null && now.isAfter(endAt)) continue;
-      return item;
-    }
-    return null;
   }
 }
 
@@ -507,16 +454,6 @@ class _ProductsEmptyState extends StatelessWidget {
       ),
     );
   }
-}
-
-class _ProductFilterItem {
-  const _ProductFilterItem({
-    required this.label,
-    required this.value,
-  });
-
-  final String label;
-  final String value;
 }
 
 class _ProductStatusView {
