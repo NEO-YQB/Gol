@@ -84,12 +84,17 @@ class DiscountsViewModel extends ChangeNotifier {
         accessToken: _accessToken,
         storeId: _storeId,
         filter: _state.filter,
-      );
+      ).timeout(const Duration(seconds: 8));
       if (_isDisposed) return;
       _state = _state.copyWith(response: response);
     } on AuthApiException catch (error) {
       if (_isDisposed) return;
       _state = _state.copyWith(errorMessage: error.message);
+    } catch (_) {
+      if (_isDisposed) return;
+      _state = _state.copyWith(
+        errorMessage: 'بارگذاری تخفیف‌ها بیش از حد طول کشید.',
+      );
     } finally {
       if (_isDisposed) return;
       _state = _state.copyWith(isLoading: false);

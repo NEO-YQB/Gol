@@ -58,89 +58,112 @@ class _DiscountsScreenState extends State<DiscountsScreen> {
                 final state = _viewModel.state;
                 final items = state.items;
 
-                return ListView(
-                  padding: const EdgeInsets.fromLTRB(24, 18, 24, 120),
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'تخفیف‌ها',
-                            style: theme.textTheme.titleMedium,
-                          ),
-                        ),
-                        FilledButton.icon(
-                          onPressed: () async {
-                            final changed =
-                                await Navigator.of(context).push<bool>(
-                              MaterialPageRoute(
-                                builder: (_) => DiscountWorkspaceScreen(
-                                  accessToken: widget.accessToken,
-                                  storeId: widget.storeId,
-                                ),
-                              ),
-                            );
-                            if (changed == true) {
-                              _loadDiscounts();
-                            }
-                          },
-                          icon: const Icon(Icons.add_rounded),
-                          label: const Text('افزودن'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          ...DiscountsViewModel.filters.map(
-                            (item) => Padding(
-                              padding:
-                                  const EdgeInsets.only(left: AppSpacing.sm),
-                              child: _FilterChip(
-                                label: item.label,
-                                active: state.filter == item.value,
-                                onTap: () => _viewModel.setFilter(item.value),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    if (state.errorMessage != null)
-                      _ErrorState(
-                        message: state.errorMessage!,
-                        onRetry: _loadDiscounts,
-                      )
-                    else if (state.isLoading)
-                      const _LoadingState()
-                    else if (items.isEmpty)
-                      const _EmptyState()
-                    else
-                      ...items.map(
-                        (item) => Padding(
-                          padding:
-                              const EdgeInsets.only(bottom: AppSpacing.md),
-                          child: _DiscountCard(
-                            discount: item,
-                            onOpen: () async {
-                              final changed =
-                                  await Navigator.of(context).push<bool>(
-                                MaterialPageRoute(
-                                  builder: (_) => DiscountWorkspaceScreen(
-                                    accessToken: widget.accessToken,
-                                    storeId: widget.storeId,
-                                    discountId: item.id,
+                return CustomScrollView(
+                  slivers: [
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(24, 18, 24, 0),
+                      sliver: SliverToBoxAdapter(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    'تخفیف‌ها',
+                                    style: theme.textTheme.titleMedium,
                                   ),
                                 ),
-                              );
-                              if (changed == true) {
-                                _loadDiscounts();
-                              }
-                            },
+                                FilledButton.icon(
+                                  onPressed: () async {
+                                    final changed = await Navigator.of(context)
+                                        .push<bool>(
+                                      MaterialPageRoute(
+                                        builder: (_) => DiscountWorkspaceScreen(
+                                          accessToken: widget.accessToken,
+                                          storeId: widget.storeId,
+                                        ),
+                                      ),
+                                    );
+                                    if (changed == true) {
+                                      _loadDiscounts();
+                                    }
+                                  },
+                                  icon: const Icon(Icons.add_rounded),
+                                  label: const Text('افزودن'),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            Wrap(
+                              spacing: AppSpacing.sm,
+                              runSpacing: AppSpacing.sm,
+                              children: DiscountsViewModel.filters
+                                  .map(
+                                    (item) => _FilterChip(
+                                      label: item.label,
+                                      active: state.filter == item.value,
+                                      onTap: () =>
+                                          _viewModel.setFilter(item.value),
+                                    ),
+                                  )
+                                  .toList(),
+                            ),
+                            const SizedBox(height: AppSpacing.lg),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (state.errorMessage != null)
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(24, 0, 24, 120),
+                        sliver: SliverToBoxAdapter(
+                          child: _ErrorState(
+                            message: state.errorMessage!,
+                            onRetry: _loadDiscounts,
                           ),
+                        ),
+                      )
+                    else if (state.isLoading)
+                      const SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: Center(
+                          child: CircularProgressIndicator(),
+                        ),
+                      )
+                    else if (items.isEmpty)
+                      const SliverPadding(
+                        padding: EdgeInsets.fromLTRB(24, 0, 24, 120),
+                        sliver: SliverToBoxAdapter(child: _EmptyState()),
+                      )
+                    else
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(24, 0, 24, 120),
+                        sliver: SliverList.separated(
+                          itemBuilder: (context, index) {
+                            final item = items[index];
+                            return _DiscountCard(
+                              discount: item,
+                              onOpen: () async {
+                                final changed =
+                                    await Navigator.of(context).push<bool>(
+                                  MaterialPageRoute(
+                                    builder: (_) => DiscountWorkspaceScreen(
+                                      accessToken: widget.accessToken,
+                                      storeId: widget.storeId,
+                                      discountId: item.id,
+                                    ),
+                                  ),
+                                );
+                                if (changed == true) {
+                                  _loadDiscounts();
+                                }
+                              },
+                            );
+                          },
+                          separatorBuilder: (_, _) =>
+                              const SizedBox(height: AppSpacing.md),
+                          itemCount: items.length,
                         ),
                       ),
                   ],
@@ -278,22 +301,6 @@ class _StateBadge extends StatelessWidget {
               color: color,
               fontWeight: FontWeight.w800,
             ),
-      ),
-    );
-  }
-}
-
-class _LoadingState extends StatelessWidget {
-  const _LoadingState();
-
-  @override
-  Widget build(BuildContext context) {
-    return const AppGlassCard(
-      child: SizedBox(
-        height: 220,
-        child: Center(
-          child: CircularProgressIndicator(),
-        ),
       ),
     );
   }
