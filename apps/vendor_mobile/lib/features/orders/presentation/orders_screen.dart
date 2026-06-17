@@ -7,10 +7,9 @@ import '../../../shared/widgets/app_glass_card.dart';
 import '../../../shared/widgets/app_metric_tile.dart';
 import '../../../shared/widgets/app_section_heading.dart';
 import '../../../shared/widgets/app_shell_background.dart';
-import '../../auth/data/auth_api_service.dart';
-import '../data/orders_api_service.dart';
 import '../domain/vendor_order_detail.dart';
 import '../domain/vendor_order_summary.dart';
+import 'view_models/orders_view_model.dart';
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({
@@ -29,161 +28,51 @@ class OrdersScreen extends StatefulWidget {
 }
 
 class _OrdersScreenState extends State<OrdersScreen> {
-  final _ordersApiService = const OrdersApiService();
   final _searchController = TextEditingController();
-
-  List<VendorOrderSummary> _orders = const [];
-  String? _screenErrorMessage;
-  String? _actionErrorMessage;
-  bool _isLoading = true;
-  bool _isLoadingDetail = false;
-  String? _busyAction;
-  String _selectedFilter = 'ALL';
-  bool _showOnlyActionable = false;
+  late final OrdersViewModel _viewModel;
 
   @override
   void initState() {
     super.initState();
-    _loadOrders();
+    _viewModel = OrdersViewModel(accessToken: widget.accessToken);
+    _viewModel.loadOrders();
   }
 
   @override
   void dispose() {
+    _viewModel.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadOrders() async {
-    setState(() {
-      _isLoading = true;
-      _screenErrorMessage = null;
-    });
-
-    try {
-      final orders = await _ordersApiService.getVendorOrders(
-        widget.accessToken,
-      );
-      if (!mounted) return;
-
-      setState(() {
-        _orders = orders;
-      });
-    } on AuthApiException catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _screenErrorMessage = error.message;
-      });
-    } finally {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _loadOrderDetail(int orderId, {bool silent = false}) async {
-    if (!silent) {
-      setState(() {
-        _isLoadingDetail = true;
-        _actionErrorMessage = null;
-      });
-    }
-
-    try {
-      final detail = await _ordersApiService.getOrderDetail(
-        accessToken: widget.accessToken,
-        orderId: orderId,
-      );
-
-      if (!mounted) return;
-    } on AuthApiException catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _actionErrorMessage = error.message;
-      });
-    } finally {
-      if (!mounted) return;
-      setState(() {
-        _isLoadingDetail = false;
-      });
-    }
-  }
-
-  Future<void> _runAction(
-    String key,
-    Future<VendorOrderDetail> Function() action,
-  ) async {
-    if (_orders.isEmpty) return;
-
-    setState(() {
-      _busyAction = key;
-      _actionErrorMessage = null;
-    });
-
-    try {
-      final detail = await action();
-      if (!mounted) return;
-
-      await _loadOrders();
-      await _loadOrderDetail(detail.id, silent: true);
-    } on AuthApiException catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _actionErrorMessage = error.message;
-      });
-    } finally {
-      if (!mounted) return;
-      setState(() {
-        _busyAction = null;
-      });
-    }
-  }
-
   Future<void> _openOrderDetails(VendorOrderSummary order) async {
-    final detail = await _ordersApiService.getOrderDetail(
-      accessToken: widget.accessToken,
-      orderId: order.id,
-    );
+    await _viewModel.loadOrderDetail(order.id);
+    final detail = _viewModel.state.selectedOrderDetail;
     if (!mounted) return;
+    if (detail == null) return;
 
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => Directionality(
           textDirection: TextDirection.rtl,
-          child: _OrderDetailsPage(
-            order: detail,
-            isLoading: _isLoadingDetail,
-            busyAction: _busyAction,
-            errorMessage: _actionErrorMessage,
-            onRefresh: () => _loadOrderDetail(order.id),
-            onAccept: () => _runAction(
-              'accept',
-              () => _ordersApiService.acceptOrder(
-                accessToken: widget.accessToken,
-                orderId: order.id,
-              ),
-            ),
-            onShip: () => _runAction(
-              'ship',
-              () => _ordersApiService.shipOrder(
-                accessToken: widget.accessToken,
-                orderId: order.id,
-              ),
-            ),
-            onDeliver: () => _runAction(
-              'deliver',
-              () => _ordersApiService.deliverOrder(
-                accessToken: widget.accessToken,
-                orderId: order.id,
-              ),
-            ),
-            onCancel: () => _runAction(
-              'cancel',
-              () => _ordersApiService.cancelOrder(
-                accessToken: widget.accessToken,
-                orderId: order.id,
-              ),
-            ),
+          child: ListenableBuilder(
+            listenable: _viewModel,
+            builder: (context, _) {
+              final state = _viewModel.state;
+              final liveDetail = state.selectedOrderDetail ?? detail;
+
+              return _OrderDetailsPage(
+                order: liveDetail,
+                isLoading: state.isLoadingDetail,
+                busyAction: state.busyAction,
+                errorMessage: state.actionErrorMessage,
+                onRefresh: () => _viewModel.loadOrderDetail(order.id),
+                onAccept: () => _viewModel.acceptOrder(order.id),
+                onShip: () => _viewModel.shipOrder(order.id),
+                onDeliver: () => _viewModel.deliverOrder(order.id),
+                onCancel: () => _viewModel.cancelOrder(order.id),
+              );
+            },
           ),
         ),
       ),
@@ -193,200 +82,179 @@ class _OrdersScreenState extends State<OrdersScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final search = _searchController.text.trim().toLowerCase();
-    final filteredOrders = _orders.where((order) {
-      final normalizedStatus = _translateOrderStatus(order.status).toLowerCase();
-      final normalizedPayment = _translatePaymentStatus(order.paymentStatus)
-          .toLowerCase();
-      final matchesSearch =
-          search.isEmpty ||
-          order.customerName.toLowerCase().contains(search) ||
-          order.id.toString().contains(search) ||
-          order.phoneNumber.toLowerCase().contains(search) ||
-          normalizedStatus.contains(search) ||
-          normalizedPayment.contains(search);
-
-      final matchesFilter =
-          _selectedFilter == 'ALL' || order.status == _selectedFilter;
-
-      final matchesActionable = !_showOnlyActionable ||
-          order.status == 'PENDING' ||
-          order.status == 'PAID' ||
-          order.status == 'ACCEPTED' ||
-          order.status == 'PROCESSING' ||
-          order.status == 'SHIPPED';
-
-      return matchesSearch && matchesFilter && matchesActionable;
-    }).toList();
-
-    final pendingOrdersCount = _orders.where((order) {
-      return order.status == 'PENDING' || order.status == 'PAID';
-    }).length;
-    final deliveredOrdersCount = _orders
-        .where((order) => order.status == 'DELIVERED')
-        .length;
 
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         body: AppShellBackground(
           child: SafeArea(
-            child: _isLoading
-                ? const _OrdersLoadingView()
-                : _screenErrorMessage != null
-                ? _OrdersErrorView(
-                    message: _screenErrorMessage!,
+            child: ListenableBuilder(
+              listenable: _viewModel,
+              builder: (context, _) {
+                final state = _viewModel.state;
+                final filteredOrders = state.filteredOrders;
+
+                if (_searchController.text != state.search) {
+                  _searchController.value = TextEditingValue(
+                    text: state.search,
+                    selection: TextSelection.collapsed(
+                      offset: state.search.length,
+                    ),
+                  );
+                }
+
+                if (state.isLoading) {
+                  return const _OrdersLoadingView();
+                }
+
+                if (state.screenErrorMessage != null) {
+                  return _OrdersErrorView(
+                    message: state.screenErrorMessage!,
                     embedded: widget.embedded,
                     onBack: widget.onBack,
-                    onRetry: _loadOrders,
-                  )
-                : ListView(
-                    padding: const EdgeInsets.fromLTRB(24, 18, 24, 28),
-                    children: [
-                      if (widget.embedded)
-                        Text('سفارش‌ها', style: theme.textTheme.titleMedium)
-                      else
-                        Row(
-                          children: [
-                            IconButton(
-                              onPressed: widget.onBack,
-                              style: IconButton.styleFrom(
-                                backgroundColor: AppColors.surface.withValues(
-                                  alpha: 0.88,
-                                ),
-                              ),
-                              icon: const Icon(Icons.arrow_back),
-                            ),
-                            const SizedBox(width: AppSpacing.md),
-                            Expanded(
-                              child: Text(
-                                'سفارش‌ها',
-                                style: theme.textTheme.titleMedium,
-                              ),
-                            ),
-                          ],
-                        ),
-                      const SizedBox(height: AppSpacing.lg),
-                      const AppSectionHeading(
-                        eyebrow: 'کارتابل عملیاتی',
-                        title: 'سفارش‌ها را سریع، شفاف و بدون شلوغی مدیریت کن',
-                        description:
-                            'ابتدا سفارش مناسب را انتخاب کن، بعد خلاصه، timeline و actionهای همان سفارش را در یک workspace متمرکز ببین.',
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-                      _OrdersHeroCard(
-                        totalOrdersCount: _orders.length,
-                        pendingOrdersCount: pendingOrdersCount,
-                        deliveredOrdersCount: deliveredOrdersCount,
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
+                    onRetry: _viewModel.loadOrders,
+                  );
+                }
+
+                return ListView(
+                  padding: const EdgeInsets.fromLTRB(24, 18, 24, 28),
+                  children: [
+                    if (widget.embedded)
+                      Text('سفارش‌ها', style: theme.textTheme.titleMedium)
+                    else
                       Row(
                         children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _searchController,
-                              onChanged: (_) => setState(() {}),
-                              decoration: InputDecoration(
-                                labelText: 'جستجو در سفارش‌ها',
-                                hintText: 'شناسه، مشتری، تماس یا وضعیت',
-                                prefixIcon: const Icon(Icons.search_rounded),
-                                suffixIcon: _searchController.text.trim().isEmpty
-                                    ? null
-                                    : IconButton(
-                                        onPressed: () {
-                                          _searchController.clear();
-                                          setState(() {});
-                                        },
-                                        icon: const Icon(Icons.close_rounded),
-                                      ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.md),
                           IconButton(
-                            onPressed: _loadOrders,
+                            onPressed: widget.onBack,
                             style: IconButton.styleFrom(
                               backgroundColor: AppColors.surface.withValues(
                                 alpha: 0.88,
                               ),
                             ),
-                            icon: const Icon(Icons.refresh_rounded),
+                            icon: const Icon(Icons.arrow_back),
+                          ),
+                          const SizedBox(width: AppSpacing.md),
+                          Expanded(
+                            child: Text(
+                              'سفارش‌ها',
+                              style: theme.textTheme.titleMedium,
+                            ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: AppSpacing.md),
-                      SwitchListTile.adaptive(
-                        value: _showOnlyActionable,
-                        contentPadding: EdgeInsets.zero,
-                        activeColor: AppColors.primary,
-                        title: const Text('فقط سفارش‌های قابل اقدام'),
-                        subtitle: const Text('سفارش‌های معطل یا قابل رسیدگی را نگه دار'),
-                        onChanged: (value) {
-                          setState(() {
-                            _showOnlyActionable = value;
-                          });
-                        },
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      SizedBox(
-                        height: 42,
-                        child: ListView(
-                          scrollDirection: Axis.horizontal,
-                          children: [
-                            _OrdersFilterChip(
-                              label: 'همه',
-                              active: _selectedFilter == 'ALL',
-                              onTap: () => setState(() {
-                                _selectedFilter = 'ALL';
-                              }),
+                    const SizedBox(height: AppSpacing.lg),
+                    const AppSectionHeading(
+                      eyebrow: 'کارتابل عملیاتی',
+                      title: 'سفارش‌ها',
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    _OrdersHeroCard(
+                      totalOrdersCount: state.orders.length,
+                      pendingOrdersCount: state.pendingOrdersCount,
+                      deliveredOrdersCount: state.deliveredOrdersCount,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _searchController,
+                            onChanged: _viewModel.setSearch,
+                            decoration: InputDecoration(
+                              labelText: 'جستجو در سفارش‌ها',
+                              hintText: 'شناسه، مشتری، تماس یا وضعیت',
+                              prefixIcon: const Icon(Icons.search_rounded),
+                              suffixIcon: state.search.trim().isEmpty
+                                  ? null
+                                  : IconButton(
+                                      onPressed: _viewModel.clearSearch,
+                                      icon: const Icon(Icons.close_rounded),
+                                    ),
                             ),
-                            ..._orderFilterOptions.map(
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        IconButton(
+                          onPressed: _viewModel.refresh,
+                          style: IconButton.styleFrom(
+                            backgroundColor: AppColors.surface.withValues(
+                              alpha: 0.88,
+                            ),
+                          ),
+                          icon: const Icon(Icons.refresh_rounded),
+                        ),
+                      ],
+                    ),
+                    if (state.isRefreshing) ...[
+                      const SizedBox(height: AppSpacing.md),
+                      const LinearProgressIndicator(
+                        minHeight: 3,
+                        color: AppColors.primary,
+                        backgroundColor: AppColors.surfaceSoft,
+                      ),
+                    ],
+                    const SizedBox(height: AppSpacing.md),
+                    SwitchListTile.adaptive(
+                      value: state.showOnlyActionable,
+                      contentPadding: EdgeInsets.zero,
+                      activeColor: AppColors.primary,
+                      title: const Text('فقط سفارش‌های قابل اقدام'),
+                      subtitle: const Text('سفارش‌های معطل یا قابل رسیدگی را نگه دار'),
+                      onChanged: _viewModel.setShowOnlyActionable,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    SizedBox(
+                      height: 42,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        children: OrdersViewModel.filterOptions
+                            .map(
                               (item) => _OrdersFilterChip(
                                 label: item.label,
-                                active: _selectedFilter == item.value,
-                                onTap: () => setState(() {
-                                  _selectedFilter = item.value;
-                                }),
+                                active: state.selectedFilter == item.value,
+                                onTap: () => _viewModel.setSelectedFilter(item.value),
                               ),
-                            ),
-                          ],
-                        ),
+                            )
+                            .toList(),
                       ),
-                      const SizedBox(height: AppSpacing.lg),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: AppMetricTile(
-                              title: 'سفارش‌های قابل مشاهده',
-                              value: '${filteredOrders.length}',
-                              subtitle: _showOnlyActionable
-                                  ? 'فقط سفارش‌های قابل رسیدگی'
-                                  : 'نتیجه فیلتر و جستجوی فعلی',
-                              accentColor: AppColors.primary,
-                              icon: Icons.receipt_long_rounded,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-                      if (filteredOrders.isEmpty)
-                        const _OrdersEmptyState()
-                      else
-                        ...filteredOrders.map(
-                          (order) => Padding(
-                            padding: const EdgeInsets.only(
-                              bottom: AppSpacing.lg,
-                            ),
-                            child: _OrderSummaryCard(
-                              order: order,
-                              selected: false,
-                              onTap: () => _openOrderDetails(order),
-                              onOpenDetails: () => _openOrderDetails(order),
-                            ),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: AppMetricTile(
+                            title: 'سفارش‌های قابل مشاهده',
+                            value: '${filteredOrders.length}',
+                            subtitle: state.showOnlyActionable
+                                ? 'فقط سفارش‌های قابل رسیدگی'
+                                : 'نتیجه فیلتر و جستجوی فعلی',
+                            accentColor: AppColors.primary,
+                            icon: Icons.receipt_long_rounded,
                           ),
                         ),
-                    ],
-                  ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    if (filteredOrders.isEmpty)
+                      const _OrdersEmptyState()
+                    else
+                      ...filteredOrders.map(
+                        (order) => Padding(
+                          padding: const EdgeInsets.only(
+                            bottom: AppSpacing.lg,
+                          ),
+                          child: _OrderSummaryCard(
+                            order: order,
+                            selected: false,
+                            onTap: () => _openOrderDetails(order),
+                            onOpenDetails: () => _openOrderDetails(order),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ),
