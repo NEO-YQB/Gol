@@ -175,10 +175,35 @@ class DashboardApiService {
       id: _asInt(value['id']),
       aggregateType: (value['aggregateType'] as String?) ?? 'event',
       summary: (value['summary'] as String?)?.trim().isNotEmpty == true
-          ? value['summary'] as String
+          ? _readablePolicySummary(value['summary'] as String)
           : 'رویداد جدیدی برای وضعیت فروشگاه ثبت شده است.',
       createdAt: _asDateTime(value['createdAt']),
     );
+  }
+
+  String _readablePolicySummary(String rawSummary) {
+    final normalized = rawSummary.trim();
+    final parts = normalized.split(':');
+    final code = parts.first.trim().toUpperCase();
+    final reference = parts.length > 1 ? parts.sublist(1).join(':').trim() : '';
+    final suffix = reference.isEmpty ? '' : ' شماره $reference';
+
+    switch (code) {
+      case 'PAYMENT_BLOCKED_BY_POLICY':
+        return 'پرداخت به دلیل قوانین فروشگاه مسدود شده است$suffix.';
+      case 'DISCOUNT_BLOCKED_BY_POLICY':
+      case 'CREATE_DISCOUNT_BLOCKED_BY_POLICY':
+      case 'NEW_DISCOUNT_BLOCKED_BY_POLICY':
+        return 'ایجاد تخفیف به دلیل قوانین فروشگاه موقتاً غیرفعال است$suffix.';
+      case 'ORDER_BLOCKED_BY_POLICY':
+        return 'پردازش سفارش به دلیل قوانین فروشگاه نیاز به بررسی دارد$suffix.';
+      case 'SETTLEMENT_BLOCKED_BY_POLICY':
+        return 'تسویه به دلیل قوانین فروشگاه فعلاً متوقف شده است$suffix.';
+      default:
+        return normalized
+            .replaceAll('_', ' ')
+            .replaceAll('POLICY', 'قوانین فروشگاه');
+    }
   }
 
   DateTime? _asDateTime(Object? value) {

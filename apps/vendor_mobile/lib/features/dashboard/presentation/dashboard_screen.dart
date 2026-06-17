@@ -427,7 +427,8 @@ class _MetricGrid extends StatelessWidget {
       children: [
         AppMetricTile(
           title: 'موجودی قابل برداشت',
-          value: '${_formatMoney(summary.availableBalance)} تومان',
+          value: _formatMoney(summary.availableBalance),
+          subtitle: 'تومان',
           accentColor: AppColors.primary,
           icon: Icons.account_balance_wallet_rounded,
         ),

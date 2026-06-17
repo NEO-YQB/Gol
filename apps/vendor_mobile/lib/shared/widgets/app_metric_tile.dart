@@ -72,10 +72,15 @@ class AppMetricTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),
-              Text(
-                value,
-                style: theme.textTheme.headlineMedium?.copyWith(
-                  height: 1.15,
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.centerStart,
+                child: Text(
+                  value,
+                  maxLines: 1,
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    height: 1.15,
+                  ),
                 ),
               ),
               if (subtitle != null && subtitle!.trim().isNotEmpty) ...[
