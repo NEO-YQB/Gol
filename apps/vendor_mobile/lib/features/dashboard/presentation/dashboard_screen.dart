@@ -423,12 +423,11 @@ class _MetricGrid extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: AppSpacing.lg,
       crossAxisSpacing: AppSpacing.lg,
-      childAspectRatio: 0.94,
+      childAspectRatio: 0.86,
       children: [
         AppMetricTile(
           title: 'موجودی قابل برداشت',
-          value: _formatMoney(summary.availableBalance),
-          subtitle: 'تومان',
+          value: '${_formatMoney(summary.availableBalance)} تومان',
           accentColor: AppColors.primary,
           icon: Icons.account_balance_wallet_rounded,
         ),

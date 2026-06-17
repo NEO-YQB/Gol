@@ -25,6 +25,7 @@ class AppMetricTile extends StatelessWidget {
     final theme = Theme.of(context);
 
     return AppGlassCard(
+      padding: const EdgeInsets.all(16),
       child: Stack(
         children: [
           PositionedDirectional(
@@ -64,7 +65,7 @@ class AppMetricTile extends StatelessWidget {
                   color: accentColor,
                 ),
               ),
-              const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: AppSpacing.md),
               Text(
                 title,
                 style: theme.textTheme.labelLarge?.copyWith(
