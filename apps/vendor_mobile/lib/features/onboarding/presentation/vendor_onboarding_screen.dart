@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:latlong2/latlong.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -174,9 +173,9 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
       ),
     );
 
-    if (!mounted || selected is! LatLng) return;
-    final lat = selected.latitude;
-    final lng = selected.longitude;
+    if (!mounted || selected is! OnboardingLocationSelection) return;
+    final lat = selected.lat;
+    final lng = selected.lng;
 
     await _viewModel.selectBusinessLocation(lat: lat, lng: lng);
   }
