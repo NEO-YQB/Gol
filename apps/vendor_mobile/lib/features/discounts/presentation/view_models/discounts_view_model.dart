@@ -27,8 +27,14 @@ class DiscountsViewState {
   final String? errorMessage;
   final String filter;
 
-  List<VendorDiscount> get items =>
-      response?.items ?? const <VendorDiscount>[];
+  List<VendorDiscount> get items {
+    final rawItems = response?.items ?? const <VendorDiscount>[];
+    return switch (filter) {
+      'ACTIVE' => rawItems.where((item) => item.isActive).toList(),
+      'INACTIVE' => rawItems.where((item) => !item.isActive).toList(),
+      _ => rawItems,
+    };
+  }
 
   DiscountsViewState copyWith({
     VendorDiscountListResponse? response,

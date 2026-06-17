@@ -109,13 +109,13 @@ class _DiscountsScreenState extends State<DiscountsScreen> {
                       ),
                     ),
                     const SizedBox(height: AppSpacing.lg),
-                    if (state.isLoading)
-                      const _LoadingState()
-                    else if (state.errorMessage != null)
+                    if (state.errorMessage != null)
                       _ErrorState(
                         message: state.errorMessage!,
                         onRetry: _loadDiscounts,
                       )
+                    else if (state.isLoading)
+                      const _LoadingState()
                     else if (items.isEmpty)
                       const _EmptyState()
                     else

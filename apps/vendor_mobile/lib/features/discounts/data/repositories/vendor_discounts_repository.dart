@@ -17,7 +17,6 @@ class VendorDiscountsRepository {
     return _apiService.getDiscounts(
       accessToken: accessToken,
       storeId: storeId,
-      isActive: filter == 'ALL' ? null : filter == 'ACTIVE',
     );
   }
 
