@@ -295,4 +295,3 @@ class OnboardingLocationSelection {
   final double lat;
   final double lng;
 }
-}
