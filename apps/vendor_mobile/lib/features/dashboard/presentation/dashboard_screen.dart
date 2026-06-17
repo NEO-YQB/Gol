@@ -334,7 +334,7 @@ class _PolicyStatusCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'وضعیت policy',
+            'وضعیت قوانین فروشگاه',
             style: theme.textTheme.titleLarge,
           ),
           const SizedBox(height: AppSpacing.md),

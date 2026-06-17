@@ -120,7 +120,7 @@ class DashboardApiService {
       final blockNewDiscounts = restrictions['blockNewDiscounts'] == true;
       final baseNote = (explanation['note'] as String?)?.trim().isNotEmpty == true
           ? explanation['note'] as String
-          : 'در حال حاضر policy موثر توضیح اضافه‌ای ندارد.';
+          : 'در حال حاضر محدودیت فعالی برای فروشگاه ثبت نشده است.';
 
       return DashboardSummary(
         storeName: (store['name'] as String?)?.trim().isNotEmpty == true
