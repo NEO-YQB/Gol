@@ -1,0 +1,415 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
+
+import '../../../auth/data/auth_api_service.dart';
+import '../../../auth/domain/vendor_bootstrap.dart';
+import '../../data/repositories/vendor_onboarding_repository.dart';
+import '../../domain/vendor_onboarding_request.dart';
+
+enum VendorOnboardingStep {
+  profile,
+  applicationReview,
+  sampleProduct,
+  productReview,
+  completed,
+}
+
+class EditableOnboardingDocument {
+  const EditableOnboardingDocument({
+    required this.title,
+    required this.url,
+  });
+
+  final String title;
+  final String url;
+
+  EditableOnboardingDocument copyWith({
+    String? title,
+    String? url,
+  }) {
+    return EditableOnboardingDocument(
+      title: title ?? this.title,
+      url: url ?? this.url,
+    );
+  }
+}
+
+class VendorOnboardingViewState {
+  const VendorOnboardingViewState({
+    this.request,
+    this.isLoading = true,
+    this.isSubmitting = false,
+    this.isUploading = false,
+    this.errorMessage,
+    this.successMessage,
+    this.currentStep = VendorOnboardingStep.profile,
+    this.applicationDocuments = const [],
+    this.productGalleryImages = const [],
+    this.pendingUploadName,
+  });
+
+  final VendorOnboardingRequest? request;
+  final bool isLoading;
+  final bool isSubmitting;
+  final bool isUploading;
+  final String? errorMessage;
+  final String? successMessage;
+  final VendorOnboardingStep currentStep;
+  final List<EditableOnboardingDocument> applicationDocuments;
+  final List<String> productGalleryImages;
+  final String? pendingUploadName;
+
+  bool get canEditProfile =>
+      request == null ||
+      request!.applicationStatus == 'DRAFT' ||
+      request!.applicationStatus == 'REJECTED';
+
+  bool get canEditProduct =>
+      request != null &&
+      request!.applicationStatus == 'APPROVED' &&
+      (request!.productStatus == 'DRAFT' || request!.productStatus == 'REJECTED');
+
+  VendorOnboardingViewState copyWith({
+    VendorOnboardingRequest? request,
+    bool? isLoading,
+    bool? isSubmitting,
+    bool? isUploading,
+    String? errorMessage,
+    bool clearError = false,
+    String? successMessage,
+    bool clearSuccess = false,
+    VendorOnboardingStep? currentStep,
+    List<EditableOnboardingDocument>? applicationDocuments,
+    List<String>? productGalleryImages,
+    String? pendingUploadName,
+    bool clearPendingUpload = false,
+  }) {
+    return VendorOnboardingViewState(
+      request: request ?? this.request,
+      isLoading: isLoading ?? this.isLoading,
+      isSubmitting: isSubmitting ?? this.isSubmitting,
+      isUploading: isUploading ?? this.isUploading,
+      errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
+      successMessage: clearSuccess ? null : successMessage ?? this.successMessage,
+      currentStep: currentStep ?? this.currentStep,
+      applicationDocuments: applicationDocuments ?? this.applicationDocuments,
+      productGalleryImages: productGalleryImages ?? this.productGalleryImages,
+      pendingUploadName:
+          clearPendingUpload ? null : pendingUploadName ?? this.pendingUploadName,
+    );
+  }
+}
+
+class VendorOnboardingApplicationInput {
+  const VendorOnboardingApplicationInput({
+    required this.personalFullName,
+    required this.personalNationalId,
+    required this.businessName,
+    required this.businessSlug,
+    required this.businessDescription,
+    required this.businessAddress,
+    required this.licenseNumber,
+  });
+
+  final String personalFullName;
+  final String personalNationalId;
+  final String businessName;
+  final String businessSlug;
+  final String businessDescription;
+  final String businessAddress;
+  final String licenseNumber;
+}
+
+class VendorOnboardingProductInput {
+  const VendorOnboardingProductInput({
+    required this.productName,
+    required this.productDescription,
+    required this.productMainImageAlt,
+    required this.productPrice,
+    required this.productQuantity,
+  });
+
+  final String productName;
+  final String productDescription;
+  final String productMainImageAlt;
+  final String productPrice;
+  final String productQuantity;
+}
+
+class VendorOnboardingViewModel extends ChangeNotifier {
+  VendorOnboardingViewModel({
+    required String accessToken,
+    required VendorOnboardingState? bootstrapState,
+    VendorOnboardingRepository repository = const VendorOnboardingRepository(),
+  })  : _accessToken = accessToken,
+        _bootstrapState = bootstrapState,
+        _repository = repository {
+    _state = VendorOnboardingViewState(
+      isLoading: true,
+      currentStep: _resolveBootstrapStep(bootstrapState),
+    );
+  }
+
+  final String _accessToken;
+  final VendorOnboardingState? _bootstrapState;
+  final VendorOnboardingRepository _repository;
+  bool _isDisposed = false;
+
+  VendorOnboardingViewState _state = const VendorOnboardingViewState();
+  VendorOnboardingViewState get state => _state;
+
+  Future<void> loadRequest() async {
+    _state = _state.copyWith(isLoading: true, clearError: true);
+    _notifyIfActive();
+
+    try {
+      final request = await _repository.getMyRequest(accessToken: _accessToken);
+      if (_isDisposed) return;
+      _state = _state.copyWith(
+        request: request,
+        applicationDocuments: request.documents
+            .map((item) => EditableOnboardingDocument(title: item.title, url: item.url))
+            .toList(),
+        productGalleryImages: request.productGalleryImages,
+        currentStep: _resolveCurrentStep(request),
+      );
+    } on AuthApiException catch (error) {
+      if (_isDisposed) return;
+      _state = _state.copyWith(errorMessage: error.message);
+    } finally {
+      if (_isDisposed) return;
+      _state = _state.copyWith(isLoading: false);
+      _notifyIfActive();
+    }
+  }
+
+  Future<void> submitApplication(VendorOnboardingApplicationInput form) async {
+    if (form.personalFullName.trim().isEmpty ||
+        form.personalNationalId.trim().isEmpty ||
+        form.businessName.trim().isEmpty ||
+        form.businessSlug.trim().isEmpty ||
+        form.businessAddress.trim().isEmpty ||
+        form.licenseNumber.trim().isEmpty) {
+      _state = _state.copyWith(
+        errorMessage: 'همه اطلاعات اصلی فروشنده و کسب‌وکار را کامل کن.',
+        clearSuccess: true,
+      );
+      _notifyIfActive();
+      return;
+    }
+
+    _state = _state.copyWith(
+      isSubmitting: true,
+      clearError: true,
+      clearSuccess: true,
+    );
+    _notifyIfActive();
+
+    try {
+      final request = await _repository.submitApplication(
+        accessToken: _accessToken,
+        input: {
+          'personalFullName': form.personalFullName.trim(),
+          'personalNationalId': form.personalNationalId.trim(),
+          'businessName': form.businessName.trim(),
+          'businessSlug': form.businessSlug.trim(),
+          'businessDescription': form.businessDescription.trim(),
+          'businessAddress': form.businessAddress.trim(),
+          'licenseNumber': form.licenseNumber.trim(),
+          'licenseImageUrl': _state.applicationDocuments
+              .firstWhere(
+                (item) => item.title == 'تصویر جواز',
+                orElse: () => const EditableOnboardingDocument(title: '', url: ''),
+              )
+              .url,
+          'documents': _state.applicationDocuments
+              .map((item) => {'title': item.title, 'url': item.url})
+              .toList(),
+        },
+      );
+      if (_isDisposed) return;
+      _state = _state.copyWith(
+        request: request,
+        currentStep: _resolveCurrentStep(request),
+        successMessage: 'درخواست فروشندگی ثبت شد و منتظر بررسی است.',
+      );
+    } on AuthApiException catch (error) {
+      if (_isDisposed) return;
+      _state = _state.copyWith(errorMessage: error.message);
+    } finally {
+      if (_isDisposed) return;
+      _state = _state.copyWith(isSubmitting: false);
+      _notifyIfActive();
+    }
+  }
+
+  Future<void> submitProduct(VendorOnboardingProductInput form) async {
+    if (form.productName.trim().isEmpty) {
+      _state = _state.copyWith(
+        errorMessage: 'حداقل نام محصول نمونه را وارد کن.',
+        clearSuccess: true,
+      );
+      _notifyIfActive();
+      return;
+    }
+
+    _state = _state.copyWith(
+      isSubmitting: true,
+      clearError: true,
+      clearSuccess: true,
+    );
+    _notifyIfActive();
+
+    try {
+      final request = await _repository.submitProduct(
+        accessToken: _accessToken,
+        input: {
+          'productName': form.productName.trim(),
+          'productDescription': form.productDescription.trim(),
+          'productMainImage': _state.productGalleryImages.isEmpty
+              ? (_state.request?.productMainImage ?? '')
+              : _state.productGalleryImages.first,
+          'productMainImageAlt': form.productMainImageAlt.trim(),
+          'productGalleryImages': _state.productGalleryImages,
+          'productPrice': num.tryParse(form.productPrice.trim()),
+          'productQuantity': int.tryParse(form.productQuantity.trim()),
+        },
+      );
+      if (_isDisposed) return;
+      _state = _state.copyWith(
+        request: request,
+        currentStep: _resolveCurrentStep(request),
+        successMessage: 'محصول نمونه ثبت شد و منتظر بررسی است.',
+      );
+    } on AuthApiException catch (error) {
+      if (_isDisposed) return;
+      _state = _state.copyWith(errorMessage: error.message);
+    } finally {
+      if (_isDisposed) return;
+      _state = _state.copyWith(isSubmitting: false);
+      _notifyIfActive();
+    }
+  }
+
+  Future<void> uploadApplicationDocument({
+    required File file,
+    required String title,
+  }) async {
+    await _uploadFile(
+      file: file,
+      title: title,
+      onUploaded: (url) {
+        final next = [..._state.applicationDocuments];
+        final index = next.indexWhere((item) => item.title == title);
+        final document = EditableOnboardingDocument(title: title, url: url);
+        if (index >= 0) {
+          next[index] = document;
+        } else {
+          next.add(document);
+        }
+        _state = _state.copyWith(
+          applicationDocuments: next,
+          successMessage: 'فایل $title آپلود شد.',
+        );
+      },
+    );
+  }
+
+  Future<void> uploadProductImage(File file) async {
+    await _uploadFile(
+      file: file,
+      title: 'تصویر محصول',
+      onUploaded: (url) {
+        final next = [..._state.productGalleryImages, url];
+        _state = _state.copyWith(
+          productGalleryImages: next,
+          successMessage: 'تصویر محصول آپلود شد.',
+        );
+      },
+    );
+  }
+
+  void removeProductImage(String url) {
+    _state = _state.copyWith(
+      productGalleryImages:
+          _state.productGalleryImages.where((item) => item != url).toList(),
+    );
+    _notifyIfActive();
+  }
+
+  VendorOnboardingStep _resolveCurrentStep(VendorOnboardingRequest request) {
+    if (request.productApproved) return VendorOnboardingStep.completed;
+    if (request.applicationApproved && request.productStatus == 'SUBMITTED') {
+      return VendorOnboardingStep.productReview;
+    }
+    if (request.applicationApproved) return VendorOnboardingStep.sampleProduct;
+    if (request.applicationStatus == 'SUBMITTED' ||
+        request.applicationStatus == 'UNDER_REVIEW') {
+      return VendorOnboardingStep.applicationReview;
+    }
+    return VendorOnboardingStep.profile;
+  }
+
+  VendorOnboardingStep _resolveBootstrapStep(VendorOnboardingState? bootstrapState) {
+    if (bootstrapState == null) return VendorOnboardingStep.profile;
+    if (bootstrapState.productStatus == 'APPROVED') {
+      return VendorOnboardingStep.completed;
+    }
+    if (bootstrapState.applicationStatus == 'APPROVED' &&
+        bootstrapState.productStatus == 'SUBMITTED') {
+      return VendorOnboardingStep.productReview;
+    }
+    if (bootstrapState.applicationStatus == 'APPROVED') {
+      return VendorOnboardingStep.sampleProduct;
+    }
+    if (bootstrapState.applicationStatus == 'SUBMITTED' ||
+        bootstrapState.applicationStatus == 'UNDER_REVIEW') {
+      return VendorOnboardingStep.applicationReview;
+    }
+    return VendorOnboardingStep.profile;
+  }
+
+  Future<void> _uploadFile({
+    required File file,
+    required String title,
+    required void Function(String url) onUploaded,
+  }) async {
+    _state = _state.copyWith(
+      isUploading: true,
+      pendingUploadName: title,
+      clearError: true,
+      clearSuccess: true,
+    );
+    _notifyIfActive();
+
+    try {
+      final url = await _repository.uploadDocument(
+        accessToken: _accessToken,
+        file: file,
+      );
+      if (_isDisposed) return;
+      onUploaded(url);
+    } on AuthApiException catch (error) {
+      if (_isDisposed) return;
+      _state = _state.copyWith(errorMessage: error.message);
+    } finally {
+      if (_isDisposed) return;
+      _state = _state.copyWith(
+        isUploading: false,
+        clearPendingUpload: true,
+      );
+      _notifyIfActive();
+    }
+  }
+
+  void _notifyIfActive() {
+    if (!_isDisposed) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    super.dispose();
+  }
+}

@@ -5,14 +5,17 @@ import '../../../shared/widgets/app_shell_background.dart';
 import '../../auth/data/auth_api_service.dart';
 import '../../auth/data/auth_session_storage.dart';
 import '../../auth/domain/auth_session.dart';
+import '../../auth/domain/vendor_bootstrap.dart';
 import '../../auth/presentation/login_screen.dart';
 import '../../auth/presentation/otp_verification_screen.dart';
+import '../../onboarding/presentation/vendor_onboarding_screen.dart';
 import 'vendor_app_shell.dart';
 
 enum _BootstrapStep {
   checkingSession,
   login,
   verifyOtp,
+  onboarding,
   authenticated,
 }
 
@@ -53,8 +56,6 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
           final bootstrap = await _authApiService.getSessionBootstrap(
             storedSession.accessToken,
           );
-          _ensureVendorAccess(bootstrap.roles);
-
           final refreshedSession = AuthSession(
             accessToken: storedSession.accessToken,
             phoneNumber: storedSession.phoneNumber,
@@ -66,15 +67,17 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
           setState(() {
             _session = refreshedSession;
             _phoneNumber = refreshedSession.phoneNumber;
-            _step = _BootstrapStep.authenticated;
+            _step = _resolveBootstrapStep(bootstrap);
           });
-          await PushNotificationService.instance.logToken(
-            forceRefresh: true,
-            reason: 'session-restore',
-          );
-          await PushNotificationService.instance.registerTokenForSession(
-            accessToken: refreshedSession.accessToken,
-          );
+          if (_step == _BootstrapStep.authenticated) {
+            await PushNotificationService.instance.logToken(
+              forceRefresh: true,
+              reason: 'session-restore',
+            );
+            await PushNotificationService.instance.registerTokenForSession(
+              accessToken: refreshedSession.accessToken,
+            );
+          }
           return;
         } catch (_) {
           await _authSessionStorage.clear();
@@ -139,7 +142,6 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
       final bootstrap = await _authApiService.getSessionBootstrap(
         session.accessToken,
       );
-      _ensureVendorAccess(bootstrap.roles);
       final nextSession = AuthSession(
         accessToken: session.accessToken,
         phoneNumber: session.phoneNumber,
@@ -150,15 +152,17 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
       if (!mounted) return;
       setState(() {
         _session = nextSession;
-        _step = _BootstrapStep.authenticated;
+        _step = _resolveBootstrapStep(bootstrap);
       });
-      await PushNotificationService.instance.logToken(
-        forceRefresh: true,
-        reason: 'otp-login',
-      );
-      await PushNotificationService.instance.registerTokenForSession(
-        accessToken: nextSession.accessToken,
-      );
+      if (_step == _BootstrapStep.authenticated) {
+        await PushNotificationService.instance.logToken(
+          forceRefresh: true,
+          reason: 'otp-login',
+        );
+        await PushNotificationService.instance.registerTokenForSession(
+          accessToken: nextSession.accessToken,
+        );
+      }
     } on AuthApiException catch (error) {
       if (!mounted) return;
       setState(() {
@@ -177,11 +181,67 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
     }
   }
 
-  void _ensureVendorAccess(List<String> roles) {
-    if (!roles.contains('VENDOR')) {
-      throw const AuthApiException(
-        'این شماره فروشنده فعال نیست یا دسترسی فروشنده ندارد.',
+  _BootstrapStep _resolveBootstrapStep(VendorBootstrap bootstrap) {
+    if (_isVendorPanelReady(bootstrap)) {
+      return _BootstrapStep.authenticated;
+    }
+    return _BootstrapStep.onboarding;
+  }
+
+  bool _isVendorPanelReady(VendorBootstrap bootstrap) {
+    final roles = bootstrap.roles;
+    final onboarding = bootstrap.vendorOnboarding;
+    final onboardingComplete =
+        onboarding == null ||
+        onboarding.productStatus == 'APPROVED' ||
+        (onboarding.storeActivatedAt?.trim().isNotEmpty ?? false);
+
+    return roles.contains('VENDOR') &&
+        bootstrap.store != null &&
+        onboardingComplete;
+  }
+
+  Future<void> _handleOnboardingCompleted() async {
+    final session = _session;
+    if (session == null) return;
+
+    try {
+      final bootstrap = await _authApiService.getSessionBootstrap(
+        session.accessToken,
       );
+      final refreshedSession = AuthSession(
+        accessToken: session.accessToken,
+        phoneNumber: session.phoneNumber,
+        bootstrap: bootstrap,
+      );
+      await _authSessionStorage.save(refreshedSession);
+
+      if (!mounted) return;
+      final nextStep = _resolveBootstrapStep(bootstrap);
+      setState(() {
+        _session = refreshedSession;
+        _step = nextStep;
+      });
+
+      if (nextStep == _BootstrapStep.authenticated) {
+        await PushNotificationService.instance.logToken(
+          forceRefresh: true,
+          reason: 'onboarding-complete',
+        );
+        await PushNotificationService.instance.registerTokenForSession(
+          accessToken: refreshedSession.accessToken,
+        );
+      }
+    } on AuthApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _otpErrorMessage = error.message;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _otpErrorMessage = 'به‌روزرسانی وضعیت فروشنده ناموفق بود.';
+      });
     }
   }
 
@@ -227,6 +287,12 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
           onVerify: _handleVerify,
           isLoading: _isVerifyingOtp,
           errorMessage: _otpErrorMessage,
+        );
+      case _BootstrapStep.onboarding:
+        return VendorOnboardingScreen(
+          session: _session!,
+          onCompleted: _handleOnboardingCompleted,
+          onLogout: _handleLogout,
         );
       case _BootstrapStep.authenticated:
         return VendorAppShell(
