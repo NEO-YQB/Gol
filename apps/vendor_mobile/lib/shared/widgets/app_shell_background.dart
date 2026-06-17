@@ -87,7 +87,9 @@ class AppShellBackground extends StatelessWidget {
               color: AppColors.secondary.withValues(alpha: 0.07),
             ),
           ),
-          child,
+          Positioned.fill(
+            child: child,
+          ),
         ],
       ),
     );

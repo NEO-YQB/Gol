@@ -321,42 +321,36 @@ class _OnboardingStepper extends StatelessWidget {
     final resolvedIndex = currentIndex < 0 ? steps.length : currentIndex;
 
     return AppGlassCard(
-      child: Row(
+      padding: const EdgeInsets.all(14),
+      child: Wrap(
+        spacing: AppSpacing.sm,
+        runSpacing: AppSpacing.sm,
         children: steps.asMap().entries.map((entry) {
           final index = entry.key;
           final label = entry.value.$1;
           final active = index <= resolvedIndex;
 
-          return Expanded(
-            child: Row(
-              children: [
-                Expanded(
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 260),
-                    curve: Curves.easeOutCubic,
-                    height: 54,
-                    decoration: BoxDecoration(
-                      color: active
-                          ? AppColors.primary.withValues(alpha: 0.12)
-                          : AppColors.surfaceSoft.withValues(alpha: 0.72),
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: Center(
-                      child: Text(
-                        label,
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                              color: active
-                                  ? AppColors.primary
-                                  : AppColors.textSecondary,
-                              fontWeight: FontWeight.w800,
-                            ),
-                      ),
-                    ),
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 260),
+            curve: Curves.easeOutCubic,
+            constraints: const BoxConstraints(minWidth: 110),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: active
+                  ? AppColors.primary.withValues(alpha: 0.12)
+                  : AppColors.surfaceSoft.withValues(alpha: 0.72),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: active
+                        ? AppColors.primary
+                        : AppColors.textSecondary,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
-                if (index < steps.length - 1)
-                  const SizedBox(width: AppSpacing.sm),
-              ],
             ),
           );
         }).toList(),
@@ -664,6 +658,7 @@ class _UploadRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.surfaceSoft.withValues(alpha: 0.72),
