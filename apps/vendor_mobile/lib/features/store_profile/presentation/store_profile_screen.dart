@@ -10,9 +10,8 @@ import '../../../shared/widgets/app_glass_card.dart';
 import '../../../shared/widgets/app_metric_tile.dart';
 import '../../../shared/widgets/app_section_heading.dart';
 import '../../../shared/widgets/app_shell_background.dart';
-import '../../auth/data/auth_api_service.dart';
-import '../data/store_profile_api_service.dart';
 import '../domain/vendor_store_profile.dart';
+import 'view_models/store_profile_view_model.dart';
 
 class StoreProfileScreen extends StatefulWidget {
   const StoreProfileScreen({
@@ -31,7 +30,6 @@ class StoreProfileScreen extends StatefulWidget {
 }
 
 class _StoreProfileScreenState extends State<StoreProfileScreen> {
-  final _apiService = const StoreProfileApiService();
   final _imagePicker = ImagePicker();
 
   late final TextEditingController _nameController;
@@ -41,17 +39,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
   late final TextEditingController _maxDeliveryController;
   late final TextEditingController _expressDeliveryController;
 
-  VendorStoreProfile? _profile;
-  bool _isLoading = true;
-  bool _isSaving = false;
-  bool _isEditMode = false;
-  bool _isUploadingLogo = false;
-  String? _errorMessage;
-  String? _successMessage;
-  bool _sameDayDelivery = false;
-  bool _hasExpressDelivery = false;
-  String _logoUrl = '';
-  File? _pendingLogoFile;
+  late final StoreProfileViewModel _viewModel;
 
   @override
   void initState() {
@@ -62,11 +50,19 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
     _minDeliveryController = TextEditingController();
     _maxDeliveryController = TextEditingController();
     _expressDeliveryController = TextEditingController();
-    _loadProfile();
+    _viewModel = StoreProfileViewModel(
+      accessToken: widget.accessToken,
+      storeId: widget.storeId,
+      storeSlug: widget.storeSlug,
+    );
+    _viewModel.addListener(_syncFormWithProfile);
+    _viewModel.loadProfile();
   }
 
   @override
   void dispose() {
+    _viewModel.removeListener(_syncFormWithProfile);
+    _viewModel.dispose();
     _nameController.dispose();
     _slugController.dispose();
     _descriptionController.dispose();
@@ -76,112 +72,41 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
     super.dispose();
   }
 
-  Future<void> _loadProfile() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+  void _syncFormWithProfile() {
+    final profile = _viewModel.state.profile;
+    if (profile == null || _viewModel.state.isEditMode) return;
 
-    try {
-      final profile = await _apiService.getStoreProfile(
-        accessToken: widget.accessToken,
-        storeSlug: widget.storeSlug,
-      );
-
-      if (!mounted) return;
-      setState(() {
-        _profile = profile;
-        _fillForm(profile);
-      });
-    } on AuthApiException catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = error.message;
-      });
-    } finally {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
-    }
+    _fillForm(profile);
   }
 
   void _fillForm(VendorStoreProfile profile) {
     _nameController.text = profile.name;
     _slugController.text = profile.slug;
     _descriptionController.text = profile.description;
-    _logoUrl = profile.logo;
-    _pendingLogoFile = null;
     _minDeliveryController.text =
         profile.minDeliveryHours?.toString() ?? '';
     _maxDeliveryController.text =
         profile.maxDeliveryHours?.toString() ?? '';
     _expressDeliveryController.text =
         profile.expressDeliveryHours?.toString() ?? '';
-    _sameDayDelivery = profile.sameDayDelivery;
-    _hasExpressDelivery = profile.hasExpressDelivery;
   }
 
   Future<void> _saveProfile() async {
-    final currentProfile = _profile;
-    if (currentProfile == null) return;
-
-    if (_nameController.text.trim().isEmpty ||
-        _slugController.text.trim().isEmpty) {
-      setState(() {
-        _errorMessage = 'نام فروشگاه و اسلاگ الزامی هستند.';
-        _successMessage = null;
-      });
-      return;
-    }
-
-    setState(() {
-      _isSaving = true;
-      _errorMessage = null;
-      _successMessage = null;
-    });
-
-    try {
-      final updated = await _apiService.updateStoreProfile(
-        accessToken: widget.accessToken,
-        storeId: widget.storeId,
-        storeSlug: widget.storeSlug,
-        input: UpdateVendorStoreProfileInput(
-          name: _nameController.text,
-          slug: _slugController.text,
-          description: _descriptionController.text,
-          logo: _logoUrl,
-          sameDayDelivery: _sameDayDelivery,
-          hasExpressDelivery: _hasExpressDelivery,
-          minDeliveryHours: _parseInt(_minDeliveryController.text),
-          maxDeliveryHours: _parseInt(_maxDeliveryController.text),
-          expressDeliveryHours: _parseInt(_expressDeliveryController.text),
-          deliveryWindows: currentProfile.deliveryWindows,
-        ),
-      );
-
-      if (!mounted) return;
-      setState(() {
-        _profile = updated;
-        _fillForm(updated);
-        _isEditMode = false;
-        _successMessage = 'پروفایل فروشگاه با موفقیت ذخیره شد.';
-      });
-    } on AuthApiException catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = error.message;
-      });
-    } finally {
-      if (!mounted) return;
-      setState(() {
-        _isSaving = false;
-      });
-    }
+    await _viewModel.saveProfile(
+      StoreProfileFormInput(
+        name: _nameController.text,
+        slug: _slugController.text,
+        description: _descriptionController.text,
+        minDeliveryHours: _parseInt(_minDeliveryController.text),
+        maxDeliveryHours: _parseInt(_maxDeliveryController.text),
+        expressDeliveryHours: _parseInt(_expressDeliveryController.text),
+      ),
+    );
   }
 
   Future<void> _pickAndUploadLogo() async {
-    if (_isUploadingLogo || _isSaving) return;
+    final state = _viewModel.state;
+    if (state.isUploadingLogo || state.isSaving) return;
 
     try {
       final pickedFile = await _imagePicker.pickImage(
@@ -215,264 +140,188 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
 
       if (croppedFile == null || !mounted) return;
 
-      setState(() {
-        _isUploadingLogo = true;
-        _errorMessage = null;
-        _successMessage = null;
-        _pendingLogoFile = File(croppedFile.path);
-      });
-
-      final uploadedUrl = await _apiService.uploadStoreLogo(
-        accessToken: widget.accessToken,
-        file: File(croppedFile.path),
-      );
-
-      if (!mounted) return;
-      setState(() {
-        _logoUrl = uploadedUrl;
-        _isUploadingLogo = false;
-        _successMessage = 'لوگو آپلود شد و آماده ذخیره است.';
-      });
-    } on AuthApiException catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _isUploadingLogo = false;
-        _pendingLogoFile = null;
-        _errorMessage = error.message;
-      });
+      await _viewModel.uploadLogo(File(croppedFile.path));
     } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _isUploadingLogo = false;
-        _pendingLogoFile = null;
-        _errorMessage = 'انتخاب یا برش لوگو انجام نشد.';
-      });
+      _viewModel.setLogoPickerError();
     }
   }
 
   void _cancelEdit() {
-    final profile = _profile;
+    final profile = _viewModel.state.profile;
     if (profile == null) return;
 
-    setState(() {
-      _fillForm(profile);
-      _isEditMode = false;
-      _errorMessage = null;
-      _successMessage = null;
-    });
+    _fillForm(profile);
+    _viewModel.cancelEdit();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final profile = _profile;
 
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         body: AppShellBackground(
           child: SafeArea(
-            child: _isLoading
-                ? const _StoreProfileLoadingView()
-                : _errorMessage != null && profile == null
-                    ? _StoreProfileErrorView(
-                        message: _errorMessage!,
-                        onRetry: _loadProfile,
-                      )
-                    : profile == null
-                        ? _StoreProfileErrorView(
-                            message: 'اطلاعات فروشگاه در دسترس نیست.',
-                            onRetry: _loadProfile,
-                          )
-                        : ListView(
-                        padding: const EdgeInsets.fromLTRB(24, 18, 24, 28),
+            child: ListenableBuilder(
+              listenable: _viewModel,
+              builder: (context, _) {
+                final state = _viewModel.state;
+                final profile = state.profile;
+
+                if (state.isLoading) {
+                  return const _StoreProfileLoadingView();
+                }
+
+                if (state.errorMessage != null && profile == null) {
+                  return _StoreProfileErrorView(
+                    message: state.errorMessage!,
+                    onRetry: _viewModel.loadProfile,
+                  );
+                }
+
+                if (profile == null) {
+                  return _StoreProfileErrorView(
+                    message: 'اطلاعات فروشگاه در دسترس نیست.',
+                    onRetry: _viewModel.loadProfile,
+                  );
+                }
+
+                return ListView(
+                  padding: const EdgeInsets.fromLTRB(24, 18, 24, 28),
+                  children: [
+                    Text(
+                      'پروفایل فروشگاه',
+                      style: theme.textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    const AppSectionHeading(
+                      eyebrow: 'هویت فروشگاه',
+                      title: 'اطلاعات پایه فروشگاه',
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    _StoreProfileHeroCard(profile: profile),
+                    const SizedBox(height: AppSpacing.lg),
+                    AppMetricTile(
+                      title: 'محصول‌های متصل',
+                      value: '${profile.productCount}',
+                      subtitle: 'تعداد محصول‌های فعلی فروشگاه',
+                      accentColor: AppColors.primary,
+                      icon: Icons.inventory_2_rounded,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    AppMetricTile(
+                      title: 'ارسال امروز',
+                      value: profile.sameDayDelivery ? 'فعال' : 'غیرفعال',
+                      subtitle: profile.hasExpressDelivery
+                          ? 'ارسال فوری هم فعال است'
+                          : 'ارسال فوری فعال نیست',
+                      accentColor: AppColors.accent,
+                      icon: Icons.local_shipping_rounded,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    AppGlassCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'پروفایل فروشگاه',
-                            style: theme.textTheme.titleMedium,
-                          ),
-                          const SizedBox(height: AppSpacing.lg),
-                          const AppSectionHeading(
-                            eyebrow: 'هویت فروشگاه',
-                            title: 'اطلاعات پایه فروشگاه را تمیز و سریع مدیریت کن',
-                            description:
-                                'این بخش برای ویرایش مواردی است که فروشنده در کار روزانه به آن‌ها نیاز دارد؛ بدون شلوغی و بدون ورود به flowهای سنگین.',
-                          ),
-                          const SizedBox(height: AppSpacing.lg),
-                          _StoreProfileHeroCard(profile: profile),
-                          const SizedBox(height: AppSpacing.lg),
-                          AppMetricTile(
-                            title: 'محصول‌های متصل',
-                            value: '${profile.productCount}',
-                            subtitle: 'تعداد محصول‌های فعلی فروشگاه',
-                            accentColor: AppColors.primary,
-                            icon: Icons.inventory_2_rounded,
-                          ),
-                          const SizedBox(height: AppSpacing.lg),
-                          AppMetricTile(
-                            title: 'ارسال امروز',
-                            value: profile.sameDayDelivery ? 'فعال' : 'غیرفعال',
-                            subtitle: profile.hasExpressDelivery
-                                ? 'ارسال فوری هم فعال است'
-                                : 'ارسال فوری فعال نیست',
-                            accentColor: AppColors.accent,
-                            icon: Icons.local_shipping_rounded,
-                          ),
-                          const SizedBox(height: AppSpacing.lg),
-                          AppGlassCard(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
+                          Wrap(
+                            alignment: WrapAlignment.spaceBetween,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            runSpacing: 12,
+                            spacing: 12,
+                            children: [
+                              Text(
+                                state.isEditMode
+                                    ? 'ویرایش پروفایل'
+                                    : 'خلاصه پروفایل',
+                                style: theme.textTheme.titleMedium,
+                              ),
+                              if (state.isEditMode)
                                 Wrap(
-                                  alignment: WrapAlignment.spaceBetween,
-                                  crossAxisAlignment: WrapCrossAlignment.center,
-                                  runSpacing: 12,
-                                  spacing: 12,
+                                  spacing: 8,
+                                  runSpacing: 8,
                                   children: [
-                                    Text(
-                                      _isEditMode ? 'ویرایش پروفایل' : 'خلاصه پروفایل',
-                                      style: theme.textTheme.titleMedium,
+                                    TextButton(
+                                      onPressed: state.isSaving
+                                          ? null
+                                          : _cancelEdit,
+                                      child: const Text('انصراف'),
                                     ),
-                                    if (_isEditMode)
-                                      Wrap(
-                                        spacing: 8,
-                                        runSpacing: 8,
-                                        children: [
-                                          TextButton(
-                                            onPressed:
-                                                _isSaving ? null : _cancelEdit,
-                                            child: const Text('انصراف'),
-                                          ),
-                                          FilledButton(
-                                            onPressed:
-                                                _isSaving ? null : _saveProfile,
-                                            child: Text(
-                                              _isSaving
-                                                  ? 'در حال ذخیره...'
-                                                  : 'ذخیره',
-                                            ),
-                                          ),
-                                        ],
-                                      )
-                                    else
-                                      FilledButton.icon(
-                                        onPressed: () {
-                                          setState(() {
-                                            _isEditMode = true;
-                                            _errorMessage = null;
-                                            _successMessage = null;
-                                          });
-                                        },
-                                        icon: const Icon(Icons.edit_rounded),
-                                        label: const Text('ویرایش'),
+                                    FilledButton(
+                                      onPressed: state.isSaving
+                                          ? null
+                                          : _saveProfile,
+                                      child: Text(
+                                        state.isSaving
+                                            ? 'در حال ذخیره...'
+                                            : 'ذخیره',
                                       ),
+                                    ),
                                   ],
+                                )
+                              else
+                                FilledButton.icon(
+                                  onPressed: _viewModel.startEdit,
+                                  icon: const Icon(Icons.edit_rounded),
+                                  label: const Text('ویرایش'),
                                 ),
-                                if (_successMessage != null) ...[
-                                  const SizedBox(height: AppSpacing.md),
-                                  Text(
-                                    _successMessage!,
-                                    style: theme.textTheme.bodyMedium?.copyWith(
-                                      color: AppColors.success,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ],
-                                if (_errorMessage != null && _profile != null) ...[
-                                  const SizedBox(height: AppSpacing.md),
-                                  Text(
-                                    _errorMessage!,
-                                    style: TextStyle(
-                                      color: Theme.of(context).colorScheme.error,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ],
-                                const SizedBox(height: AppSpacing.lg),
-                                if (_isEditMode)
-                                  _StoreProfileEditForm(
-                                    nameController: _nameController,
-                                    slugController: _slugController,
-                                    descriptionController: _descriptionController,
-                                    minDeliveryController: _minDeliveryController,
-                                    maxDeliveryController: _maxDeliveryController,
-                                    expressDeliveryController:
-                                        _expressDeliveryController,
-                                    sameDayDelivery: _sameDayDelivery,
-                                    hasExpressDelivery: _hasExpressDelivery,
-                                    onSameDayChanged: (value) {
-                                      setState(() {
-                                        _sameDayDelivery = value;
-                                      });
-                                    },
-                                    onExpressChanged: (value) {
-                                      setState(() {
-                                        _hasExpressDelivery = value;
-                                      });
-                                    },
-                                    logoUrl: _logoUrl,
-                                    pendingLogoFile: _pendingLogoFile,
-                                    isUploadingLogo: _isUploadingLogo,
-                                    onPickLogo: _pickAndUploadLogo,
-                                    lockedAddress: profile.address,
-                                  )
-                                else
-                                  _StoreProfileSummary(profile: profile),
-                              ],
-                            ),
+                            ],
                           ),
-                          if (profile.deliveryWindows.isNotEmpty) ...[
-                            const SizedBox(height: AppSpacing.lg),
-                            AppGlassCard(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'بازه‌های ارسال',
-                                    style: theme.textTheme.titleMedium,
-                                  ),
-                                  const SizedBox(height: AppSpacing.md),
-                                  ...profile.deliveryWindows.map(
-                                    (item) => Padding(
-                                      padding: const EdgeInsets.only(bottom: 10),
-                                      child: Container(
-                                        padding: const EdgeInsets.all(14),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.surfaceSoft
-                                              .withValues(alpha: 0.72),
-                                          borderRadius:
-                                              BorderRadius.circular(18),
-                                        ),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              item.label,
-                                              style: theme.textTheme.labelLarge
-                                                  ?.copyWith(
-                                                fontWeight: FontWeight.w800,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              '${item.startTime} تا ${item.endTime}',
-                                              style: theme.textTheme.bodyMedium
-                                                  ?.copyWith(
-                                                color: AppColors.textSecondary,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                          if (state.successMessage != null) ...[
+                            const SizedBox(height: AppSpacing.md),
+                            Text(
+                              state.successMessage!,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: AppColors.success,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                           ],
+                          if (state.errorMessage != null) ...[
+                            const SizedBox(height: AppSpacing.md),
+                            Text(
+                              state.errorMessage!,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: AppSpacing.lg),
+                          if (state.isEditMode)
+                            _StoreProfileEditForm(
+                              nameController: _nameController,
+                              slugController: _slugController,
+                              descriptionController: _descriptionController,
+                              minDeliveryController: _minDeliveryController,
+                              maxDeliveryController: _maxDeliveryController,
+                              expressDeliveryController:
+                                  _expressDeliveryController,
+                              sameDayDelivery: state.sameDayDelivery,
+                              hasExpressDelivery: state.hasExpressDelivery,
+                              onSameDayChanged:
+                                  _viewModel.setSameDayDelivery,
+                              onExpressChanged:
+                                  _viewModel.setHasExpressDelivery,
+                              logoUrl: state.logoUrl,
+                              pendingLogoFile: state.pendingLogoFile,
+                              isUploadingLogo: state.isUploadingLogo,
+                              onPickLogo: _pickAndUploadLogo,
+                              lockedAddress: profile.address,
+                            )
+                          else
+                            _StoreProfileSummary(profile: profile),
                         ],
                       ),
+                    ),
+                    if (profile.deliveryWindows.isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.lg),
+                      _DeliveryWindowsCard(windows: profile.deliveryWindows),
+                    ],
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ),
@@ -577,6 +426,62 @@ class _HeroPill extends StatelessWidget {
               color: Colors.white,
               fontWeight: FontWeight.w700,
             ),
+      ),
+    );
+  }
+}
+
+class _DeliveryWindowsCard extends StatelessWidget {
+  const _DeliveryWindowsCard({
+    required this.windows,
+  });
+
+  final List<StoreDeliveryWindow> windows;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AppGlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'بازه‌های ارسال',
+            style: theme.textTheme.titleMedium,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          ...windows.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceSoft.withValues(alpha: 0.72),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.label,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${item.startTime} تا ${item.endTime}',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
