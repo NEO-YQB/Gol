@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_glass_card.dart';
-import '../../../shared/widgets/app_section_heading.dart';
 import '../../../shared/widgets/app_shell_background.dart';
 import '../domain/vendor_discount.dart';
 import 'discount_workspace_screen.dart';
@@ -60,29 +59,20 @@ class _DiscountsScreenState extends State<DiscountsScreen> {
                 final items = state.items;
 
                 return ListView(
-              padding: const EdgeInsets.fromLTRB(24, 18, 24, 120),
-              children: [
-                Text(
-                  'تخفیف‌ها',
-                  style: theme.textTheme.titleMedium,
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                const AppSectionHeading(
-                  eyebrow: 'فروش هوشمند',
-                  title: 'تخفیف‌ها را سبک، شفاف و حرفه‌ای مدیریت کن',
-                  description:
-                      'تمرکز این بخش روی تخفیف‌های محصولی فروشنده است؛ سریع ببین، ویرایش کن و کمپین بعدی را آماده کن.',
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                AppGlassCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
+                  padding: const EdgeInsets.fromLTRB(24, 18, 24, 120),
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'تخفیف‌ها',
+                            style: theme.textTheme.titleMedium,
+                          ),
+                        ),
+                        FilledButton.icon(
                           onPressed: () async {
-                            final changed = await Navigator.of(context).push<bool>(
+                            final changed =
+                                await Navigator.of(context).push<bool>(
                               MaterialPageRoute(
                                 builder: (_) => DiscountWorkspaceScreen(
                                   accessToken: widget.accessToken,
@@ -95,15 +85,19 @@ class _DiscountsScreenState extends State<DiscountsScreen> {
                             }
                           },
                           icon: const Icon(Icons.add_rounded),
-                          label: const Text('افزودن تخفیف'),
+                          label: const Text('افزودن'),
                         ),
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      Row(
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
                         children: [
                           ...DiscountsViewModel.filters.map(
                             (item) => Padding(
-                              padding: const EdgeInsets.only(left: AppSpacing.sm),
+                              padding:
+                                  const EdgeInsets.only(left: AppSpacing.sm),
                               child: _FilterChip(
                                 label: item.label,
                                 active: state.filter == item.value,
@@ -113,42 +107,42 @@ class _DiscountsScreenState extends State<DiscountsScreen> {
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                if (state.isLoading)
-                  const _LoadingState()
-                else if (state.errorMessage != null)
-                  _ErrorState(
-                    message: state.errorMessage!,
-                    onRetry: _loadDiscounts,
-                  )
-                else if (items.isEmpty)
-                  const _EmptyState()
-                else
-                  ...items.map(
-                    (item) => Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                      child: _DiscountCard(
-                        discount: item,
-                        onOpen: () async {
-                          final changed = await Navigator.of(context).push<bool>(
-                            MaterialPageRoute(
-                              builder: (_) => DiscountWorkspaceScreen(
-                                accessToken: widget.accessToken,
-                                storeId: widget.storeId,
-                                discountId: item.id,
-                              ),
-                            ),
-                          );
-                          if (changed == true) {
-                            _loadDiscounts();
-                          }
-                        },
-                      ),
                     ),
-                  ),
+                    const SizedBox(height: AppSpacing.lg),
+                    if (state.isLoading)
+                      const _LoadingState()
+                    else if (state.errorMessage != null)
+                      _ErrorState(
+                        message: state.errorMessage!,
+                        onRetry: _loadDiscounts,
+                      )
+                    else if (items.isEmpty)
+                      const _EmptyState()
+                    else
+                      ...items.map(
+                        (item) => Padding(
+                          padding:
+                              const EdgeInsets.only(bottom: AppSpacing.md),
+                          child: _DiscountCard(
+                            discount: item,
+                            onOpen: () async {
+                              final changed =
+                                  await Navigator.of(context).push<bool>(
+                                MaterialPageRoute(
+                                  builder: (_) => DiscountWorkspaceScreen(
+                                    accessToken: widget.accessToken,
+                                    storeId: widget.storeId,
+                                    discountId: item.id,
+                                  ),
+                                ),
+                              );
+                              if (changed == true) {
+                                _loadDiscounts();
+                              }
+                            },
+                          ),
+                        ),
+                      ),
                   ],
                 );
               },

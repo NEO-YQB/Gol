@@ -141,7 +141,6 @@ class _DiscountWorkspaceScreenState extends State<DiscountWorkspaceScreen> {
       firstDate: firstJalali,
       lastDate: lastJalali,
       currentDate: todayJalali,
-      helpText: 'انتخاب تاریخ',
       confirmText: 'تایید',
       cancelText: 'انصراف',
       locale: const Locale('fa', 'IR'),
@@ -167,7 +166,6 @@ class _DiscountWorkspaceScreenState extends State<DiscountWorkspaceScreen> {
       initialTime: safeInitial.isAfter(firstDateTime)
           ? TimeOfDay.fromDateTime(safeInitial)
           : earliestTime,
-      helpText: 'انتخاب زمان',
     );
     if (time == null) return null;
 
@@ -226,19 +224,12 @@ class _DiscountWorkspaceScreenState extends State<DiscountWorkspaceScreen> {
                           const SizedBox(width: 48),
                         ],
                       ),
-                      const SizedBox(height: AppSpacing.lg),
+                      const SizedBox(height: AppSpacing.md),
                       AppGlassCard(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'تخفیف را تمیز و مستقیم روی یک محصول اعمال کن.',
-                              style: theme.textTheme.bodyLarge?.copyWith(
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
                             if (state.errorMessage != null) ...[
-                              const SizedBox(height: AppSpacing.md),
                               Text(
                                 state.errorMessage!,
                                 style: theme.textTheme.bodyMedium?.copyWith(
@@ -246,8 +237,8 @@ class _DiscountWorkspaceScreenState extends State<DiscountWorkspaceScreen> {
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
+                              const SizedBox(height: AppSpacing.lg),
                             ],
-                            const SizedBox(height: AppSpacing.lg),
                             DropdownButtonFormField<int>(
                               value: state.selectedProductId,
                               decoration: const InputDecoration(
@@ -330,7 +321,6 @@ class _DiscountWorkspaceScreenState extends State<DiscountWorkspaceScreen> {
                               onTap: _pickStartAt,
                               decoration: const InputDecoration(
                                 labelText: 'شروع',
-                                hintText: 'انتخاب تاریخ و زمان',
                                 suffixIcon: Icon(Icons.calendar_month_rounded),
                               ),
                             ),
@@ -341,7 +331,6 @@ class _DiscountWorkspaceScreenState extends State<DiscountWorkspaceScreen> {
                               onTap: _pickEndAt,
                               decoration: const InputDecoration(
                                 labelText: 'پایان',
-                                hintText: 'انتخاب تاریخ و زمان',
                                 suffixIcon: Icon(Icons.event_available_rounded),
                               ),
                             ),
