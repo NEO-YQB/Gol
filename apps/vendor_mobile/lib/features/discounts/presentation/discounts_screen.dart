@@ -45,13 +45,12 @@ class _DiscountsScreenState extends State<DiscountsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         body: AppShellBackground(
           child: SafeArea(
+            minimum: const EdgeInsets.fromLTRB(24, 18, 24, 0),
             child: ListenableBuilder(
               listenable: _viewModel,
               builder: (context, _) {
@@ -63,7 +62,7 @@ class _DiscountsScreenState extends State<DiscountsScreen> {
                     onRefresh: _loadDiscounts,
                     child: ListView.builder(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(24, 18, 24, 120),
+                      padding: const EdgeInsets.only(bottom: 120),
                       itemCount: _itemCount(state, items),
                       itemBuilder: (context, index) {
                         if (index == 0) {
@@ -235,18 +234,17 @@ class _DiscountHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Expanded(
-          child: Text(
-            'تخفیف‌ها',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+        Text(
+          'تخفیف‌ها',
+          style: Theme.of(context).textTheme.titleMedium,
         ),
-        FilledButton.icon(
+        const SizedBox(height: AppSpacing.md),
+        FilledButton(
           onPressed: onCreate,
-          icon: const Icon(Icons.add_rounded),
-          label: const Text('افزودن'),
+          child: const Text('افزودن'),
         ),
       ],
     );
@@ -264,15 +262,18 @@ class _DiscountFilters extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: AppSpacing.sm,
-      runSpacing: AppSpacing.sm,
+    return Row(
       children: DiscountsViewModel.filters
           .map(
-            (item) => _FilterChip(
-              label: item.label,
-              active: activeFilter == item.value,
-              onTap: () => onSelect(item.value),
+            (item) => Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 3),
+                child: _FilterChip(
+                  label: item.label,
+                  active: activeFilter == item.value,
+                  onTap: () => onSelect(item.value),
+                ),
+              ),
             ),
           )
           .toList(),
@@ -293,24 +294,26 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(999),
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-        decoration: BoxDecoration(
-          color: active
-              ? AppColors.primary
-              : AppColors.surfaceSoft.withValues(alpha: 0.72),
+    return SizedBox(
+      height: 38,
+      child: Material(
+        color: active
+            ? AppColors.primary
+            : AppColors.surfaceSoft.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(999),
+        child: InkWell(
           borderRadius: BorderRadius.circular(999),
-        ),
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: active ? Colors.white : AppColors.textSecondary,
-                fontWeight: FontWeight.w700,
-              ),
+          onTap: onTap,
+          child: Center(
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: active ? Colors.white : AppColors.textSecondary,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+          ),
         ),
       ),
     );
@@ -357,24 +360,27 @@ class _ErrorState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppGlassCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'خطا در بارگذاری تخفیف‌ها',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            message,
-            style: Theme.of(context).textTheme.bodyLarge,
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          FilledButton(
-            onPressed: onRetry,
-            child: const Text('تلاش دوباره'),
-          ),
-        ],
+      child: SizedBox(
+        width: double.infinity,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'خطا در بارگذاری تخفیف‌ها',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              message,
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            FilledButton(
+              onPressed: onRetry,
+              child: const Text('تلاش دوباره'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -386,20 +392,23 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppGlassCard(
-      child: Column(
-        children: [
-          const Icon(
-            Icons.local_offer_outlined,
-            size: 42,
-            color: AppColors.textSecondary,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            'هنوز تخفیفی برای این فروشگاه ثبت نشده است.',
-            style: Theme.of(context).textTheme.titleMedium,
-            textAlign: TextAlign.center,
-          ),
-        ],
+      child: SizedBox(
+        width: double.infinity,
+        child: Column(
+          children: [
+            const Icon(
+              Icons.local_offer_outlined,
+              size: 42,
+              color: AppColors.textSecondary,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              'هنوز تخفیفی برای این فروشگاه ثبت نشده است.',
+              style: Theme.of(context).textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }

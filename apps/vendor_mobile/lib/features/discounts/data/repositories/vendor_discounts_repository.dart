@@ -12,12 +12,10 @@ class VendorDiscountsRepository {
   Future<VendorDiscountListResponse> getDiscounts({
     required String accessToken,
     required int storeId,
-    required String filter,
   }) {
     return _apiService.getDiscounts(
       accessToken: accessToken,
       storeId: storeId,
-      isActive: filter == 'ALL' ? null : filter == 'ACTIVE',
     );
   }
 

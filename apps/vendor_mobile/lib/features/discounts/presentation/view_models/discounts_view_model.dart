@@ -83,7 +83,6 @@ class DiscountsViewModel extends ChangeNotifier {
       final response = await _repository.getDiscounts(
         accessToken: _accessToken,
         storeId: _storeId,
-        filter: _state.filter,
       ).timeout(const Duration(seconds: 8));
       if (_isDisposed) return;
       _state = _state.copyWith(response: response);
@@ -107,7 +106,6 @@ class DiscountsViewModel extends ChangeNotifier {
 
     _state = _state.copyWith(filter: filter);
     _notifyIfActive();
-    await loadDiscounts();
   }
 
   void _notifyIfActive() {
