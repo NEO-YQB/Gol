@@ -8,12 +8,12 @@ class AppSectionHeading extends StatelessWidget {
     super.key,
     required this.eyebrow,
     required this.title,
-    required this.description,
+    this.description,
   });
 
   final String eyebrow;
   final String title;
-  final String description;
+  final String? description;
 
   @override
   Widget build(BuildContext context) {
@@ -35,13 +35,15 @@ class AppSectionHeading extends StatelessWidget {
           title,
           style: theme.textTheme.headlineLarge,
         ),
-        const SizedBox(height: AppSpacing.md),
-        Text(
-          description,
-          style: theme.textTheme.bodyLarge?.copyWith(
-            color: AppColors.textSecondary,
+        if (description != null && description!.trim().isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            description!,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: AppColors.textSecondary,
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
