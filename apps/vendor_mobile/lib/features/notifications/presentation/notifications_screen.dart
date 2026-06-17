@@ -6,9 +6,8 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_glass_card.dart';
 import '../../../shared/widgets/app_section_heading.dart';
 import '../../../shared/widgets/app_shell_background.dart';
-import '../../auth/data/auth_api_service.dart';
-import '../data/notifications_api_service.dart';
 import '../domain/vendor_notification.dart';
+import 'view_models/notifications_view_model.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({
@@ -25,54 +24,46 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  final NotificationsApiService _apiService = const NotificationsApiService();
-  late Future<List<VendorNotification>> _future;
+  late final NotificationsViewModel _viewModel;
 
   @override
   void initState() {
     super.initState();
-    _future = _load();
+    _viewModel = NotificationsViewModel(accessToken: widget.accessToken);
+    _viewModel.loadNotifications();
   }
 
-  Future<List<VendorNotification>> _load() {
-    return _apiService.getNotifications(accessToken: widget.accessToken);
-  }
-
-  Future<void> _refresh() async {
-    final next = _load();
-    setState(() {
-      _future = next;
-    });
-    await next;
+  @override
+  void dispose() {
+    _viewModel.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final body = SafeArea(
-      child: FutureBuilder<List<VendorNotification>>(
-        future: _future,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+      child: ListenableBuilder(
+        listenable: _viewModel,
+        builder: (context, _) {
+          final state = _viewModel.state;
+
+          if (state.isLoading) {
             return const _NotificationsLoadingView();
           }
 
-          if (snapshot.hasError) {
-            final error = snapshot.error;
-            final message = error is AuthApiException
-                ? error.message
-                : 'بارگذاری اعلان‌ها ناموفق بود.';
+          if (state.errorMessage != null) {
             return _NotificationsErrorView(
-              message: message,
-              onRetry: _refresh,
+              message: state.errorMessage!,
+              onRetry: _viewModel.refresh,
             );
           }
 
-          final items = snapshot.data ?? const <VendorNotification>[];
-          final groupedItems = _groupNotifications(items);
+          final items = state.items;
+          final groupedItems = state.groupedItems;
 
           return RefreshIndicator(
             color: AppColors.primary,
-            onRefresh: _refresh,
+            onRefresh: _viewModel.refresh,
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(24, 18, 24, 28),
@@ -80,9 +71,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 const AppSectionHeading(
                   eyebrow: 'اعلان‌ها',
                   title: 'مرکز اعلان فروشنده',
-                  description:
-                      'رویدادهای مهم سفارش، پشتیبانی و مالی را یک‌جا دنبال کن.',
                 ),
+                if (state.isRefreshing) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  const LinearProgressIndicator(
+                    minHeight: 3,
+                    color: AppColors.primary,
+                    backgroundColor: AppColors.surfaceSoft,
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.lg),
                 _NotificationSummary(items: items),
                 const SizedBox(height: AppSpacing.lg),
@@ -90,7 +87,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   AppGlassCard(
                     child: Text(
                       'هنوز اعلانی برای این حساب ثبت نشده است.',
-                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                             color: AppColors.textSecondary,
                           ),
                     ),
@@ -137,7 +134,8 @@ class _NotificationSummary extends StatelessWidget {
     final pending =
         items.where((item) => item.status.toUpperCase() == 'PENDING').length;
     final support = items.where((item) => item.topic.contains('support')).length;
-    final finance = items.where((item) => item.topic.contains('settlement')).length;
+    final finance =
+        items.where((item) => item.topic.contains('settlement')).length;
 
     return AppGlassCard(
       child: Row(
@@ -540,37 +538,6 @@ String _formatDate(DateTime? dateTime) {
   final mm = local.minute.toString().padLeft(2, '0');
 
   return '${_toPersianDigits(jalali.formatCompactDate())} - ${_toPersianDigits('$hh:$mm')}';
-}
-
-Map<String, List<VendorNotification>> _groupNotifications(
-  List<VendorNotification> items,
-) {
-  final Map<String, List<VendorNotification>> grouped = {};
-
-  for (final item in items) {
-    final label = _groupLabel(item.createdAt);
-    grouped.putIfAbsent(label, () => []).add(item);
-  }
-
-  return grouped;
-}
-
-String _groupLabel(DateTime? dateTime) {
-  if (dateTime == null) {
-    return 'بدون تاریخ';
-  }
-
-  final local = dateTime.toLocal();
-  final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
-  final itemDay = DateTime(local.year, local.month, local.day);
-  final diff = today.difference(itemDay).inDays;
-
-  if (diff == 0) return 'امروز';
-  if (diff == 1) return 'دیروز';
-
-  final jalali = Jalali.fromDateTime(local);
-  return _toPersianDigits(jalali.formatCompactDate());
 }
 
 String _toPersianDigits(Object value) {
