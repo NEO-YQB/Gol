@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
 
-import '../../auth/data/auth_api_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_glass_card.dart';
 import '../../../shared/widgets/app_metric_tile.dart';
 import '../../../shared/widgets/app_section_heading.dart';
 import '../../../shared/widgets/app_shell_background.dart';
-import '../data/dashboard_api_service.dart';
 import '../domain/dashboard_summary.dart';
+import 'view_models/dashboard_view_model.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({
     super.key,
     required this.accessToken,
@@ -27,147 +26,114 @@ class DashboardScreen extends StatelessWidget {
   final Future<void> Function() onLogout;
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
 
+class _DashboardScreenState extends State<DashboardScreen> {
+  late final DashboardViewModel _viewModel;
+
+  @override
+  void initState() {
+    super.initState();
+    _viewModel = DashboardViewModel(
+      accessToken: widget.accessToken,
+      fallbackStoreName: widget.storeName,
+    );
+    _viewModel.loadSummary();
+  }
+
+  @override
+  void dispose() {
+    _viewModel.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         body: AppShellBackground(
           child: SafeArea(
-            child: FutureBuilder<DashboardSummary>(
-              future: DashboardApiService().getSummary(
-                accessToken: accessToken,
-                fallbackStoreName: storeName,
-              ),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
+            child: ListenableBuilder(
+              listenable: _viewModel,
+              builder: (context, _) {
+                final state = _viewModel.state;
+
+                if (state.isLoading) {
                   return const _DashboardLoadingView();
                 }
 
-                if (snapshot.hasError) {
-                  final error = snapshot.error;
-                  final message = error is AuthApiException
-                      ? error.message
-                      : 'بارگذاری داشبورد ناموفق بود.';
-
-                  return Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                'داشبورد فروشنده',
-                                style: theme.textTheme.titleMedium,
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () async {
-                                await onLogout();
-                              },
-                              child: const Text('خروج'),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 18),
-                        AppGlassCard(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Text(
-                                'خطا در بارگذاری داشبورد',
-                                style: theme.textTheme.headlineMedium,
-                              ),
-                              const SizedBox(height: AppSpacing.md),
-                              Text(
-                                message,
-                                style: theme.textTheme.bodyLarge,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+                if (state.errorMessage != null) {
+                  return _DashboardErrorView(
+                    message: state.errorMessage!,
+                    onLogout: widget.onLogout,
+                    onRetry: _viewModel.refresh,
                   );
                 }
 
-                final summary = snapshot.data!;
+                final summary = state.summary;
+                if (summary == null) {
+                  return _DashboardErrorView(
+                    message: 'اطلاعات داشبورد در دسترس نیست.',
+                    onLogout: widget.onLogout,
+                    onRetry: _viewModel.refresh,
+                  );
+                }
 
                 final prefersReducedMotion =
                     MediaQuery.maybeOf(context)?.disableAnimations ?? false;
 
-                return ListView(
-                  padding: const EdgeInsets.fromLTRB(24, 18, 24, 28),
-                  children: [
-                    _DashboardHeader(
-                      onLogout: onLogout,
-                    ),
-                    const SizedBox(height: 18),
-                    TweenAnimationBuilder<double>(
-                      tween: Tween<double>(begin: 0, end: 1),
-                      duration: Duration(
-                        milliseconds: prefersReducedMotion ? 0 : 520,
+                return RefreshIndicator(
+                  color: AppColors.primary,
+                  onRefresh: _viewModel.refresh,
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(24, 18, 24, 28),
+                    children: [
+                      _DashboardHeader(
+                        onLogout: widget.onLogout,
                       ),
-                      curve: Curves.easeOutCubic,
-                      builder: (context, value, child) {
-                        return Opacity(
-                          opacity: value,
-                          child: Transform.translate(
-                            offset: Offset(0, 24 * (1 - value)),
-                            child: child,
-                          ),
-                        );
-                      },
-                      child: Column(
-                        children: [
-                          _HeroSummaryCard(
-                            summary: summary,
-                            phoneNumber: phoneNumber,
-                            isPreview: isPreview,
-                          ),
-                          const SizedBox(height: AppSpacing.lg),
-                          _MetricGrid(summary: summary),
-                          const SizedBox(height: AppSpacing.lg),
-                          AppGlassCard(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'وضعیت policy',
-                                  style: theme.textTheme.titleLarge,
-                                ),
-                                const SizedBox(height: AppSpacing.md),
-                                Text(
-                                  summary.policyNote,
-                                  style: theme.textTheme.bodyLarge?.copyWith(
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                                if (summary.policyTimeline.isNotEmpty) ...[
-                                  const SizedBox(height: AppSpacing.xl),
-                                  Text(
-                                    'آخرین رویدادهای مهم',
-                                    style: theme.textTheme.titleMedium,
-                                  ),
-                                  const SizedBox(height: AppSpacing.md),
-                                  ...summary.policyTimeline.map(
-                                    (event) => Padding(
-                                      padding: const EdgeInsets.only(bottom: 12),
-                                      child: _PolicyTimelineItem(event: event),
-                                    ),
-                                  ),
-                                ],
-                              ],
+                      if (state.isRefreshing) ...[
+                        const SizedBox(height: AppSpacing.md),
+                        const LinearProgressIndicator(
+                          minHeight: 3,
+                          color: AppColors.primary,
+                          backgroundColor: AppColors.surfaceSoft,
+                        ),
+                      ],
+                      const SizedBox(height: 18),
+                      TweenAnimationBuilder<double>(
+                        tween: Tween<double>(begin: 0, end: 1),
+                        duration: Duration(
+                          milliseconds: prefersReducedMotion ? 0 : 520,
+                        ),
+                        curve: Curves.easeOutCubic,
+                        builder: (context, value, child) {
+                          return Opacity(
+                            opacity: value,
+                            child: Transform.translate(
+                              offset: Offset(0, 24 * (1 - value)),
+                              child: child,
                             ),
-                          ),
-                        ],
+                          );
+                        },
+                        child: Column(
+                          children: [
+                            _HeroSummaryCard(
+                              summary: summary,
+                              phoneNumber: widget.phoneNumber,
+                              isPreview: widget.isPreview,
+                            ),
+                            const SizedBox(height: AppSpacing.lg),
+                            _MetricGrid(summary: summary),
+                            const SizedBox(height: AppSpacing.lg),
+                            _PolicyStatusCard(summary: summary),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 );
               },
             ),
@@ -213,6 +179,56 @@ class _DashboardHeader extends StatelessWidget {
   }
 }
 
+class _DashboardErrorView extends StatelessWidget {
+  const _DashboardErrorView({
+    required this.message,
+    required this.onLogout,
+    required this.onRetry,
+  });
+
+  final String message;
+  final Future<void> Function() onLogout;
+  final Future<void> Function() onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(24),
+      children: [
+        const SizedBox(height: 16),
+        _DashboardHeader(onLogout: onLogout),
+        const SizedBox(height: 18),
+        AppGlassCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'خطا در بارگذاری داشبورد',
+                style: theme.textTheme.headlineMedium,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                message,
+                style: theme.textTheme.bodyLarge,
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              FilledButton(
+                onPressed: () async {
+                  await onRetry();
+                },
+                child: const Text('تلاش دوباره'),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _HeroSummaryCard extends StatelessWidget {
   const _HeroSummaryCard({
     required this.summary,
@@ -236,7 +252,6 @@ class _HeroSummaryCard extends StatelessWidget {
           AppSectionHeading(
             eyebrow: 'نمای کلی امروز',
             title: 'فروشگاه ${summary.storeName}',
-            description: '',
           ),
           if (isPreview) const SizedBox(height: AppSpacing.lg),
           const SizedBox(height: AppSpacing.lg),
@@ -297,6 +312,52 @@ class _HeroSummaryCard extends StatelessWidget {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PolicyStatusCard extends StatelessWidget {
+  const _PolicyStatusCard({
+    required this.summary,
+  });
+
+  final DashboardSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AppGlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'وضعیت policy',
+            style: theme.textTheme.titleLarge,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            summary.policyNote,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          if (summary.policyTimeline.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.xl),
+            Text(
+              'آخرین رویدادهای مهم',
+              style: theme.textTheme.titleMedium,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            ...summary.policyTimeline.map(
+              (event) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _PolicyTimelineItem(event: event),
+              ),
+            ),
+          ],
         ],
       ),
     );
