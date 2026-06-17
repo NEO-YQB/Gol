@@ -5,10 +5,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_glass_card.dart';
 import '../../../shared/widgets/app_shell_background.dart';
-import '../../auth/data/auth_api_service.dart';
-import '../../products/domain/vendor_product_summary.dart';
-import '../data/vendor_discounts_api_service.dart';
 import '../domain/vendor_discount.dart';
+import 'view_models/discount_workspace_view_model.dart';
 
 class DiscountWorkspaceScreen extends StatefulWidget {
   const DiscountWorkspaceScreen({
@@ -27,7 +25,7 @@ class DiscountWorkspaceScreen extends StatefulWidget {
 }
 
 class _DiscountWorkspaceScreenState extends State<DiscountWorkspaceScreen> {
-  final _apiService = const VendorDiscountsApiService();
+  late final DiscountWorkspaceViewModel _viewModel;
 
   late final TextEditingController _titleController;
   late final TextEditingController _descriptionController;
@@ -36,24 +34,16 @@ class _DiscountWorkspaceScreenState extends State<DiscountWorkspaceScreen> {
   late final TextEditingController _startAtController;
   late final TextEditingController _endAtController;
 
-  bool _isLoading = true;
-  bool _isSaving = false;
-  String? _errorMessage;
-  List<VendorProductSummary> _products = const [];
-  VendorDiscount? _discount;
-  int? _selectedProductId;
-  String _valueType = 'PERCENTAGE';
-  bool _isActive = true;
-  bool _isExclusive = false;
-  bool _allowCouponStacking = false;
-  DateTime? _startAt;
-  DateTime? _endAt;
-
-  bool get _isEdit => widget.discountId != null;
+  bool get _isEdit => _viewModel.isEdit;
 
   @override
   void initState() {
     super.initState();
+    _viewModel = DiscountWorkspaceViewModel(
+      accessToken: widget.accessToken,
+      storeId: widget.storeId,
+      discountId: widget.discountId,
+    );
     _titleController = TextEditingController();
     _descriptionController = TextEditingController();
     _valueController = TextEditingController();
@@ -65,6 +55,7 @@ class _DiscountWorkspaceScreenState extends State<DiscountWorkspaceScreen> {
 
   @override
   void dispose() {
+    _viewModel.dispose();
     _titleController.dispose();
     _descriptionController.dispose();
     _valueController.dispose();
@@ -75,47 +66,9 @@ class _DiscountWorkspaceScreenState extends State<DiscountWorkspaceScreen> {
   }
 
   Future<void> _loadData() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final productsFuture = _apiService.getStoreProducts(
-        accessToken: widget.accessToken,
-        storeId: widget.storeId,
-      );
-      final discountFuture = _isEdit
-          ? _apiService.getDiscountDetail(
-              accessToken: widget.accessToken,
-              discountId: widget.discountId!,
-            )
-          : Future.value(null);
-
-      final products = await productsFuture;
-      final discount = await discountFuture;
-
-      if (!mounted) return;
-      setState(() {
-        _products = products;
-        _discount = discount;
-        if (discount != null) {
-          _fillForm(discount);
-        } else if (products.isNotEmpty) {
-          _selectedProductId = products.first.id;
-        }
-      });
-    } on AuthApiException catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = error.message;
-      });
-    } finally {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
-    }
+    await _viewModel.loadData();
+    final discount = _viewModel.state.discount;
+    if (discount != null && mounted) _fillForm(discount);
   }
 
   void _fillForm(VendorDiscount discount) {
@@ -123,142 +76,47 @@ class _DiscountWorkspaceScreenState extends State<DiscountWorkspaceScreen> {
     _descriptionController.text = discount.description;
     _valueController.text = discount.value.toString();
     _priorityController.text = discount.priority.toString();
-    _startAt = _parseDateTime(discount.startAt);
-    _endAt = _parseDateTime(discount.endAt);
     _syncDateControllers();
-    _selectedProductId = discount.productId;
-    _valueType = discount.valueType;
-    _isActive = discount.isActive;
-    _isExclusive = discount.isExclusive;
-    _allowCouponStacking = discount.allowCouponStacking;
   }
 
   Future<void> _save() async {
-    if (_titleController.text.trim().isEmpty ||
-        _valueController.text.trim().isEmpty ||
-        _selectedProductId == null) {
-      setState(() {
-        _errorMessage = 'عنوان، مقدار و محصول الزامی هستند.';
-      });
-      return;
-    }
-
-    final now = DateTime.now();
-    if (_startAt != null && _startAt!.isBefore(now)) {
-      setState(() {
-        _errorMessage = 'زمان شروع نمی‌تواند قبل از الان باشد.';
-      });
-      return;
-    }
-
-    if (_endAt != null && _endAt!.isBefore(now)) {
-      setState(() {
-        _errorMessage = 'زمان پایان نمی‌تواند قبل از الان باشد.';
-      });
-      return;
-    }
-
-    if (_startAt != null && _endAt != null && !_endAt!.isAfter(_startAt!)) {
-      setState(() {
-        _errorMessage = 'زمان پایان باید بعد از زمان شروع باشد.';
-      });
-      return;
-    }
-
-    setState(() {
-      _isSaving = true;
-      _errorMessage = null;
-    });
-
-    final input = {
-      'productId': _selectedProductId,
-      'title': _titleController.text.trim(),
-      'description': _emptyToNull(_descriptionController.text),
-      'valueType': _valueType,
-      'value': _parseNum(_valueController.text) ?? 0,
-      'priority': _parseInt(_priorityController.text) ?? 100,
-      'isActive': _isActive,
-      'isExclusive': _isExclusive,
-      'allowCouponStacking': _allowCouponStacking,
-      'startAt': _startAt?.toUtc().toIso8601String(),
-      'endAt': _endAt?.toUtc().toIso8601String(),
-    };
-
-    try {
-      if (_isEdit) {
-        await _apiService.updateDiscount(
-          accessToken: widget.accessToken,
-          discountId: widget.discountId!,
-          input: input,
-        );
-      } else {
-        await _apiService.createDiscount(
-          accessToken: widget.accessToken,
-          input: input,
-        );
-      }
-
-      if (!mounted) return;
-      Navigator.of(context).pop(true);
-    } on AuthApiException catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = error.message;
-      });
-    } finally {
-      if (!mounted) return;
-      setState(() {
-        _isSaving = false;
-      });
-    }
+    final changed = await _viewModel.save(
+      title: _titleController.text,
+      description: _descriptionController.text,
+      value: _valueController.text,
+      priority: _priorityController.text,
+    );
+    if (!changed || !mounted) return;
+    Navigator.of(context).pop(true);
   }
 
   Future<void> _delete() async {
-    if (!_isEdit) return;
-
-    try {
-      await _apiService.deleteDiscount(
-        accessToken: widget.accessToken,
-        discountId: widget.discountId!,
-      );
-      if (!mounted) return;
-      Navigator.of(context).pop(true);
-    } on AuthApiException catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = error.message;
-      });
-    }
+    final changed = await _viewModel.delete();
+    if (!changed || !mounted) return;
+    Navigator.of(context).pop(true);
   }
 
   Future<void> _pickStartAt() async {
     final picked = await _pickDateTime(
-      initial: _startAt,
+      initial: _viewModel.state.startAt,
       firstDateTime: DateTime.now(),
     );
     if (picked == null) return;
 
-    setState(() {
-      _startAt = picked;
-      if (_endAt != null && !_endAt!.isAfter(picked)) {
-        _endAt = null;
-      }
-      _syncDateControllers();
-    });
+    _viewModel.setStartAt(picked);
+    _syncDateControllers();
   }
 
   Future<void> _pickEndAt() async {
-    final minBase = _startAt ?? DateTime.now();
+    final minBase = _viewModel.state.startAt ?? DateTime.now();
     final picked = await _pickDateTime(
-      initial: _endAt ?? minBase.add(const Duration(hours: 1)),
+      initial: _viewModel.state.endAt ?? minBase.add(const Duration(hours: 1)),
       firstDateTime: minBase,
     );
     if (picked == null) return;
 
-    setState(() {
-      _endAt = picked;
-      _syncDateControllers();
-    });
+    _viewModel.setEndAt(picked);
+    _syncDateControllers();
   }
 
   Future<DateTime?> _pickDateTime({
@@ -329,8 +187,8 @@ class _DiscountWorkspaceScreenState extends State<DiscountWorkspaceScreen> {
   }
 
   void _syncDateControllers() {
-    _startAtController.text = _formatDateTimeLabel(_startAt);
-    _endAtController.text = _formatDateTimeLabel(_endAt);
+    _startAtController.text = _viewModel.state.startAtLabel;
+    _endAtController.text = _viewModel.state.endAtLabel;
   }
 
   @override
@@ -342,9 +200,14 @@ class _DiscountWorkspaceScreenState extends State<DiscountWorkspaceScreen> {
       child: Scaffold(
         body: AppShellBackground(
           child: SafeArea(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : ListView(
+            child: ListenableBuilder(
+              listenable: _viewModel,
+              builder: (context, _) {
+                final state = _viewModel.state;
+
+                return state.isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : ListView(
                     padding: const EdgeInsets.fromLTRB(24, 18, 24, 28),
                     children: [
                       Row(
@@ -374,10 +237,10 @@ class _DiscountWorkspaceScreenState extends State<DiscountWorkspaceScreen> {
                                 color: AppColors.textSecondary,
                               ),
                             ),
-                            if (_errorMessage != null) ...[
+                            if (state.errorMessage != null) ...[
                               const SizedBox(height: AppSpacing.md),
                               Text(
-                                _errorMessage!,
+                                state.errorMessage!,
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   color: Theme.of(context).colorScheme.error,
                                   fontWeight: FontWeight.w700,
@@ -386,11 +249,11 @@ class _DiscountWorkspaceScreenState extends State<DiscountWorkspaceScreen> {
                             ],
                             const SizedBox(height: AppSpacing.lg),
                             DropdownButtonFormField<int>(
-                              value: _selectedProductId,
+                              value: state.selectedProductId,
                               decoration: const InputDecoration(
                                 labelText: 'محصول',
                               ),
-                              items: _products
+                              items: state.products
                                   .map(
                                     (item) => DropdownMenuItem<int>(
                                       value: item.id,
@@ -398,13 +261,7 @@ class _DiscountWorkspaceScreenState extends State<DiscountWorkspaceScreen> {
                                     ),
                                   )
                                   .toList(),
-                              onChanged: _isEdit
-                                  ? null
-                                  : (value) {
-                                      setState(() {
-                                        _selectedProductId = value;
-                                      });
-                                    },
+                              onChanged: _isEdit ? null : _viewModel.selectProduct,
                             ),
                             const SizedBox(height: AppSpacing.md),
                             TextField(
@@ -426,7 +283,7 @@ class _DiscountWorkspaceScreenState extends State<DiscountWorkspaceScreen> {
                               children: [
                                 Expanded(
                                   child: DropdownButtonFormField<String>(
-                                    value: _valueType,
+                                    value: state.valueType,
                                     decoration: const InputDecoration(
                                       labelText: 'نوع تخفیف',
                                     ),
@@ -442,9 +299,7 @@ class _DiscountWorkspaceScreenState extends State<DiscountWorkspaceScreen> {
                                     ],
                                     onChanged: (value) {
                                       if (value == null) return;
-                                      setState(() {
-                                        _valueType = value;
-                                      });
+                                      _viewModel.setValueType(value);
                                     },
                                   ),
                                 ),
@@ -492,32 +347,20 @@ class _DiscountWorkspaceScreenState extends State<DiscountWorkspaceScreen> {
                             ),
                             const SizedBox(height: AppSpacing.md),
                             SwitchListTile(
-                              value: _isActive,
-                              onChanged: (value) {
-                                setState(() {
-                                  _isActive = value;
-                                });
-                              },
+                              value: state.isActive,
+                              onChanged: _viewModel.setIsActive,
                               title: const Text('تخفیف فعال باشد'),
                               contentPadding: EdgeInsets.zero,
                             ),
                             SwitchListTile(
-                              value: _isExclusive,
-                              onChanged: (value) {
-                                setState(() {
-                                  _isExclusive = value;
-                                });
-                              },
+                              value: state.isExclusive,
+                              onChanged: _viewModel.setIsExclusive,
                               title: const Text('انحصاری باشد'),
                               contentPadding: EdgeInsets.zero,
                             ),
                             SwitchListTile(
-                              value: _allowCouponStacking,
-                              onChanged: (value) {
-                                setState(() {
-                                  _allowCouponStacking = value;
-                                });
-                              },
+                              value: state.allowCouponStacking,
+                              onChanged: _viewModel.setAllowCouponStacking,
                               title: const Text('هم‌زمان با کوپن اجازه داشته باشد'),
                               contentPadding: EdgeInsets.zero,
                             ),
@@ -525,9 +368,9 @@ class _DiscountWorkspaceScreenState extends State<DiscountWorkspaceScreen> {
                             SizedBox(
                               width: double.infinity,
                               child: FilledButton(
-                                onPressed: _isSaving ? null : _save,
+                                onPressed: state.isSaving ? null : _save,
                                 child: Text(
-                                  _isSaving ? 'در حال ذخیره...' : 'ذخیره تخفیف',
+                                  state.isSaving ? 'در حال ذخیره...' : 'ذخیره تخفیف',
                                 ),
                               ),
                             ),
@@ -546,43 +389,12 @@ class _DiscountWorkspaceScreenState extends State<DiscountWorkspaceScreen> {
                         ),
                       ),
                     ],
-                  ),
+                  );
+              },
+            ),
           ),
         ),
       ),
     );
   }
-}
-
-int? _parseInt(String value) {
-  final trimmed = value.trim();
-  if (trimmed.isEmpty) return null;
-  return int.tryParse(trimmed);
-}
-
-num? _parseNum(String value) {
-  final trimmed = value.trim();
-  if (trimmed.isEmpty) return null;
-  return num.tryParse(trimmed);
-}
-
-String? _emptyToNull(String value) {
-  final trimmed = value.trim();
-  return trimmed.isEmpty ? null : trimmed;
-}
-
-DateTime? _parseDateTime(String value) {
-  final trimmed = value.trim();
-  if (trimmed.isEmpty) return null;
-  return DateTime.tryParse(trimmed)?.toLocal();
-}
-
-String _formatDateTimeLabel(DateTime? value) {
-  if (value == null) return '';
-  final jalali = Jalali.fromDateTime(value);
-  final month = jalali.month.toString().padLeft(2, '0');
-  final day = jalali.day.toString().padLeft(2, '0');
-  final hour = value.hour.toString().padLeft(2, '0');
-  final minute = value.minute.toString().padLeft(2, '0');
-  return '${jalali.year}/$month/$day - $hour:$minute';
 }
