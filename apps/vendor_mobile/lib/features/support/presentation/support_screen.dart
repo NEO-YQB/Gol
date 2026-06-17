@@ -6,9 +6,8 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_glass_card.dart';
 import '../../../shared/widgets/app_section_heading.dart';
 import '../../../shared/widgets/app_shell_background.dart';
-import '../../auth/data/auth_api_service.dart';
-import '../data/support_api_service.dart';
 import '../domain/vendor_support_ticket.dart';
+import 'view_models/support_view_model.dart';
 
 class SupportScreen extends StatefulWidget {
   const SupportScreen({
@@ -25,88 +24,27 @@ class SupportScreen extends StatefulWidget {
 }
 
 class _SupportScreenState extends State<SupportScreen> {
-  final SupportApiService _apiService = const SupportApiService();
-  late Future<List<VendorSupportTicket>> _future;
-  int? _selectedTicketId;
-  VendorSupportTicketDetail? _selectedDetail;
-  bool _loadingDetail = false;
-  bool _sendingNote = false;
-  String? _detailError;
+  late final SupportViewModel _viewModel;
   final TextEditingController _noteController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _future = _loadTickets();
+    _viewModel = SupportViewModel(accessToken: widget.accessToken);
+    _viewModel.loadTickets();
   }
 
   @override
   void dispose() {
+    _viewModel.dispose();
     _noteController.dispose();
     super.dispose();
   }
 
-  Future<List<VendorSupportTicket>> _loadTickets() {
-    return _apiService.getTickets(accessToken: widget.accessToken);
-  }
-
-  Future<void> _refresh() async {
-    final next = _loadTickets();
-    setState(() {
-      _future = next;
-    });
-    await next;
-  }
-
-  Future<void> _openTicket(int ticketId) async {
-    setState(() {
-      _selectedTicketId = ticketId;
-      _loadingDetail = true;
-      _detailError = null;
-    });
-
-    try {
-      final detail = await _apiService.getTicketDetail(
-        accessToken: widget.accessToken,
-        ticketId: ticketId,
-      );
-
-      if (!mounted) return;
-      setState(() {
-        _selectedDetail = detail;
-      });
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _detailError = error is AuthApiException
-            ? error.message
-            : 'بارگذاری جزئیات تیکت ناموفق بود.';
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _loadingDetail = false;
-        });
-      }
-    }
-  }
-
   Future<void> _sendNote() async {
-    final message = _noteController.text.trim();
-    if (message.isEmpty || _selectedTicketId == null) return;
-
-    setState(() {
-      _sendingNote = true;
-    });
-
-    try {
-      await _apiService.addTicketNote(
-        accessToken: widget.accessToken,
-        ticketId: _selectedTicketId!,
-        message: message,
-      );
+    final sent = await _viewModel.sendNote(_noteController.text);
+    if (sent) {
       _noteController.clear();
-      await _openTicket(_selectedTicketId!);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -114,19 +52,12 @@ class _SupportScreenState extends State<SupportScreen> {
           ),
         );
       }
-    } catch (error) {
-      if (!mounted) return;
-      final message = error is AuthApiException
-          ? error.message
-          : 'ارسال پیام ناموفق بود.';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _sendingNote = false;
-        });
+    } else {
+      final error = _viewModel.state.detailError;
+      if (mounted && error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error)),
+        );
       }
     }
   }
@@ -134,37 +65,27 @@ class _SupportScreenState extends State<SupportScreen> {
   @override
   Widget build(BuildContext context) {
     final body = SafeArea(
-      child: FutureBuilder<List<VendorSupportTicket>>(
-        future: _future,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+      child: ListenableBuilder(
+        listenable: _viewModel,
+        builder: (context, _) {
+          final state = _viewModel.state;
+
+          if (state.isLoading) {
             return const _SupportLoadingView();
           }
 
-          if (snapshot.hasError) {
-            final error = snapshot.error;
-            final message = error is AuthApiException
-                ? error.message
-                : 'بارگذاری تیکت‌های پشتیبانی ناموفق بود.';
+          if (state.errorMessage != null) {
             return _SupportErrorView(
-              message: message,
-              onRetry: _refresh,
+              message: state.errorMessage!,
+              onRetry: _viewModel.refresh,
             );
           }
 
-          final tickets = snapshot.data ?? const <VendorSupportTicket>[];
-
-          if (tickets.isNotEmpty &&
-              _selectedTicketId == null &&
-              _selectedDetail == null) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              _openTicket(tickets.first.id);
-            });
-          }
+          final tickets = state.tickets;
 
           return RefreshIndicator(
             color: AppColors.primary,
-            onRefresh: _refresh,
+            onRefresh: _viewModel.refresh,
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(24, 18, 24, 28),
@@ -172,8 +93,15 @@ class _SupportScreenState extends State<SupportScreen> {
                 const AppSectionHeading(
                   eyebrow: 'پشتیبانی',
                   title: 'تیکت‌های فروشگاه',
-                  description: 'پیگیری پرونده‌ها و پاسخ به درخواست‌های مشتری از یک فضای متمرکز.',
                 ),
+                if (state.isRefreshing) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  const LinearProgressIndicator(
+                    minHeight: 3,
+                    color: AppColors.primary,
+                    backgroundColor: AppColors.surfaceSoft,
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.lg),
                 _SupportSummary(tickets: tickets),
                 const SizedBox(height: AppSpacing.lg),
@@ -182,18 +110,18 @@ class _SupportScreenState extends State<SupportScreen> {
                     padding: const EdgeInsets.only(bottom: 12),
                     child: _SupportTicketCard(
                       ticket: ticket,
-                      selected: ticket.id == _selectedTicketId,
-                      onTap: () => _openTicket(ticket.id),
+                      selected: ticket.id == state.selectedTicketId,
+                      onTap: () => _viewModel.openTicket(ticket.id),
                     ),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 _SupportDetailCard(
-                  detail: _selectedDetail,
-                  loading: _loadingDetail,
-                  error: _detailError,
+                  detail: state.selectedDetail,
+                  loading: state.isLoadingDetail,
+                  error: state.detailError,
                   noteController: _noteController,
-                  sendingNote: _sendingNote,
+                  sendingNote: state.isSendingNote,
                   onSendNote: _sendNote,
                 ),
               ],
