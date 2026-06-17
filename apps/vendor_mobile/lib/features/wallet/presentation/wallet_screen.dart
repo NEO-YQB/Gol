@@ -122,7 +122,6 @@ class _WalletScreenState extends State<WalletScreen> {
                     key: ValueKey(_period),
                     eyebrow: 'مالی و تسویه',
                     title: 'کیف پول فروشگاه',
-                    description: 'موجودی، گردش مالی و وضعیت تسویه‌ها را یکجا ببین.',
                   ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
@@ -247,34 +246,32 @@ class _WalletHeroCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Container(
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 260),
-                  curve: Curves.easeOutCubic,
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topRight,
-                      end: Alignment.bottomLeft,
-                      colors: [
-                        AppColors.primarySoft,
-                        AppColors.primaryDark,
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(18),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.18),
-                        blurRadius: 18,
-                        offset: const Offset(0, 10),
-                      ),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOutCubic,
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topRight,
+                    end: Alignment.bottomLeft,
+                    colors: [
+                      AppColors.primarySoft,
+                      AppColors.primaryDark,
                     ],
                   ),
-                  child: const Icon(
-                    Icons.account_balance_wallet_rounded,
-                    color: Colors.white,
-                  ),
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.18),
+                      blurRadius: 18,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.account_balance_wallet_rounded,
+                  color: Colors.white,
                 ),
               ),
             ],
@@ -811,7 +808,7 @@ class _SettlementList extends StatelessWidget {
           const SizedBox(height: AppSpacing.lg),
           if (items.isEmpty)
             Text(
-              'برای این بازه settlementی ثبت نشده است.',
+              'برای این بازه تسویه‌ای ثبت نشده است.',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: AppColors.textSecondary,
               ),
