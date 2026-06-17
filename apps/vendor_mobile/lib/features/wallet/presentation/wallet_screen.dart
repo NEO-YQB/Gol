@@ -6,21 +6,8 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_glass_card.dart';
 import '../../../shared/widgets/app_section_heading.dart';
 import '../../../shared/widgets/app_shell_background.dart';
-import '../../auth/data/auth_api_service.dart';
-import '../data/wallet_api_service.dart';
 import '../domain/vendor_wallet_summary.dart';
-
-enum WalletPeriod {
-  today('today', 'امروز'),
-  week('week', 'هفته'),
-  month('month', 'ماه'),
-  year('year', 'سال');
-
-  const WalletPeriod(this.apiValue, this.label);
-
-  final String apiValue;
-  final String label;
-}
+import 'view_models/wallet_view_model.dart';
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({
@@ -37,71 +24,53 @@ class WalletScreen extends StatefulWidget {
 }
 
 class _WalletScreenState extends State<WalletScreen> {
-  final WalletApiService _apiService = const WalletApiService();
-  WalletPeriod _period = WalletPeriod.month;
-  late Future<VendorWalletSummary> _future;
-  bool _isRefreshing = false;
+  late final WalletViewModel _viewModel;
 
   @override
   void initState() {
     super.initState();
-    _future = _loadSummary();
+    _viewModel = WalletViewModel(accessToken: widget.accessToken);
+    _viewModel.loadSummary();
   }
 
-  Future<VendorWalletSummary> _loadSummary() {
-    return _apiService.getSummary(
-      accessToken: widget.accessToken,
-      period: _period.apiValue,
-    );
-  }
-
-  Future<void> _refresh() async {
-    final next = _loadSummary();
-    setState(() {
-      _isRefreshing = true;
-      _future = next;
-    });
-    try {
-      await next;
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isRefreshing = false;
-        });
-      }
-    }
+  @override
+  void dispose() {
+    _viewModel.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final content = SafeArea(
-      child: FutureBuilder<VendorWalletSummary>(
-        future: _future,
-        builder: (context, snapshot) {
+      child: ListenableBuilder(
+        listenable: _viewModel,
+        builder: (context, _) {
+          final state = _viewModel.state;
           final disableAnimations =
               MediaQuery.maybeOf(context)?.disableAnimations ?? false;
 
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (state.isLoading) {
             return const _WalletLoadingView();
           }
 
-          if (snapshot.hasError) {
-            final error = snapshot.error;
-            final message = error is AuthApiException
-                ? error.message
-                : 'بارگذاری کیف پول و تسویه ناموفق بود.';
-
+          if (state.errorMessage != null) {
             return _WalletErrorView(
-              message: message,
-              onRetry: _refresh,
+              message: state.errorMessage!,
+              onRetry: _viewModel.refresh,
             );
           }
 
-          final summary = snapshot.data!;
+          final summary = state.summary;
+          if (summary == null) {
+            return _WalletErrorView(
+              message: 'اطلاعات کیف پول در دسترس نیست.',
+              onRetry: _viewModel.refresh,
+            );
+          }
 
           return RefreshIndicator(
             color: AppColors.primary,
-            onRefresh: _refresh,
+            onRefresh: _viewModel.refresh,
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(24, 18, 24, 28),
@@ -119,7 +88,7 @@ class _WalletScreenState extends State<WalletScreen> {
                     );
                   },
                   child: AppSectionHeading(
-                    key: ValueKey(_period),
+                    key: ValueKey(state.period),
                     eyebrow: 'مالی و تسویه',
                     title: 'کیف پول فروشگاه',
                   ),
@@ -141,23 +110,18 @@ class _WalletScreenState extends State<WalletScreen> {
                     );
                   },
                   child: _PeriodSelector(
-                    selected: _period,
-                    onChanged: (period) {
-                      setState(() {
-                        _period = period;
-                        _isRefreshing = true;
-                        _future = _loadSummary();
-                      });
-                      _future.whenComplete(() {
-                        if (mounted) {
-                          setState(() {
-                            _isRefreshing = false;
-                          });
-                        }
-                      });
-                    },
+                    selected: state.period,
+                    onChanged: _viewModel.setPeriod,
                   ),
                 ),
+                if (state.isRefreshing) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  const LinearProgressIndicator(
+                    minHeight: 3,
+                    color: AppColors.primary,
+                    backgroundColor: AppColors.surfaceSoft,
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.lg),
                 _AnimatedSection(
                   delayIndex: 0,
