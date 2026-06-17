@@ -47,6 +47,9 @@ class VendorOnboardingViewState {
     this.applicationDocuments = const [],
     this.productGalleryImages = const [],
     this.pendingUploadName,
+    this.selectedBusinessLat,
+    this.selectedBusinessLng,
+    this.resolvedBusinessAddress,
   });
 
   final VendorOnboardingRequest? request;
@@ -59,6 +62,9 @@ class VendorOnboardingViewState {
   final List<EditableOnboardingDocument> applicationDocuments;
   final List<String> productGalleryImages;
   final String? pendingUploadName;
+  final double? selectedBusinessLat;
+  final double? selectedBusinessLng;
+  final String? resolvedBusinessAddress;
 
   bool get canEditProfile =>
       request == null ||
@@ -84,6 +90,11 @@ class VendorOnboardingViewState {
     List<String>? productGalleryImages,
     String? pendingUploadName,
     bool clearPendingUpload = false,
+    double? selectedBusinessLat,
+    double? selectedBusinessLng,
+    bool clearSelectedLocation = false,
+    String? resolvedBusinessAddress,
+    bool clearResolvedBusinessAddress = false,
   }) {
     return VendorOnboardingViewState(
       request: request ?? this.request,
@@ -97,6 +108,15 @@ class VendorOnboardingViewState {
       productGalleryImages: productGalleryImages ?? this.productGalleryImages,
       pendingUploadName:
           clearPendingUpload ? null : pendingUploadName ?? this.pendingUploadName,
+      selectedBusinessLat: clearSelectedLocation
+          ? null
+          : selectedBusinessLat ?? this.selectedBusinessLat,
+      selectedBusinessLng: clearSelectedLocation
+          ? null
+          : selectedBusinessLng ?? this.selectedBusinessLng,
+      resolvedBusinessAddress: clearResolvedBusinessAddress
+          ? null
+          : resolvedBusinessAddress ?? this.resolvedBusinessAddress,
     );
   }
 }
@@ -110,6 +130,8 @@ class VendorOnboardingApplicationInput {
     required this.businessDescription,
     required this.businessAddress,
     required this.licenseNumber,
+    required this.businessLat,
+    required this.businessLng,
   });
 
   final String personalFullName;
@@ -119,6 +141,8 @@ class VendorOnboardingApplicationInput {
   final String businessDescription;
   final String businessAddress;
   final String licenseNumber;
+  final double? businessLat;
+  final double? businessLng;
 }
 
 class VendorOnboardingProductInput {
@@ -172,6 +196,9 @@ class VendorOnboardingViewModel extends ChangeNotifier {
             .map((item) => EditableOnboardingDocument(title: item.title, url: item.url))
             .toList(),
         productGalleryImages: request.productGalleryImages,
+        selectedBusinessLat: request.businessLat,
+        selectedBusinessLng: request.businessLng,
+        resolvedBusinessAddress: request.businessAddress,
         currentStep: _resolveCurrentStep(request),
       );
     } on AuthApiException catch (error) {
@@ -216,6 +243,8 @@ class VendorOnboardingViewModel extends ChangeNotifier {
           'businessSlug': form.businessSlug.trim(),
           'businessDescription': form.businessDescription.trim(),
           'businessAddress': form.businessAddress.trim(),
+          'businessLat': form.businessLat,
+          'businessLng': form.businessLng,
           'licenseNumber': form.licenseNumber.trim(),
           'licenseImageUrl': _state.applicationDocuments
               .firstWhere(
@@ -320,6 +349,7 @@ class VendorOnboardingViewModel extends ChangeNotifier {
     await _uploadFile(
       file: file,
       title: 'تصویر محصول',
+      useDocumentEndpoint: false,
       onUploaded: (url) {
         final next = [..._state.productGalleryImages, url];
         _state = _state.copyWith(
@@ -328,6 +358,50 @@ class VendorOnboardingViewModel extends ChangeNotifier {
         );
       },
     );
+  }
+
+  void removeApplicationDocument(String title) {
+    _state = _state.copyWith(
+      applicationDocuments: _state.applicationDocuments
+          .where((item) => item.title != title)
+          .toList(),
+    );
+    _notifyIfActive();
+  }
+
+  Future<void> selectBusinessLocation({
+    required double lat,
+    required double lng,
+  }) async {
+    _state = _state.copyWith(
+      isLoading: true,
+      clearError: true,
+      clearSuccess: true,
+      selectedBusinessLat: lat,
+      selectedBusinessLng: lng,
+      clearResolvedBusinessAddress: true,
+    );
+    _notifyIfActive();
+
+    try {
+      final result = await _repository.reverseGeocode(lat: lat, lng: lng);
+      if (_isDisposed) return;
+      _state = _state.copyWith(
+        resolvedBusinessAddress: result.formattedAddress,
+        successMessage: result.formattedAddress.trim().isEmpty
+            ? 'موقعیت فروشگاه انتخاب شد.'
+            : 'آدرس از روی نقشه شناسایی شد.',
+      );
+    } on AuthApiException catch (error) {
+      if (_isDisposed) return;
+      _state = _state.copyWith(
+        errorMessage: error.message,
+      );
+    } finally {
+      if (_isDisposed) return;
+      _state = _state.copyWith(isLoading: false);
+      _notifyIfActive();
+    }
   }
 
   void removeProductImage(String url) {
@@ -373,6 +447,7 @@ class VendorOnboardingViewModel extends ChangeNotifier {
   Future<void> _uploadFile({
     required File file,
     required String title,
+    bool useDocumentEndpoint = true,
     required void Function(String url) onUploaded,
   }) async {
     _state = _state.copyWith(
@@ -384,10 +459,15 @@ class VendorOnboardingViewModel extends ChangeNotifier {
     _notifyIfActive();
 
     try {
-      final url = await _repository.uploadDocument(
-        accessToken: _accessToken,
-        file: file,
-      );
+      final url = useDocumentEndpoint
+          ? await _repository.uploadApplicationDocument(
+              accessToken: _accessToken,
+              file: file,
+            )
+          : await _repository.uploadProductImage(
+              accessToken: _accessToken,
+              file: file,
+            );
       if (_isDisposed) return;
       onUploaded(url);
     } on AuthApiException catch (error) {

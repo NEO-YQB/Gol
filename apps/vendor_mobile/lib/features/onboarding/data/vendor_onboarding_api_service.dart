@@ -62,14 +62,73 @@ class VendorOnboardingApiService {
     );
   }
 
-  Future<String> uploadDocument({
+  Future<String> uploadApplicationDocument({
     required String accessToken,
     required File file,
+  }) async {
+    return _uploadFile(
+      accessToken: accessToken,
+      file: file,
+      path: '/files/upload-document-image',
+    );
+  }
+
+  Future<String> uploadProductImage({
+    required String accessToken,
+    required File file,
+  }) async {
+    return _uploadFile(
+      accessToken: accessToken,
+      file: file,
+      path: '/files/upload-product-image',
+    );
+  }
+
+  Future<MapReverseGeocodeResult> reverseGeocode({
+    required double lat,
+    required double lng,
+  }) async {
+    try {
+      final uri = Uri.parse(
+        '${AppConfig.mapReverseGeocodeUrl}?lat=$lat&lon=$lng',
+      );
+      final response = await http
+          .get(
+            uri,
+            headers: AppConfig.mapReverseGeocodeKey.trim().isEmpty
+                ? const {}
+                : {'x-api-key': AppConfig.mapReverseGeocodeKey},
+          )
+          .timeout(const Duration(seconds: 12));
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw const AuthApiException('دریافت آدرس از روی نقشه ناموفق بود.');
+      }
+
+      final payload = jsonDecode(response.body);
+      if (payload is! Map<String, dynamic>) {
+        throw const AuthApiException('پاسخ آدرس نقشه معتبر نیست.');
+      }
+
+      return MapReverseGeocodeResult(
+        formattedAddress: _readReverseAddress(payload),
+      );
+    } on TimeoutException {
+      throw const AuthApiException('پاسخی از سرویس نقشه دریافت نشد.');
+    } on SocketException {
+      throw const AuthApiException('اتصال به سرویس نقشه برقرار نشد.');
+    }
+  }
+
+  Future<String> _uploadFile({
+    required String accessToken,
+    required File file,
+    required String path,
   }) async {
     try {
       final request = http.MultipartRequest(
         'POST',
-        Uri.parse('${AppConfig.apiBaseUrl}/files/upload-product-image'),
+        Uri.parse('${AppConfig.apiBaseUrl}$path'),
       );
 
       request.headers['Authorization'] = 'Bearer $accessToken';
@@ -166,4 +225,48 @@ class VendorOnboardingApiService {
 
     return fallback;
   }
+
+  String _readReverseAddress(Map<String, dynamic> payload) {
+    final candidates = [
+      payload['address'],
+      payload['formatted_address'],
+      payload['address_compact'],
+      payload['addressDetail'],
+      payload['fullAddress'],
+    ];
+
+    for (final value in candidates) {
+      final text = value?.toString().trim() ?? '';
+      if (text.isNotEmpty) return text;
+    }
+
+    final address = payload['address'] as Map<String, dynamic>?;
+    if (address != null) {
+      final parts = [
+        address['region'],
+        address['province'],
+        address['county'],
+        address['district'],
+        address['city'],
+        address['neighbourhood'],
+        address['road'],
+      ]
+          .map((item) => item?.toString().trim() ?? '')
+          .where((item) => item.isNotEmpty)
+          .toList();
+      if (parts.isNotEmpty) {
+        return parts.join('، ');
+      }
+    }
+
+    return '';
+  }
+}
+
+class MapReverseGeocodeResult {
+  const MapReverseGeocodeResult({
+    required this.formattedAddress,
+  });
+
+  final String formattedAddress;
 }

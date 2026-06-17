@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -9,7 +10,7 @@ import '../../../shared/widgets/app_glass_card.dart';
 import '../../../shared/widgets/app_section_heading.dart';
 import '../../../shared/widgets/app_shell_background.dart';
 import '../../auth/domain/auth_session.dart';
-import '../../auth/domain/vendor_bootstrap.dart';
+import 'location_picker_screen.dart';
 import 'view_models/vendor_onboarding_view_model.dart';
 
 class VendorOnboardingScreen extends StatefulWidget {
@@ -41,6 +42,7 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
   late final TextEditingController _businessDescriptionController;
   late final TextEditingController _businessAddressController;
   late final TextEditingController _licenseNumberController;
+  bool _didHydrateAddressFromMap = false;
 
   late final TextEditingController _productNameController;
   late final TextEditingController _productDescriptionController;
@@ -92,9 +94,8 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
 
   void _syncForm() {
     final request = _viewModel.state.request;
-    if (request == null) return;
 
-    if (!_didHydrateFromRequest) {
+    if (request != null && !_didHydrateFromRequest) {
       _fullNameController.text = request.personalFullName;
       _nationalIdController.text = request.personalNationalId;
       _businessNameController.text = request.businessName;
@@ -108,6 +109,13 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
       _productPriceController.text = request.productPrice?.toString() ?? '';
       _productQuantityController.text = request.productQuantity?.toString() ?? '';
       _didHydrateFromRequest = true;
+    }
+
+    final resolvedAddress = _viewModel.state.resolvedBusinessAddress?.trim() ?? '';
+    if (resolvedAddress.isNotEmpty &&
+        resolvedAddress != _businessAddressController.text.trim()) {
+      _businessAddressController.text = resolvedAddress;
+      _didHydrateAddressFromMap = true;
     }
 
     if (_viewModel.state.currentStep == VendorOnboardingStep.completed &&
@@ -150,8 +158,27 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
         businessDescription: _businessDescriptionController.text,
         businessAddress: _businessAddressController.text,
         licenseNumber: _licenseNumberController.text,
+        businessLat: _viewModel.state.selectedBusinessLat,
+        businessLng: _viewModel.state.selectedBusinessLng,
       ),
     );
+  }
+
+  Future<void> _pickBusinessLocation() async {
+    final selected = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => OnboardingLocationPickerScreen(
+          initialLat: _viewModel.state.selectedBusinessLat,
+          initialLng: _viewModel.state.selectedBusinessLng,
+        ),
+      ),
+    );
+
+    if (!mounted || selected is! LatLng) return;
+    final lat = selected.latitude;
+    final lng = selected.longitude;
+
+    await _viewModel.selectBusinessLocation(lat: lat, lng: lng);
   }
 
   Future<void> _submitProduct() {
@@ -179,10 +206,22 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
                 final state = _viewModel.state;
 
                 if (state.isLoading) {
-                  return const Center(child: CircularProgressIndicator());
+                  return state.request == null
+                      ? const Center(child: CircularProgressIndicator())
+                      : _buildLoadedContent(state);
                 }
 
-                return ListView(
+                return _buildLoadedContent(state);
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadedContent(VendorOnboardingViewState state) {
+    return ListView(
                   padding: const EdgeInsets.fromLTRB(24, 18, 24, 28),
                   children: [
                     Row(
@@ -230,12 +269,6 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
                     ),
                   ],
                 );
-              },
-            ),
-          ),
-        ),
-      ),
-    );
   }
 
   Widget _buildStepContent(VendorOnboardingViewState state) {
@@ -250,10 +283,14 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
           businessDescriptionController: _businessDescriptionController,
           businessAddressController: _businessAddressController,
           licenseNumberController: _licenseNumberController,
+          selectedBusinessLat: state.selectedBusinessLat,
+          selectedBusinessLng: state.selectedBusinessLng,
           documents: state.applicationDocuments,
           isUploading: state.isUploading,
           pendingUploadName: state.pendingUploadName,
           onUploadDocument: _pickAndUploadDocument,
+          onRemoveDocument: _viewModel.removeApplicationDocument,
+          onPickLocation: _pickBusinessLocation,
           isSubmitting: state.isSubmitting,
           onSubmit: _submitApplication,
         );
@@ -391,10 +428,14 @@ class _ApplicationStepCard extends StatelessWidget {
     required this.businessDescriptionController,
     required this.businessAddressController,
     required this.licenseNumberController,
+    required this.selectedBusinessLat,
+    required this.selectedBusinessLng,
     required this.documents,
     required this.isUploading,
     required this.pendingUploadName,
     required this.onUploadDocument,
+    required this.onRemoveDocument,
+    required this.onPickLocation,
     required this.isSubmitting,
     required this.onSubmit,
   });
@@ -406,10 +447,14 @@ class _ApplicationStepCard extends StatelessWidget {
   final TextEditingController businessDescriptionController;
   final TextEditingController businessAddressController;
   final TextEditingController licenseNumberController;
+  final double? selectedBusinessLat;
+  final double? selectedBusinessLng;
   final List<EditableOnboardingDocument> documents;
   final bool isUploading;
   final String? pendingUploadName;
   final ValueChanged<String> onUploadDocument;
+  final ValueChanged<String> onRemoveDocument;
+  final Future<void> Function() onPickLocation;
   final bool isSubmitting;
   final Future<void> Function() onSubmit;
 
@@ -431,22 +476,62 @@ class _ApplicationStepCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           TextField(controller: businessDescriptionController, maxLines: 3, decoration: const InputDecoration(labelText: 'توضیح کوتاه کسب‌وکار')),
           const SizedBox(height: AppSpacing.md),
-          TextField(controller: businessAddressController, maxLines: 3, decoration: const InputDecoration(labelText: 'آدرس کسب‌وکار')),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: businessAddressController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(labelText: 'آدرس کسب‌وکار'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: onPickLocation,
+              icon: const Icon(Icons.map_rounded),
+              label: Text(
+                selectedBusinessLat == null || selectedBusinessLng == null
+                    ? 'انتخاب موقعیت روی نقشه'
+                    : 'ویرایش موقعیت روی نقشه',
+              ),
+            ),
+          ),
+          if (selectedBusinessLat != null && selectedBusinessLng != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'مختصات ثبت‌شده: ${selectedBusinessLat!.toStringAsFixed(5)} ، ${selectedBusinessLng!.toStringAsFixed(5)}',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+            ),
+          ],
           const SizedBox(height: AppSpacing.md),
           TextField(controller: licenseNumberController, decoration: const InputDecoration(labelText: 'شماره جواز')),
           const SizedBox(height: AppSpacing.lg),
           _UploadRow(
             title: 'تصویر جواز',
-            uploaded: documents.any((item) => item.title == 'تصویر جواز'),
+            document: documents.cast<EditableOnboardingDocument?>().firstWhere(
+                  (item) => item?.title == 'تصویر جواز',
+                  orElse: () => null,
+                ),
             isUploading: isUploading && pendingUploadName == 'تصویر جواز',
             onTap: () => onUploadDocument('تصویر جواز'),
+            onRemove: () => onRemoveDocument('تصویر جواز'),
           ),
           const SizedBox(height: AppSpacing.md),
           _UploadRow(
             title: 'کارت ملی یا مدرک هویتی',
-            uploaded: documents.any((item) => item.title == 'مدرک هویتی'),
+            document: documents.cast<EditableOnboardingDocument?>().firstWhere(
+                  (item) => item?.title == 'مدرک هویتی',
+                  orElse: () => null,
+                ),
             isUploading: isUploading && pendingUploadName == 'مدرک هویتی',
             onTap: () => onUploadDocument('مدرک هویتی'),
+            onRemove: () => onRemoveDocument('مدرک هویتی'),
           ),
           const SizedBox(height: AppSpacing.lg),
           SizedBox(
@@ -531,6 +616,7 @@ class _ProductStepCard extends StatelessWidget {
             uploaded: images.isNotEmpty,
             isUploading: isUploading && pendingUploadName == 'تصویر محصول',
             onTap: onUploadImage,
+            onRemove: null,
           ),
           if (images.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.md),
@@ -644,15 +730,19 @@ class _StatusStepCard extends StatelessWidget {
 class _UploadRow extends StatelessWidget {
   const _UploadRow({
     required this.title,
-    required this.uploaded,
+    this.document,
+    this.uploaded = false,
     required this.isUploading,
     required this.onTap,
+    this.onRemove,
   });
 
   final String title;
+  final EditableOnboardingDocument? document;
   final bool uploaded;
   final bool isUploading;
   final VoidCallback onTap;
+  final VoidCallback? onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -674,19 +764,61 @@ class _UploadRow extends StatelessWidget {
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ),
-              if (uploaded)
+              if (document != null || uploaded)
                 const Icon(
                   Icons.check_circle_rounded,
                   color: AppColors.success,
                 ),
             ],
           ),
+          if (document != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.network(
+                    document!.url,
+                    width: 96,
+                    height: 96,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                PositionedDirectional(
+                  top: 4,
+                  end: 4,
+                  child: InkWell(
+                    onTap: onRemove,
+                    child: Container(
+                      width: 26,
+                      height: 26,
+                      decoration: const BoxDecoration(
+                        color: Colors.black54,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.close,
+                        size: 14,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: AppSpacing.md),
           SizedBox(
             width: double.infinity,
             child: FilledButton(
               onPressed: isUploading ? null : onTap,
-              child: Text(isUploading ? 'در حال آپلود...' : 'بارگذاری'),
+              child: Text(
+                isUploading
+                    ? 'در حال آپلود...'
+                    : document == null
+                        ? 'بارگذاری'
+                        : 'بارگذاری مجدد',
+              ),
             ),
           ),
         ],

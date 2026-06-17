@@ -36,13 +36,33 @@ class VendorOnboardingRepository {
     );
   }
 
-  Future<String> uploadDocument({
+  Future<String> uploadApplicationDocument({
     required String accessToken,
     required File file,
   }) {
-    return _apiService.uploadDocument(
+    return _apiService.uploadApplicationDocument(
       accessToken: accessToken,
       file: file,
+    );
+  }
+
+  Future<String> uploadProductImage({
+    required String accessToken,
+    required File file,
+  }) {
+    return _apiService.uploadProductImage(
+      accessToken: accessToken,
+      file: file,
+    );
+  }
+
+  Future<MapReverseGeocodeResult> reverseGeocode({
+    required double lat,
+    required double lng,
+  }) {
+    return _apiService.reverseGeocode(
+      lat: lat,
+      lng: lng,
     );
   }
 }
