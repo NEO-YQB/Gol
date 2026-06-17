@@ -663,20 +663,31 @@ class _UploadRow extends StatelessWidget {
         color: AppColors.surfaceSoft.withValues(alpha: 0.72),
         borderRadius: BorderRadius.circular(18),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Text(
-              title,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+              if (uploaded)
+                const Icon(
+                  Icons.check_circle_rounded,
+                  color: AppColors.success,
+                ),
+            ],
           ),
-          if (uploaded)
-            const Icon(Icons.check_circle_rounded, color: AppColors.success),
-          const SizedBox(width: AppSpacing.sm),
-          FilledButton(
-            onPressed: isUploading ? null : onTap,
-            child: Text(isUploading ? 'در حال آپلود...' : 'بارگذاری'),
+          const SizedBox(height: AppSpacing.md),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: isUploading ? null : onTap,
+              child: Text(isUploading ? 'در حال آپلود...' : 'بارگذاری'),
+            ),
           ),
         ],
       ),
