@@ -345,12 +345,11 @@ class _OnboardingStepper extends StatelessWidget {
               label,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: active
-                        ? AppColors.primary
-                        : AppColors.textSecondary,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
+                color: active
+                    ? AppColors.primary
+                    : AppColors.textSecondary,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           );
         }).toList(),
