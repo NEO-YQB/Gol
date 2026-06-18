@@ -167,6 +167,7 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
     final selected = await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => OnboardingLocationPickerScreen(
+          runtimeConfig: _viewModel.state.runtimeConfig!,
           initialLat: _viewModel.state.selectedBusinessLat,
           initialLng: _viewModel.state.selectedBusinessLng,
         ),

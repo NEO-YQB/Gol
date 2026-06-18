@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
-import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_glass_card.dart';
+import '../domain/mobile_runtime_config.dart';
 
 class OnboardingLocationPickerScreen extends StatefulWidget {
   const OnboardingLocationPickerScreen({
     super.key,
+    required this.runtimeConfig,
     this.initialLat,
     this.initialLng,
   });
 
+  final MobileRuntimeConfig runtimeConfig;
   final double? initialLat;
   final double? initialLng;
 
@@ -69,9 +71,9 @@ class _OnboardingLocationPickerScreenState
   }
 
   String _buildHtml() {
-    final apiKey = AppConfig.mapIrApiKey;
-    final styleUrl = AppConfig.mapIrStyleUrl;
-    final rtlPlugin = AppConfig.mapIrRtlPluginUrl;
+    final apiKey = widget.runtimeConfig.mapPublicKey;
+    final styleUrl = widget.runtimeConfig.mapStyleUrl;
+    final rtlPlugin = widget.runtimeConfig.mapRtlPluginUrl;
 
     return '''
 <!DOCTYPE html>
@@ -177,7 +179,7 @@ class _OnboardingLocationPickerScreenState
   @override
   Widget build(BuildContext context) {
     final canConfirm = _selectedLat != 0 && _selectedLng != 0;
-    final hasMapKey = AppConfig.mapIrApiKey.trim().isNotEmpty;
+    final hasMapKey = widget.runtimeConfig.mapPublicKey.trim().isNotEmpty;
 
     return Directionality(
       textDirection: TextDirection.rtl,

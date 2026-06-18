@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import '../../domain/mobile_runtime_config.dart';
 import '../../domain/vendor_onboarding_request.dart';
 import '../vendor_onboarding_api_service.dart';
 
@@ -57,12 +58,18 @@ class VendorOnboardingRepository {
   }
 
   Future<MapReverseGeocodeResult> reverseGeocode({
+    required String accessToken,
     required double lat,
     required double lng,
   }) {
     return _apiService.reverseGeocode(
+      accessToken: accessToken,
       lat: lat,
       lng: lng,
     );
+  }
+
+  Future<MobileRuntimeConfig> getRuntimeConfig() {
+    return _apiService.getRuntimeConfig();
   }
 }

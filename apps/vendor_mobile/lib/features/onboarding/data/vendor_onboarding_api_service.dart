@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 
 import '../../../core/config/app_config.dart';
 import '../../auth/data/auth_api_service.dart';
+import '../domain/mobile_runtime_config.dart';
 import '../domain/vendor_onboarding_request.dart';
 
 class VendorOnboardingApiService {
@@ -85,19 +86,21 @@ class VendorOnboardingApiService {
   }
 
   Future<MapReverseGeocodeResult> reverseGeocode({
+    required String accessToken,
     required double lat,
     required double lng,
   }) async {
     try {
       final uri = Uri.parse(
-        '${AppConfig.mapReverseGeocodeUrl}?lat=$lat&lon=$lng',
+        '${AppConfig.apiBaseUrl}/mobile-app/reverse-geocode?lat=$lat&lng=$lng',
       );
       final response = await http
           .get(
             uri,
-            headers: AppConfig.mapReverseGeocodeKey.trim().isEmpty
-                ? const {}
-                : {'x-api-key': AppConfig.mapReverseGeocodeKey},
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $accessToken',
+            },
           )
           .timeout(const Duration(seconds: 12));
 
@@ -111,12 +114,36 @@ class VendorOnboardingApiService {
       }
 
       return MapReverseGeocodeResult(
-        formattedAddress: _readReverseAddress(payload),
+        formattedAddress: payload['formattedAddress']?.toString().trim() ?? '',
       );
     } on TimeoutException {
       throw const AuthApiException('پاسخی از سرویس نقشه دریافت نشد.');
     } on SocketException {
       throw const AuthApiException('اتصال به سرویس نقشه برقرار نشد.');
+    }
+  }
+
+  Future<MobileRuntimeConfig> getRuntimeConfig() async {
+    try {
+      final response = await http
+          .get(
+            Uri.parse('${AppConfig.apiBaseUrl}/mobile-app/config'),
+            headers: const {
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 12));
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw const AuthApiException('بارگذاری تنظیمات اپ ناموفق بود.');
+      }
+
+      final payload = jsonDecode(response.body) as Map<String, dynamic>;
+      return MobileRuntimeConfig.fromJson(payload);
+    } on TimeoutException {
+      throw const AuthApiException('پاسخی از سرور برای تنظیمات اپ دریافت نشد.');
+    } on SocketException {
+      throw const AuthApiException('اتصال به سرور برای تنظیمات اپ برقرار نشد.');
     }
   }
 
@@ -224,42 +251,6 @@ class VendorOnboardingApiService {
     }
 
     return fallback;
-  }
-
-  String _readReverseAddress(Map<String, dynamic> payload) {
-    final candidates = [
-      payload['address'],
-      payload['formatted_address'],
-      payload['address_compact'],
-      payload['addressDetail'],
-      payload['fullAddress'],
-    ];
-
-    for (final value in candidates) {
-      final text = value?.toString().trim() ?? '';
-      if (text.isNotEmpty) return text;
-    }
-
-    final address = payload['address'] as Map<String, dynamic>?;
-    if (address != null) {
-      final parts = [
-        address['region'],
-        address['province'],
-        address['county'],
-        address['district'],
-        address['city'],
-        address['neighbourhood'],
-        address['road'],
-      ]
-          .map((item) => item?.toString().trim() ?? '')
-          .where((item) => item.isNotEmpty)
-          .toList();
-      if (parts.isNotEmpty) {
-        return parts.join('، ');
-      }
-    }
-
-    return '';
   }
 }
 

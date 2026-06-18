@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../../../auth/data/auth_api_service.dart';
 import '../../../auth/domain/vendor_bootstrap.dart';
 import '../../data/repositories/vendor_onboarding_repository.dart';
+import '../../domain/mobile_runtime_config.dart';
 import '../../domain/vendor_onboarding_request.dart';
 
 enum VendorOnboardingStep {
@@ -50,6 +51,7 @@ class VendorOnboardingViewState {
     this.selectedBusinessLat,
     this.selectedBusinessLng,
     this.resolvedBusinessAddress,
+    this.runtimeConfig,
   });
 
   final VendorOnboardingRequest? request;
@@ -65,6 +67,7 @@ class VendorOnboardingViewState {
   final double? selectedBusinessLat;
   final double? selectedBusinessLng;
   final String? resolvedBusinessAddress;
+  final MobileRuntimeConfig? runtimeConfig;
 
   bool get canEditProfile =>
       request == null ||
@@ -95,6 +98,7 @@ class VendorOnboardingViewState {
     bool clearSelectedLocation = false,
     String? resolvedBusinessAddress,
     bool clearResolvedBusinessAddress = false,
+    MobileRuntimeConfig? runtimeConfig,
   }) {
     return VendorOnboardingViewState(
       request: request ?? this.request,
@@ -117,6 +121,7 @@ class VendorOnboardingViewState {
       resolvedBusinessAddress: clearResolvedBusinessAddress
           ? null
           : resolvedBusinessAddress ?? this.resolvedBusinessAddress,
+      runtimeConfig: runtimeConfig ?? this.runtimeConfig,
     );
   }
 }
@@ -188,9 +193,14 @@ class VendorOnboardingViewModel extends ChangeNotifier {
     _notifyIfActive();
 
     try {
-      final request = await _repository.getMyRequest(accessToken: _accessToken);
+      final runtimeConfigFuture = _repository.getRuntimeConfig();
+      final requestFuture = _repository.getMyRequest(accessToken: _accessToken);
+      final results = await Future.wait([runtimeConfigFuture, requestFuture]);
+      final runtimeConfig = results[0] as MobileRuntimeConfig;
+      final request = results[1] as VendorOnboardingRequest;
       if (_isDisposed) return;
       _state = _state.copyWith(
+        runtimeConfig: runtimeConfig,
         request: request,
         applicationDocuments: request.documents
             .map((item) => EditableOnboardingDocument(title: item.title, url: item.url))
@@ -384,7 +394,11 @@ class VendorOnboardingViewModel extends ChangeNotifier {
     _notifyIfActive();
 
     try {
-      final result = await _repository.reverseGeocode(lat: lat, lng: lng);
+      final result = await _repository.reverseGeocode(
+        accessToken: _accessToken,
+        lat: lat,
+        lng: lng,
+      );
       if (_isDisposed) return;
       _state = _state.copyWith(
         resolvedBusinessAddress: result.formattedAddress,
