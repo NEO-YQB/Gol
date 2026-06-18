@@ -182,6 +182,11 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
   }
 
   _BootstrapStep _resolveBootstrapStep(VendorBootstrap bootstrap) {
+    final onboarding = bootstrap.vendorOnboarding;
+    if (onboarding?.productStatus == 'APPROVED') {
+      return _BootstrapStep.authenticated;
+    }
+
     if (_isVendorPanelReady(bootstrap)) {
       return _BootstrapStep.authenticated;
     }
