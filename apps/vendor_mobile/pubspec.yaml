@@ -52,7 +52,7 @@ dependency_overrides:
     path: third_party/image_picker_android-0.8.13+17
   url_launcher_android:
     path: third_party/url_launcher_android-6.3.29
-  webview_flutter_android: 4.10.7
+  webview_flutter_android: 4.10.1
 
 dev_dependencies:
   flutter_test:
