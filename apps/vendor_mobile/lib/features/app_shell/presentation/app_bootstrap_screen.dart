@@ -193,8 +193,8 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
     final onboarding = bootstrap.vendorOnboarding;
     final onboardingComplete =
         onboarding == null ||
-        onboarding.productStatus == 'APPROVED' ||
-        (onboarding.storeActivatedAt?.trim().isNotEmpty ?? false);
+        (onboarding.productStatus == 'APPROVED' &&
+            (onboarding.storeActivatedAt?.trim().isNotEmpty ?? false));
 
     return roles.contains('VENDOR') &&
         bootstrap.store != null &&

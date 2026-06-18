@@ -194,28 +194,11 @@ export class VendorOnboardingService {
           reviewedAt: new Date(),
           reviewedByUserId: user.id,
           reviewNote: dto.reviewNote ?? null,
-          storeActivatedAt: approved ? new Date() : request.storeActivatedAt,
+          storeActivatedAt: approved ? null : request.storeActivatedAt,
         },
       })
 
       if (approved) {
-        const vendorRole = await tx.role.findUnique({ where: { name: 'VENDOR' }, select: { id: true } })
-        if (vendorRole) {
-          await tx.usersOnRoles.upsert({
-            where: {
-              userId_roleId: {
-                userId: request.userId,
-                roleId: vendorRole.id,
-              },
-            },
-            update: {},
-            create: {
-              userId: request.userId,
-              roleId: vendorRole.id,
-            },
-          })
-        }
-
         const existingStore = await tx.store.findFirst({
           where: { ownerId: request.userId },
           select: { id: true },
@@ -251,14 +234,41 @@ export class VendorOnboardingService {
 
     const nextStatus = approved ? VendorOnboardingStatus.APPROVED : VendorOnboardingStatus.REJECTED
 
-    return this.prisma.vendorOnboardingRequest.update({
-      where: { id: requestId },
-      data: {
-        productStatus: nextStatus,
-        productReviewedAt: new Date(),
-        productReviewedByUserId: user.id,
-        productReviewNote: dto.reviewNote ?? null,
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.vendorOnboardingRequest.update({
+        where: { id: requestId },
+        data: {
+          productStatus: nextStatus,
+          productReviewedAt: new Date(),
+          productReviewedByUserId: user.id,
+          productReviewNote: dto.reviewNote ?? null,
+          storeActivatedAt: approved ? new Date() : request.storeActivatedAt,
+        },
+      })
+
+      if (approved) {
+        const vendorRole = await tx.role.findUnique({
+          where: { name: 'VENDOR' },
+          select: { id: true },
+        })
+        if (vendorRole) {
+          await tx.usersOnRoles.upsert({
+            where: {
+              userId_roleId: {
+                userId: request.userId,
+                roleId: vendorRole.id,
+              },
+            },
+            update: {},
+            create: {
+              userId: request.userId,
+              roleId: vendorRole.id,
+            },
+          })
+        }
+      }
+
+      return updated
     })
   }
 
