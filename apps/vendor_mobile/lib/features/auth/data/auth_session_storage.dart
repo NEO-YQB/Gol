@@ -1,20 +1,23 @@
 import 'dart:convert';
-
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/services.dart';
 
 import '../domain/auth_session.dart';
 
 class AuthSessionStorage {
   static const _sessionKey = 'vendor_mobile.auth_session';
+  static const _channel = MethodChannel('com.golino.vendorapp/session_storage');
 
   Future<void> save(AuthSession session) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_sessionKey, jsonEncode(session.toJson()));
+    await _channel.invokeMethod<void>('saveSession', {
+      'key': _sessionKey,
+      'value': jsonEncode(session.toJson()),
+    });
   }
 
   Future<AuthSession?> load() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_sessionKey);
+    final raw = await _channel.invokeMethod<String>('loadSession', {
+      'key': _sessionKey,
+    });
     if (raw == null || raw.isEmpty) return null;
 
     try {
@@ -27,7 +30,8 @@ class AuthSessionStorage {
   }
 
   Future<void> clear() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_sessionKey);
+    await _channel.invokeMethod<void>('clearSession', {
+      'key': _sessionKey,
+    });
   }
 }
