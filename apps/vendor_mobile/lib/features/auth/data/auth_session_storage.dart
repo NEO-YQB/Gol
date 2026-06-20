@@ -1,17 +1,20 @@
 import 'dart:convert';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../domain/auth_session.dart';
 
 class AuthSessionStorage {
   static const _sessionKey = 'vendor_mobile.auth_session';
-  static String? _memorySession;
 
   Future<void> save(AuthSession session) async {
-    _memorySession = jsonEncode(session.toJson());
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_sessionKey, jsonEncode(session.toJson()));
   }
 
   Future<AuthSession?> load() async {
-    final raw = _memorySession;
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_sessionKey);
     if (raw == null || raw.isEmpty) return null;
 
     try {
@@ -24,6 +27,7 @@ class AuthSessionStorage {
   }
 
   Future<void> clear() async {
-    _memorySession = null;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_sessionKey);
   }
 }
