@@ -10,8 +10,6 @@ import {
   UseInterceptors, 
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { AbilitiesGuard } from '../../common/guards/abilities.guard';
-import { CheckAbilities } from '../../common/decorators/check-abilities.decorator';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiConsumes, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger'; 
 import { memoryStorage } from 'multer';
@@ -68,8 +66,7 @@ export class FilesController {
 
   @Post('upload-product-image')
   @HttpCode(HttpStatus.CREATED) 
-  @UseGuards(JwtAuthGuard, AbilitiesGuard)
-  @CheckAbilities((ability) => ability.can('create', 'File'))
+  @UseGuards(JwtAuthGuard)
   @UseInterceptors(FileInterceptor('file', multerOptions)) 
   @ApiOperation({ summary: 'آپلود تصویر تکی محصول' }) 
   @ApiConsumes('multipart/form-data')
@@ -86,8 +83,7 @@ export class FilesController {
 
   @Post('upload-gallery-images')
   @HttpCode(HttpStatus.CREATED)
-  @UseGuards(JwtAuthGuard, AbilitiesGuard)
-  @CheckAbilities((ability) => ability.can('create', 'File'))
+  @UseGuards(JwtAuthGuard)
   @UseInterceptors(FilesInterceptor('files', 10, multerOptions)) 
   @ApiOperation({ summary: 'آپلود گالری تصاویر محصول (تا 10 عکس)' }) 
   @ApiConsumes('multipart/form-data')

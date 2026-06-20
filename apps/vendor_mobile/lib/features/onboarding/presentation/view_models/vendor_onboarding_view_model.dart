@@ -69,6 +69,18 @@ class VendorOnboardingViewState {
   final String? resolvedBusinessAddress;
   final MobileRuntimeConfig? runtimeConfig;
 
+  String? get activeApplicationReviewNote {
+    final message = request?.reviewNote.trim() ?? '';
+    if (message.isEmpty) return null;
+    return request?.applicationStatus == 'REJECTED' ? message : null;
+  }
+
+  String? get activeProductReviewNote {
+    final message = request?.productReviewNote.trim() ?? '';
+    if (message.isEmpty) return null;
+    return request?.productStatus == 'REJECTED' ? message : null;
+  }
+
   bool get canEditProfile =>
       request == null ||
       request!.applicationStatus == 'DRAFT' ||

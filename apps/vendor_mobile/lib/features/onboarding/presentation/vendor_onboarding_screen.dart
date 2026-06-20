@@ -270,6 +270,7 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
       case VendorOnboardingStep.profile:
         return _ApplicationStepCard(
           key: const ValueKey('application-step'),
+          reviewNote: state.activeApplicationReviewNote,
           fullNameController: _fullNameController,
           nationalIdController: _nationalIdController,
           businessNameController: _businessNameController,
@@ -292,12 +293,12 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
         return _StatusStepCard(
           key: const ValueKey('application-review'),
           title: 'در انتظار تایید',
-          note: state.request?.reviewNote,
           onRefresh: _viewModel.loadRequest,
         );
       case VendorOnboardingStep.sampleProduct:
         return _ProductStepCard(
           key: const ValueKey('product-step'),
+          reviewNote: state.activeProductReviewNote,
           productNameController: _productNameController,
           productDescriptionController: _productDescriptionController,
           productAltController: _productAltController,
@@ -315,7 +316,6 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
         return _StatusStepCard(
           key: const ValueKey('product-review'),
           title: 'نمونه محصول در بررسی',
-          note: state.request?.productReviewNote,
           onRefresh: _viewModel.loadRequest,
         );
       case VendorOnboardingStep.completed:
@@ -407,9 +407,40 @@ class _NoticeCard extends StatelessWidget {
   }
 }
 
+class _InlineReviewNote extends StatelessWidget {
+  const _InlineReviewNote({
+    required this.message,
+  });
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.danger.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.danger.withValues(alpha: 0.18),
+        ),
+      ),
+      child: Text(
+        message,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppColors.danger,
+              fontWeight: FontWeight.w700,
+            ),
+      ),
+    );
+  }
+}
+
 class _ApplicationStepCard extends StatelessWidget {
   const _ApplicationStepCard({
     super.key,
+    this.reviewNote,
     required this.fullNameController,
     required this.nationalIdController,
     required this.businessNameController,
@@ -429,6 +460,7 @@ class _ApplicationStepCard extends StatelessWidget {
     required this.onSubmit,
   });
 
+  final String? reviewNote;
   final TextEditingController fullNameController;
   final TextEditingController nationalIdController;
   final TextEditingController businessNameController;
@@ -454,6 +486,10 @@ class _ApplicationStepCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('مشخصات', style: Theme.of(context).textTheme.titleMedium),
+          if (reviewNote != null && reviewNote!.trim().isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.md),
+            _InlineReviewNote(message: reviewNote!),
+          ],
           const SizedBox(height: AppSpacing.lg),
           TextField(controller: fullNameController, decoration: const InputDecoration(labelText: 'نام کامل')),
           const SizedBox(height: AppSpacing.md),
@@ -533,6 +569,7 @@ class _ApplicationStepCard extends StatelessWidget {
 class _ProductStepCard extends StatelessWidget {
   const _ProductStepCard({
     super.key,
+    this.reviewNote,
     required this.productNameController,
     required this.productDescriptionController,
     required this.productAltController,
@@ -547,6 +584,7 @@ class _ProductStepCard extends StatelessWidget {
     required this.onSubmit,
   });
 
+  final String? reviewNote;
   final TextEditingController productNameController;
   final TextEditingController productDescriptionController;
   final TextEditingController productAltController;
@@ -567,6 +605,10 @@ class _ProductStepCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('محصول نمونه', style: Theme.of(context).textTheme.titleMedium),
+          if (reviewNote != null && reviewNote!.trim().isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.md),
+            _InlineReviewNote(message: reviewNote!),
+          ],
           const SizedBox(height: AppSpacing.lg),
           TextField(controller: productNameController, decoration: const InputDecoration(labelText: 'نام محصول')),
           const SizedBox(height: AppSpacing.md),
