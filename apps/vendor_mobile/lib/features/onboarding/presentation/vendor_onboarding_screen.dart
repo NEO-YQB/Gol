@@ -6,7 +6,6 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_glass_card.dart';
-import '../../../shared/widgets/app_section_heading.dart';
 import '../../../shared/widgets/app_shell_background.dart';
 import '../../auth/domain/auth_session.dart';
 import 'location_picker_screen.dart';
@@ -222,53 +221,48 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
 
   Widget _buildLoadedContent(VendorOnboardingViewState state) {
     return ListView(
-                  padding: const EdgeInsets.fromLTRB(24, 18, 24, 28),
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'ورود فروشنده',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: widget.onLogout,
-                          child: const Text('خروج'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    const AppSectionHeading(
-                      eyebrow: 'شروع همکاری',
-                      title: 'ثبت‌نام فروشندگی مرحله‌به‌مرحله',
-                      description: 'ابتدا مشخصاتت را ثبت کن، بعد محصول نمونه را بفرست و پس از تایید وارد پنل شو.',
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    _OnboardingStepper(currentStep: state.currentStep),
-                    const SizedBox(height: AppSpacing.lg),
-                    if (state.errorMessage != null) ...[
-                      _NoticeCard(
-                        message: state.errorMessage!,
-                        color: AppColors.danger,
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                    ],
-                    if (state.successMessage != null) ...[
-                      _NoticeCard(
-                        message: state.successMessage!,
-                        color: AppColors.success,
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                    ],
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 320),
-                      switchInCurve: Curves.easeOutCubic,
-                      switchOutCurve: Curves.easeInOut,
-                      child: _buildStepContent(state),
-                    ),
-                  ],
-                );
+        padding: const EdgeInsets.fromLTRB(24, 18, 24, 28),
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'ثبت‌نام فروشنده',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              TextButton(
+                onPressed: widget.onLogout,
+                child: const Text('خروج'),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _OnboardingStepper(currentStep: state.currentStep),
+          const SizedBox(height: AppSpacing.lg),
+          if (state.errorMessage != null) ...[
+            _NoticeCard(
+              message: state.errorMessage!,
+              color: AppColors.danger,
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
+          if (state.successMessage != null &&
+              state.currentStep != VendorOnboardingStep.completed) ...[
+            _NoticeCard(
+              message: state.successMessage!,
+              color: AppColors.success,
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 260),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInOut,
+            child: _buildStepContent(state),
+          ),
+        ],
+      );
   }
 
   Widget _buildStepContent(VendorOnboardingViewState state) {
@@ -297,9 +291,7 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
       case VendorOnboardingStep.applicationReview:
         return _StatusStepCard(
           key: const ValueKey('application-review'),
-          title: 'درخواست فروشندگی در حال بررسی است',
-          description:
-              'اطلاعات هویتی و مدارک کسب‌وکار شما ثبت شد. بعد از تایید این مرحله، وارد ثبت محصول نمونه می‌شوی.',
+          title: 'در انتظار تایید',
           note: state.request?.reviewNote,
           onRefresh: _viewModel.loadRequest,
         );
@@ -322,9 +314,7 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
       case VendorOnboardingStep.productReview:
         return _StatusStepCard(
           key: const ValueKey('product-review'),
-          title: 'محصول نمونه در حال بررسی است',
-          description:
-              'درخواست فروشندگی شما تایید شده و حالا محصول نمونه برای بررسی محتوا و کیفیت منتظر تایید است.',
+          title: 'نمونه محصول در بررسی',
           note: state.request?.productReviewNote,
           onRefresh: _viewModel.loadRequest,
         );
@@ -332,7 +322,6 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
         return const _StatusStepCard(
           key: ValueKey('completed'),
           title: 'ثبت‌نام کامل شد',
-          description: 'همه تاییدها انجام شده و در حال ورود به پنل فروشنده هستی.',
         );
     }
   }
@@ -464,28 +453,22 @@ class _ApplicationStepCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('مرحله ۱: مشخصات فروشنده و کسب‌وکار', style: Theme.of(context).textTheme.titleMedium),
+          Text('مشخصات', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: AppSpacing.lg),
-          TextField(controller: fullNameController, decoration: const InputDecoration(labelText: 'نام و نام خانوادگی')),
+          TextField(controller: fullNameController, decoration: const InputDecoration(labelText: 'نام کامل')),
           const SizedBox(height: AppSpacing.md),
           TextField(controller: nationalIdController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'کد ملی')),
           const SizedBox(height: AppSpacing.md),
-          TextField(controller: businessNameController, decoration: const InputDecoration(labelText: 'نام کسب‌وکار')),
+          TextField(controller: businessNameController, decoration: const InputDecoration(labelText: 'نام فروشگاه')),
           const SizedBox(height: AppSpacing.md),
-          TextField(controller: businessSlugController, textDirection: TextDirection.ltr, decoration: const InputDecoration(labelText: 'اسلاگ کسب‌وکار')),
+          TextField(controller: businessSlugController, textDirection: TextDirection.ltr, decoration: const InputDecoration(labelText: 'اسلاگ')),
           const SizedBox(height: AppSpacing.md),
-          TextField(controller: businessDescriptionController, maxLines: 3, decoration: const InputDecoration(labelText: 'توضیح کوتاه کسب‌وکار')),
+          TextField(controller: businessDescriptionController, maxLines: 3, decoration: const InputDecoration(labelText: 'معرفی کوتاه')),
           const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: businessAddressController,
-                  maxLines: 3,
-                  decoration: const InputDecoration(labelText: 'آدرس کسب‌وکار'),
-                ),
-              ),
-            ],
+          TextField(
+            controller: businessAddressController,
+            maxLines: 3,
+            decoration: const InputDecoration(labelText: 'آدرس'),
           ),
           const SizedBox(height: AppSpacing.sm),
           SizedBox(
@@ -495,8 +478,8 @@ class _ApplicationStepCard extends StatelessWidget {
               icon: const Icon(Icons.map_rounded),
               label: Text(
                 selectedBusinessLat == null || selectedBusinessLng == null
-                    ? 'انتخاب موقعیت روی نقشه'
-                    : 'ویرایش موقعیت روی نقشه',
+                    ? 'انتخاب روی نقشه'
+                    : 'ویرایش موقعیت',
               ),
             ),
           ),
@@ -583,13 +566,13 @@ class _ProductStepCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('مرحله ۲: محصول نمونه', style: Theme.of(context).textTheme.titleMedium),
+          Text('محصول نمونه', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: AppSpacing.lg),
-          TextField(controller: productNameController, decoration: const InputDecoration(labelText: 'نام محصول نمونه')),
+          TextField(controller: productNameController, decoration: const InputDecoration(labelText: 'نام محصول')),
           const SizedBox(height: AppSpacing.md),
           TextField(controller: productDescriptionController, maxLines: 4, decoration: const InputDecoration(labelText: 'توضیحات محصول')),
           const SizedBox(height: AppSpacing.md),
-          TextField(controller: productAltController, decoration: const InputDecoration(labelText: 'توضیح کوتاه تصویر اصلی')),
+          TextField(controller: productAltController, decoration: const InputDecoration(labelText: 'متن تصویر')),
           const SizedBox(height: AppSpacing.md),
           Row(
             children: [
@@ -676,13 +659,11 @@ class _StatusStepCard extends StatelessWidget {
   const _StatusStepCard({
     super.key,
     required this.title,
-    required this.description,
     this.note,
     this.onRefresh,
   });
 
   final String title;
-  final String description;
   final String? note;
   final Future<void> Function()? onRefresh;
 
@@ -693,15 +674,8 @@ class _StatusStepCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(title, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            description,
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-          ),
           if (note != null && note!.trim().isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AppSpacing.md),
             Text(
               note!,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(

@@ -206,13 +206,13 @@ class _OnboardingLocationPickerScreenState
                     ),
                   if (!hasMapKey)
                     Positioned.fill(
-                      child: ColoredBox(
+                  child: ColoredBox(
                         color: const Color(0xF2FFF9F0),
                         child: Center(
                           child: Padding(
                             padding: const EdgeInsets.all(24),
                             child: Text(
-                              'برای نمایش نقشه باید `MAP_IR_API_KEY` را در اجرای اپ تنظیم کنی.',
+                              'نمایش نقشه در حال حاضر در دسترس نیست.',
                               textAlign: TextAlign.center,
                               style: Theme.of(context).textTheme.bodyLarge,
                             ),
@@ -250,7 +250,7 @@ class _OnboardingLocationPickerScreenState
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'روی نقشه بزن یا marker را جابه‌جا کن تا موقعیت فروشگاه دقیق ثبت شود.',
+                      'نقطه فروشگاه را انتخاب کن.',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     const SizedBox(height: AppSpacing.sm),

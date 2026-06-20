@@ -254,6 +254,8 @@ export class AuthService {
 
 
   async getSessionBootstrap(user: { id: number; roles: string[]; phoneNumber?: string }) {
+    await this.ensureVendorProvisionedFromApprovedOnboarding(user.id);
+
     const dbUser = await this.prisma.user.findUnique({
       where: { id: user.id },
       include: {
@@ -317,6 +319,83 @@ export class AuthService {
           }
         : null,
     };
+  }
+
+  private async ensureVendorProvisionedFromApprovedOnboarding(userId: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        roles: {
+          include: {
+            role: true,
+          },
+        },
+        store: {
+          select: { id: true },
+        },
+        vendorOnboardingRequest: true,
+      },
+    });
+
+    if (!user?.vendorOnboardingRequest) return;
+
+    const request = user.vendorOnboardingRequest;
+    if (request.productStatus !== 'APPROVED') return;
+
+    const hasVendorRole = user.roles.some((item) => item.role.name == 'VENDOR');
+    const hasStore = Boolean(user.store);
+    const hasActivatedAt = Boolean(request.storeActivatedAt);
+
+    if (hasVendorRole && hasStore && hasActivatedAt) return;
+
+    await this.prisma.$transaction(async (tx) => {
+      if (!hasVendorRole) {
+        const vendorRole = await tx.role.findUnique({
+          where: { name: 'VENDOR' },
+          select: { id: true },
+        });
+
+        if (vendorRole) {
+          await tx.usersOnRoles.upsert({
+            where: {
+              userId_roleId: {
+                userId,
+                roleId: vendorRole.id,
+              },
+            },
+            update: {},
+            create: {
+              userId,
+              roleId: vendorRole.id,
+            },
+          });
+        }
+      }
+
+      if (!hasStore && request.businessName && request.businessSlug) {
+        await tx.store.create({
+          data: {
+            name: request.businessName,
+            slug: request.businessSlug,
+            description: request.businessDescription ?? null,
+            address: request.businessAddress ?? null,
+            lat: request.businessLat ?? null,
+            lng: request.businessLng ?? null,
+            ownerId: userId,
+            isVerified: false,
+          },
+        });
+      }
+
+      if (!hasActivatedAt) {
+        await tx.vendorOnboardingRequest.update({
+          where: { id: request.id },
+          data: {
+            storeActivatedAt: new Date(),
+          },
+        });
+      }
+    });
   }
 
   async sendOtp(phoneNumber: string, options?: { forceRealProvider?: boolean; requestedByAdmin?: number }) {
