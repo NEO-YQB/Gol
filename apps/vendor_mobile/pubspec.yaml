@@ -51,6 +51,7 @@ dependency_overrides:
     path: third_party/flutter_plugin_android_lifecycle-2.0.34
   image_picker_android:
     path: third_party/image_picker_android-0.8.13+17
+  shared_preferences_android: 2.4.10
   url_launcher_android:
     path: third_party/url_launcher_android-6.3.29
   webview_flutter_android: 4.0.0
