@@ -14,6 +14,7 @@ class DashboardScreen extends StatefulWidget {
     super.key,
     required this.accessToken,
     required this.phoneNumber,
+    this.fullName,
     required this.storeName,
     required this.isPreview,
     required this.onLogout,
@@ -21,6 +22,7 @@ class DashboardScreen extends StatefulWidget {
 
   final String accessToken;
   final String phoneNumber;
+  final String? fullName;
   final String storeName;
   final bool isPreview;
   final Future<void> Function() onLogout;
@@ -92,6 +94,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     padding: const EdgeInsets.fromLTRB(24, 18, 24, 28),
                     children: [
                       _DashboardHeader(
+                        fullName: widget.fullName,
                         onLogout: widget.onLogout,
                       ),
                       if (state.isRefreshing) ...[
@@ -146,9 +149,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
 class _DashboardHeader extends StatelessWidget {
   const _DashboardHeader({
+    this.fullName,
     required this.onLogout,
   });
 
+  final String? fullName;
   final Future<void> Function() onLogout;
 
   @override
@@ -161,6 +166,16 @@ class _DashboardHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if ((fullName ?? '').trim().isNotEmpty) ...[
+                Text(
+                  'سلام ${fullName!.trim()}',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+              ],
               Text(
                 'داشبورد فروشنده',
                 style: theme.textTheme.titleMedium,

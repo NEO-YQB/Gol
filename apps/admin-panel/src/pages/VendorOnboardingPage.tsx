@@ -46,6 +46,13 @@ function statusTone(status: string) {
   return 'primary' as const
 }
 
+function resolveApplicantName(item: RequestRecord) {
+  return (
+    readText(item, ['personalFullName'], '') ||
+    readText(item, ['user', 'fullName'], readText(item, ['user', 'phoneNumber'], '—'))
+  )
+}
+
 export function VendorOnboardingPage({
   session,
   onOpenWorkspace,
@@ -103,7 +110,7 @@ export function VendorOnboardingPage({
   const rows = useMemo(
     () => items.map((item, index) => ({
       id: readText(item, ['id'], String(index + 1)),
-      applicant: readText(item, ['user', 'fullName'], readText(item, ['user', 'phoneNumber'], '—')),
+      applicant: resolveApplicantName(item),
       business: readText(item, ['businessName', 'businessSlug'], '—'),
       applicationStatus: translateStatus(readText(item, ['applicationStatus'], '')),
       productStatus: translateStatus(readText(item, ['productStatus'], '')),
@@ -177,7 +184,7 @@ export function VendorOnboardingPage({
                       type="button"
                     >
                       <strong>{readText(item, ['businessName'], 'فروشگاه بدون نام')}</strong>
-                      <span>{readText(item, ['user', 'fullName'], readText(item, ['user', 'phoneNumber'], '—'))}</span>
+                      <span>{resolveApplicantName(item)}</span>
                       <small>{`${translateStatus(readText(item, ['applicationStatus'], ''))} / ${translateStatus(readText(item, ['productStatus'], ''))}`}</small>
                     </button>
                   )
@@ -200,7 +207,7 @@ export function VendorOnboardingPage({
           >
             {selected ? (
               <div className="vendor-onboarding-admin-summary">
-                <div><strong>متقاضی</strong><span>{readText(selected, ['user', 'fullName', 'user'], readText(selected, ['user', 'phoneNumber'], '—'))}</span></div>
+                <div><strong>متقاضی</strong><span>{resolveApplicantName(selected)}</span></div>
                 <div><strong>کسب‌وکار</strong><span>{readText(selected, ['businessName'], '—')}</span></div>
                 <div><strong>وضعیت درخواست</strong><span><Pill tone={statusTone(readText(selected, ['applicationStatus'], ''))}>{translateStatus(readText(selected, ['applicationStatus'], ''))}</Pill></span></div>
                 <div><strong>وضعیت محصول</strong><span><Pill tone={statusTone(readText(selected, ['productStatus'], ''))}>{translateStatus(readText(selected, ['productStatus'], ''))}</Pill></span></div>

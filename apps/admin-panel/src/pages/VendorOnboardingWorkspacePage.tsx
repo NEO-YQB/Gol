@@ -46,6 +46,11 @@ function getImageUrl(url: string) {
   return `${base}${url}`
 }
 
+function resolveApplicantName(item: RequestRecord | null) {
+  return readText(item ?? {}, ['personalFullName'], '') ||
+    readText(item ?? {}, ['user', 'fullName'], readText(item ?? {}, ['user', 'phoneNumber'], '—'))
+}
+
 export function VendorOnboardingWorkspacePage({
   session,
   request,
@@ -167,7 +172,7 @@ export function VendorOnboardingWorkspacePage({
         <div className="vendor-onboarding-workspace-grid">
           <div className="vendor-onboarding-workspace-panel">
             <div className="vendor-onboarding-admin-summary">
-              <div><strong>متقاضی</strong><span>{readText(detail ?? {}, ['user', 'fullName'], readText(detail ?? {}, ['user', 'phoneNumber'], '—'))}</span></div>
+              <div><strong>متقاضی</strong><span>{resolveApplicantName(detail)}</span></div>
               <div><strong>نام کسب‌وکار</strong><span>{readText(detail ?? {}, ['businessName'], '—')}</span></div>
               <div><strong>اسلاگ</strong><span>{readText(detail ?? {}, ['businessSlug'], '—')}</span></div>
               <div><strong>آدرس</strong><span>{readText(detail ?? {}, ['businessAddress'], '—')}</span></div>

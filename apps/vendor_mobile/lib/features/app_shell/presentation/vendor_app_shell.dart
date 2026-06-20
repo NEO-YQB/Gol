@@ -124,6 +124,7 @@ class _VendorAppShellState extends State<VendorAppShell> {
       VendorShellTab.dashboard => DashboardScreen(
           accessToken: widget.session.accessToken,
           phoneNumber: widget.session.phoneNumber,
+          fullName: widget.session.bootstrap?.fullName,
           storeName: widget.session.bootstrap?.store?.name.isNotEmpty == true
               ? widget.session.bootstrap!.store!.name
               : 'فروشگاه شما',

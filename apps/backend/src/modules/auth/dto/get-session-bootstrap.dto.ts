@@ -34,6 +34,9 @@ class SessionBootstrapStoreDto {
 }
 
 export class SessionBootstrapDto {
+  @ApiProperty({ example: 'مریم احمدی', nullable: true, required: false })
+  fullName?: string | null;
+
   @ApiProperty({ type: [String], example: ['SEO_MANAGER'] })
   roles!: string[];
 

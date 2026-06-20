@@ -301,6 +301,7 @@ export class AuthService {
     }
 
     return {
+      fullName: dbUser?.fullName ?? null,
       roles: effectiveRoles,
       effectivePermissions: Array.from(permissionMap.values()),
       store: dbUser?.store

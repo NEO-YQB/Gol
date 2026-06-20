@@ -1,11 +1,13 @@
 class VendorBootstrap {
   const VendorBootstrap({
+    this.fullName,
     this.roles = const [],
     this.effectivePermissions = const [],
     this.store,
     this.vendorOnboarding,
   });
 
+  final String? fullName;
   final List<String> roles;
   final List<BootstrapPermission> effectivePermissions;
   final BootstrapStore? store;
@@ -13,6 +15,9 @@ class VendorBootstrap {
 
   factory VendorBootstrap.fromJson(Map<String, dynamic> json) {
     return VendorBootstrap(
+      fullName: (json['fullName'] as String?)?.trim().isEmpty == true
+          ? null
+          : json['fullName'] as String?,
       roles: (json['roles'] as List<dynamic>? ?? const [])
           .map((item) => item.toString())
           .toList(),
@@ -35,6 +40,7 @@ class VendorBootstrap {
   Map<String, dynamic> toJson() {
     return {
       'roles': roles,
+      'fullName': fullName,
       'effectivePermissions':
           effectivePermissions.map((item) => item.toJson()).toList(),
       'store': store?.toJson(),
