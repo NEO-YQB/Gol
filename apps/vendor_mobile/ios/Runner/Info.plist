@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Vendor Mobile</string>
+	<string>Golino</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -13,7 +13,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>vendor_mobile</string>
+	<string>Golino</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -45,5 +45,13 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>برای شخصی‌سازی بهتر تجربه فروشنده، در صورت نیاز از مجوزهای سیستمی استفاده می‌کنیم.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>برای بارگذاری مدارک، تصاویر محصول و مستندات فروشگاه به دسترسی گالری نیاز داریم.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>برای ذخیره یا خروجی گرفتن از تصاویر و فایل‌های مرتبط با فروشگاه به این دسترسی نیاز داریم.</string>
+	<key>NSUserNotificationUsageDescription</key>
+	<string>برای اطلاع‌رسانی سفارش‌ها، پیام‌های پشتیبانی و وضعیت فروشگاه اعلان ارسال می‌کنیم.</string>
 </dict>
 </plist>
