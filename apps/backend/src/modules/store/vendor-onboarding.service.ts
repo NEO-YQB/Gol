@@ -266,6 +266,26 @@ export class VendorOnboardingService {
             },
           })
         }
+
+        const existingStore = await tx.store.findFirst({
+          where: { ownerId: request.userId },
+          select: { id: true },
+        })
+
+        if (!existingStore && request.businessName && request.businessSlug) {
+          await tx.store.create({
+            data: {
+              name: request.businessName,
+              slug: request.businessSlug,
+              description: request.businessDescription ?? null,
+              address: request.businessAddress ?? null,
+              lat: request.businessLat ?? null,
+              lng: request.businessLng ?? null,
+              ownerId: request.userId,
+              isVerified: false,
+            },
+          })
+        }
       }
 
       return updated
