@@ -7,12 +7,14 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { OrderStatus } from '@prisma/client';
+import { SettingsService } from '../settings/settings.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private settingsService: SettingsService,
   ) {}
 
   async verifyOtp(phoneNumber: string, code: string) {
@@ -427,7 +429,18 @@ export class AuthService {
       });
     });
 
-    console.log(`[LOCAL OTP] ${phoneNumber} -> ${code} (expires: ${expiresAt.toISOString()})`);
+    const smsSettings = await this.settingsService.getSmsSettingsForRuntime();
+    const shouldUseRealProvider = Boolean(
+      options?.forceRealProvider ||
+      (smsSettings?.apiKey && smsSettings.templateId),
+    );
+
+    if (shouldUseRealProvider) {
+      this.settingsService.assertSmsSettingsConfigured(smsSettings);
+      await this.settingsService.sendOtpViaSmsIr(phoneNumber, code, smsSettings!);
+    } else {
+      console.log(`[LOCAL OTP] ${phoneNumber} -> ${code} (expires: ${expiresAt.toISOString()})`);
+    }
     
     return { message: 'کد تایید ارسال شد', expiresAt };
   }

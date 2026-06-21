@@ -86,17 +86,24 @@ export class SettingsService {
     this.assertSmsSettingsConfigured(settings);
 
     const code = Math.floor(10000 + Math.random() * 90000).toString();
-    await this.smsProviderService.sendSmsIrVerify({
-      apiKey: settings!.apiKey,
-      templateId: settings!.templateId,
-      phoneNumber,
-      code,
-    });
+    await this.sendOtpViaSmsIr(phoneNumber, code, settings!);
 
     return {
       message: 'پیامک تستی با موفقیت ارسال شد',
       code,
     };
+  }
+
+  async sendOtpViaSmsIr(phoneNumber: string, code: string, settings?: SmsIrSettings) {
+    const resolvedSettings = settings ?? (await this.readSmsSettings());
+    this.assertSmsSettingsConfigured(resolvedSettings);
+
+    await this.smsProviderService.sendSmsIrVerify({
+      apiKey: resolvedSettings!.apiKey,
+      templateId: resolvedSettings!.templateId,
+      phoneNumber,
+      code,
+    });
   }
 
   assertSmsSettingsConfigured(settings: SmsIrSettings | null) {

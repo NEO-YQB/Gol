@@ -8,6 +8,8 @@ export class SmsProviderService {
     phoneNumber: string;
     code: string;
   }) {
+    const normalizedMobile = this.normalizeIranMobile(input.phoneNumber);
+
     const response = await fetch('https://api.sms.ir/v1/send/verify', {
       method: 'POST',
       headers: {
@@ -16,7 +18,7 @@ export class SmsProviderService {
         'x-api-key': input.apiKey,
       },
       body: JSON.stringify({
-        mobile: input.phoneNumber.replace(/^0/, '98'),
+        mobile: normalizedMobile,
         templateId: Number(input.templateId),
         parameters: [
           {
@@ -34,5 +36,13 @@ export class SmsProviderService {
     }
 
     return payload;
+  }
+
+  private normalizeIranMobile(phoneNumber: string) {
+    const digits = phoneNumber.replace(/\D/g, '');
+    if (digits.startsWith('98')) return digits;
+    if (digits.startsWith('0')) return `98${digits.slice(1)}`;
+    if (digits.startsWith('9')) return `98${digits}`;
+    return digits;
   }
 }
