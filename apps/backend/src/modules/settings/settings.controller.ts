@@ -59,6 +59,6 @@ export class SettingsController {
     @GetUser() user: { id: number; roles: string[] },
     @Body() dto: UpdateStorefrontInfoPagesSettingsDto,
   ) {
-    return this.settingsService.updateStorefrontInfoPagesSettings(user, dto);
+    return this.settingsService.updateStorefrontInfoPagesSettings(user, { ...dto });
   }
 }
