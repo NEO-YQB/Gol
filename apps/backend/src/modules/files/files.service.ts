@@ -6,7 +6,7 @@ import { join } from 'path';
 import sharp from 'sharp';
 import { v4 as uuidv4 } from 'uuid';
 
-type UploadFolder = 'products' | 'documents';
+type UploadFolder = 'products' | 'documents' | 'site';
 
 type UploadedImageVariant = {
   url: string;
@@ -107,6 +107,10 @@ export class FilesService {
 
   async uploadDocumentImage(file: Express.Multer.File) {
     return this.uploadImage(file, 'documents');
+  }
+
+  async uploadSiteImage(file: Express.Multer.File) {
+    return this.uploadImage(file, 'site');
   }
 
   private async uploadImage(file: Express.Multer.File, folder: UploadFolder): Promise<UploadedImageResponse> {

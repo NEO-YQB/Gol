@@ -55,6 +55,9 @@ dependency_overrides:
   webview_flutter_android: 4.0.0
 
 dev_dependencies:
+  flutter_native_splash: ^2.4.0
+  flutter_launcher_icons: ^0.13.1
+
   flutter_test:
     sdk: flutter
 
@@ -75,6 +78,10 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  assets:
+    - assets/splash/splash.png
+    - assets/splash/splash_text_32_clean.png
 
   fonts:
     - family: YekanBakh
@@ -124,3 +131,19 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/icon.png"
+  adaptive_icon_background: "#173126"
+  adaptive_icon_foreground: "assets/icon/icon.png" 
+
+flutter_native_splash:
+  color: "#173126"
+  background_image: assets/splash/splash_text_32_clean.png
+  android: true
+  ios: true
+  fullscreen: true
+  android_12:
+    color: "#173126"
+    image: assets/splash/splash_text_32_clean.png

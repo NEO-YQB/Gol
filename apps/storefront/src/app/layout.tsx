@@ -1,4 +1,5 @@
 import "./globals.css";
+import "./info-pages.css";
 
 export const metadata = {
   title: "گلینو | بازار گل و هدیه",

@@ -10,6 +10,44 @@ export type StorefrontSeo = {
   noIndex?: boolean
 }
 
+export type StorefrontInfoPagesSettings = {
+  about: {
+    enabled: boolean
+    heroTitle: string
+    heroSubtitle: string
+    desktopHeroImageUrl: string
+    mobileHeroImageUrl: string
+    introTitle: string
+    introHtml: string
+    storyTitle: string
+    storyHtml: string
+    valuesTitle: string
+    valuesHtml: string
+  }
+  contact: {
+    enabled: boolean
+    heroTitle: string
+    heroSubtitle: string
+    desktopHeroImageUrl: string
+    mobileHeroImageUrl: string
+    phone: string
+    email: string
+    address: string
+    workingHours: string
+    mapEmbedHtml: string
+    contactIntroHtml: string
+  }
+  terms: {
+    enabled: boolean
+    heroTitle: string
+    heroSubtitle: string
+    desktopHeroImageUrl: string
+    mobileHeroImageUrl: string
+    bodyHtml: string
+    updatedAtLabel: string
+  }
+}
+
 export type StorefrontPage = {
   id: string
   title: string
@@ -1365,6 +1403,14 @@ export function buildProductJsonLd(product: StorefrontProductDetail) {
             reviewCount,
           }
         : undefined,
+  }
+}
+
+export async function getStorefrontInfoPagesSettings(): Promise<StorefrontInfoPagesSettings | null> {
+  try {
+    return await requestNoStore<StorefrontInfoPagesSettings>('/settings/storefront-info-pages')
+  } catch {
+    return null
   }
 }
 

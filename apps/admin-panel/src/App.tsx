@@ -32,6 +32,7 @@ import { PaymentGatewayWorkspacePage } from './pages/PaymentGatewayWorkspacePage
 import { PushNotificationWorkspacePage } from './pages/PushNotificationWorkspacePage'
 import { SettingsPage } from './pages/SettingsPage'
 import { SmsSettingsWorkspacePage } from './pages/SmsSettingsWorkspacePage'
+import { StorefrontInfoPagesWorkspacePage } from './pages/StorefrontInfoPagesWorkspacePage'
 import { ProductsPage } from './pages/ProductsPage'
 import { ProductWorkspacePage } from './pages/ProductWorkspacePage'
 import { SettlementsPage } from './pages/SettlementsPage'
@@ -71,7 +72,7 @@ function buildNav(currentRoute: AdminRoute, session: AuthSession): NavSection[] 
         { key: 'pageBuilder', label: 'صفحه‌ساز استور', hint: 'landing pageها، homepage و چیدمان بلاک‌های storefront', active: currentRoute === 'pageBuilder' || currentRoute === 'pageBuilderWorkspace' },
         { key: 'alerts', label: 'هشدارها و اعلان ها', hint: 'outbox و رخدادهای مهم عملیاتی', active: currentRoute === 'alerts' },
         { key: 'accessControl', label: 'کاربران و دسترسی', hint: 'مدیریت user، role و permission', active: currentRoute === 'accessControl' || currentRoute === 'accessControlWorkspace', badge: hasPermission(session, 'assignPermissions', 'AdminRole') ? 'قابل ویرایش' : 'فقط مشاهده' },
-        { key: 'settings', label: 'تنظیمات', hint: 'تنظیمات سراسری سرویس‌ها و یکپارچه‌سازی‌ها', active: currentRoute === 'settings' || currentRoute === 'smsSettingsWorkspace' || currentRoute === 'paymentGatewayWorkspace' || currentRoute === 'pushNotificationWorkspace' },
+        { key: 'settings', label: 'تنظیمات', hint: 'تنظیمات سراسری سرویس‌ها و یکپارچه‌سازی‌ها', active: currentRoute === 'settings' || currentRoute === 'smsSettingsWorkspace' || currentRoute === 'storefrontInfoPagesWorkspace' || currentRoute === 'paymentGatewayWorkspace' || currentRoute === 'pushNotificationWorkspace' },
       ],
     },
   ]
@@ -200,6 +201,12 @@ function getPageMeta(route: AdminRoute) {
         title: 'workspace تنظیمات پیامکی',
         description: 'تنظیمات پنل پیامکی و تست OTP در این workspace مدیریت می‌شود.',
       }
+    case 'storefrontInfoPagesWorkspace':
+      return {
+        eyebrow: 'site pages workspace',
+        title: 'workspace تنظیمات صفحات سایت',
+        description: 'متن، تصویر هدر و اطلاعات تماس صفحات درباره، تماس و قوانین از این workspace مدیریت می‌شود.',
+      }
     case 'paymentGatewayWorkspace':
       return {
         eyebrow: 'payment workspace',
@@ -287,6 +294,7 @@ function renderRoute(
     onOpenAccessControlWorkspace: () => void
     onBackToAccessControl: () => void
     onOpenSmsWorkspace: () => void
+    onOpenStorefrontInfoPagesWorkspace: () => void
     onOpenPushNotificationWorkspace: () => void
     onOpenPaymentGatewayWorkspace: () => void
     onBackToSettings: () => void
@@ -327,9 +335,11 @@ function renderRoute(
     case 'pageBuilder':
       return <PageBuilderPage onCreatePage={options.onOpenPageBuilderWorkspaceForCreate} onEditPage={options.onOpenPageBuilderWorkspaceForEdit} session={session} />
     case 'settings':
-      return <SettingsPage onOpenPaymentGatewayWorkspace={options.onOpenPaymentGatewayWorkspace} onOpenSmsWorkspace={options.onOpenSmsWorkspace} />
+      return <SettingsPage onOpenPaymentGatewayWorkspace={options.onOpenPaymentGatewayWorkspace} onOpenSmsWorkspace={options.onOpenSmsWorkspace} onOpenStorefrontInfoPagesWorkspace={options.onOpenStorefrontInfoPagesWorkspace} />
     case 'smsSettingsWorkspace':
       return <SmsSettingsWorkspacePage onBack={options.onBackToSettings} session={session} />
+    case 'storefrontInfoPagesWorkspace':
+      return <StorefrontInfoPagesWorkspacePage onBack={options.onBackToSettings} session={session} />
     case 'paymentGatewayWorkspace':
       return <PaymentGatewayWorkspacePage onBack={options.onBackToSettings} session={session} />
     case 'pushNotificationWorkspace':
@@ -665,6 +675,10 @@ export default function App() {
     handleNavigate('smsSettingsWorkspace')
   }
 
+  function handleOpenStorefrontInfoPagesWorkspace() {
+    handleNavigate('storefrontInfoPagesWorkspace')
+  }
+
   function handleOpenPushNotificationWorkspace() {
     handleNavigate('pushNotificationWorkspace')
   }
@@ -772,6 +786,7 @@ export default function App() {
         onOpenAccessControlWorkspace: handleOpenAccessControlWorkspace,
         onBackToAccessControl: handleBackToAccessControl,
         onOpenSmsWorkspace: handleOpenSmsWorkspace,
+        onOpenStorefrontInfoPagesWorkspace: handleOpenStorefrontInfoPagesWorkspace,
         onOpenPushNotificationWorkspace: handleOpenPushNotificationWorkspace,
         onOpenPaymentGatewayWorkspace: handleOpenPaymentGatewayWorkspace,
         onBackToSettings: handleBackToSettings,

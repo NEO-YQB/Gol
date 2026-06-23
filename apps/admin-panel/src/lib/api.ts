@@ -45,6 +45,44 @@ export type SmsSettingsResponse = {
   hasApiKey?: boolean
 }
 
+export type StorefrontInfoPagesSettingsResponse = {
+  about: {
+    enabled: boolean
+    heroTitle: string
+    heroSubtitle: string
+    desktopHeroImageUrl: string
+    mobileHeroImageUrl: string
+    introTitle: string
+    introHtml: string
+    storyTitle: string
+    storyHtml: string
+    valuesTitle: string
+    valuesHtml: string
+  }
+  contact: {
+    enabled: boolean
+    heroTitle: string
+    heroSubtitle: string
+    desktopHeroImageUrl: string
+    mobileHeroImageUrl: string
+    phone: string
+    email: string
+    address: string
+    workingHours: string
+    mapEmbedHtml: string
+    contactIntroHtml: string
+  }
+  terms: {
+    enabled: boolean
+    heroTitle: string
+    heroSubtitle: string
+    desktopHeroImageUrl: string
+    mobileHeroImageUrl: string
+    bodyHtml: string
+    updatedAtLabel: string
+  }
+}
+
 export type PaymentGatewayConfigResponse = {
   id: number
   key: string
@@ -750,6 +788,23 @@ export const adminApi = {
         : undefined,
     }
   },
+  async uploadSiteImage(session: AuthSession, file: File) {
+    const formData = new FormData()
+    formData.append('file', file)
+    const payload = await uploadRequest<UploadedImagePayload>('/files/upload-site-image', formData, session.accessToken)
+    return {
+      ...payload,
+      url: resolveAssetUrl(payload.url),
+      variants: payload.variants
+        ? {
+            original: payload.variants.original ? { ...payload.variants.original, url: resolveAssetUrl(payload.variants.original.url) } : null,
+            large: payload.variants.large ? { ...payload.variants.large, url: resolveAssetUrl(payload.variants.large.url) } : null,
+            medium: payload.variants.medium ? { ...payload.variants.medium, url: resolveAssetUrl(payload.variants.medium.url) } : null,
+            thumbnail: payload.variants.thumbnail ? { ...payload.variants.thumbnail, url: resolveAssetUrl(payload.variants.thumbnail.url) } : null,
+          }
+        : undefined,
+    }
+  },
   async uploadGalleryImages(session: AuthSession, files: File[]) {
     const formData = new FormData()
     files.forEach((file) => formData.append('files', file))
@@ -940,6 +995,15 @@ export const adminApi = {
   deleteStorefrontPage(session: AuthSession, pageId: string) {
     return request<void>(`/admin/pages/${pageId}`, {
       method: 'DELETE',
+    }, session.accessToken)
+  },
+  getStorefrontInfoPagesSettings(session: AuthSession) {
+    return request<StorefrontInfoPagesSettingsResponse>('/admin/settings/storefront-info-pages', {}, session.accessToken)
+  },
+  updateStorefrontInfoPagesSettings(session: AuthSession, body: StorefrontInfoPagesSettingsResponse) {
+    return request<StorefrontInfoPagesSettingsResponse>('/admin/settings/storefront-info-pages', {
+      method: 'PATCH',
+      body: JSON.stringify(body),
     }, session.accessToken)
   },
   getNotifications(session: AuthSession) {

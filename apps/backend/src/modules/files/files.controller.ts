@@ -114,4 +114,21 @@ export class FilesController {
 
     return this.filesService.uploadDocumentImage(file);
   }
+
+  @Post('upload-site-image')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FileInterceptor('file', multerOptions))
+  @ApiOperation({ summary: 'آپلود تصویر صفحات سایت' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } })
+  @ApiResponse({ status: 201, description: 'فایل با موفقیت آپلود شد.', schema: { type: 'object', properties: { url: { type: 'string' } } } })
+  @ApiBearerAuth('JWT-auth')
+  uploadSiteImage(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('هیچ فایلی برای آپلود ارسال نشده است.');
+    }
+
+    return this.filesService.uploadSiteImage(file);
+  }
 }
