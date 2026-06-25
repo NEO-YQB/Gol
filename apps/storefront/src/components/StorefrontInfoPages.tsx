@@ -84,13 +84,11 @@ function InfoHero({
   subtitle,
   desktopImage,
   mobileImage,
-  marker,
 }: {
   title: string
   subtitle?: string
   desktopImage?: string
   mobileImage?: string
-  marker: string
 }) {
   const resolvedDesktop = resolveAssetUrl(desktopImage)
   const resolvedMobile = resolveAssetUrl(mobileImage || desktopImage)
@@ -107,11 +105,12 @@ function InfoHero({
       )}
       <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(23,49,38,0.82),rgba(23,49,38,0.42),rgba(23,49,38,0.08))]" />
       <div className="absolute inset-x-0 bottom-0 p-6 md:p-10">
-        <p className="mb-3 inline-flex rounded-full border border-white/24 bg-white/14 px-4 py-2 text-xs font-black uppercase text-[#fff5df] backdrop-blur">
-          {marker}
-        </p>
         <h1 className="max-w-3xl text-4xl font-black leading-tight text-white md:text-6xl">{title}</h1>
-        {subtitle ? <p className="mt-4 max-w-2xl text-base leading-8 text-[#fff5df] md:text-lg">{subtitle}</p> : null}
+        {subtitle ? (
+          <p className="info-hero-subtitle-pill mt-4 inline-flex max-w-2xl rounded-full border border-white/24 bg-white/14 px-4 py-2 text-sm font-black text-[#fff5df] backdrop-blur">
+            {subtitle}
+          </p>
+        ) : null}
       </div>
     </section>
   )
@@ -133,7 +132,6 @@ export function StorefrontAboutPage({ settings }: { settings: StorefrontInfoPage
     <div className="info-page">
       <InfoHero
         desktopImage={settings.desktopHeroImageUrl}
-        marker="Golino story"
         mobileImage={settings.mobileHeroImageUrl}
         subtitle={settings.heroSubtitle}
         title={settings.heroTitle || 'درباره گلینو'}
@@ -152,7 +150,6 @@ export function StorefrontTermsPage({ settings }: { settings: StorefrontInfoPage
     <div className="info-page">
       <InfoHero
         desktopImage={settings.desktopHeroImageUrl}
-        marker="Terms"
         mobileImage={settings.mobileHeroImageUrl}
         subtitle={settings.heroSubtitle}
         title={settings.heroTitle || 'قوانین و مقررات'}
@@ -195,7 +192,6 @@ export function StorefrontContactPage({
     <div className="info-page">
       <InfoHero
         desktopImage={settings.desktopHeroImageUrl}
-        marker="Contact"
         mobileImage={settings.mobileHeroImageUrl}
         subtitle={settings.heroSubtitle}
         title={settings.heroTitle || 'تماس با گلینو'}
