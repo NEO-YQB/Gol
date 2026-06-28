@@ -7,6 +7,13 @@ import { SettingsService } from './settings.service';
 export class PublicSettingsController {
   constructor(private readonly settingsService: SettingsService) {}
 
+
+  @Get('seo')
+  @ApiOperation({ summary: 'دریافت تنظیمات عمومی سئو storefront' })
+  getSeoSettings() {
+    return this.settingsService.getSeoSettingsPublic();
+  }
+
   @Get('storefront-info-pages')
   @ApiOperation({ summary: 'دریافت تنظیمات عمومی صفحه‌های اطلاعاتی storefront' })
   getStorefrontInfoPagesSettings() {
