@@ -348,6 +348,8 @@ function renderRoute(
       return <SmsSettingsWorkspacePage onBack={options.onBackToSettings} session={session} />
     case 'storefrontInfoPagesWorkspace':
       return <StorefrontInfoPagesWorkspacePage onBack={options.onBackToSettings} session={session} />
+    case 'seoSettingsWorkspace':
+      return <SeoSettingsWorkspacePage onBack={options.onBackToSettings} session={session} />
     case 'paymentGatewayWorkspace':
       return <PaymentGatewayWorkspacePage onBack={options.onBackToSettings} session={session} />
     case 'pushNotificationWorkspace':
