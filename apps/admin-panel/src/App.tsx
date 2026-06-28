@@ -29,6 +29,7 @@ import { OrdersWorkspacePage } from './pages/OrdersWorkspacePage'
 import { PageBuilderPage } from './pages/PageBuilderPage'
 import { PageBuilderWorkspacePage } from './pages/PageBuilderWorkspacePage'
 import { PaymentGatewayWorkspacePage } from './pages/PaymentGatewayWorkspacePage'
+import { SeoSettingsWorkspacePage } from './pages/SeoSettingsWorkspacePage'
 import { PushNotificationWorkspacePage } from './pages/PushNotificationWorkspacePage'
 import { SettingsPage } from './pages/SettingsPage'
 import { SmsSettingsWorkspacePage } from './pages/SmsSettingsWorkspacePage'
@@ -72,7 +73,7 @@ function buildNav(currentRoute: AdminRoute, session: AuthSession): NavSection[] 
         { key: 'pageBuilder', label: 'صفحه‌ساز استور', hint: 'landing pageها، homepage و چیدمان بلاک‌های storefront', active: currentRoute === 'pageBuilder' || currentRoute === 'pageBuilderWorkspace' },
         { key: 'alerts', label: 'هشدارها و اعلان ها', hint: 'outbox و رخدادهای مهم عملیاتی', active: currentRoute === 'alerts' },
         { key: 'accessControl', label: 'کاربران و دسترسی', hint: 'مدیریت user، role و permission', active: currentRoute === 'accessControl' || currentRoute === 'accessControlWorkspace', badge: hasPermission(session, 'assignPermissions', 'AdminRole') ? 'قابل ویرایش' : 'فقط مشاهده' },
-        { key: 'settings', label: 'تنظیمات', hint: 'تنظیمات سراسری سرویس‌ها و یکپارچه‌سازی‌ها', active: currentRoute === 'settings' || currentRoute === 'smsSettingsWorkspace' || currentRoute === 'storefrontInfoPagesWorkspace' || currentRoute === 'paymentGatewayWorkspace' || currentRoute === 'pushNotificationWorkspace' },
+        { key: 'settings', label: 'تنظیمات', hint: 'تنظیمات سراسری سرویس‌ها و یکپارچه‌سازی‌ها', active: currentRoute === 'settings' || currentRoute === 'smsSettingsWorkspace' || currentRoute === 'storefrontInfoPagesWorkspace' || currentRoute === 'seoSettingsWorkspace' || currentRoute === 'paymentGatewayWorkspace' || currentRoute === 'pushNotificationWorkspace' },
       ],
     },
   ]
@@ -194,6 +195,12 @@ function getPageMeta(route: AdminRoute) {
         eyebrow: 'system settings',
         title: 'تنظیمات سراسری سرویس‌ها و یکپارچه‌سازی‌ها',
         description: 'پیکربندی سرویس‌های بیرونی مثل OTP واقعی و سایر integrationها از این route انجام می‌شود.',
+      }
+    case 'seoSettingsWorkspace':
+      return {
+        eyebrow: 'seo workspace',
+        title: 'تنظیمات سئو، robots و sitemap',
+        description: 'تنظیمات SEO مرکزی برای storefront، verification و crawler directives.',
       }
     case 'smsSettingsWorkspace':
       return {

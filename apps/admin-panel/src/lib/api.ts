@@ -83,6 +83,18 @@ export type StorefrontInfoPagesSettingsResponse = {
   }
 }
 
+export type SeoSettingsResponse = {
+  siteUrl: string
+  siteName: string
+  googleSearchConsoleVerification: string
+  googleTagManagerId: string
+  googleAnalyticsId: string
+  robotsTxt: string
+  sitemapEnabled: boolean
+  sitemapChangeFrequency: 'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'never'
+  sitemapPriority: string
+}
+
 export type PaymentGatewayConfigResponse = {
   id: number
   key: string
@@ -240,6 +252,15 @@ export const adminApi = {
     return request<{ message: string; expiresAt: string }>('/admin/settings/sms/test', {
       method: 'POST',
       body: JSON.stringify({ phoneNumber }),
+    }, session.accessToken)
+  },
+  getSeoSettings(session: AuthSession) {
+    return request<SeoSettingsResponse>('/admin/settings/seo', {}, session.accessToken)
+  },
+  updateSeoSettings(session: AuthSession, body: Partial<SeoSettingsResponse>) {
+    return request<SeoSettingsResponse>('/admin/settings/seo', {
+      method: 'PATCH',
+      body: JSON.stringify(body),
     }, session.accessToken)
   },
   getPaymentGateways(session: AuthSession) {

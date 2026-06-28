@@ -18,6 +18,19 @@ export function buildCanonicalUrl(path: string) {
   return buildAbsoluteUrl(path)
 }
 
+
+export type SeoSettings = {
+  siteUrl: string
+  siteName: string
+  googleSearchConsoleVerification: string
+  googleTagManagerId: string
+  googleAnalyticsId: string
+  robotsTxt: string
+  sitemapEnabled: boolean
+  sitemapChangeFrequency: 'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'never'
+  sitemapPriority: string
+}
+
 export type StorefrontSeo = {
   metaTitle?: string | null
   metaDescription?: string | null
@@ -437,15 +450,15 @@ function requestNoStore<T>(path: string): Promise<T> {
   })
 }
 
-const getCategories = cache(async (): Promise<CategorySummary[]> => {
+export const getCategories = cache(async (): Promise<CategorySummary[]> => {
   return requestCached<CategorySummary[]>('/categories')
 })
 
-const getStores = cache(async (): Promise<StoreSummary[]> => {
+export const getStores = cache(async (): Promise<StoreSummary[]> => {
   return requestCached<StoreSummary[]>('/stores')
 })
 
-const getProductTypes = cache(async (): Promise<ProductTypeSummary[]> => {
+export const getProductTypes = cache(async (): Promise<ProductTypeSummary[]> => {
   return requestCached<ProductTypeSummary[]>('/product-types')
 })
 
@@ -1420,6 +1433,14 @@ export function buildProductJsonLd(product: StorefrontProductDetail) {
             reviewCount,
           }
         : undefined,
+  }
+}
+
+export async function getStorefrontSeoSettings(): Promise<SeoSettings | null> {
+  try {
+    return await requestNoStore<SeoSettings>('/settings/seo')
+  } catch {
+    return null
   }
 }
 

@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { GetUser } from '../../common/decorators/get-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { TestSmsSettingsDto } from './dto/test-sms-settings.dto';
+import { UpdateSeoSettingsDto } from './dto/update-seo-settings.dto';
 import { UpdateStorefrontInfoPagesSettingsDto } from './dto/update-storefront-info-pages-settings.dto';
 import { UpdateSmsSettingsDto } from './dto/update-sms-settings.dto';
 import { SettingsService } from './settings.service';
@@ -45,6 +46,22 @@ export class SettingsController {
     @Body() dto: TestSmsSettingsDto,
   ) {
     return this.settingsService.sendTestSms(user, dto.phoneNumber);
+  }
+
+
+  @Get('seo')
+  @ApiOperation({ summary: 'دریافت تنظیمات سئوی storefront' })
+  getSeoSettings(@GetUser() user: { id: number; roles: string[] }) {
+    return this.settingsService.getSeoSettings(user);
+  }
+
+  @Patch('seo')
+  @ApiOperation({ summary: 'ذخیره تنظیمات سئوی storefront' })
+  updateSeoSettings(
+    @GetUser() user: { id: number; roles: string[] },
+    @Body() dto: UpdateSeoSettingsDto,
+  ) {
+    return this.settingsService.updateSeoSettings(user, { ...dto });
   }
 
   @Get('storefront-info-pages')

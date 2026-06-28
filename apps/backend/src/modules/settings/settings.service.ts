@@ -5,6 +5,7 @@ import { SmsProviderService } from './sms-provider.service';
 
 const SMS_IR_SETTING_KEY = 'sms_ir_config';
 const STOREFRONT_INFO_PAGES_SETTING_KEY = 'storefront_info_pages_config';
+const SEO_SETTINGS_KEY = 'seo_settings_config';
 
 type AuthenticatedUser = {
   id: number;
@@ -15,6 +16,30 @@ export type SmsIrSettings = {
   apiKey: string;
   templateId: string;
   lineNumber: string;
+};
+
+type SeoSettings = {
+  siteUrl: string;
+  siteName: string;
+  googleSearchConsoleVerification: string;
+  googleTagManagerId: string;
+  googleAnalyticsId: string;
+  robotsTxt: string;
+  sitemapEnabled: boolean;
+  sitemapChangeFrequency: 'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'never';
+  sitemapPriority: string;
+};
+
+const DEFAULT_SEO_SETTINGS: SeoSettings = {
+  siteUrl: 'https://golino.shop',
+  siteName: 'گلینو',
+  googleSearchConsoleVerification: '',
+  googleTagManagerId: '',
+  googleAnalyticsId: '',
+  robotsTxt: 'User-agent: *\nAllow: /\nSitemap: https://golino.shop/sitemap.xml',
+  sitemapEnabled: true,
+  sitemapChangeFrequency: 'weekly',
+  sitemapPriority: '0.7',
 };
 
 type StorefrontInfoPagesSettings = {
@@ -176,6 +201,41 @@ export class SettingsService {
     return this.readStorefrontInfoPagesSettings();
   }
 
+  async getSeoSettings(user: AuthenticatedUser) {
+    this.assertAdmin(user);
+    return this.readSeoSettings();
+  }
+
+  async getSeoSettingsPublic() {
+    return this.readSeoSettings();
+  }
+
+  async updateSeoSettings(user: AuthenticatedUser, input: Record<string, unknown>) {
+    this.assertAdmin(user);
+    const current = await this.readSeoSettings();
+    const nextValue = this.normalizeSeoSettings(input, current);
+
+    const persisted = await this.prisma.appSetting.upsert({
+      where: { key: SEO_SETTINGS_KEY },
+      update: {
+        value: nextValue as unknown as Prisma.JsonObject,
+        description: 'SEO configuration for storefront metadata, robots and sitemap',
+      },
+      create: {
+        key: SEO_SETTINGS_KEY,
+        value: nextValue as unknown as Prisma.JsonObject,
+        description: 'SEO configuration for storefront metadata, robots and sitemap',
+      },
+    });
+
+    return this.normalizeSeoSettings(
+      persisted.value && typeof persisted.value === 'object' && !Array.isArray(persisted.value)
+        ? (persisted.value as Record<string, unknown>)
+        : {},
+      DEFAULT_SEO_SETTINGS,
+    );
+  }
+
   async getStorefrontInfoPagesSettingsPublic() {
     return this.readStorefrontInfoPagesSettings();
   }
@@ -226,6 +286,52 @@ export class SettingsService {
       throw new BadRequestException('تنظیمات SMS.IR کامل نشده است');
     }
   }
+
+
+  private async readSeoSettings(): Promise<SeoSettings> {
+    const setting = await this.prisma.appSetting.findUnique({
+      where: { key: SEO_SETTINGS_KEY },
+    });
+
+    if (!setting?.value || typeof setting.value !== 'object' || Array.isArray(setting.value)) {
+      return DEFAULT_SEO_SETTINGS;
+    }
+
+    return this.normalizeSeoSettings(setting.value as Record<string, unknown>, DEFAULT_SEO_SETTINGS);
+  }
+
+  private normalizeSeoSettings(input: Record<string, unknown>, fallback: SeoSettings): SeoSettings {
+    return {
+      siteUrl: this.cleanUrl(input.siteUrl, fallback.siteUrl),
+      siteName: this.cleanPlainText(input.siteName, fallback.siteName),
+      googleSearchConsoleVerification: this.cleanPlainText(input.googleSearchConsoleVerification, fallback.googleSearchConsoleVerification),
+      googleTagManagerId: this.cleanPlainText(input.googleTagManagerId, fallback.googleTagManagerId),
+      googleAnalyticsId: this.cleanPlainText(input.googleAnalyticsId, fallback.googleAnalyticsId),
+      robotsTxt: this.cleanPlainText(input.robotsTxt, fallback.robotsTxt),
+      sitemapEnabled: this.readBoolean(input.sitemapEnabled, fallback.sitemapEnabled),
+      sitemapChangeFrequency: this.readSitemapChangeFrequency(input.sitemapChangeFrequency, fallback.sitemapChangeFrequency),
+      sitemapPriority: this.cleanPriority(input.sitemapPriority, fallback.sitemapPriority),
+    };
+  }
+
+  private cleanUrl(value: unknown, fallback = '') {
+    if (typeof value !== 'string') return fallback
+    const trimmed = value.trim()
+    return /^https?:\/\//i.test(trimmed) ? trimmed.replace(/\/$/, '') : fallback
+  }
+
+  private readSitemapChangeFrequency(value: unknown, fallback: SeoSettings['sitemapChangeFrequency']) {
+    return ['always', 'hourly', 'daily', 'weekly', 'monthly', 'yearly', 'never'].includes(String(value))
+      ? (value as SeoSettings['sitemapChangeFrequency'])
+      : fallback
+  }
+
+  private cleanPriority(value: unknown, fallback = '0.7') {
+    if (typeof value !== 'string') return fallback
+    const trimmed = value.trim()
+    return /^(0(\.\d+)?|1(\.0+)?)$/.test(trimmed) ? trimmed : fallback
+  }
+
 
   private async readSmsSettings(): Promise<SmsIrSettings | null> {
     const setting = await this.prisma.appSetting.findUnique({
