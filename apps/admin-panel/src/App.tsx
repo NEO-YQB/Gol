@@ -694,6 +694,10 @@ export default function App() {
     handleNavigate('paymentGatewayWorkspace')
   }
 
+  function handleOpenSeoSettingsWorkspace() {
+    handleNavigate('seoSettingsWorkspace')
+  }
+
   function handleBackToSettings() {
     handleNavigate('settings')
   }

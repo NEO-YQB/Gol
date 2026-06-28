@@ -1,5 +1,5 @@
 import { MetadataRoute } from 'next'
-import { getCategories, getStorefrontArticleCategories, getStorefrontLatestArticles, getStores, getStorefrontProductBySlug, getStorefrontSeoSettings, getProductTypes } from '../lib/storefront'
+import { getCategories, getStorefrontArticleCategories, getStorefrontLatestArticles, getStores, getStorefrontSeoSettings, getProductTypes } from '../lib/storefront'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const seo = await getStorefrontSeoSettings()

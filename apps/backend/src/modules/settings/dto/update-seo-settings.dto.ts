@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsBoolean, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class UpdateSeoSettingsDto {
   @ApiPropertyOptional()
@@ -45,7 +45,7 @@ export class UpdateSeoSettingsDto {
 
   @ApiPropertyOptional({ enum: ['always', 'hourly', 'daily', 'weekly', 'monthly', 'yearly', 'never'] })
   @IsOptional()
-  @IsEnum(['always', 'hourly', 'daily', 'weekly', 'monthly', 'yearly', 'never'])
+  @IsIn(['always', 'hourly', 'daily', 'weekly', 'monthly', 'yearly', 'never'])
   sitemapChangeFrequency?: 'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'never';
 
   @ApiPropertyOptional()
