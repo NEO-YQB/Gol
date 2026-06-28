@@ -1273,7 +1273,7 @@ export function buildBreadcrumbJsonLd(
       '@type': 'ListItem',
       position: index + 1,
       name: item.name,
-      item: item.path,
+      item: buildCanonicalUrl(item.path),
     })),
   }
 }

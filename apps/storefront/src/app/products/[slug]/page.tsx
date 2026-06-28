@@ -34,7 +34,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       'خرید گل',
       'گلینو',
     ].filter(Boolean),
-    type: 'article',
+    type: 'website',
   })
 }
 
