@@ -1,6 +1,23 @@
 import type { Metadata } from 'next'
 import { cache } from 'react'
 
+const SITE_BASE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  process.env.SITE_URL ||
+  'https://golino.shop'
+
+export function buildAbsoluteUrl(path: string) {
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path
+  }
+
+  return `${SITE_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`
+}
+
+export function buildCanonicalUrl(path: string) {
+  return buildAbsoluteUrl(path)
+}
+
 export type StorefrontSeo = {
   metaTitle?: string | null
   metaDescription?: string | null
@@ -1241,7 +1258,7 @@ export function buildRichMetadata({
     description,
     keywords,
     alternates: {
-      canonical: path,
+      canonical: buildCanonicalUrl(path),
     },
     robots: {
       index: indexable !== false,
@@ -1250,7 +1267,7 @@ export function buildRichMetadata({
     openGraph: {
       title,
       description,
-      url: path,
+      url: buildCanonicalUrl(path),
       type,
       images: resolvedImage ? [{ url: resolvedImage }] : undefined,
     },
@@ -1273,7 +1290,7 @@ export function buildBreadcrumbJsonLd(
       '@type': 'ListItem',
       position: index + 1,
       name: item.name,
-      item: item.path.startsWith('http') ? item.path : `https://golino.shop${item.path.startsWith('/') ? item.path : `/${item.path}`}`,
+      item: buildAbsoluteUrl(item.path),
     })),
   }
 }
@@ -1292,7 +1309,7 @@ export function buildCollectionPageJsonLd({
     '@type': 'CollectionPage',
     name: title,
     description,
-    url: path,
+    url: buildCanonicalUrl(path),
   }
 }
 
@@ -1305,7 +1322,7 @@ export function buildArticleJsonLd(article: PublicArticleDetail['article']) {
     image: article.ogImage ? [resolveAssetUrl(article.ogImage)] : article.coverImage ? [resolveAssetUrl(article.coverImage)] : undefined,
     datePublished: article.publishedAt || undefined,
     dateModified: article.updatedAt || undefined,
-    mainEntityOfPage: `/mag/${article.slug}`,
+    mainEntityOfPage: buildCanonicalUrl(`/mag/${article.slug}`),
     author: {
       '@type': 'Person',
       name: article.author.name,
@@ -1325,7 +1342,7 @@ export function buildStoreJsonLd(store: StoreSummary, productCount?: number) {
     name: store.name,
     description: store.description || undefined,
     image: store.logo ? [resolveAssetUrl(store.logo)] : undefined,
-    url: `/stores/${store.slug}`,
+    url: buildCanonicalUrl(`/stores/${store.slug}`),
     address: store.address || undefined,
     aggregateRating:
       ratingValue > 0 && reviewCount > 0
@@ -1387,7 +1404,7 @@ export function buildProductJsonLd(product: StorefrontProductDetail) {
       priceCurrency: 'IRR',
       price,
       availability: product.isPurchasable ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-      url: `/products/${product.slug}`,
+      url: buildCanonicalUrl(`/products/${product.slug}`),
       seller: product.store?.name
         ? {
             '@type': 'Organization',
