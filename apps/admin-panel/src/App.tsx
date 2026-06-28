@@ -302,6 +302,7 @@ function renderRoute(
     onBackToAccessControl: () => void
     onOpenSmsWorkspace: () => void
     onOpenStorefrontInfoPagesWorkspace: () => void
+    onOpenSeoSettingsWorkspace: () => void
     onOpenPushNotificationWorkspace: () => void
     onOpenPaymentGatewayWorkspace: () => void
     onBackToSettings: () => void
@@ -798,6 +799,7 @@ export default function App() {
         onBackToAccessControl: handleBackToAccessControl,
         onOpenSmsWorkspace: handleOpenSmsWorkspace,
         onOpenStorefrontInfoPagesWorkspace: handleOpenStorefrontInfoPagesWorkspace,
+        onOpenSeoSettingsWorkspace: handleOpenSeoSettingsWorkspace,
         onOpenPushNotificationWorkspace: handleOpenPushNotificationWorkspace,
         onOpenPaymentGatewayWorkspace: handleOpenPaymentGatewayWorkspace,
         onBackToSettings: handleBackToSettings,
