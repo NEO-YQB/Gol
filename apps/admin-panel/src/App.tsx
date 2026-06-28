@@ -342,7 +342,7 @@ function renderRoute(
     case 'pageBuilder':
       return <PageBuilderPage onCreatePage={options.onOpenPageBuilderWorkspaceForCreate} onEditPage={options.onOpenPageBuilderWorkspaceForEdit} session={session} />
     case 'settings':
-      return <SettingsPage onOpenPaymentGatewayWorkspace={options.onOpenPaymentGatewayWorkspace} onOpenSmsWorkspace={options.onOpenSmsWorkspace} onOpenStorefrontInfoPagesWorkspace={options.onOpenStorefrontInfoPagesWorkspace} />
+      return <SettingsPage onOpenPaymentGatewayWorkspace={options.onOpenPaymentGatewayWorkspace} onOpenSeoSettingsWorkspace={options.onOpenSeoSettingsWorkspace} onOpenSmsWorkspace={options.onOpenSmsWorkspace} onOpenStorefrontInfoPagesWorkspace={options.onOpenStorefrontInfoPagesWorkspace} />
     case 'smsSettingsWorkspace':
       return <SmsSettingsWorkspacePage onBack={options.onBackToSettings} session={session} />
     case 'storefrontInfoPagesWorkspace':
