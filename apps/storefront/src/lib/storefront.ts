@@ -1273,7 +1273,7 @@ export function buildBreadcrumbJsonLd(
       '@type': 'ListItem',
       position: index + 1,
       name: item.name,
-      item: buildCanonicalUrl(item.path),
+      item: item.path.startsWith('http') ? item.path : `https://golino.shop${item.path.startsWith('/') ? item.path : `/${item.path}`}`,
     })),
   }
 }
