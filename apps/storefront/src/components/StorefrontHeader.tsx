@@ -338,7 +338,7 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
               <span className="hidden md:inline">سبد خرید</span>
             </button>
             {openDesktopMenu === 'cart' ? (
-              <div className={`${storefrontStyles.headerDropdownPanel} left-0 right-auto w-[min(92vw,380px)]`}>
+              <div className={`${storefrontStyles.headerDropdownPanel} left-0 right-auto w-[calc(100vw-2rem)] max-w-[380px] sm:w-[min(92vw,380px)]`}>
                 <div className="grid gap-3">
                   <div className="flex items-center justify-between gap-3 px-1">
                     <strong className={`text-sm ${storefrontStyles.headerText}`}>سبد خرید شما</strong>
