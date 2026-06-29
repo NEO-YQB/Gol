@@ -117,6 +117,18 @@ export function StorefrontCartPage() {
     }
   }
 
+  useEffect(() => {
+    if (!cart?.items.length) return
+    pushToDataLayer({
+      event: 'view_cart',
+      ecommerce: {
+        currency: 'IRR',
+        value: calculateCartValue(cart.items.map((item) => ({ price: item.product.price, quantity: item.quantity }))),
+        items: cart.items.map((item) => toAnalyticsItem(item.product, item.quantity)),
+      },
+    })
+  }, [cart])
+
   if (loading) {
     return <section className="rounded-[32px] bg-white/75 px-6 py-12 text-center shadow-[0_14px_34px_rgba(52,36,17,0.06)]">در حال بارگذاری سبد خرید...</section>
   }
@@ -136,18 +148,6 @@ export function StorefrontCartPage() {
   }
 
   const hasItems = Boolean(cart?.items.length)
-
-  useEffect(() => {
-    if (!cart?.items.length) return
-    pushToDataLayer({
-      event: 'view_cart',
-      ecommerce: {
-        currency: 'IRR',
-        value: calculateCartValue(cart.items.map((item) => ({ price: item.product.price, quantity: item.quantity }))),
-        items: cart.items.map((item) => toAnalyticsItem(item.product, item.quantity)),
-      },
-    })
-  }, [cart])
 
   return (
     <div className="grid gap-6">
