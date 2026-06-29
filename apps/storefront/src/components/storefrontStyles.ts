@@ -2,7 +2,7 @@ export const storefrontStyles = {
   productCard:
     'group flex h-full w-full min-w-0 flex-col self-stretch rounded-[28px] border border-black/5 bg-white/85 p-4 shadow-[0_20px_50px_rgba(37,24,8,0.08)] backdrop-blur transition duration-300 hover:-translate-y-1 hover:shadow-[0_26px_60px_rgba(37,24,8,0.12)]',
   productImageWrap: 'mb-4 block overflow-hidden rounded-[24px] bg-[#f4eadc]',
-  productImage: 'h-56 w-full object-cover transition duration-500 group-hover:scale-[1.04]',
+  productImage: 'aspect-square h-auto w-full object-contain p-3 transition duration-500 group-hover:scale-[1.04] md:h-56 md:aspect-auto md:object-cover md:p-0',
   categoryCircle:
     'group flex min-w-[120px] flex-col items-center gap-4 text-center',
   categoryCircleMedia:
