@@ -39,6 +39,7 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
   const [activeImageUrl, setActiveImageUrl] = useState(allImages[0]?.url || product.mainImage)
   const activeImage = allImages.find((item) => item.url === activeImageUrl) || allImages[0]
   const [isAdding, setIsAdding] = useState(false)
+  const basePrice = typeof product.effectivePrice === 'number' ? product.effectivePrice : product.price
 
   useEffect(() => {
     pushToDataLayer({
@@ -50,7 +51,6 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
       },
     })
   }, [basePrice, product])
-  const basePrice = typeof product.effectivePrice === 'number' ? product.effectivePrice : product.price
   const discountPrice =
     typeof product.effectiveDiscountPrice === 'number' ? product.effectiveDiscountPrice : product.discountPrice
   const hasDiscount = typeof discountPrice === 'number' && discountPrice > 0 && discountPrice < basePrice
