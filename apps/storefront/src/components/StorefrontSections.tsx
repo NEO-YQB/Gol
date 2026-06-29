@@ -160,9 +160,11 @@ export function VendorCarouselSection({ block }: { block: { id: string; data: Re
         {title ? <h2 className="text-3xl font-black text-[#173126]">{title}</h2> : <div />}
         <StorefrontPill text={`${vendors.length} فروشگاه`} />
       </div>
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+      <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-3 md:mx-0 md:grid md:snap-none md:grid-cols-2 md:overflow-visible md:px-0 md:pb-0 xl:grid-cols-4">
         {vendors.map((vendor) => (
-          <VendorCard key={vendor.id} vendor={vendor} />
+          <div className="w-[82vw] max-w-[340px] shrink-0 snap-start md:w-auto md:max-w-none md:shrink" key={vendor.id}>
+            <VendorCard vendor={vendor} />
+          </div>
         ))}
       </div>
     </section>
