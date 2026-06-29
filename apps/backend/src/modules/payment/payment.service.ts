@@ -750,7 +750,7 @@ export class PaymentService {
         ]);
 
         if (response && gatewayConfig.returnUrl) {
-          const target = new URL(gatewayConfig.returnUrl);
+          const target = this.buildPaymentReturnUrl(gatewayConfig.returnUrl);
           target.searchParams.set('status', verificationResult.success ? 'PAID' : 'FAILED');
           target.searchParams.set('authority', authority);
           target.searchParams.set('orderId', String(refreshedPayment.orderId));
@@ -784,7 +784,7 @@ export class PaymentService {
     }
 
     if (response && gatewayConfig.returnUrl) {
-      const target = new URL(gatewayConfig.returnUrl);
+      const target = this.buildPaymentReturnUrl(gatewayConfig.returnUrl);
       target.searchParams.set('status', 'FAILED');
       if (authority) target.searchParams.set('authority', authority);
       if (payment?.orderId) target.searchParams.set('orderId', String(payment.orderId));
@@ -800,6 +800,28 @@ export class PaymentService {
         ? 'callback دریافت و به payment متناظر متصل شد'
         : 'callback دریافت شد اما payment متناظر به صورت خودکار پیدا نشد',
     };
+  }
+
+
+  private buildPaymentReturnUrl(configuredReturnUrl?: string | null) {
+    const storefrontBaseUrl =
+      process.env.STOREFRONT_SITE_URL ||
+      process.env.FRONTEND_SITE_URL ||
+      process.env.SITE_URL ||
+      'https://golino.shop';
+
+    const fallback = new URL('/payment/thank-you', storefrontBaseUrl);
+    if (!configuredReturnUrl) return fallback;
+
+    try {
+      const target = new URL(configuredReturnUrl);
+      if (target.pathname === '/v1/payments/thank-you' || target.pathname === '/payments/thank-you') {
+        return fallback;
+      }
+      return target;
+    } catch {
+      return fallback;
+    }
   }
 
   private async getOrderForPayment(orderId: number) {
