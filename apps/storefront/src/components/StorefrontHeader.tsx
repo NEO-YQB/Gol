@@ -338,7 +338,7 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
               <span className="hidden md:inline">سبد خرید</span>
             </button>
             {openDesktopMenu === 'cart' ? (
-              <div className={`${storefrontStyles.headerDropdownPanel} fixed left-1/2 right-auto top-[88px] w-[calc(100vw-2rem)] max-w-[380px] -translate-x-1/2 md:absolute md:left-0 md:right-auto md:top-[calc(100%+10px)] md:w-[min(92vw,380px)] md:max-w-[380px] md:translate-x-0`}>
+              <div className={`${storefrontStyles.headerDropdownPanel} !fixed !left-[50vw] !right-auto top-[88px] w-[calc(100vw-2rem)] max-w-[380px] -translate-x-1/2 md:!absolute md:!left-0 md:!right-auto md:top-[calc(100%+10px)] md:w-[min(92vw,380px)] md:max-w-[380px] md:translate-x-0`}>
                 <div className="grid gap-3">
                   <div className="flex items-center justify-between gap-3 px-1">
                     <strong className={`text-sm ${storefrontStyles.headerText}`}>سبد خرید شما</strong>
