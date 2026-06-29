@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { getOrderDetail, readStoredToken, type StorefrontOrderDetail } from '../lib/storefrontAuth'
+import { formatPurchasePayload, hasPurchaseBeenSent, markPurchaseAsSent, pushToDataLayer } from '../lib/analytics'
 import { translateOrderStatus, translatePaymentMethod, translatePaymentStatus } from '../lib/storefrontOrderLabels'
 import { storefrontShared } from './storefrontShared'
 
@@ -30,7 +31,16 @@ export function StorefrontPaymentThankYouPage() {
 
     getOrderDetail(token, orderId)
       .then((payload) => {
-        if (!cancelled) setOrder(payload)
+        if (!cancelled) {
+          setOrder(payload)
+          if (!hasPurchaseBeenSent(String(payload.id))) {
+            pushToDataLayer({
+              event: 'purchase',
+              ecommerce: formatPurchasePayload(payload),
+            })
+            markPurchaseAsSent(String(payload.id))
+          }
+        }
       })
       .catch((error: Error) => {
         if (!cancelled) setRequestError(error.message || 'دریافت اطلاعات سفارش ممکن نشد')

@@ -228,6 +228,18 @@ export function StorefrontCheckoutPage() {
   const hasItems = Boolean(cart?.items.length)
   const availableDeliveryTypes = preview?.delivery?.availableDeliveryTypes || ['STANDARD']
   const deliveryWindows = preview?.delivery?.deliveryWindows || []
+  useEffect(() => {
+    if (!cart?.items.length) return
+    pushToDataLayer({
+      event: 'begin_checkout',
+      ecommerce: {
+        currency: 'IRR',
+        value: calculateCartValue(cart.items.map((item) => ({ price: item.product.price, quantity: item.quantity }))),
+        items: cart.items.map((item) => toAnalyticsItem(item.product, item.quantity)),
+      },
+    })
+  }, [cart])
+
   const canSubmit =
     Boolean(hasItems) &&
     Boolean(selectedAddressId) &&

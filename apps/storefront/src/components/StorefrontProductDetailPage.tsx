@@ -2,9 +2,10 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { StorefrontProductDetail } from '../lib/storefront'
 import { resolveAssetUrl } from '../lib/storefront'
+import { pushToDataLayer, toAnalyticsItem } from '../lib/analytics'
 import { addCartItem, getCart, readStoredToken } from '../lib/storefrontAuth'
 import { storefrontCatalog } from './storefrontCatalog'
 import { emitStorefrontToast } from './storefrontToast'
@@ -38,6 +39,17 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
   const [activeImageUrl, setActiveImageUrl] = useState(allImages[0]?.url || product.mainImage)
   const activeImage = allImages.find((item) => item.url === activeImageUrl) || allImages[0]
   const [isAdding, setIsAdding] = useState(false)
+
+  useEffect(() => {
+    pushToDataLayer({
+      event: 'view_item',
+      ecommerce: {
+        currency: 'IRR',
+        value: basePrice,
+        items: [toAnalyticsItem(product)],
+      },
+    })
+  }, [basePrice, product])
   const basePrice = typeof product.effectivePrice === 'number' ? product.effectivePrice : product.price
   const discountPrice =
     typeof product.effectiveDiscountPrice === 'number' ? product.effectiveDiscountPrice : product.discountPrice
@@ -99,6 +111,14 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
                     }
 
                     await addCartItem(token, { productId: product.id, quantity: 1 })
+                    pushToDataLayer({
+                      event: 'add_to_cart',
+                      ecommerce: {
+                        currency: 'IRR',
+                        value: basePrice,
+                        items: [toAnalyticsItem(product)],
+                      },
+                    })
                     router.push('/cart')
                   } catch (error) {
                     emitStorefrontToast({ message: error instanceof Error ? error.message : 'افزودن به سبد خرید با خطا مواجه شد.', duration: 8000 })

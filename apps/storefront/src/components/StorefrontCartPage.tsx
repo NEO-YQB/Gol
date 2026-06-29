@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { resolveAssetUrl } from '../lib/storefront'
+import { calculateCartValue, pushToDataLayer, toAnalyticsItem } from '../lib/analytics'
 import {
   clearCart,
   getCart,
@@ -135,6 +136,18 @@ export function StorefrontCartPage() {
   }
 
   const hasItems = Boolean(cart?.items.length)
+
+  useEffect(() => {
+    if (!cart?.items.length) return
+    pushToDataLayer({
+      event: 'view_cart',
+      ecommerce: {
+        currency: 'IRR',
+        value: calculateCartValue(cart.items.map((item) => ({ price: item.product.price, quantity: item.quantity }))),
+        items: cart.items.map((item) => toAnalyticsItem(item.product, item.quantity)),
+      },
+    })
+  }, [cart])
 
   return (
     <div className="grid gap-6">
