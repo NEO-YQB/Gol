@@ -149,6 +149,8 @@ export type ProductSummary = {
     name: string
     slug: string
   } | null
+  createdAt?: string | null
+  updatedAt?: string | null
 }
 
 export type ProductTypeSummary = {
@@ -242,6 +244,8 @@ export type ArticleSummary = {
   excerpt?: string | null
   coverImage?: string | null
   publishedAt?: string | null
+  updatedAt?: string | null
+  createdAt?: string | null
   readingTimeMinutes?: number | null
   category?: {
     id: number
@@ -746,6 +750,24 @@ async function getProductsNoStoreWithMeta(query: ProductQuery): Promise<{
     minPrice,
     maxPrice,
   }
+}
+
+
+export async function getAllStorefrontProductsForSitemap(limit = 100): Promise<ProductSummary[]> {
+  const firstPage = await getProductsNoStoreWithMeta({ page: 1, limit, sortBy: 'newest' })
+  const products = [...firstPage.products]
+
+  for (let page = 2; page <= firstPage.lastPage; page += 1) {
+    const nextPage = await getProductsNoStoreWithMeta({ page, limit, sortBy: 'newest' })
+    products.push(...nextPage.products)
+  }
+
+  const seen = new Set<number>()
+  return products.filter((product) => {
+    if (seen.has(product.id)) return false
+    seen.add(product.id)
+    return true
+  })
 }
 
 export async function getStorefrontProductBySlug(slug: string): Promise<StorefrontProductDetail | null> {
