@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
+import { JsonLd } from '../components/JsonLd'
 import { StorefrontPageView } from '../components/StorefrontPageView'
-import { getEnrichedStorefrontPage, getStorefrontMetadata } from '../lib/storefront'
+import { buildOrganizationJsonLd, buildWebSiteJsonLd, getEnrichedStorefrontPage, getStorefrontMetadata } from '../lib/storefront'
 
 export async function generateMetadata() {
   return getStorefrontMetadata()
@@ -13,5 +14,10 @@ export default async function HomePage() {
     notFound()
   }
 
-  return <StorefrontPageView page={page} />
+  return (
+    <>
+      <JsonLd data={[buildOrganizationJsonLd(), buildWebSiteJsonLd()]} />
+      <StorefrontPageView page={page} />
+    </>
+  )
 }

@@ -1,6 +1,7 @@
+import { JsonLd } from '../../components/JsonLd'
 import { StorefrontCatalogPage } from '../../components/StorefrontCatalogPage'
 import { StorefrontShell } from '../../components/StorefrontShell'
-import { buildArchiveMetadata, buildBreadcrumbJsonLd, buildCollectionPageJsonLd, getStorefrontCatalogData } from '../../lib/storefront'
+import { buildArchiveMetadata, buildBreadcrumbJsonLd, buildCollectionPageJsonLd, buildItemListJsonLd, getStorefrontCatalogData } from '../../lib/storefront'
 
 export async function generateMetadata() {
   return buildArchiveMetadata({
@@ -44,17 +45,11 @@ export default async function ShopArchivePage({
     description,
     path: '/shop',
   })
+  const itemListJsonLd = buildItemListJsonLd(catalog.products, '/shop')
 
   return (
     <StorefrontShell>
-      <script
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
-        type="application/ld+json"
-      />
-      <script
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionJsonLd) }}
-        type="application/ld+json"
-      />
+      <JsonLd data={[breadcrumbJsonLd, collectionJsonLd, itemListJsonLd]} />
       <StorefrontCatalogPage
         activeCategorySlug={typeof query.category === 'string' ? query.category : ''}
         activeProductTypeSlug={typeof query.type === 'string' ? query.type : ''}

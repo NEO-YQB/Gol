@@ -1348,6 +1348,58 @@ export function buildCollectionPageJsonLd({
   }
 }
 
+export function buildOrganizationJsonLd() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'گلینو',
+    url: buildCanonicalUrl('/'),
+    logo: buildCanonicalUrl('/logo.png'),
+  }
+}
+
+export function buildWebSiteJsonLd() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'گلینو',
+    url: buildCanonicalUrl('/'),
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: `${buildCanonicalUrl('/shop')}?search={search_term_string}`,
+      'query-input': 'required name=search_term_string',
+    },
+  }
+}
+
+export function buildItemListJsonLd(items: ProductSummary[], path: string) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    url: buildCanonicalUrl(path),
+    numberOfItems: items.length,
+    itemListElement: items.map((product, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      url: buildCanonicalUrl(`/products/${product.slug}`),
+      item: {
+        '@type': 'Product',
+        name: product.name,
+        image: product.mainImage ? resolveAssetUrl(product.mainImage) : undefined,
+        url: buildCanonicalUrl(`/products/${product.slug}`),
+        offers: {
+          '@type': 'Offer',
+          priceCurrency: 'IRR',
+          price: typeof product.effectiveDiscountPrice === 'number' && product.effectiveDiscountPrice > 0
+            ? product.effectiveDiscountPrice
+            : product.effectivePrice ?? product.discountPrice ?? product.price,
+          availability: product.isPurchasable === false ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock',
+        },
+      },
+    })),
+  }
+}
+
 export function buildArticleJsonLd(article: PublicArticleDetail['article']) {
   return {
     '@context': 'https://schema.org',
