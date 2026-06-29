@@ -1,4 +1,7 @@
+'use client'
+
 import Link from 'next/link'
+import { useState } from 'react'
 import { ExpandableTextBlock } from './ExpandableTextBlock'
 import { NearestSortButton } from './NearestSortButton'
 import { ProductCard } from './storefrontBlocks'
@@ -80,6 +83,7 @@ export function StorefrontCatalogPage({
   selectedMaxPrice?: number
   activeElementIds?: number[]
 }) {
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const flatCategories = flattenCategories(categories)
   const activeCategory = flatCategories.find((category) => category.slug === activeCategorySlug)
   const activeProductType = productTypes.find((type) => type.slug === activeProductTypeSlug)
@@ -151,8 +155,88 @@ export function StorefrontCatalogPage({
         </div>
       </section>
 
+      <div className="lg:hidden">
+        <button
+          className="flex w-full items-center justify-between rounded-[24px] bg-[#173126] px-5 py-4 text-sm font-black text-white shadow-[0_16px_34px_rgba(23,49,38,0.18)] transition active:scale-[0.99]"
+          onClick={() => setMobileFiltersOpen((current) => !current)}
+          type="button"
+        >
+          <span>فیلترها</span>
+          <span className={`transition duration-300 ${mobileFiltersOpen ? 'rotate-180' : ''}`} aria-hidden="true">⌄</span>
+        </button>
+        <div className={`grid transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${mobileFiltersOpen ? 'mt-4 grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+          <div className="overflow-hidden">
+            <aside className={`${storefrontCatalog.sidebar} origin-top transition duration-500 ${mobileFiltersOpen ? 'translate-y-0 scale-100' : '-translate-y-3 scale-[0.98]'}`}>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <strong className="text-lg font-black text-[#173126]">انتخاب فیلترها</strong>
+                <button className={storefrontCatalog.chip} onClick={() => setMobileFiltersOpen(false)} type="button">بستن</button>
+              </div>
+              <div className="grid gap-5">
+                <section>
+                  <h2 className="text-lg font-black text-[#173126]">جستجو و مرتب‌سازی</h2>
+                  <form action={basePath} className="mt-4 grid gap-3">
+                    <input className={storefrontCatalog.input} defaultValue={searchValue || ''} name="search" placeholder="جستجو در نام محصول" />
+                    <select className={storefrontCatalog.select} defaultValue={activeSort} name="sort">
+                      <option value="newest">جدیدترین</option>
+                      <option value="most_sold">پرفروش‌ترین</option>
+                      <option value="instant_delivery">ارسال فوری</option>
+                      <option value="nearest">نزدیک‌ترین به من</option>
+                    </select>
+                    {activeCategorySlug ? <input name="category" type="hidden" value={activeCategorySlug} /> : null}
+                    {activeProductTypeSlug ? <input name="type" type="hidden" value={activeProductTypeSlug} /> : null}
+                    {selectedElementIds.length ? <input name="elementIds" type="hidden" value={selectedElementIds.join(',')} /> : null}
+                    <button className="rounded-full bg-[#173126] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#29513f]" type="submit">اعمال فیلتر</button>
+                    <NearestSortButton />
+                  </form>
+                </section>
+                <section>
+                  <div className="flex items-center justify-between gap-3">
+                    <h2 className="text-lg font-black text-[#173126]">فیلتر قیمت</h2>
+                    {typeof selectedMinPrice === 'number' || typeof selectedMaxPrice === 'number' ? <Link className={storefrontCatalog.chip} href={buildHref({ minPrice: null, maxPrice: null, page: 1 })}>حذف</Link> : null}
+                  </div>
+                  <form action={basePath} className="mt-4 grid gap-3">
+                    <input className={storefrontCatalog.input} defaultValue={typeof selectedMinPrice === 'number' ? String(selectedMinPrice) : ''} max={typeof maxPrice === 'number' ? maxPrice : undefined} min={typeof minPrice === 'number' ? minPrice : undefined} name="minPrice" placeholder={typeof minPrice === 'number' ? `از ${formatMoney(minPrice)}` : 'حداقل قیمت'} type="number" />
+                    <input className={storefrontCatalog.input} defaultValue={typeof selectedMaxPrice === 'number' ? String(selectedMaxPrice) : ''} max={typeof maxPrice === 'number' ? maxPrice : undefined} min={typeof minPrice === 'number' ? minPrice : undefined} name="maxPrice" placeholder={typeof maxPrice === 'number' ? `تا ${formatMoney(maxPrice)}` : 'حداکثر قیمت'} type="number" />
+                    {activeCategorySlug ? <input name="category" type="hidden" value={activeCategorySlug} /> : null}
+                    {activeProductTypeSlug ? <input name="type" type="hidden" value={activeProductTypeSlug} /> : null}
+                    {searchValue ? <input name="search" type="hidden" value={searchValue} /> : null}
+                    {activeSort !== 'newest' ? <input name="sort" type="hidden" value={activeSort} /> : null}
+                    {selectedElementIds.length ? <input name="elementIds" type="hidden" value={selectedElementIds.join(',')} /> : null}
+                    <button className="rounded-full border border-[#1f6a52]/12 bg-white px-4 py-3 text-sm font-bold text-[#173126] transition hover:bg-[#f8f2ea]" type="submit">اعمال بازه قیمت</button>
+                  </form>
+                </section>
+                {groupedElements.map((group) => (
+                  <section key={group.type}>
+                    <h2 className="text-lg font-black text-[#173126]">{group.label}</h2>
+                    <div className="mt-4 grid gap-2">
+                      {group.items.map((element) => {
+                        const isActive = selectedElementIds.includes(element.id)
+                        const nextElementIds = isActive ? selectedElementIds.filter((item) => item !== element.id) : [...selectedElementIds, element.id]
+                        return <Link className={`rounded-[18px] px-4 py-3 text-sm transition ${isActive ? 'bg-[#173126] font-bold text-white' : 'bg-white/72 text-[#173126] hover:bg-white'}`} href={buildHref({ elementIds: nextElementIds, page: 1 })} key={element.id}>{element.name}</Link>
+                      })}
+                    </div>
+                  </section>
+                ))}
+                <section>
+                  <div className="flex items-center justify-between gap-3"><h2 className="text-lg font-black text-[#173126]">دسته‌بندی‌ها</h2><Link className={storefrontCatalog.chip} href={buildHref({ categorySlug: '', page: 1 })}>همه</Link></div>
+                  <div className="mt-4 grid gap-2">
+                    {flatCategories.map((category) => <Link className={`rounded-[18px] px-4 py-3 text-sm transition ${activeCategorySlug === category.slug ? 'bg-[#173126] font-bold text-white' : 'bg-white/72 text-[#173126] hover:bg-white'}`} href={buildHref({ categorySlug: category.slug, page: 1 })} key={category.id}><span style={{ paddingInlineStart: `${category.depth * 12}px` }}>{category.name}</span></Link>)}
+                  </div>
+                </section>
+                <section>
+                  <div className="flex items-center justify-between gap-3"><h2 className="text-lg font-black text-[#173126]">نوع محصول</h2><Link className={storefrontCatalog.chip} href={buildHref({ productTypeSlug: '', page: 1 })}>همه</Link></div>
+                  <div className="mt-4 grid gap-2">
+                    {productTypes.map((type) => <Link className={`rounded-[18px] px-4 py-3 text-sm transition ${activeProductTypeSlug === type.slug ? 'bg-[#173126] font-bold text-white' : 'bg-white/72 text-[#173126] hover:bg-white'}`} href={buildHref({ productTypeSlug: type.slug, page: 1 })} key={type.id}>{type.name}</Link>)}
+                  </div>
+                </section>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </div>
+
       <div className={storefrontCatalog.shell}>
-        <aside className={storefrontCatalog.sidebar}>
+        <aside className={`${storefrontCatalog.sidebar} hidden lg:block`}>
           <div className="grid gap-5">
             <section>
               <h2 className="text-lg font-black text-[#173126]">جستجو و مرتب‌سازی</h2>
