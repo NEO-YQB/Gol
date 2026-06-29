@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { calculateCartValue, pushToDataLayer, toAnalyticsItem } from '../lib/analytics'
 import {
   getAddresses,
   getCart,
