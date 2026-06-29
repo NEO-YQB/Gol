@@ -132,7 +132,7 @@ export function EditorialSection({ block }: { block: { id: string; data: Record<
       <div className={`${imageOnLeft ? 'md:order-1' : 'md:order-2'} overflow-hidden bg-[#e9dccb]`}>
         <img
           alt={String(block.data.title ?? 'Editorial block')}
-          className="h-[240px] w-full object-cover md:h-full md:min-h-[260px]"
+          className="h-[240px] w-full object-cover object-top md:h-full md:min-h-[260px] md:object-center"
           src={resolveAssetUrl(String(block.data.imageUrl ?? ''))}
         />
       </div>
