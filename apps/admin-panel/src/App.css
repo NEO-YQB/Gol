@@ -1080,7 +1080,7 @@
 
 .support-toolbar {
   display: grid;
-  gap: 16px;
+  gap: 10px;
 }
 
 .support-search {
@@ -1090,12 +1090,12 @@
 .support-filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
 }
 
 .support-filter-chip {
-  min-height: 38px;
-  padding: 0 14px;
+  min-height: 34px;
+  padding: 0 12px;
   border-radius: 999px;
   border: 1px solid var(--fm-border-soft);
   background: rgba(255, 253, 248, 0.82);
@@ -1108,24 +1108,24 @@
   border-color: var(--fm-brand-primary);
 }
 
-.support-table-card {
+.support-board-card {
   display: grid;
-  gap: 16px;
+  gap: 10px;
 }
 
 .support-selection-list {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .support-selection-item {
   border: 1px solid var(--fm-border-soft);
   background: rgba(255, 253, 248, 0.86);
-  border-radius: 18px;
-  padding: 14px 16px;
+  border-radius: 16px;
+  padding: 12px;
   text-align: right;
   display: grid;
-  gap: 4px;
+  gap: 3px;
 }
 
 .support-selection-item strong {
@@ -1144,17 +1144,17 @@
 
 .support-detail-grid {
   display: grid;
-  gap: 12px;
+  gap: 8px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .support-detail-item {
   border: 1px solid var(--fm-border-soft);
-  border-radius: 18px;
-  padding: 16px;
+  border-radius: 16px;
+  padding: 12px;
   background: rgba(255, 253, 248, 0.86);
   display: grid;
-  gap: 8px;
+  gap: 4px;
 }
 
 .support-detail-item span {
@@ -1183,7 +1183,7 @@
 .support-workspace-form-grid,
 .support-audit-list {
   display: grid;
-  gap: 16px;
+  gap: 10px;
 }
 
 .support-workspace-topbar {
@@ -1205,8 +1205,8 @@
 .support-audit-item,
 .support-workspace-toggle {
   border: 1px solid var(--fm-border-soft);
-  border-radius: 18px;
-  padding: 16px;
+  border-radius: 16px;
+  padding: 12px;
   background: rgba(255, 253, 248, 0.86);
 }
 
@@ -1224,21 +1224,15 @@
 .support-workspace-lane-card small,
 .support-brief-item small {
   display: block;
-  margin-top: 8px;
+  margin-top: 5px;
   color: var(--fm-text-secondary);
-  line-height: 1.8;
+  line-height: 1.6;
 }
 
 .support-brief-item strong,
 .support-audit-item strong,
 .support-workspace-lane-card strong {
   color: var(--fm-text-primary);
-}
-
-.support-workspace-lane-card p {
-  margin: 10px 0 0;
-  color: var(--fm-text-secondary);
-  line-height: 1.9;
 }
 
 .support-workspace-toggle {
@@ -2926,22 +2920,16 @@
 
 .support-decision-strip {
   display: grid;
-  gap: 8px;
-  padding: 14px 16px;
-  border-radius: 18px;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 16px;
   border: 1px solid var(--fm-border-soft);
   background: rgba(255, 252, 246, 0.82);
 }
 
 .support-decision-strip strong {
   color: var(--fm-text-primary);
-  line-height: 1.8;
-}
-
-.support-decision-strip p {
-  margin: 0;
-  color: var(--fm-text-secondary);
-  line-height: 1.9;
+  line-height: 1.6;
 }
 
 

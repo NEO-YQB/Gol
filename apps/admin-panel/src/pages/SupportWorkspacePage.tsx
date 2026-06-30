@@ -52,7 +52,26 @@ function getSupportStatusLabel(status: string) {
     case 'CANCELLED':
       return 'لغوشده'
     default:
-      return status || 'نامشخص'
+      return status && status !== 'UNKNOWN' ? status : 'نامشخص'
+  }
+}
+
+function getSupportReasonLabel(reason: string) {
+  switch (reason) {
+    case 'DAMAGED_FLOWERS':
+      return 'آسیب‌دیدگی گل‌ها'
+    case 'MISMATCHED_PRODUCT':
+      return 'مغایرت محصول'
+    case 'LATE_DELIVERY':
+      return 'تاخیر در تحویل'
+    case 'INCOMPLETE_OR_WRONG_ORDER':
+      return 'سفارش ناقص یا اشتباه'
+    case 'DELIVERY_EXPERIENCE':
+      return 'مشکل تجربه تحویل'
+    case 'OTHER':
+      return 'سایر موارد'
+    default:
+      return reason && reason !== 'UNKNOWN' ? reason : 'نامشخص'
   }
 }
 
@@ -71,7 +90,92 @@ function getFinanceOutcomeLabel(outcome: string) {
     case 'EXTEND_HOLD':
       return 'تمدید نگه‌داری'
     default:
-      return outcome || 'نامشخص'
+      return outcome && outcome !== 'UNKNOWN' && outcome !== '—' ? outcome : 'ثبت نشده'
+  }
+}
+
+function getOrderStatusLabel(status: string) {
+  switch (status) {
+    case 'PENDING':
+      return 'در انتظار تایید'
+    case 'PAID':
+      return 'پرداخت شده'
+    case 'ACCEPTED':
+      return 'تایید شده'
+    case 'PROCESSING':
+      return 'در حال آماده‌سازی'
+    case 'SHIPPED':
+      return 'ارسال شده'
+    case 'DELIVERED':
+      return 'تحویل شده'
+    case 'REJECTED_BY_VENDOR':
+      return 'رد شده توسط فروشنده'
+    case 'CANCELLED':
+      return 'لغو شده'
+    case 'CANCELLED_BY_ADMIN':
+      return 'لغو شده توسط ادمین'
+    case 'CANCELLED_BY_CUSTOMER':
+      return 'لغو شده توسط مشتری'
+    default:
+      return status && status !== 'UNKNOWN' ? status : 'نامشخص'
+  }
+}
+
+function getPaymentStatusLabel(status: string) {
+  switch (status) {
+    case 'PENDING':
+      return 'در انتظار پرداخت'
+    case 'PAID':
+      return 'پرداخت شده'
+    case 'FAILED':
+      return 'ناموفق'
+    case 'EXPIRED':
+      return 'منقضی شده'
+    case 'REFUNDED':
+      return 'بازگشت کامل وجه'
+    case 'PARTIALLY_REFUNDED':
+      return 'بازگشت بخشی از وجه'
+    default:
+      return status && status !== 'UNKNOWN' ? status : 'نامشخص'
+  }
+}
+
+function getSettlementStatusLabel(status: string) {
+  switch (status) {
+    case 'PENDING':
+      return 'در انتظار نگه‌داری'
+    case 'ON_HOLD':
+      return 'در نگه‌داری'
+    case 'RELEASED':
+      return 'آزاد شده'
+    case 'REVERSED':
+      return 'برگشت خورده'
+    default:
+      return status && status !== 'UNKNOWN' ? status : 'نامشخص'
+  }
+}
+
+function getFlagLabel(flag: string) {
+  switch (flag) {
+    case 'FOLLOW_UP_REQUIRED':
+      return 'نیازمند پیگیری'
+    case 'FINANCE_REVIEW_PENDING':
+      return 'در انتظار بررسی مالی'
+    default:
+      return flag || 'نامشخص'
+  }
+}
+
+function getEventTypeLabel(eventType: string) {
+  switch (eventType) {
+    case 'SUPPORT_TICKET_CREATED':
+      return 'ایجاد تیکت'
+    case 'SUPPORT_TICKET_STATUS_CHANGED':
+      return 'تغییر وضعیت'
+    case 'SUPPORT_FINANCE_DECISION_APPLIED':
+      return 'تصمیم مالی'
+    default:
+      return eventType || 'رخداد'
   }
 }
 
@@ -85,6 +189,8 @@ function getActorLabel(value: string) {
       return 'مشتری'
     case 'VENDOR':
       return 'فروشنده'
+    case 'FINANCE':
+      return 'مالی'
     default:
       return value || 'نامشخص'
   }
@@ -132,22 +238,22 @@ function getRecommendedSupportAction(options: {
   canSubmitFinance: boolean
 }) {
   if (options.flagsCount > 0) {
-    return 'این تیکت نشانه های حساس دارد؛ قبل از هر چیز summary و ردپای رخدادها را مرور کن.'
+    return 'نیازمند پیگیری'
   }
 
   if (options.status === 'ESCALATED_TO_FINANCE' && options.canSubmitFinance) {
-    return 'تیکت به مالی ارجاع شده و حالا باید نتیجه مالی روشن و ثبت شود.'
+    return 'تصمیم مالی لازم است'
   }
 
   if ((options.status === 'OPEN' || options.status === 'IN_REVIEW') && options.canChangeStatus) {
-    return 'اول وضعیت واقعی تیکت را با روند رسیدگی هماهنگ کن.'
+    return 'وضعیت را تعیین کن'
   }
 
   if (options.notesCount === 0 && options.canWriteNote) {
-    return 'برای اینکه روند رسیدگی گم نشود، یک یادداشت روشن ثبت کن.'
+    return 'یادداشت ثبت کن'
   }
 
-  return 'این تیکت در وضعیت پایدارتری قرار دارد و فعلا فقط نیاز به مرور یا پیگیری مرحله بعدی دارد.'
+  return 'آماده پیگیری'
 }
 
 function getFinanceTone(outcome: string) {
@@ -259,33 +365,29 @@ export function SupportWorkspacePage({
     {
       label: 'وضعیت تیکت',
       value: getSupportStatusLabel(status),
-      delta: readText(detail ?? ticket ?? {}, ['reason'], '—'),
-      detail: 'جایگاه فعلی این تیکت در روند رسیدگی',
-      hint: 'اگر وضعیت با واقعیت هماهنگ نیست، از بخش تغییر وضعیت آن را اصلاح کن.',
+      delta: getSupportReasonLabel(readText(detail ?? ticket ?? {}, ['reason'], 'UNKNOWN')),
+      detail: '',
       tone: getStatusTone(status),
     },
     {
       label: 'سفارش',
       value: readText(order, ['id'], '—'),
-      delta: readText(order, ['paymentStatus'], '—'),
-      detail: 'خلاصه سفارش و وضعیت پرداخت مرتبط',
-      hint: 'قبل از هر تصمیم مالی، این بخش را با وضعیت واقعی سفارش تطبیق بده.',
+      delta: getPaymentStatusLabel(readText(order, ['paymentStatus'], 'UNKNOWN')),
+      detail: '',
       tone: 'primary' as const,
     },
     {
       label: 'خروجی مالی',
       value: getFinanceOutcomeLabel(financeOutcome),
       delta: formatPersianNumber(readText(detail ?? {}, ['financeAmount'], '—')),
-      detail: 'آخرین نتیجه مالی ثبت‌شده برای این تیکت',
-      hint: 'اگر هنوز تصمیمی ثبت نشده باشد، این بخش خالی یا بدون نتیجه می‌ماند.',
+      detail: '',
       tone: getFinanceTone(financeOutcome),
     },
     {
       label: 'یادداشت‌ها',
       value: formatPersianNumber(notes.length),
       delta: `${formatPersianNumber(auditTrail.length)} رخداد ثبت‌شده`,
-      detail: 'حجم ردپای عملیاتی این تیکت',
-      hint: 'هرچه این عدد بیشتر باشد، برای تصمیم نهایی بهتر است یادداشت‌ها و رخدادها را مرور کنی.',
+      detail: '',
       tone: 'warning' as const,
     },
   ]
@@ -293,20 +395,17 @@ export function SupportWorkspacePage({
   const laneCards = [
     {
       key: 'status' as const,
-      title: 'مسیر وضعیت',
-      description: 'برای تغییر وضعیت و ثبت توضیح رسیدگی.',
+      title: 'وضعیت',
       detail: getSupportStatusLabel(status),
     },
     {
       key: 'finance' as const,
-      title: 'مسیر مالی',
-      description: 'برای ثبت نتیجه مالی و مبلغ مرتبط.',
+      title: 'مالی',
       detail: getFinanceOutcomeLabel(financeOutcome),
     },
     {
       key: 'notes' as const,
-      title: 'مسیر یادداشت',
-      description: 'برای ثبت توضیح داخلی یا قابل‌نمایش.',
+      title: 'یادداشت',
       detail: `${formatPersianNumber(notes.length)} یادداشت`,
     },
   ]
@@ -317,7 +416,7 @@ export function SupportWorkspacePage({
     id: readText(item, ['id'], String(index + 1)),
     title: readText(item, ['message'], 'یادداشت پشتیبانی'),
     meta: `${getActorLabel(readText(item, ['actorType'], '—'))} / ${formatJalaliDate(item.createdAt)}`,
-    description: readText(item, ['isInternal'], '') === 'true' ? 'فقط برای همکاران دیده می‌شود' : 'برای نمایش در روند رسیدگی ثبت شده است',
+    description: readText(item, ['isInternal'], '') === 'true' ? 'داخلی' : 'قابل نمایش',
     tone: readText(item, ['isInternal'], '') === 'true' ? ('warning' as const) : ('success' as const),
   }))
 
@@ -398,10 +497,8 @@ export function SupportWorkspacePage({
         </div>
 
         <SectionCard
-          eyebrow="میزکار متمرکز"
-          title={`رسیدگی به تیکت #${ticketId || '—'}`}
-          description="همه اقدام‌های اصلی این تیکت در همین صفحه جمع شده‌اند تا کارتابل اصلی فقط برای انتخاب بماند."
-          hint="از سه مسیر بالا شروع کن: اگر فقط باید وضعیت عوض شود مسیر وضعیت، اگر پول درگیر است مسیر مالی و اگر نیاز به توضیح داری مسیر یادداشت را باز کن."
+          eyebrow="میزکار پشتیبانی"
+          title={`تیکت #${ticketId || '—'}`}
           actions={<Pill tone="primary">رسیدگی زنده</Pill>}
         >
           <div className="support-workspace-lanes">
@@ -413,7 +510,6 @@ export function SupportWorkspacePage({
                 type="button"
               >
                 <strong>{item.title}</strong>
-                <p>{item.description}</p>
                 <small>{item.detail}</small>
               </button>
             ))}
@@ -421,18 +517,17 @@ export function SupportWorkspacePage({
         </SectionCard>
 
         <SectionCard
-          eyebrow="خلاصه تصمیم"
-          title="جمع‌بندی سریع این تیکت"
-          description="قبل از هر اقدام، اطلاعات اصلی سفارش، مشتری، فروشگاه و نشانه‌های حساس را همین‌جا ببین."
-          hint="اگر هنوز دلیل تیکت برایت روشن نیست، اول این چهار کارت را بخوان و بعد سراغ فرم‌ها برو."
+          eyebrow="خلاصه"
+          title="اطلاعات تیکت"
           actions={<Pill tone="primary">مرور سریع</Pill>}
         >
           <div className="support-brief-grid">
             {[
               { label: 'مشتری', value: readText(customer, ['fullName', 'phoneNumber'], '—'), detail: readText(customer, ['phoneNumber'], '—') },
               { label: 'فروشگاه', value: readText(store, ['name'], '—'), detail: readText(store, ['slug'], '—') },
-              { label: 'سفارش', value: readText(order, ['id'], '—'), detail: readText(order, ['status'], '—') },
-              { label: 'نشانه‌ها', value: flags.length ? flags.join(' / ') : '—', detail: readText(detail ?? {}, ['reason'], '—') },
+              { label: 'سفارش', value: readText(order, ['id'], '—'), detail: getOrderStatusLabel(readText(order, ['status'], 'UNKNOWN')) },
+              { label: 'پرداخت', value: getPaymentStatusLabel(readText(order, ['paymentStatus'], 'UNKNOWN')), detail: getSettlementStatusLabel(readText(order, ['settlementStatus'], 'UNKNOWN')) },
+              { label: 'علت', value: getSupportReasonLabel(readText(detail ?? {}, ['reason'], 'UNKNOWN')), detail: flags.length ? flags.map(getFlagLabel).join(' / ') : 'بدون هشدار' },
             ].map((item) => (
               <article className="support-brief-item" key={item.label}>
                 <span>{item.label}</span>
@@ -444,28 +539,19 @@ export function SupportWorkspacePage({
         </SectionCard>
 
         <SectionCard
-          eyebrow="پیشنهاد اقدام"
-          title="الان مهم ترین کار روی این تیکت چیست؟"
-          description="این نوار تصمیم برای کم کردن تردید اپراتور ساخته شده و باید در چند ثانیه مسیر رسیدگی را روشن کند."
+          eyebrow="اقدام"
+          title="وضعیت اقدام"
           actions={<Pill tone={flags.length || status === 'ESCALATED_TO_FINANCE' ? 'warning' : 'primary'}>{flags.length || status === 'ESCALATED_TO_FINANCE' ? 'نیازمند توجه' : 'عادی'}</Pill>}
         >
           <div className="support-decision-strip">
             <strong>{recommendedAction}</strong>
-            <p>
-              {status === 'ESCALATED_TO_FINANCE'
-                ? 'این تیکت وارد لایه تصمیم مالی شده و نتیجه آن باید شفاف و ثبت شده باشد.'
-                : flags.length > 0
-                  ? `برای این تیکت ${formatPersianNumber(flags.length)} نشانه حساس ثبت شده است.`
-                  : 'در وضعیت فعلی، این تیکت هشدار فوری ثبت شده ای ندارد و می توانی بر اساس مرحله طبیعی رسیدگی پیش بروی.'}
-            </p>
           </div>
         </SectionCard>
 
+        {activeLane === 'status' ? (
         <SectionCard
           eyebrow="کنترل وضعیت"
-          title="تغییر وضعیت تیکت"
-          description="هر تغییر واقعی در وضعیت تیکت باید از همین فرم ثبت شود تا روند رسیدگی دقیق بماند."
-          hint="اگر وضعیت را عوض می‌کنی، بهتر است دلیل کوتاه و یادداشت داخلی را هم کامل کنی تا نفر بعدی سردرگم نشود."
+          title="تغییر وضعیت"
           actions={<Pill tone="warning">ثبت وضعیت</Pill>}
         >
           <form className="fm-form-grid support-workspace-form-grid" onSubmit={handleStatusSubmit}>
@@ -506,12 +592,12 @@ export function SupportWorkspacePage({
             </button>
           </form>
         </SectionCard>
+        ) : null}
 
+        {activeLane === 'finance' ? (
         <SectionCard
           eyebrow="کنترل مالی"
-          title="ثبت تصمیم مالی واقعی"
-          description="اگر این تیکت به بازگشت وجه، برگشت تراکنش یا نگه‌داری بیشتر نیاز دارد، از همین فرم اقدام کن."
-          hint="فقط وقتی این بخش را ثبت کن که مطمئن باشی نتیجه مالی نهایی روشن شده است؛ چون این تصمیم روی سفارش اثر می‌گذارد."
+          title="تصمیم مالی"
           actions={<Pill tone="danger">ثبت مالی</Pill>}
         >
           <form className="fm-form-grid support-workspace-form-grid" onSubmit={handleFinanceSubmit}>
@@ -579,12 +665,12 @@ export function SupportWorkspacePage({
             </button>
           </form>
         </SectionCard>
+        ) : null}
 
+        {activeLane === 'notes' ? (
         <SectionCard
           eyebrow="ثبت یادداشت"
-          title="ثبت توضیح برای ادامه رسیدگی"
-          description="از این بخش برای ثبت توضیح داخلی یا توضیحی که در روند رسیدگی باید بماند استفاده کن."
-          hint="اگر می‌خواهی فقط همکاران داخل پنل یادداشت را ببینند، گزینه یادداشت داخلی را روشن نگه دار."
+          title="یادداشت"
           actions={<Pill tone="success">ثبت یادداشت</Pill>}
         >
           <form className="fm-form-grid support-workspace-form-grid" onSubmit={handleNoteSubmit}>
@@ -610,12 +696,11 @@ export function SupportWorkspacePage({
             </button>
           </form>
         </SectionCard>
+        ) : null}
 
         <SectionCard
           eyebrow="یادداشت‌های اخیر"
-          title="فهرست یادداشت‌ها و پیگیری‌های این تیکت"
-          description="یادداشت‌ها و پیگیری‌های ثبت‌شده اینجا به‌ترتیب دیده می‌شوند تا روند رسیدگی گم نشود."
-          hint="اگر یادداشت‌ها زیاد شدند، با جابه‌جایی صفحه‌ها آن‌ها را مرحله‌به‌مرحله مرور کن."
+          title="یادداشت‌ها"
           actions={<Pill tone="warning">{`${formatPersianNumber(notes.length)} یادداشت`}</Pill>}
         >
           {timelineFeed.length ? <ActivityFeed items={timelineFeed} /> : <div className="fm-message">هنوز یادداشتی ثبت نشده است.</div>}
@@ -644,9 +729,7 @@ export function SupportWorkspacePage({
 
         <SectionCard
           eyebrow="ردپای رخدادها"
-          title="رخدادهای ثبت‌شده و سابقه تصمیم‌ها"
-          description="این بخش نشان می‌دهد روی این تیکت چه اتفاق‌هایی افتاده تا تصمیم‌ها قابل‌ردیابی بمانند."
-          hint="اگر نتیجه فعلی با سابقه تیکت سازگار نیست، این فهرست بهترین جا برای پیدا کردن علت است."
+          title="رخدادها"
           actions={<Pill tone="neutral">{`${formatPersianNumber(auditTrail.length)} رخداد`}</Pill>}
         >
           <div className="support-audit-list">
@@ -656,7 +739,7 @@ export function SupportWorkspacePage({
               <article className="support-audit-item" key={readText(item, ['id'], String(index + 1))}>
                 <strong>{readText(item, ['summary', 'aggregateType'], 'رخداد پشتیبانی')}</strong>
                 <span>{formatJalaliDate(item.createdAt)}</span>
-                <small>{readText(item, ['eventType'], '—')}</small>
+                <small>{getEventTypeLabel(readText(item, ['eventType'], ''))}</small>
               </article>
             ))}
           </div>

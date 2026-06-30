@@ -1,19 +1,12 @@
-import { ActivityFeed, DataTable, Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
+import { ActivityFeed, Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
 import { useEffect, useMemo, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { useNoticeEffect } from '../components/NoticeCenter'
 import { adminApi } from '../lib/api'
-import { makeFeed, makeRows, readText, toArray } from '../lib/normalize'
+import { readText, toArray } from '../lib/normalize'
 import type { AuthSession } from '../lib/session'
 
 type TicketRecord = Record<string, unknown>
-
-const ticketColumns = [
-  { key: 'id', label: 'تیکت' },
-  { key: 'order', label: 'سفارش' },
-  { key: 'status', label: 'وضعیت' },
-  { key: 'reason', label: 'علت' },
-]
 
 const ticketSelectionPageSize = 8
 
@@ -38,7 +31,26 @@ function getTicketStatusLabel(status: string) {
     case 'ALL':
       return 'همه'
     default:
-      return status || 'نامشخص'
+      return status && status !== 'UNKNOWN' ? status : 'نامشخص'
+  }
+}
+
+function getTicketReasonLabel(reason: string) {
+  switch (reason) {
+    case 'DAMAGED_FLOWERS':
+      return 'آسیب‌دیدگی گل‌ها'
+    case 'MISMATCHED_PRODUCT':
+      return 'مغایرت محصول'
+    case 'LATE_DELIVERY':
+      return 'تاخیر در تحویل'
+    case 'INCOMPLETE_OR_WRONG_ORDER':
+      return 'سفارش ناقص یا اشتباه'
+    case 'DELIVERY_EXPERIENCE':
+      return 'مشکل تجربه تحویل'
+    case 'OTHER':
+      return 'سایر موارد'
+    default:
+      return reason && reason !== 'UNKNOWN' ? reason : 'نامشخص'
   }
 }
 
@@ -57,8 +69,29 @@ function getFinanceOutcomeLabel(outcome: string) {
     case 'EXTEND_HOLD':
       return 'تمدید نگه‌داری'
     default:
-      return outcome || '—'
+      return outcome && outcome !== 'UNKNOWN' ? outcome : 'ثبت نشده'
   }
+}
+
+function getFollowUpTitle(item: TicketRecord) {
+  const topic = readText(item, ['topic', 'eventType', 'type'], '')
+  switch (topic) {
+    case 'support.ticket.created':
+    case 'SUPPORT_TICKET_CREATED':
+      return 'تیکت جدید'
+    case 'SUPPORT_TICKET_STATUS_CHANGED':
+      return 'تغییر وضعیت'
+    case 'SUPPORT_FINANCE_DECISION_APPLIED':
+      return 'تصمیم مالی'
+    default:
+      return readText(item, ['title', 'summary'], 'پیگیری پشتیبانی')
+  }
+}
+
+function getFollowUpDescription(item: TicketRecord) {
+  const reason = readText(item, ['reason'], '')
+  if (reason) return getTicketReasonLabel(reason)
+  return getTicketStatusLabel(readText(item, ['status'], 'UNKNOWN'))
 }
 
 function getTicketStatus(record: TicketRecord) {
@@ -66,7 +99,7 @@ function getTicketStatus(record: TicketRecord) {
 }
 
 function getTicketReason(record: TicketRecord) {
-  return readText(record, ['reason', 'title'], '—')
+  return getTicketReasonLabel(readText(record, ['reason', 'title'], 'UNKNOWN'))
 }
 
 function getTicketOrder(record: TicketRecord) {
@@ -179,6 +212,7 @@ export function SupportPage({
         readText(item, ['id'], ''),
         getTicketOrder(item),
         getTicketStatus(item),
+        getTicketStatusLabel(getTicketStatus(item)),
         getTicketReason(item),
       ]
         .join(' ')
@@ -192,24 +226,23 @@ export function SupportPage({
     setSelectionPage(1)
   }, [search, statusFilter, tickets.length])
 
-  const ticketRows = useMemo(
-    () =>
-      makeRows(filteredTickets.slice(0, 20), [
-        { key: 'id', source: ['id'] },
-        { key: 'order', source: ['orderId'] },
-        { key: 'status', source: ['status'] },
-        { key: 'reason', source: ['reason', 'title'] },
-      ]),
-    [filteredTickets],
-  )
-
   const selectionPageCount = Math.max(1, Math.ceil(filteredTickets.length / ticketSelectionPageSize))
   const pagedSelection = filteredTickets.slice(
     (selectionPage - 1) * ticketSelectionPageSize,
     selectionPage * ticketSelectionPageSize,
   )
 
-  const feed = useMemo(() => makeFeed(followUps, 'support follow-up'), [followUps])
+  const feed = useMemo(
+    () =>
+      followUps.slice(0, 6).map((item, index) => ({
+        id: readText(item, ['id', 'key'], String(index + 1)),
+        title: getFollowUpTitle(item),
+        meta: readText(item, ['createdAt', 'updatedAt'], '—'),
+        description: getFollowUpDescription(item),
+        tone: index % 3 === 0 ? ('warning' as const) : index % 3 === 1 ? ('success' as const) : ('danger' as const),
+      })),
+    [followUps],
+  )
 
   const stats = useMemo(
     () => [
@@ -217,32 +250,28 @@ export function SupportPage({
         label: 'کل تیکت‌ها',
         value: String(tickets.length),
         delta: `${filteredTickets.length} مورد در نمای فعلی`,
-        detail: 'حجم کل صف پشتیبانی و نتیجه فیلتر فعلی',
-        hint: 'این عدد نشان می‌دهد از کل تیکت‌ها، چند مورد با فیلترهای فعلی دیده می‌شوند.',
+        detail: '',
         tone: 'primary' as const,
       },
       {
         label: 'تیکت‌های باز',
         value: String(tickets.filter((item) => getTicketStatus(item) === 'OPEN').length),
-        delta: 'نیازمند پاسخ اولیه',
-        detail: 'صف اصلی برای شروع رسیدگی روزانه',
-        hint: 'اگر این عدد بالا باشد، بهتر است اول از همین بخش شروع شود.',
+        delta: 'پاسخ اولیه',
+        detail: '',
         tone: 'warning' as const,
       },
       {
         label: 'ارجاع‌های مالی',
         value: String(tickets.filter((item) => getTicketStatus(item) === 'ESCALATED_TO_FINANCE').length),
-        delta: 'نیازمند تصمیم مالی',
-        detail: 'تیکت‌هایی که از پشتیبانی عادی عبور کرده‌اند',
-        hint: 'این تیکت‌ها معمولا به بازگشت وجه، نگه‌داری مبلغ یا بررسی مالی نیاز دارند.',
+        delta: 'تصمیم مالی',
+        detail: '',
         tone: 'danger' as const,
       },
       {
         label: 'پیگیری‌ها',
         value: String(followUps.length),
-        delta: 'نکته‌های قابل پیگیری',
-        detail: 'رخدادهایی که به پیگیری بعدی نیاز دارند',
-        hint: 'برای مرور کارهای ناتمام و دنبال‌کردن نتیجه تیکت‌ها از این عدد استفاده می‌شود.',
+        delta: 'در جریان',
+        detail: '',
         tone: 'success' as const,
       },
     ],
@@ -268,10 +297,8 @@ export function SupportPage({
         </div>
 
         <SectionCard
-          eyebrow="کارتابل پشتیبانی"
-          title="صف انتخاب و مرور تیکت‌های پشتیبانی"
-          description="در این صفحه فقط تیکت را پیدا می‌کنی، خلاصه‌اش را می‌بینی و بعد برای اقدام کامل وارد میزکار جدا می‌شوی."
-          hint="اول فیلتر و جستجو را تنظیم کن، بعد از فهرست کنار جدول تیکت مناسب را انتخاب کن."
+          eyebrow="پشتیبانی"
+          title="تیکت‌ها"
           actions={<Pill tone="primary">انتخاب تیکت</Pill>}
         >
           <div className="support-toolbar">
@@ -299,8 +326,7 @@ export function SupportPage({
             </div>
           </div>
 
-          <div className="support-table-card">
-            <DataTable columns={ticketColumns} rows={ticketRows} />
+          <div className="support-board-card">
             <div className="support-selection-list">
               {pagedSelection.map((item) => {
                 const ticketId = readText(item, ['id'], '')
@@ -347,8 +373,6 @@ export function SupportPage({
         <SectionCard
           eyebrow="تیکت انتخاب‌شده"
           title={selectedTicketId ? `جزئیات تیکت #${selectedTicketId}` : 'هیچ تیکتی انتخاب نشده'}
-          description="این بخش فقط برای جمع‌بندی سریع است و اقدام‌های اصلی در میزکار جدا انجام می‌شود تا این صفحه شلوغ نشود."
-          hint="اگر این خلاصه برای تصمیم‌گیری کافی نبود، طبیعی است؛ دکمه ورود به میزکار برای همین مرحله بعدی است."
           actions={
             selectedTicket ? (
               <button className="support-open-workspace" onClick={() => onOpenSupportWorkspace(selectedTicket)} type="button">
@@ -374,9 +398,7 @@ export function SupportPage({
 
         <SectionCard
           eyebrow="فید پیگیری"
-          title="فید پیگیری‌های عملیاتی"
-          description="این فهرست کمک می‌کند پیگیری‌های مهم، انتظارها و ارجاع‌های حساس از قلم نیفتند."
-          hint="اگر تیکتی نیاز به تماس دوباره، پاسخ فروشنده یا بررسی مالی داشته باشد، معمولا رد آن در این فید دیده می‌شود."
+          title="پیگیری‌ها"
           actions={<Pill tone="warning">پیگیری روزانه</Pill>}
         >
           <ActivityFeed items={feed} />
