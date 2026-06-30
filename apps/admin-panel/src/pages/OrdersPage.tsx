@@ -28,8 +28,26 @@ function getSettlementStatus(record: OrderRecord) {
   return readText(record, ['settlementStatus'], 'UNKNOWN')
 }
 
+function readNestedText(record: OrderRecord, path: string) {
+  const value = path.split('.').reduce<unknown>((current, key) => {
+    if (typeof current !== 'object' || current === null) return undefined
+    return (current as Record<string, unknown>)[key]
+  }, record)
+
+  return typeof value === 'string' && value.trim() ? value.trim() : ''
+}
+
 function getCustomerText(record: OrderRecord) {
-  return readText(record, ['customerName', 'recipientName', 'customer.fullName', 'customer.name'], 'بدون نام')
+  const fullName =
+    readNestedText(record, 'user.fullName') ||
+    readText(record, ['customerName'], '')
+
+  if (fullName) return fullName
+
+  return (
+    readNestedText(record, 'user.phoneNumber') ||
+    readText(record, ['customerPhoneNumber'], 'بدون نام')
+  )
 }
 
 function getExceptionSummary(record: OrderRecord) {
