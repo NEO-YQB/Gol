@@ -2261,12 +2261,12 @@
 .settlements-filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
 }
 
 .settlements-filter-chip {
-  min-height: 38px;
-  padding: 0 14px;
+  min-height: 34px;
+  padding: 0 12px;
   border-radius: 999px;
   border: 1px solid var(--fm-border-soft);
   background: rgba(255, 253, 248, 0.82);
@@ -2282,57 +2282,68 @@
 .settlements-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
-  gap: 18px;
+  gap: 12px;
 }
 
-.settlements-table-card,
 .settlements-detail-column {
   display: grid;
-  gap: 16px;
+  gap: 12px;
 }
 
-.settlements-selection-list {
+.settlements-board-list {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
-.settlements-selection-item {
+.settlements-board-item {
   border: 1px solid var(--fm-border-soft);
   background: rgba(255, 253, 248, 0.86);
-  border-radius: 18px;
-  padding: 14px 16px;
+  border-radius: 16px;
+  padding: 12px;
   text-align: right;
   display: grid;
-  gap: 4px;
+  gap: 3px;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
 }
 
-.settlements-selection-item strong {
+.settlements-board-id {
+  color: var(--fm-brand-primary);
+  font-weight: 800;
+}
+
+.settlements-board-item strong {
   color: var(--fm-text-primary);
 }
 
-.settlements-selection-item span,
-.settlements-selection-item small {
+.settlements-board-item span:not(.settlements-board-id),
+.settlements-board-item small {
   color: var(--fm-text-secondary);
 }
 
-.settlements-selection-item.is-active {
+.settlements-board-item span:not(.settlements-board-id),
+.settlements-board-item small {
+  grid-column: 1 / -1;
+}
+
+.settlements-board-item.is-active {
   border-color: rgba(31, 106, 82, 0.28);
   box-shadow: 0 0 0 4px rgba(31, 106, 82, 0.08);
 }
 
 .settlements-detail-grid {
   display: grid;
-  gap: 12px;
+  gap: 8px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .settlements-detail-item {
   border: 1px solid var(--fm-border-soft);
-  border-radius: 18px;
-  padding: 16px;
+  border-radius: 16px;
+  padding: 12px;
   background: rgba(255, 253, 248, 0.86);
   display: grid;
-  gap: 8px;
+  gap: 4px;
 }
 
 .settlements-detail-item span {
@@ -2952,7 +2963,7 @@
 .settlements-detail-column,
 .finance-workspace-page .orders-workspace-side {
   display: grid;
-  gap: 16px;
+  gap: 12px;
   align-content: start;
 }
 

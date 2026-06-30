@@ -98,22 +98,22 @@ function getDecisionLabel(options: {
   hasExceptionReason: boolean
 }) {
   if (options.hasExceptionReason) {
-    return 'این مورد مالی استثنا دارد؛ قبل از هر اقدام، علت و سابقه آن را مرور کن.'
+    return 'استثنا دارد'
   }
 
   if (options.canReleaseSettlement) {
-    return 'اگر مانع فعالی وجود ندارد، این مورد برای آزادسازی تسویه آماده است.'
+    return 'آماده آزادسازی'
   }
 
   if (options.canAdjustWallet && options.hasWallet) {
-    return 'اگر ناسازگاری مالی تایید شده است، adjustment کیف پول را با توضیح شفاف ثبت کن.'
+    return 'نیازمند اصلاح کیف پول'
   }
 
   if (options.settlementStatus === 'RELEASED') {
-    return 'این مورد قبلا آزاد شده و بیشتر برای مرور سابقه و جمع بندی مناسب است.'
+    return 'آزاد شده'
   }
 
-  return 'در این workspace ابتدا summary مالی را مرور کن و بعد وارد action مناسب شو.'
+  return 'نیازمند بررسی'
 }
 
 function getSettlementStatusLabel(status: string) {
@@ -209,41 +209,37 @@ export function FinanceWorkspacePage({
       label: 'وضعیت تسویه',
       value: getSettlementStatusLabel(settlementStatus),
       delta: translateFinanceEnum(readText(settlement ?? {}, ['type'], '—')),
-      detail: 'جایگاه فعلی این مورد در چرخه تسویه',
-      hint: 'اگر این مورد هنوز در نگه داری است، آزادسازی فقط بعد از رفع مانع منطقی است.',
+      detail: '',
       tone: getToneByStatus(settlementStatus),
     },
     {
       label: 'فروشگاه',
       value: readText(settlement ?? {}, ['storeName', 'store', 'storeId'], '—'),
       delta: 'ریال',
-      detail: 'فروشگاه و زمینه مالی مرتبط با این مورد',
-      hint: 'در adjustment و بررسی استثنا باید همیشه مطمئن باشی روی فروشگاه درست کار می کنی.',
+      detail: '',
       tone: 'primary' as const,
     },
     {
-      label: 'موجودی قابل مشاهده',
+      label: 'موجودی',
       value: formatPersianNumber(readText(walletDetail ?? {}, ['balance', 'availableBalance'], '—')),
       delta: `نگه داری: ${formatPersianNumber(readText(walletDetail ?? {}, ['heldBalance', 'heldAmount'], '—'))}`,
-      detail: 'تصویر سریع از کیف پول و بخش نگه داری شده',
-      hint: 'این کارت برای فهم سریع balance و held amount در لحظه طراحی شده است.',
+      detail: '',
       tone: 'success' as const,
     },
     {
-      label: 'ردپای مالی',
+      label: 'آخرین تغییر',
       value: formatJalaliDate(readText(settlement ?? {}, ['updatedAt', 'createdAt'], ''), true),
       delta: translateFinanceEnum(readDisplayValue((settlement ?? {}).reason, readDisplayValue((settlement ?? {}).message, 'بدون علت ثبت شده'))),
-      detail: 'آخرین زمان تغییر و علت اصلی این مورد',
-      hint: 'اگر تصمیم مالی مبهم است، از همین کارت شروع کن و بعد سراغ actionها برو.',
+      detail: '',
       tone: 'warning' as const,
     },
   ]
 
   const laneCards = [
-    { key: 'overview' as const, title: 'نمای کلی', description: 'مرور summary مالی، کیف پول و علت استثنا', detail: getSettlementStatusLabel(settlementStatus) },
-    { key: 'wallet' as const, title: 'کیف پول', description: 'adjustment و بررسی balance و held amount', detail: canAdjustWallet ? 'قابل اقدام' : 'فقط مشاهده' },
-    { key: 'settlement' as const, title: 'آزادسازی تسویه', description: 'release دستی و کنترل readiness مالی', detail: canReleaseSettlement ? 'آماده' : 'غیرفعال' },
-    { key: 'refunds' as const, title: 'جمع بندی مالی', description: 'summaryهای refund و settlement برای مرور سریع', detail: 'گزارش فشرده' },
+    { key: 'overview' as const, title: 'نمای کلی', detail: getSettlementStatusLabel(settlementStatus) },
+    { key: 'wallet' as const, title: 'کیف پول', detail: canAdjustWallet ? 'قابل اقدام' : 'فقط مشاهده' },
+    { key: 'settlement' as const, title: 'تسویه', detail: canReleaseSettlement ? 'آماده' : 'غیرفعال' },
+    { key: 'refunds' as const, title: 'جمع‌بندی', detail: 'گزارش' },
   ]
 
   const decisionLabel = getDecisionLabel({
@@ -288,10 +284,8 @@ export function FinanceWorkspacePage({
         </div>
 
         <SectionCard
-          eyebrow="workspace مالی"
-          title={`رسیدگی مالی به مورد #${settlementId || '—'}`}
-          description="اینجا محل تصمیم های واقعی مالی است؛ کارتابل اصلی فقط برای انتخاب و triage می ماند."
-          hint="اول summary را بخوان، بعد تصمیم بگیر adjustment لازم است یا آزادسازی تسویه."
+          eyebrow="میزکار مالی"
+          title={`مالی #${settlementId || '—'}`}
           actions={
             <div className="orders-workspace-header-actions">
               <Pill tone={getToneByStatus(settlementStatus)}>{getSettlementStatusLabel(settlementStatus)}</Pill>
@@ -310,7 +304,6 @@ export function FinanceWorkspacePage({
                 type="button"
               >
                 <strong>{lane.title}</strong>
-                <span>{lane.description}</span>
                 <small>{lane.detail}</small>
               </button>
             ))}
@@ -318,18 +311,12 @@ export function FinanceWorkspacePage({
         </SectionCard>
 
         <SectionCard
-          eyebrow="پیشنهاد اقدام"
-          title="الان مهم ترین کار در این مورد مالی چیست؟"
-          description="این نوار تصمیم برای کم کردن تردید اپراتور مالی ساخته شده است."
+          eyebrow="اقدام"
+          title="وضعیت اقدام"
           actions={<Pill tone={canReleaseSettlement ? 'success' : 'warning'}>{canReleaseSettlement ? 'آماده اقدام' : 'نیازمند مرور'}</Pill>}
         >
           <div className="orders-decision-strip">
             <strong>{decisionLabel}</strong>
-            <p>
-              {canReleaseSettlement
-                ? 'این مورد در ظاهر آماده آزادسازی است، اما قبل از اقدام مطمئن شو مانع دیگری در support یا finance باقی نمانده باشد.'
-                : 'اگر هنوز release مجاز نیست، علت را از summary و وضعیت کیف پول دنبال کن.'}
-            </p>
           </div>
         </SectionCard>
 
@@ -337,8 +324,7 @@ export function FinanceWorkspacePage({
           <div className="orders-workspace-main">
             <SectionCard
               eyebrow="خلاصه مالی"
-              title="مرور سریع این مورد"
-              description="این بخش برای گرفتن تصویر کامل و سریع از فروشگاه، وضعیت، علت و زمان تغییر ساخته شده است."
+              title="خلاصه"
               actions={<Pill tone="primary">نمای خلاصه</Pill>}
             >
               <div className="orders-summary-grid">
@@ -354,8 +340,7 @@ export function FinanceWorkspacePage({
             {activeLane === 'wallet' || activeLane === 'overview' ? (
               <SectionCard
                 eyebrow="کیف پول فروشگاه"
-                title="balance، held amount و adjustment"
-                description="اگر نیاز به اصلاح مالی تایید شده وجود دارد، adjustment را از همینجا ثبت کن."
+                title="کیف پول"
                 actions={<Pill tone={canAdjustWallet ? 'warning' : 'primary'}>{canAdjustWallet ? 'قابل ویرایش' : 'فقط مشاهده'}</Pill>}
               >
                 <div className="orders-summary-grid">
@@ -457,16 +442,10 @@ export function FinanceWorkspacePage({
             {activeLane === 'settlement' || activeLane === 'overview' ? (
               <SectionCard
                 eyebrow="آزادسازی تسویه"
-                title="کنترل آزادسازی تسویه"
-                description="اگر این مورد در نگه داری است و مانع فعالی وجود ندارد، آزادسازی را از همینجا انجام بده."
+                title="تسویه"
                 actions={<Pill tone={canReleaseSettlement ? 'success' : 'warning'}>{canReleaseSettlement ? 'قابل اجرا' : 'غیرفعال'}</Pill>}
               >
                 <div className="orders-action-stack">
-                  <p className="orders-inline-note">
-                    {canReleaseSettlement
-                      ? 'این مورد در وضعیت مناسبی برای آزادسازی قرار گرفته است.'
-                      : 'آزادسازی فقط وقتی فعال است که مورد هنوز در نگه داری باشد و role شما اجازه این کار را داشته باشد.'}
-                  </p>
                   <button
                     className="orders-primary-button"
                     disabled={!canReleaseSettlement || actionBusy === 'release-settlement'}
@@ -487,9 +466,8 @@ export function FinanceWorkspacePage({
 
             {activeLane === 'refunds' || activeLane === 'overview' ? (
               <SectionCard
-                eyebrow="جمع بندی مالی"
-                title="خلاصه های مالی و بازگشت وجه"
-                description="برای مرور سریع وضعیت عمومی بخش مالی، خلاصه های backend اینجا به شکل فارسی نمایش داده می شوند."
+                eyebrow="جمع‌بندی"
+                title="مالی و بازگشت وجه"
                 actions={<Pill tone="danger">گزارش فشرده</Pill>}
               >
                 <div className="orders-summary-grid">
@@ -511,8 +489,7 @@ export function FinanceWorkspacePage({
           <div className="orders-workspace-side">
             <SectionCard
               eyebrow="فید مالی"
-              title="ردپای مالی و summaryهای مرتبط"
-              description="این ستون برای مرور سریع summaryها و تصمیم های مرتبط مالی نگه داشته شده است."
+              title="ردپا"
               actions={<Pill tone="warning">مرور سریع</Pill>}
             >
               <ActivityFeed
@@ -535,7 +512,7 @@ export function FinanceWorkspacePage({
                     id: 'finance-item-3',
                     title: 'زمان آخرین تغییر',
                     meta: formatJalaliDate(readText(settlement ?? {}, ['updatedAt', 'createdAt'], ''), true),
-                    description: 'مرور سریع روی آخرین زمان به روزرسانی این مورد مالی.',
+                    description: '',
                     tone: 'warning',
                   },
                 ]}

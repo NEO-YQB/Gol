@@ -25,13 +25,6 @@ const walletColumns = [
   { key: 'updated', label: 'آخرین تغییر' },
 ]
 
-const settlementColumns = [
-  { key: 'id', label: 'شناسه' },
-  { key: 'status', label: 'وضعیت' },
-  { key: 'reason', label: 'علت' },
-  { key: 'updated', label: 'بروزرسانی' },
-]
-
 function formatPersianNumber(value: unknown) {
   if (typeof value === 'number') return new Intl.NumberFormat('fa-IR').format(value)
   if (typeof value === 'string' && value.trim() !== '') {
@@ -167,10 +160,10 @@ export function SettlementsPage({ session, onOpenFinanceWorkspace }: { session: 
 
         setStats(
           makeStats([
-            { label: 'کیف پول ها', value: wallets, detail: 'ورودی اصلی کارتابل مالی پنل', tone: 'primary' },
-            { label: 'استثناهای تسویه', value: exceptions, detail: 'صف مغایرت ها و توقف های مالی', tone: 'warning' },
-            { label: 'خلاصه کیف پول', value: financeSummary, detail: 'خلاصه فشرده برای مرور وضعیت کیف پول ها', tone: 'success' },
-            { label: 'خلاصه بازگشت وجه', value: refundSummary, detail: 'مرور سریع بازگشت وجه و برگشت تراکنش', tone: 'danger' },
+            { label: 'کیف پول', value: wallets, detail: '', tone: 'primary' },
+            { label: 'استثناها', value: exceptions, detail: '', tone: 'warning' },
+            { label: 'خلاصه مالی', value: financeSummary, detail: '', tone: 'success' },
+            { label: 'بازگشت وجه', value: refundSummary, detail: '', tone: 'danger' },
           ]),
         )
         setWallets(walletList)
@@ -224,17 +217,6 @@ export function SettlementsPage({ session, onOpenFinanceWorkspace }: { session: 
     [wallets],
   )
 
-  const settlementRows = useMemo(
-    () =>
-      filteredExceptions.slice(0, 10).map((item, index) => ({
-        id: readText(item, ['id', 'orderId'], String(index + 1)),
-        status: getSettlementStatusLabel(getSettlementStatus(item)),
-        reason: getSettlementReason(item),
-        updated: formatJalaliDate(readText(item, ['updatedAt', 'createdAt'], ''), true),
-      })),
-    [filteredExceptions],
-  )
-
   const selectedSettlement = useMemo(
     () =>
       filteredExceptions.find((item) => readText(item, ['id', 'orderId'], '') === selectedSettlementId) ?? null,
@@ -262,9 +244,8 @@ export function SettlementsPage({ session, onOpenFinanceWorkspace }: { session: 
         </div>
 
         <SectionCard
-          eyebrow="کارتابل مالی"
-          title="کارتابل مالی، کیف پول و صف استثناهای تسویه"
-          description="این route حالا نقطه triage مالی است؛ مرور سریع اینجا انجام می شود و تصمیم های واقعی داخل workspace مالی."
+          eyebrow="مالی"
+          title="مالی و تسویه"
           actions={<Pill tone="success">مالی و تسویه</Pill>}
         >
           <div className="settlements-filters">
@@ -285,7 +266,6 @@ export function SettlementsPage({ session, onOpenFinanceWorkspace }: { session: 
           <SectionCard
             eyebrow="کیف پول‌ها"
             title="کیف پول فروشگاه‌ها"
-            description="Foundation این صفحه برای دید ledger، adjustment و release flow آماده شده است."
             actions={<Pill tone="success">{`${wallets.length} کیف پول`}</Pill>}
           >
             <DataTable columns={walletColumns} rows={walletRows} />
@@ -293,40 +273,35 @@ export function SettlementsPage({ session, onOpenFinanceWorkspace }: { session: 
 
           <div className="settlements-detail-column">
             <SectionCard
-              eyebrow="صف استثناهای تسویه"
-              title="موارد نیازمند بررسی تسویه"
-              description="پایه لازم برای release دستی، held earning review و پیگیری ناسازگاری‌ها."
+              eyebrow="استثناها"
+              title="نیازمند بررسی"
               actions={<Pill tone="warning">{`${filteredExceptions.length} استثنا`}</Pill>}
             >
-              <div className="settlements-table-card">
-                <DataTable columns={settlementColumns} rows={settlementRows} />
+              <div className="settlements-board-list">
+                {filteredExceptions.slice(0, 10).map((item) => {
+                  const id = readText(item, ['id', 'orderId'], '—')
+                  const isActive = id === selectedSettlementId
 
-                <div className="settlements-selection-list">
-                  {filteredExceptions.slice(0, 8).map((item) => {
-                    const id = readText(item, ['id', 'orderId'], '—')
-                    const isActive = id === selectedSettlementId
-
-                    return (
-                      <button
-                        className={`settlements-selection-item ${isActive ? 'is-active' : ''}`}
-                        key={id}
-                        onClick={() => setSelectedSettlementId(id)}
-                        type="button"
-                      >
-                        <strong>مورد مالی #{id}</strong>
-                        <span>{getSettlementStatusLabel(getSettlementStatus(item))}</span>
-                        <small>{translateAnyStatus(getSettlementReason(item))}</small>
-                      </button>
-                    )
-                  })}
-                </div>
+                  return (
+                    <button
+                      className={`settlements-board-item ${isActive ? 'is-active' : ''}`}
+                      key={id}
+                      onClick={() => setSelectedSettlementId(id)}
+                      type="button"
+                    >
+                      <span className="settlements-board-id">#{id}</span>
+                      <strong>{getSettlementStatusLabel(getSettlementStatus(item))}</strong>
+                      <span>{translateAnyStatus(getSettlementReason(item))}</span>
+                      <small>{formatJalaliDate(readText(item, ['updatedAt', 'createdAt'], ''), true)}</small>
+                    </button>
+                  )
+                })}
               </div>
             </SectionCard>
 
             <SectionCard
-              eyebrow="استثنای انتخاب شده"
+              eyebrow="انتخاب شده"
               title={selectedSettlement ? `استثنا #${readText(selectedSettlement, ['id', 'orderId'], '—')}` : 'استثنایی انتخاب نشده'}
-              description="این summary حالا نقطه شروع ورود به workspace مالی و تصمیم های واقعی کیف پول و تسویه است."
               actions={
                 selectedSettlement ? (
                   <div className="orders-workspace-header-actions">
