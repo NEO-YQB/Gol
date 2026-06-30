@@ -327,6 +327,12 @@ export class CampaignGridBannerDto {
   @MaxLength(2000)
   imageUrl!: string;
 
+  @ApiPropertyOptional({ example: 'https://cdn.example.com/banner-1-mobile.jpg' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  mobileImageUrl?: string;
+
   @ApiProperty({ example: '/campaigns/yalda/offers' })
   @IsString()
   @IsNotEmpty()
