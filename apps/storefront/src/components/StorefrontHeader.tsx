@@ -251,6 +251,45 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
     ))
   }
 
+  function renderMobileCategoryTree(items: CategorySummary[], depth = 0): React.ReactNode {
+    return items.map((item) => {
+      const hasChildren = Array.isArray(item.children) && item.children.length > 0
+
+      if (!hasChildren) {
+        return (
+          <Link
+            className={`block rounded-2xl px-4 py-3 text-sm font-bold ${storefrontStyles.headerText} transition-colors hover:bg-white/30`}
+            href={`/categories/${item.slug}`}
+            key={`mobile-category-${item.id}-${depth}`}
+            style={{ paddingInlineStart: `${16 + depth * 14}px` }}
+          >
+            {item.name}
+          </Link>
+        )
+      }
+
+      return (
+        <details className="rounded-2xl bg-white/12 px-2 py-2" key={`mobile-category-${item.id}-${depth}`}>
+          <summary
+            className={`cursor-pointer rounded-xl px-3 py-2 text-sm font-bold ${storefrontStyles.headerText}`}
+            style={{ paddingInlineStart: `${12 + depth * 14}px` }}
+          >
+            {item.name}
+          </summary>
+          <div className="mt-2 grid gap-1 border-r border-white/20 pr-2">
+            <Link
+              className={`block rounded-2xl px-4 py-3 text-sm font-bold ${storefrontStyles.headerText} transition-colors hover:bg-white/30`}
+              href={`/categories/${item.slug}`}
+            >
+              مشاهده همه {item.name}
+            </Link>
+            {renderMobileCategoryTree(item.children || [], depth + 1)}
+          </div>
+        </details>
+      )
+    })
+  }
+
   const shouldFloat = isScrolled && theme.stickyVariant === 'floating'
   const shouldShowGlass = isScrolled || !theme.transparentOnTop || !heroTouchesTop
   const headerVars = buildHeaderThemeVars(theme, shouldShowGlass)
@@ -510,7 +549,7 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
           {categories.length ? (
             <details className={`rounded-2xl px-4 py-3 ${storefrontStyles.headerSoftSurface}`}>
               <summary className={`cursor-pointer text-sm font-bold ${storefrontStyles.headerText}`}>دسته‌بندی‌ها</summary>
-              <div className="mt-3 grid gap-2">{renderCategoryTree(categories)}</div>
+              <div className="mt-3 grid gap-2">{renderMobileCategoryTree(categories)}</div>
             </details>
           ) : null}
           {productTypes.length ? (
