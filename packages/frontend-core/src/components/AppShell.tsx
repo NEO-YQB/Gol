@@ -49,9 +49,6 @@ export function AppShell({
             <p className="fm-brand-kicker">{productSubtitle}</p>
             <h1 className="fm-brand-title">{productName}</h1>
           </div>
-          <button className="fm-command-trigger" type="button">
-            جستجوی سریع، میانبرها و رفتن به بخش‌ها
-          </button>
         </div>
 
         <nav className="fm-nav" aria-label="Main navigation">
@@ -68,7 +65,6 @@ export function AppShell({
                   >
                     <span>
                       <strong>{item.label}</strong>
-                      {item.hint ? <small>{item.hint}</small> : null}
                     </span>
                     {item.badge ? <Pill>{item.badge}</Pill> : null}
                   </button>
@@ -79,8 +75,7 @@ export function AppShell({
         </nav>
 
         <div className="fm-sidebar-footer">
-          <p>Design system + backend contracts</p>
-          <strong>Admin workspace in progress</strong>
+          <strong>{workspaceLabel}</strong>
         </div>
       </aside>
 
@@ -89,7 +84,7 @@ export function AppShell({
           <div>
             <p className="fm-page-eyebrow">{pageEyebrow}</p>
             <h2 className="fm-page-title">{pageTitle}</h2>
-            <p className="fm-page-description">{pageDescription}</p>
+            {pageDescription ? <p className="fm-page-description">{pageDescription}</p> : null}
           </div>
 
           <div className="fm-topbar-meta">

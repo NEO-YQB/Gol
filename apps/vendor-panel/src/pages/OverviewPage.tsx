@@ -10,7 +10,7 @@ export function OverviewPage({ session }: { session: AuthSession }) {
   const [error, setError] = useState<string | null>(null)
   const [stats, setStats] = useState(() => makeStats([]))
   const [storeName, setStoreName] = useState('فروشگاه شما')
-  const [policyNote, setPolicyNote] = useState('فعلا توضیحی از policy موثر ثبت نشده است.')
+  const [policyNote, setPolicyNote] = useState('بدون محدودیت')
 
   useEffect(() => {
     let active = true
@@ -40,7 +40,6 @@ export function OverviewPage({ session }: { session: AuthSession }) {
         const counts = (settlementsRecord.counts as Record<string, unknown>) ?? {}
         const totals = (ticketsRecord.totals as Record<string, unknown>) ?? {}
         const restrictions = (policyRecord.restrictions as Record<string, unknown>) ?? {}
-        const explanation = (policyRecord.explanation as Record<string, unknown>) ?? {}
 
         setStoreName(readText(store, ['name'], session.user.fullName || session.user.phoneNumber))
         setStats(
@@ -49,37 +48,34 @@ export function OverviewPage({ session }: { session: AuthSession }) {
               label: 'موجودی قابل برداشت',
               value: formatFaNumber(Number(walletData.availableBalance ?? 0)),
               delta: `${formatFaNumber(Number(walletData.heldBalance ?? 0))} نگه‌داری‌شده`,
-              detail: 'نمایش مستقیم از خلاصه کیف پول فروشنده',
+              detail: '',
               tone: 'primary',
             },
             {
               label: 'تسویه‌های در جریان',
               value: formatFaNumber(readNestedCount(counts, ['processing']) + readNestedCount(counts, ['pending'])),
               delta: `${formatFaNumber(readNestedCount(counts, ['onHold']))} مورد hold`,
-              detail: 'ترکیب خلاصه تسویه و محدودیت‌های موثر',
+              detail: '',
               tone: 'warning',
             },
             {
               label: 'تیکت‌های باز',
               value: formatFaNumber(readNestedCount(totals, ['open']) + readNestedCount(totals, ['inReview'])),
               delta: `${formatFaNumber(readNestedCount(totals, ['escalatedToFinance']))} ارجاع مالی`,
-              detail: 'خلاصه تیکت‌های مربوط به فروشنده',
+              detail: '',
               tone: 'danger',
             },
             {
               label: 'امتیاز سلامت',
               value: formatFaNumber(Number(store.vendorHealthScore ?? 0)),
               delta: readText(store, ['vendorHealthStatus'], 'UNKNOWN'),
-              detail: 'خلاصه فعلی سلامت فروشگاه',
+              detail: '',
               tone: 'success',
             },
           ]),
         )
         const reviewBlock = Boolean(restrictions.blockNewDiscounts)
-        const baseNote = readText(explanation, ['note'], 'در حال حاضر policy موثر توضیح اضافه‌ای ندارد.')
-        setPolicyNote(
-          reviewBlock ? `${baseNote} ایجاد تخفیف جدید فعلا محدود شده است.` : baseNote,
-        )
+        setPolicyNote(reviewBlock ? 'محدودیت تخفیف فعال است' : 'بدون محدودیت')
       } catch (loadError) {
         if (!active) return
         setError(loadError instanceof Error ? loadError.message : 'خطا در بارگذاری نمای کلی فروشنده')
@@ -107,7 +103,7 @@ export function OverviewPage({ session }: { session: AuthSession }) {
 
       <Spotlight
         eyebrow="نمای کلی"
-        title={`نمای کلی فروشگاه ${storeName}`}
+        title={storeName}
         description=""
         metrics={[
           { label: 'نشست', value: 'فعال' },

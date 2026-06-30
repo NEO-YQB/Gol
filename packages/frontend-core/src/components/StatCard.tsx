@@ -13,7 +13,7 @@ export function StatCard({ label, value, delta, detail, hint, tone = 'primary' }
         <span>{delta}</span>
       </div>
       <strong>{value}</strong>
-      <small>{detail}</small>
+      {detail ? <small>{detail}</small> : null}
     </article>
   )
 }

@@ -91,171 +91,171 @@ function getPageMeta(route: AdminRoute) {
     case 'orders':
       return {
         eyebrow: 'کارتابل سفارش ها',
-        title: 'سفارش ها و صف استثناهای عملیاتی',
-        description: 'این صفحه بر اساس scope نشست فعلی فقط بخش های مجاز عملیات سفارش را برای کاربر باز می کند.',
+        title: 'سفارش‌ها',
+        description: '',
       }
     case 'settlements':
       return {
         eyebrow: 'کارتابل مالی',
-        title: 'تسویه، کیف پول و صف استثناهای مالی',
-        description: 'این route برای triage مالی است؛ summary و exceptionها را نشان می دهد و از آن وارد workspace متمرکز مالی می شوی.',
+        title: 'مالی و تسویه',
+        description: '',
       }
     case 'financeWorkspace':
       return {
         eyebrow: 'میزکار مالی',
-        title: 'رسیدگی متمرکز به کیف پول، adjustment و آزادسازی تسویه',
-        description: 'تصمیم های واقعی مالی باید در workspace جدا و focused انجام شوند، نه داخل list کارتابل.',
+        title: 'میزکار مالی',
+        description: '',
       }
     case 'ordersWorkspace':
       return {
         eyebrow: 'میزکار سفارش',
-        title: 'رسیدگی متمرکز به سفارش و استثناهای آن',
-        description: 'workspace سفارش از list جدا مانده تا تصمیم و actionهای اصلی در فضای focused انجام شوند.',
+        title: 'میزکار سفارش',
+        description: '',
       }
     case 'support':
       return {
         eyebrow: 'کارتابل پشتیبانی',
-        title: 'تیکت ها و پیگیری های پشتیبانی',
-        description: 'این route برای نقش های عملیاتی مرتبط، نمای سریع تیکت و follow-up فراهم می کند.',
+        title: 'پشتیبانی',
+        description: '',
       }
     case 'supportWorkspace':
       return {
         eyebrow: 'میزکار پشتیبانی',
-        title: 'رسیدگی متمرکز به تیکت و تصمیم های بعدی',
-        description: 'تغییر وضعیت، note داخلی و تصمیم مالی باید در یک سطح focused و قابل ردیابی انجام شود.',
+        title: 'میزکار پشتیبانی',
+        description: '',
       }
     case 'vendors':
       return {
         eyebrow: 'کارتابل فروشنده ها',
-        title: 'فروشنده ها، ریسک و گزارش های مالی',
-        description: 'این route برای admin با دید عمیق تر روی policy، health و وضعیت فروشنده طراحی شده است.',
+        title: 'فروشنده‌ها',
+        description: '',
       }
     case 'vendorWorkspace':
       return {
         eyebrow: 'میزکار فروشنده',
-        title: 'بررسی متمرکز فروشنده و تصمیم های بعدی',
-        description: 'اقدام های سنگین روی vendor باید در یک workspace مجزا و متمرکز انجام شوند.',
+        title: 'میزکار فروشنده',
+        description: '',
       }
     case 'vendorOnboarding':
       return {
         eyebrow: 'درخواست‌های فروشندگی',
-        title: 'فروشنده‌های جدید، مدارک و جوازهای در انتظار بررسی',
-        description: 'این route برای اسکن سریع درخواست‌های تازه و ورود به workspace بررسی مدارک و تصمیم‌گیری ساخته شده است.',
+        title: 'درخواست‌های فروشندگی',
+        description: '',
       }
     case 'vendorOnboardingWorkspace':
       return {
         eyebrow: 'میزکار درخواست فروشنده',
-        title: 'بررسی هویت، مدارک و محصول اولیه فروشنده',
-        description: 'در این workspace ادمین یا اپراتور مجاز می‌تواند مدارک را ببیند و درباره اصل درخواست و محصول اولیه تصمیم بگیرد.',
+        title: 'بررسی فروشنده',
+        description: '',
       }
     case 'products':
       return {
         eyebrow: 'کارتابل محصولات',
-        title: 'محصول‌ها، آمادگی محتوایی و عملیات سئوی محصول',
-        description: 'این route برای اسکن سریع catalog و ورود به workspace جدا برای ایجاد، ویرایش و بازبینی محصول ساخته شده است.',
+        title: 'محصولات',
+        description: '',
       }
     case 'productWorkspace':
       return {
         eyebrow: 'میزکار محصول',
-        title: 'workspace متمرکز ایجاد، ویرایش و بازبینی محصول',
-        description: 'فرم‌های سنگین، سئو، preview و جزئیات محتوایی محصول باید در این surface focused انجام شوند، نه در کارتابل اصلی.',
+        title: 'میزکار محصول',
+        description: '',
       }
     case 'categoryWorkspace':
       return {
-        eyebrow: 'taxonomy workspace',
-        title: 'میزکار دسته‌بندی با ساختار درختی و مدیریت parent/child',
-        description: 'این workspace برای ساخت، ویرایش و حذف دسته‌ها با دید درختی، SEO و سازمان‌دهی taxonomy محصولات طراحی شده است.',
+        eyebrow: 'دسته‌بندی',
+        title: 'دسته‌بندی‌ها',
+        description: '',
       }
     case 'productTypeWorkspace':
       return {
-        eyebrow: 'catalog type workspace',
-        title: 'میزکار نوع محصول و تعریف المان‌های مجاز',
-        description: 'در این workspace نوع‌های محصول، تصویر، سئو و سازگاری آن‌ها با المان‌های مجاز catalog مدیریت می‌شود.',
+        eyebrow: 'نوع محصول',
+        title: 'نوع محصول',
+        description: '',
       }
     case 'content':
       return {
         eyebrow: 'کارتابل محتوا',
-        title: 'محتوا، taxonomy و عملیات سئو',
-        description: 'این route بر اساس permission نشست فعلی، سطح دسترسی واقعی تیم محتوا و SEO را نشان می دهد.',
+        title: 'محتوا و سئو',
+        description: '',
       }
     case 'pageBuilder':
       return {
-        eyebrow: 'page builder',
-        title: 'صفحه‌ساز storefront و چیدمان کمپین‌ها',
-        description: 'از این route می‌توان صفحه اصلی، لندینگ‌ها و بلاک‌های صفحه‌ساز storefront را مدیریت کرد.',
+        eyebrow: 'صفحه‌ساز',
+        title: 'صفحه‌ساز',
+        description: '',
       }
     case 'pageBuilderWorkspace':
       return {
-        eyebrow: 'page builder workspace',
-        title: 'ویرایشگر متمرکز صفحه‌های storefront',
-        description: 'تنظیمات SEO، بلوک‌ها، ترتیب نمایش و وضعیت انتشار هر صفحه storefront در این workspace مدیریت می‌شود.',
+        eyebrow: 'صفحه‌ساز',
+        title: 'ویرایش صفحه',
+        description: '',
       }
     case 'settings':
       return {
-        eyebrow: 'system settings',
-        title: 'تنظیمات سراسری سرویس‌ها و یکپارچه‌سازی‌ها',
-        description: 'پیکربندی سرویس‌های بیرونی مثل OTP واقعی و سایر integrationها از این route انجام می‌شود.',
+        eyebrow: 'تنظیمات',
+        title: 'تنظیمات',
+        description: '',
       }
     case 'seoSettingsWorkspace':
       return {
-        eyebrow: 'seo workspace',
-        title: 'تنظیمات سئو، robots و sitemap',
-        description: 'تنظیمات SEO مرکزی برای storefront، verification و crawler directives.',
+        eyebrow: 'سئو',
+        title: 'تنظیمات سئو',
+        description: '',
       }
     case 'smsSettingsWorkspace':
       return {
-        eyebrow: 'sms workspace',
-        title: 'workspace تنظیمات پیامکی',
-        description: 'تنظیمات پنل پیامکی و تست OTP در این workspace مدیریت می‌شود.',
+        eyebrow: 'پیامک',
+        title: 'پیامک',
+        description: '',
       }
     case 'storefrontInfoPagesWorkspace':
       return {
-        eyebrow: 'site pages workspace',
-        title: 'workspace تنظیمات صفحات سایت',
-        description: 'متن، تصویر هدر و اطلاعات تماس صفحات درباره، تماس و قوانین از این workspace مدیریت می‌شود.',
+        eyebrow: 'صفحات سایت',
+        title: 'صفحات سایت',
+        description: '',
       }
     case 'paymentGatewayWorkspace':
       return {
-        eyebrow: 'payment workspace',
-        title: 'workspace تنظیمات درگاه پرداخت',
-        description: 'تنظیمات زرین‌پال و سایر gatewayها در این workspace نگهداری می‌شود.',
+        eyebrow: 'پرداخت',
+        title: 'درگاه پرداخت',
+        description: '',
       }
     case 'contentWorkspace':
       return {
         eyebrow: 'ویرایشگر محتوایی',
-        title: 'workspace متمرکز نگارش، سئو و taxonomy',
-        description: 'create و edit محتوا از کارتابل جدا شده تا سطح focused برای فرم های طولانی و actionهای محتوایی حفظ شود.',
+        title: 'ویرایش محتوا',
+        description: '',
       }
     case 'alerts':
       return {
         eyebrow: 'کارتابل هشدارها',
-        title: 'هشدارها، outbox و رخدادهای عملیاتی',
-        description: 'این route برای visibility بهتر روی alert lifecycle و notification ops طراحی شده است.',
+        title: 'هشدارها',
+        description: '',
       }
     case 'pushNotificationWorkspace':
       return {
-        eyebrow: 'push workspace',
+        eyebrow: 'پوش',
         title: 'ارسال پوش نوتیفیکیشن',
-        description: 'workspace مستقل برای ساخت، ارسال و تست اعلان‌های push.',
+        description: '',
       }
     case 'accessControl':
       return {
         eyebrow: 'کنترل دسترسی',
-        title: 'کاربران، نقش ها و ماتریس permission',
-        description: 'نمای کارتابلی access control برای اسکن سریع وضعیت دسترسی ها و ورود به workspace تخصصی مدیریت کاربران.',
+        title: 'کاربران و دسترسی',
+        description: '',
       }
     case 'accessControlWorkspace':
       return {
         eyebrow: 'میزکار دسترسی',
-        title: 'workspace متمرکز مدیریت user، role و permission',
-        description: 'این workspace برای بررسی دقیق کاربر، نقش و permission catalog ساخته شده تا actionهای واقعی بعدی روی همین surface سوار شوند.',
+        title: 'مدیریت دسترسی',
+        description: '',
       }
     case 'dashboard':
     default:
       return {
-        eyebrow: 'shell نقش محور',
-        title: 'داشبورد ادمین حالا بر اساس scope واقعی نشست کار می کند',
-        description: 'navigation، routeها و CTAها دیگر برای همه یکسان نیستند و بر اساس permissionهای واقعی نشست bootstrap می شوند.',
+        eyebrow: 'داشبورد',
+        title: 'داشبورد ادمین',
+        description: '',
       }
   }
 }

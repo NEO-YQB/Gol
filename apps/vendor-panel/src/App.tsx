@@ -48,26 +48,26 @@ function buildNav(currentRoute: VendorRoute): NavSection[] {
 function getPageMeta(route: VendorRoute) {
   switch (route) {
     case 'orders':
-      return { eyebrow: 'کارتابل سفارش‌ها', title: 'سفارش‌های فروشگاه', description: 'فروشنده از اینجا باید بتواند سفارش‌های خودش را روی داده واقعی backend ببیند و برای اقدام‌های بعدی آماده باشد.' }
+      return { eyebrow: 'کارتابل سفارش‌ها', title: 'سفارش‌ها', description: '' }
     case 'order-workspace':
-      return { eyebrow: 'میزکار سفارش', title: 'رسیدگی متمرکز به یک سفارش', description: 'همه dependencyها و actionهای مرتبط با یک سفارش در این workspace جدا جمع می‌شوند تا کاربر بدون اسکرول اضافه روی همان سفارش متمرکز بماند.' }
+      return { eyebrow: 'میزکار سفارش', title: 'میزکار سفارش', description: '' }
     case 'wallet':
-      return { eyebrow: 'کارتابل مالی', title: 'کیف پول، جریان پول و تسویه‌ها', description: 'این route با خلاصه کیف پول و خلاصه تسویه‌ها پر می‌شود تا وضعیت مالی فروشگاه شفاف و قابل‌پیگیری باشد.' }
+      return { eyebrow: 'کارتابل مالی', title: 'کیف پول', description: '' }
     case 'products':
-      return { eyebrow: 'کارتابل محصولات', title: 'محصول‌ها، موجودی و readiness فروشگاه', description: 'این route برای دید سریع روی موجودی، دسته‌ها و محصول‌های نیازمند تامین یا promotion ساخته شده است.' }
+      return { eyebrow: 'کارتابل محصولات', title: 'محصولات', description: '' }
     case 'store':
-      return { eyebrow: 'پروفایل فروشگاه', title: 'هویت فروشگاه، تنظیمات ارسال و کیفیت پروفایل', description: 'این route برای مدیریت کامل هویت فروشگاه، تنظیمات delivery و readiness داده‌های profile ساخته شده است.' }
+      return { eyebrow: 'پروفایل فروشگاه', title: 'پروفایل فروشگاه', description: '' }
     case 'discounts':
-      return { eyebrow: 'کارتابل تخفیف‌ها', title: 'تخفیف‌ها، وضعیت فعال‌سازی و readiness پروموشن', description: 'این route برای دید سریع روی vendor discountها و محصول‌های دارای تخفیف ساخته شده و پایه domain بعدی promotion است.' }
+      return { eyebrow: 'کارتابل تخفیف‌ها', title: 'تخفیف‌ها', description: '' }
     case 'support':
-      return { eyebrow: 'کارتابل پشتیبانی', title: 'تیکت‌ها و پیگیری‌های مرتبط با فروشگاه', description: 'فروشنده باید با کمترین اصطکاک بداند چه تیکتی باز است و چه چیزی نیازمند پاسخ یا اقدام است.' }
+      return { eyebrow: 'کارتابل پشتیبانی', title: 'پشتیبانی', description: '' }
     case 'reviews':
-      return { eyebrow: 'کارتابل سلامت', title: 'کیفیت فروشگاه، امتیازها و policy موثر', description: 'health score و محدودیت‌های موثر باید برای فروشنده روشن، انسانی و قابل‌اقدام باشند.' }
+      return { eyebrow: 'کارتابل سلامت', title: 'سلامت فروشگاه', description: '' }
     case 'notifications':
-      return { eyebrow: 'کارتابل اعلان‌ها', title: 'اعلان‌ها و timeline policy', description: 'این صفحه تاریخچه اعلان‌های فروشنده و timeline رخدادهایی را که روی وضعیت فروشگاه اثر می‌گذارند جمع می‌کند.' }
+      return { eyebrow: 'کارتابل اعلان‌ها', title: 'اعلان‌ها', description: '' }
     case 'overview':
     default:
-      return { eyebrow: 'زیربنای فروشنده', title: 'پنل فروشنده حالا به summaryهای واقعی backend متصل است', description: 'از اینجا به بعد فروشنده یک mock dashboard نمی‌بیند؛ بلکه داده واقعی سفارش، پول، سلامت و policy فروشگاهش را می‌بیند.' }
+      return { eyebrow: 'داشبورد', title: 'داشبورد فروشنده', description: '' }
   }
 }
 

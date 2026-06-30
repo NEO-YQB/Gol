@@ -6,7 +6,7 @@ export function Spotlight({ eyebrow, title, description, metrics, children }: Sp
       <div className="fm-spotlight-copy">
         <p className="fm-section-eyebrow">{eyebrow}</p>
         <h3>{title}</h3>
-        <p className="fm-section-description">{description}</p>
+        {description ? <p className="fm-section-description">{description}</p> : null}
       </div>
       <div className="fm-spotlight-metrics">
         {metrics.map((metric) => (

@@ -60,16 +60,16 @@ async function buildDashboardPayload(session: AuthSession): Promise<DashboardPay
 
     return {
       stats: [
-        { label: 'سفارش های جاری', value: String(countOf(orders)), delta: 'عملیات امروز', detail: 'ورودی اصلی برای تصمیم های سفارش و استثناها', tone: 'primary' },
-        { label: 'هشدارهای باز', value: String(countOf(alerts)), delta: 'نیازمند رسیدگی', detail: 'alertهایی که هنوز بسته یا snooze نشده اند', tone: 'danger' },
-        { label: 'تیکت های فعال', value: String(countOf(tickets)), delta: 'در صف پشتیبانی', detail: 'تیکت هایی که نیاز به پیگیری یا تصمیم مالی دارند', tone: 'warning' },
-        { label: 'اعلان های اخیر', value: String(countOf(notifications)), delta: 'لایه اطلاع رسانی', detail: 'نمای سریع از صف اعلان ها و dispatchها', tone: 'success' },
+        { label: 'سفارش های جاری', value: String(countOf(orders)), delta: 'عملیات امروز', detail: '', tone: 'primary' },
+        { label: 'هشدارهای باز', value: String(countOf(alerts)), delta: 'نیازمند رسیدگی', detail: '', tone: 'danger' },
+        { label: 'تیکت های فعال', value: String(countOf(tickets)), delta: 'در صف پشتیبانی', detail: '', tone: 'warning' },
+        { label: 'اعلان های اخیر', value: String(countOf(notifications)), delta: 'لایه اطلاع رسانی', detail: '', tone: 'success' },
       ],
       feed: [...makeFeed(toArray(alerts), 'هشدار عملیاتی'), ...makeFeed(toArray(notifications), 'اعلان سیستمی')].slice(0, 6),
       spotlight: {
         eyebrow: 'نمای مدیر کل',
-        title: 'این نشست همه laneهای اصلی پنل را در اختیار دارد',
-        description: 'داشبورد مدیر کل باید هم data-dense باشد و هم سریع؛ بنابراین فقط summaryهای تصمیم ساز را در لایه اول نشان می دهد.',
+        title: 'نمای مدیر کل',
+        description: '',
         metrics: [
           { label: 'API پایه', value: apiConfig.baseUrl },
           { label: 'کاربر فعلی', value: session.user.fullName || session.user.phoneNumber },
@@ -90,16 +90,16 @@ async function buildDashboardPayload(session: AuthSession): Promise<DashboardPay
 
     return {
       stats: [
-        { label: 'مقاله های قابل مشاهده', value: String(countOf(articles)), delta: 'کارتابل محتوا', detail: 'حجم فعلی مقاله هایی که این نقش می تواند ببیند', tone: 'primary' },
-        { label: 'یافته های پایش محتوا', value: String(countOf(audits)), delta: 'اولویت سئو', detail: 'مواردی که نیاز به تکمیل برچسب، کلیدواژه یا ساختار دارند', tone: 'warning' },
-        { label: 'نویسنده های فعال', value: String(countOf(authors)), delta: 'تیم محتوا', detail: 'نویسنده هایی که در چرخه فعلی محتوا فعال اند', tone: 'success' },
-        { label: 'دسته بندی های محتوایی', value: String(countOf(categories)), delta: 'ساختار سایت', detail: 'چیدمان فعلی taxonomy برای توسعه محتوا و crawlability', tone: 'danger' },
+        { label: 'مقاله های قابل مشاهده', value: String(countOf(articles)), delta: 'کارتابل محتوا', detail: '', tone: 'primary' },
+        { label: 'یافته های پایش محتوا', value: String(countOf(audits)), delta: 'اولویت سئو', detail: '', tone: 'warning' },
+        { label: 'نویسنده های فعال', value: String(countOf(authors)), delta: 'تیم محتوا', detail: '', tone: 'success' },
+        { label: 'دسته بندی های محتوایی', value: String(countOf(categories)), delta: 'ساختار سایت', detail: '', tone: 'danger' },
       ],
       feed: [...makeFeed(toArray(audits), 'پایش محتوایی'), ...makeFeed(toArray(articles), 'مقاله')].slice(0, 6),
       spotlight: {
         eyebrow: 'نمای تیم محتوا و سئو',
-        title: 'این نشست برای انتشار، پایش و بهینه سازی محتوا آماده است',
-        description: 'در سطح محتوایی، داشبورد باید به جای داده های غیرمرتبط، مسیر تولید، ویرایش و رفع گره های SEO را نشان دهد.',
+        title: 'محتوا و سئو',
+        description: '',
         metrics: [
           { label: 'مقاله', value: String(countOf(articles)) },
           { label: 'پایش', value: String(countOf(audits)) },
@@ -119,16 +119,16 @@ async function buildDashboardPayload(session: AuthSession): Promise<DashboardPay
 
     return {
       stats: [
-        { label: 'کیف پول های قابل مشاهده', value: String(countOf(wallets)), delta: 'لایه مالی', detail: 'فروشگاه هایی که در این نشست برایشان visibility مالی وجود دارد', tone: 'primary' },
-        { label: 'خلاصه مالی', value: String(countOf(financeSummary)), delta: 'وضعیت تجمعی', detail: 'نمای فشرده روی کیف پول و settlementها', tone: 'success' },
-        { label: 'بازگشت وجه / برگشت', value: String(countOf(refunds)), delta: 'پیگیری مالی', detail: 'خلاصه وضعیت refund و reversal برای تصمیم گیری مالی', tone: 'warning' },
-        { label: 'دامنه این نقش', value: 'مالی', delta: 'نقش تخصصی', detail: 'این داشبورد فقط روی laneهای مالی متمرکز می ماند', tone: 'danger' },
+        { label: 'کیف پول های قابل مشاهده', value: String(countOf(wallets)), delta: 'لایه مالی', detail: '', tone: 'primary' },
+        { label: 'خلاصه مالی', value: String(countOf(financeSummary)), delta: 'وضعیت تجمعی', detail: '', tone: 'success' },
+        { label: 'بازگشت وجه / برگشت', value: String(countOf(refunds)), delta: 'پیگیری مالی', detail: '', tone: 'warning' },
+        { label: 'دامنه این نقش', value: 'مالی', delta: 'نقش تخصصی', detail: '', tone: 'danger' },
       ],
       feed: [...makeFeed(toArray(wallets), 'کیف پول'), ...makeFeed(toArray(refunds), 'بازگشت وجه')].slice(0, 6),
       spotlight: {
         eyebrow: 'نمای اپراتور مالی',
-        title: 'این نشست فقط summaryهای مالی و settlement را در سطح اول می بیند',
-        description: 'اپراتور مالی نباید با laneهای تحریریه یا مدیریت دسترسی شلوغ شود؛ فقط داده هایی را ببیند که برای تصمیم مالی لازم است.',
+        title: 'مالی و تسویه',
+        description: '',
         metrics: [
           { label: 'کیف پول', value: String(countOf(wallets)) },
           { label: 'خلاصه مالی', value: String(countOf(financeSummary)) },
@@ -147,16 +147,16 @@ async function buildDashboardPayload(session: AuthSession): Promise<DashboardPay
 
     return {
       stats: [
-        { label: 'تیکت های قابل رسیدگی', value: String(countOf(tickets)), delta: 'صف اصلی', detail: 'حجم فعلی ticketهایی که نیازمند رسیدگی هستند', tone: 'primary' },
-        { label: 'پیگیری های باز', value: String(countOf(followUps)), delta: 'مورد فعال', detail: 'follow-upهایی که هنوز باید بسته یا ادامه داده شوند', tone: 'warning' },
-        { label: 'دامنه این نقش', value: 'پشتیبانی', delta: 'تمرکز عملیاتی', detail: 'این نقش فقط laneهای تیکت و رسیدگی بعدی را می بیند', tone: 'success' },
-        { label: 'سطح پنل', value: 'هدفمند', delta: 'بدون شلوغی', detail: 'navigation و dashboard برای رسیدگی سریع تنظیم شده است', tone: 'danger' },
+        { label: 'تیکت های قابل رسیدگی', value: String(countOf(tickets)), delta: 'صف اصلی', detail: '', tone: 'primary' },
+        { label: 'پیگیری های باز', value: String(countOf(followUps)), delta: 'مورد فعال', detail: '', tone: 'warning' },
+        { label: 'دامنه این نقش', value: 'پشتیبانی', delta: 'تمرکز عملیاتی', detail: '', tone: 'success' },
+        { label: 'سطح پنل', value: 'هدفمند', delta: 'بدون شلوغی', detail: '', tone: 'danger' },
       ],
       feed: [...makeFeed(toArray(followUps), 'پیگیری پشتیبانی'), ...makeFeed(toArray(tickets), 'تیکت')].slice(0, 6),
       spotlight: {
         eyebrow: 'نمای اپراتور پشتیبانی',
-        title: 'این نشست برای queue پشتیبانی و follow-upها بهینه شده است',
-        description: 'اپراتور پشتیبانی باید به سرعت ticketها را اسکن کند و از همینجا به workspace رسیدگی وارد شود.',
+        title: 'پشتیبانی',
+        description: '',
         metrics: [
           { label: 'تیکت', value: String(countOf(tickets)) },
           { label: 'پیگیری', value: String(countOf(followUps)) },
@@ -176,16 +176,16 @@ async function buildDashboardPayload(session: AuthSession): Promise<DashboardPay
 
     return {
       stats: [
-        { label: 'کاربران قابل مدیریت', value: String(countOf((users as Record<string, unknown>)?.data)), delta: 'دامنه دسترسی', detail: 'کاربرهایی که این نشست می تواند ببیند یا مدیریت کند', tone: 'primary' },
-        { label: 'نقش های ثبت شده', value: String(countOf(roles)), delta: 'ماتریس نقش', detail: 'roleهای تعریف شده برای تیم های مختلف پنل', tone: 'warning' },
-        { label: 'دسترسی های مرجع', value: String(countOf((permissions as Record<string, unknown>)?.data)), delta: 'کاتالوگ پنل', detail: 'permissionهایی که navigation و actionها را شکل می دهند', tone: 'success' },
-        { label: 'سطح نشست', value: 'مدیریت دسترسی', delta: 'نقش تخصصی', detail: 'این dashboard برای user/role/permission flow طراحی شده است', tone: 'danger' },
+        { label: 'کاربران قابل مدیریت', value: String(countOf((users as Record<string, unknown>)?.data)), delta: 'دامنه دسترسی', detail: '', tone: 'primary' },
+        { label: 'نقش های ثبت شده', value: String(countOf(roles)), delta: 'ماتریس نقش', detail: '', tone: 'warning' },
+        { label: 'دسترسی های مرجع', value: String(countOf((permissions as Record<string, unknown>)?.data)), delta: 'کاتالوگ پنل', detail: '', tone: 'success' },
+        { label: 'سطح نشست', value: 'مدیریت دسترسی', delta: 'نقش تخصصی', detail: '', tone: 'danger' },
       ],
       feed: [...makeFeed(toArray((users as Record<string, unknown>)?.data), 'کاربر'), ...makeFeed(toArray(roles), 'نقش')].slice(0, 6),
       spotlight: {
         eyebrow: 'نمای مدیر دسترسی',
-        title: 'این نشست باید سریع و شفاف روی کاربران، نقش ها و دسترسی ها متمرکز بماند',
-        description: 'مدیر دسترسی نیازی به laneهای unrelated ندارد؛ سطح اول باید فقط برای کنترل user/role/permission بهینه باشد.',
+        title: 'کاربران و دسترسی',
+        description: '',
         metrics: [
           { label: 'کاربر', value: String(countOf((users as Record<string, unknown>)?.data)) },
           { label: 'نقش', value: String(countOf(roles)) },
@@ -198,15 +198,15 @@ async function buildDashboardPayload(session: AuthSession): Promise<DashboardPay
 
   return {
     stats: [
-      { label: 'نشست فعال', value: '1', delta: 'کاربر احراز شده', detail: 'این حساب وارد پنل شده اما هنوز lane تخصصی واضحی برای آن تعریف نشده است', tone: 'primary' },
-      { label: 'نقش های نشست', value: String(session.user.roles.length), delta: 'نقش ثبت شده', detail: 'فهرست نقش ها در بالا قابل مشاهده است', tone: 'warning' },
-      { label: 'دسترسی های موثر', value: String(session.bootstrap?.effectivePermissions.length ?? 0), delta: 'bootstrap شده', detail: 'فرانت بر اساس این سطح، routeها و actionها را می سازد', tone: 'success' },
-      { label: 'وضعیت پنل', value: 'آماده', delta: 'قابل استفاده', detail: 'اگر route مجاز داشته باشی، از navigation وارد lane مرتبط شو', tone: 'danger' },
+      { label: 'نشست فعال', value: '1', delta: 'کاربر احراز شده', detail: '', tone: 'primary' },
+      { label: 'نقش های نشست', value: String(session.user.roles.length), delta: 'نقش ثبت شده', detail: '', tone: 'warning' },
+      { label: 'دسترسی های موثر', value: String(session.bootstrap?.effectivePermissions.length ?? 0), delta: 'bootstrap شده', detail: '', tone: 'success' },
+      { label: 'وضعیت پنل', value: 'آماده', delta: 'قابل استفاده', detail: '', tone: 'danger' },
     ],
     feed: [],
       spotlight: {
         eyebrow: 'نشست محدود',
-        title: 'این نشست با دسترسی محدود وارد شده است',
+        title: 'نشست محدود',
         description: '',
         metrics: [
         { label: 'کاربر فعلی', value: session.user.fullName || session.user.phoneNumber },
@@ -274,7 +274,6 @@ export function DashboardPage({ session }: { session: AuthSession }) {
               <article className="dashboard-feed-item" key={item.id}>
                 <strong>{item.title}</strong>
                 <small>{item.meta}</small>
-                <p>{item.description}</p>
               </article>
             ))}
           </div>
