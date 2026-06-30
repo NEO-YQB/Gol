@@ -63,21 +63,6 @@ function translateSettlementStatus(value: string) {
   return settlementStatusTranslations[value] ?? value ?? 'نامشخص'
 }
 
-function getOrderActionLabel(key: string) {
-  switch (key) {
-    case 'accept':
-      return 'سفارش توسط فروشنده پذیرفته شد.'
-    case 'ship':
-      return 'سفارش توسط فروشنده برای مشتری ارسال شد.'
-    case 'deliver':
-      return 'سفارش تحویل مشتری شد.'
-    case 'cancel':
-      return 'سفارش توسط فروشنده پذیرفته نشد.'
-    default:
-      return ''
-  }
-}
-
 function getActionButtonText(key: string) {
   switch (key) {
     case 'accept':
@@ -102,7 +87,7 @@ function getPaymentStatus(record: OrderRecord) {
 }
 
 function getCustomerText(record: OrderRecord) {
-  return readText(record, ['customerName', 'customer', 'recipientName', 'userId'], '—')
+  return readText(record, ['customerName', 'recipientName', 'recipientPhoneNumber', 'phoneNumber'], 'بدون نام')
 }
 
 function getTicketOrder(record: OrderRecord) {
@@ -233,54 +218,29 @@ export function OrderWorkspacePage({
           label: 'وضعیت سفارش',
           value: translateOrderStatus(getOrderStatus(currentOrder)),
           delta: translatePaymentStatus(getPaymentStatus(currentOrder)),
-          detail: 'جایگاه فعلی سفارش در مسیر اجرا',
+          detail: '',
           tone: 'primary' as const,
         },
         {
           label: 'پشتیبانی مرتبط',
           value: formatFaNumber(relatedTickets.length),
           delta: relatedTickets.length ? translateSupportStatus(readText(relatedTickets[0], ['status'], 'UNKNOWN')) : 'بدون تیکت',
-          detail: 'هر موردی که باید در route پشتیبانی ادامه یابد',
+          detail: '',
           tone: 'warning' as const,
         },
         {
           label: 'وضعیت مالی',
           value: selectedSettlement ? translateSettlementStatus(getSettlementStatus(selectedSettlement)) : 'نامشخص',
           delta: `${formatFaNumber(Number(walletMeta.availableBalance ?? 0))} تومان موجودی آزاد`,
-          detail: 'ارتباط این سفارش با release، hold یا برگشت',
+          detail: '',
           tone: 'success' as const,
         },
         {
           label: 'اثر روی کیفیت',
           value: getOrderStatus(currentOrder) === 'DELIVERED' ? 'قابل اثرگذاری' : 'هنوز زود است',
           delta: `${formatFaNumber(Number(healthStore.customerRatingCount ?? 0))} نظر ثبت‌شده`,
-          detail: 'بازخورد این سفارش باید در کنار سلامت فروشگاه خوانده شود',
+          detail: '',
           tone: 'danger' as const,
-        },
-      ]
-    : []
-
-  const workflowSteps = currentOrder
-    ? [
-        {
-          label: '۱. جمع‌بندی وضعیت سفارش',
-          value: `${translateOrderStatus(getOrderStatus(currentOrder))} / ${translatePaymentStatus(getPaymentStatus(currentOrder))}`,
-          detail: 'اول خود سفارش باید خوانده شود تا context پایه روشن بماند.',
-        },
-        {
-          label: '۲. رفتن به پشتیبانی در صورت نیاز',
-          value: relatedTickets.length ? `${formatFaNumber(relatedTickets.length)} مورد مرتبط` : 'نیازی دیده نشد',
-          detail: 'اگر مشتری یا تیم عملیات برای این سفارش پرونده دارند، ادامه رسیدگی باید از route پشتیبانی انجام شود.',
-        },
-        {
-          label: '۳. رفتن به مالی در صورت گره تسویه',
-          value: selectedSettlement ? translateSettlementStatus(getSettlementStatus(selectedSettlement)) : 'summary مالی مشخص نیست',
-          detail: 'release، hold و reversal نباید از روی حدس پیش بروند؛ context مالی را جدا ببین.',
-        },
-        {
-          label: '۴. بررسی اثر روی کیفیت',
-          value: getOrderStatus(currentOrder) === 'DELIVERED' ? 'سفارش تحویل شده' : 'در انتظار تکمیل',
-          detail: 'برای سفارش تحویل‌شده باید اثر آن بر perception مشتری و سلامت فروشگاه را هم ببینی.',
         },
       ]
     : []
@@ -301,21 +261,18 @@ export function OrderWorkspacePage({
         {
           label: 'پشتیبانی سفارش',
           value: relatedTickets.length ? `${formatFaNumber(relatedTickets.length)} تیکت` : 'بدون تیکت فعال',
-          detail: relatedTickets.length ? `آخرین وضعیت: ${translateSupportStatus(readText(relatedTickets[0], ['status'], 'UNKNOWN'))}` : 'برای این سفارش هنوز تیکت فعالی دیده نشده است.',
           action: 'رفتن به پشتیبانی',
           route: 'support' as const,
         },
         {
           label: 'مالی و تسویه سفارش',
           value: selectedSettlement ? translateSettlementStatus(getSettlementStatus(selectedSettlement)) : 'رکورد مالی روشن دیده نشد',
-          detail: selectedSettlement ? `آخرین بروزرسانی: ${formatJalaliDate(selectedSettlement.updatedAt ?? selectedSettlement.createdAt, true)}` : 'برای بررسی دقیق‌تر، route کیف پول و تسویه را باز کن.',
           action: 'رفتن به کیف پول',
           route: 'wallet' as const,
         },
         {
           label: 'کیفیت و بازخورد',
           value: getOrderStatus(currentOrder) === 'DELIVERED' ? 'این سفارش می‌تواند بازخورد بسازد' : 'هنوز در مرحله قبل از بازخورد است',
-          detail: `میانگین فعلی فروشگاه ${formatFaNumber(Number(healthStore.customerRatingAverage ?? 0))} از ۵ است.`,
           action: 'رفتن به کیفیت و سلامت',
           route: 'reviews' as const,
         },
@@ -327,17 +284,14 @@ export function OrderWorkspacePage({
         {
           label: 'آمادگی برای نظر مشتری',
           value: getOrderStatus(currentOrder) === 'DELIVERED' ? 'بله' : 'خیر',
-          detail: 'نظرات به سفارش متصل‌اند و بهترین جایشان همین context سفارش است.',
         },
         {
           label: 'میانگین امتیاز فعلی فروشگاه',
           value: `${formatFaNumber(Number(healthStore.customerRatingAverage ?? 0))} از ۵`,
-          detail: `${formatFaNumber(Number(healthStore.customerRatingCount ?? 0))} نظر ثبت شده است.`,
         },
         {
           label: 'وضعیت محدودیت',
           value: restrictions.manualReviewRequired ? 'بازبینی دستی فعال است' : 'بازبینی دستی فعال نیست',
-          detail: restrictions.blockNewDiscounts ? 'ایجاد تخفیف تازه محدود شده است.' : 'محدودیت تازه‌ای روی تخفیف دیده نمی‌شود.',
         },
       ]
     : []
@@ -424,9 +378,7 @@ export function OrderWorkspacePage({
 
         <SectionCard
           eyebrow="هویت سفارش"
-          title={currentOrder ? `رسیدگی متمرکز به سفارش #${orderId}` : 'میزکار سفارش'}
-          description="این workspace فقط برای یک سفارش ساخته شده تا dependencyها و actionها در context همان سفارش جمع شوند و اسکرول اضافی از route اصلی حذف شود."
-          hint="اگر کار روی این سفارش تمام شد، برگرد به کارتابل و سفارش بعدی را جداگانه باز کن."
+          title={currentOrder ? `سفارش #${orderId}` : 'میزکار سفارش'}
           actions={<Pill tone="warning">{currentOrder ? translateOrderStatus(getOrderStatus(currentOrder)) : 'در حال انتظار'}</Pill>}
         >
           {summaryCards.length ? (
@@ -444,35 +396,14 @@ export function OrderWorkspacePage({
         </SectionCard>
 
         <SectionCard
-          eyebrow="workflow سفارش"
-          title="مسیر کامل رسیدگی به همین سفارش"
-          description="این چهار گام کمک می‌کند کاربر به‌ترتیب درست تصمیم بگیرد و بین چند domain پراکنده نشود."
-          hint="هرجا لازم شد، از actionهای پایین همین صفحه وارد route وابسته شو."
-          actions={<Pill tone="primary">workflow روشن</Pill>}
-        >
-          <div className="vendor-order-workspace-workflow-grid">
-            {workflowSteps.map((item) => (
-              <article className="vendor-order-workspace-workflow-item" key={item.label}>
-                <span>{item.label}</span>
-                <strong>{item.value}</strong>
-                <p>{item.detail}</p>
-              </article>
-            ))}
-          </div>
-        </SectionCard>
-
-        <SectionCard
           eyebrow="اکشن‌های سفارش"
-          title="پذیرش و عدم پذیرش سفارش"
-          description="اکشن‌های اصلی همین‌جا هستند و فقط مرحله‌ای که قابل‌اجراست فعال می‌ماند."
-          hint="دکمه غیرفعال قابل کلیک نیست و فقط مرحله مجاز اجرا می‌شود."
-          actions={<Pill tone="primary">actionهای اصلی</Pill>}
+          title="پذیرش سفارش"
+          actions={<Pill tone="primary">اکشن اصلی</Pill>}
         >
           <div className="vendor-order-workspace-action-grid">
             <article className="vendor-order-workspace-action-card vendor-order-workspace-action-card--accept">
               <span>پذیرش سفارش</span>
               <strong>{availableActions.canAccept === true ? 'قابل اجرا' : 'غیرفعال'}</strong>
-              <p>{getOrderActionLabel('accept')}</p>
               <button
                 className="fm-button fm-button--success"
                 disabled={!availableActions.canAccept || actionBusy === 'accept'}
@@ -486,7 +417,6 @@ export function OrderWorkspacePage({
             <article className="vendor-order-workspace-action-card vendor-order-workspace-action-card--cancel">
               <span>لغو پذیرش</span>
               <strong>{availableActions.canCancel === true ? 'قابل اجرا' : 'غیرفعال'}</strong>
-              <p>{getOrderActionLabel('cancel')}</p>
               <button
                 className="fm-button fm-button--danger"
                 disabled={!availableActions.canCancel || actionBusy === 'cancel'}
@@ -502,8 +432,6 @@ export function OrderWorkspacePage({
         <SectionCard
           eyebrow="مسیر اجرا"
           title="ارسال و تحویل"
-          description="بعد از پذیرش، این دو مرحله در مسیر سفارش فعال می‌شوند."
-          hint="اگر سفارش در وضعیت مجاز نباشد، این دکمه‌ها غیرفعال می‌مانند."
           actions={<Pill tone="warning">مرحله بعد</Pill>}
         >
           <div className="vendor-order-workspace-action-grid">
@@ -513,7 +441,6 @@ export function OrderWorkspacePage({
                 label: 'ثبت ارسال',
                 canRun: availableActions.canShip === true,
                 button: getActionButtonText('ship'),
-                description: getOrderActionLabel('ship'),
                 onClick: handleShipOrder,
                 tone: 'primary' as const,
               },
@@ -522,7 +449,6 @@ export function OrderWorkspacePage({
                 label: 'ثبت تحویل',
                 canRun: availableActions.canDeliver === true,
                 button: getActionButtonText('deliver'),
-                description: getOrderActionLabel('deliver'),
                 onClick: handleDeliverOrder,
                 tone: 'success' as const,
               },
@@ -533,7 +459,6 @@ export function OrderWorkspacePage({
               >
                 <span>{item.label}</span>
                 <strong>{item.canRun ? 'قابل اجرا' : 'غیرفعال'}</strong>
-                <p>{item.description}</p>
                 <button
                   className={`fm-button fm-button--${item.tone}`}
                   disabled={!item.canRun || actionBusy === item.key}
@@ -548,18 +473,15 @@ export function OrderWorkspacePage({
         </SectionCard>
 
         <SectionCard
-          eyebrow="domainهای وابسته"
-          title="پشتیبانی، مالی و کیفیت مرتبط با این سفارش"
-          description="این سه بخش به سفارش وصل‌اند و از همین workspace به‌صورت تصمیم‌محور دیده می‌شوند."
-          hint="اگر هرکدام نیاز به کار عمیق‌تر داشت، با دکمه همان کارت وارد route تخصصی‌اش شو."
-          actions={<Pill tone="neutral">context وابسته</Pill>}
+          eyebrow="بخش‌های مرتبط"
+          title="پشتیبانی، مالی و کیفیت"
+          actions={<Pill tone="neutral">مرتبط</Pill>}
         >
           <div className="vendor-order-workspace-dependency-grid">
             {dependencyCards.map((item) => (
               <article className="vendor-order-workspace-dependency-card" key={item.label}>
                 <span>{item.label}</span>
                 <strong>{item.value}</strong>
-                <p>{item.detail}</p>
                 <button className="fm-button fm-button--secondary" onClick={() => onNavigate(item.route)} type="button">
                   {item.action}
                 </button>
@@ -570,9 +492,7 @@ export function OrderWorkspacePage({
 
         <SectionCard
           eyebrow="تاریخچه تغییرات"
-          title="timeline وضعیت سفارش"
-          description="هر تغییر status و هر event عملیاتی باید بعد از هر action قابل مرور باشد تا trace سفارش گم نشود."
-          hint="این بخش برای audit و فهم مسیر سفارش است، نه فقط برای نمایش خلاصه."
+          title="تاریخچه سفارش"
           actions={<Pill tone="neutral">{`${formatFaNumber(orderTimeline.length)} رخداد`}</Pill>}
         >
           {orderTimeline.length ? (
@@ -586,7 +506,7 @@ export function OrderWorkspacePage({
               }))}
             />
           ) : (
-            <div className="vendor-note-card">برای این سفارش هنوز timeline قابل‌نمایشی ثبت نشده است.</div>
+            <div className="vendor-note-card">تاریخچه‌ای ثبت نشده.</div>
           )}
           {orderAuditTrail.length ? (
             <div className="vendor-order-workspace-audit-grid">
@@ -613,17 +533,14 @@ export function OrderWorkspacePage({
 
         <SectionCard
           eyebrow="بازخورد و سلامت"
-          title="جایگاه review در context همین سفارش"
-          description="به‌جای اینکه review در route سفارش گم شود یا جدا از order دیده شود، context آن در همین workspace حفظ شده است."
-          hint="route کیفیت و سلامت هنوز برای نمای کلی مفید است، اما review به‌لحاظ UX از همین سفارش شروع می‌شود."
-          actions={<Pill tone="warning">review-aware</Pill>}
+          title="بازخورد سفارش"
+          actions={<Pill tone="warning">کیفیت</Pill>}
         >
           <div className="vendor-order-workspace-review-grid">
             {reviewContext.map((item) => (
               <article className="vendor-order-workspace-review-card" key={item.label}>
                 <span>{item.label}</span>
                 <strong>{item.value}</strong>
-                <p>{item.detail}</p>
               </article>
             ))}
           </div>

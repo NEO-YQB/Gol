@@ -1,4 +1,4 @@
-import { DataTable, Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
+import { Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
 import { useEffect, useMemo, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { vendorApi } from '../lib/api'
@@ -7,14 +7,6 @@ import type { VendorRoute } from '../lib/routes'
 import type { AuthSession } from '../lib/session'
 
 type OrderRecord = Record<string, unknown>
-
-const orderColumns = [
-  { key: 'id', label: 'شناسه' },
-  { key: 'customer', label: 'مشتری' },
-  { key: 'status', label: 'وضعیت' },
-  { key: 'payment', label: 'پرداخت' },
-  { key: 'total', label: 'مبلغ' },
-]
 
 const orderStatusTranslations: Record<string, string> = {
   PENDING: 'در انتظار',
@@ -52,7 +44,7 @@ function getPaymentStatus(record: OrderRecord) {
 }
 
 function getCustomerText(record: OrderRecord) {
-  return readText(record, ['customerName', 'customer', 'recipientName', 'userId'], '—')
+  return readText(record, ['customerName', 'recipientName', 'recipientPhoneNumber', 'phoneNumber'], 'بدون نام')
 }
 
 function getTotalAmount(record: OrderRecord) {
@@ -159,46 +151,34 @@ export function OrdersPage({
     }
   }, [filteredOrders, onSelectOrder, selectedOrderId])
 
-  const rows = useMemo(
-    () =>
-      filteredOrders.slice(0, 20).map((item, index) => ({
-        id: readText(item, ['id'], String(index + 1)),
-        customer: getCustomerText(item),
-        status: translateOrderStatus(getOrderStatus(item)),
-        payment: translatePaymentStatus(getPaymentStatus(item)),
-        total: getTotalAmount(item),
-      })),
-    [filteredOrders],
-  )
-
   const stats = useMemo(
     () => [
       {
         label: 'کل سفارش‌ها',
         value: formatFaNumber(orders.length),
         delta: `${formatFaNumber(filteredOrders.length)} در view فعلی`,
-        detail: 'صف کاری سبک و قابل اسکن',
+        detail: '',
         tone: 'primary' as const,
       },
       {
         label: 'نیازمند توجه پرداخت',
         value: formatFaNumber(orders.filter((item) => getPaymentStatus(item) !== 'PAID').length),
         delta: 'پایش وضعیت پرداخت',
-        detail: 'برای تشخیص سفارش‌های معطل یا ناقص',
+        detail: '',
         tone: 'warning' as const,
       },
       {
         label: 'سفارش‌های تحویل‌شده',
         value: formatFaNumber(orders.filter((item) => getOrderStatus(item) === 'DELIVERED').length),
         delta: 'جریان تکمیل‌شده',
-        detail: 'فقط تصویر کلی برای شروع work',
+        detail: '',
         tone: 'success' as const,
       },
       {
         label: 'وضعیت‌های فعال',
         value: formatFaNumber(statusOptions(orders).length - 1),
         delta: statusFilter === 'ALL' ? 'همه وضعیت‌ها' : translateOrderStatus(statusFilter),
-        detail: 'پایه filter chipها',
+        detail: '',
         tone: 'danger' as const,
       },
     ],
@@ -237,10 +217,8 @@ export function OrdersPage({
 
         <SectionCard
           eyebrow="کارتابل سفارش‌ها"
-          title="فهرست سفارش‌های فروشگاه"
-          description="این صفحه فقط برای اسکن، جستجو و انتخاب سریع سفارش است؛ رسیدگی عمیق داخل workspace جدا انجام می‌شود."
-          hint="اگر قصد کار روی یک سفارش را داری، فقط انتخابش کن و بعد وارد workspace شو."
-          actions={<Pill tone="primary">سفارش‌ها v4</Pill>}
+          title="سفارش‌ها"
+          actions={<Pill tone="primary">{`${formatFaNumber(filteredOrders.length)} سفارش`}</Pill>}
         >
           <div className="vendor-orders-toolbar">
             <div className="fm-field vendor-orders-search">
@@ -248,7 +226,7 @@ export function OrdersPage({
               <input
                 id="vendor-orders-search"
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="شناسه، مشتری، وضعیت یا شماره تماس"
+                placeholder="شناسه، مشتری یا شماره"
                 value={search}
               />
             </div>
@@ -268,33 +246,39 @@ export function OrdersPage({
           </div>
         </SectionCard>
 
-        <div className="vendor-orders-layout">
-          <SectionCard
-            eyebrow="جدول سفارش‌ها"
-            title="لیست سفارش‌های قابل اسکن"
-            description="برای سرعت، table و selection list کنار هم آمده‌اند اما detail و actionهای سنگین از اینجا جدا شده‌اند."
-            actions={<Pill tone="success">{`${formatFaNumber(filteredOrders.length)} سفارش`}</Pill>}
-          >
-            <div className="vendor-orders-table-card">
-              <DataTable columns={orderColumns} rows={rows} />
+        {selectedOrder ? (
+          <div className="vendor-orders-selected-bar">
+            <div>
+              <span>انتخاب شده</span>
+              <strong>{`#${readText(selectedOrder, ['id'], '—')} · ${getCustomerText(selectedOrder)}`}</strong>
+            </div>
+            <Pill tone="warning">{translateOrderStatus(getOrderStatus(selectedOrder))}</Pill>
+            <button className="fm-button fm-button--secondary" onClick={openWorkspace} type="button">
+              میزکار سفارش
+            </button>
+          </div>
+        ) : null}
 
-              <div className="vendor-orders-selection-list">
-                {filteredOrders.slice(0, 8).map((item) => {
+        <div className="vendor-orders-layout">
+          <SectionCard eyebrow="لیست" title="سفارش‌ها" actions={<Pill tone="success">{`${formatFaNumber(filteredOrders.length)} مورد`}</Pill>}>
+            <div className="vendor-orders-table-card">
+              <div className="vendor-orders-board-list">
+                {filteredOrders.slice(0, 20).map((item) => {
                   const id = readText(item, ['id'], '—')
                   const isActive = id === selectedOrderId
 
                   return (
                     <button
-                      className={`vendor-orders-selection-item ${isActive ? 'is-active' : ''}`}
+                      className={`vendor-orders-board-item ${isActive ? 'is-active' : ''}`}
                       key={id}
                       onClick={() => setSelectedOrderId(id)}
                       type="button"
                     >
-                      <strong>سفارش #{id}</strong>
-                      <span>{getCustomerText(item)}</span>
-                      <small>
-                        {translateOrderStatus(getOrderStatus(item))} - {translatePaymentStatus(getPaymentStatus(item))}
-                      </small>
+                      <span className="vendor-orders-board-id">{`#${id}`}</span>
+                      <strong>{getCustomerText(item)}</strong>
+                      <span>{translateOrderStatus(getOrderStatus(item))}</span>
+                      <span>{translatePaymentStatus(getPaymentStatus(item))}</span>
+                      <span>{getTotalAmount(item)}</span>
                     </button>
                   )
                 })}
@@ -305,13 +289,12 @@ export function OrdersPage({
           <div className="vendor-orders-detail-column">
             <SectionCard
               eyebrow="سفارش انتخاب‌شده"
-              title={selectedOrder ? `خلاصه سفارش #${readText(selectedOrder, ['id'], '—')}` : 'سفارشی انتخاب نشده'}
-              description="این summary کوتاه می‌ماند تا page مجبور نباشد تمام context را همین‌جا نگه دارد."
+              title={selectedOrder ? `#${readText(selectedOrder, ['id'], '—')}` : 'بدون انتخاب'}
               actions={
                 <div className="vendor-products-actions">
                   <Pill tone="warning">{selectedOrder ? translateOrderStatus(getOrderStatus(selectedOrder)) : 'بدون انتخاب'}</Pill>
                   <button className="fm-button fm-button--secondary" disabled={!selectedOrder} onClick={openWorkspace} type="button">
-                    ورود به workspace
+                    میزکار سفارش
                   </button>
                 </div>
               }
@@ -326,20 +309,8 @@ export function OrdersPage({
                   ))}
                 </div>
               ) : (
-                <div className="vendor-note-card">یک سفارش انتخاب کن تا خلاصه کوتاه آن اینجا دیده شود.</div>
+                <div className="vendor-note-card">سفارشی انتخاب نشده.</div>
               )}
-            </SectionCard>
-
-            <SectionCard
-              eyebrow="قدم بعدی"
-              title="ورود به رسیدگی متمرکز"
-              description="پاسخ، مالی، پشتیبانی و کیفیت باید در workspace جدا و متمرکز بررسی شوند."
-              hint="اینجا فقط دروازه ورود است، نه محل انجام کار سنگین."
-              actions={<Pill tone="neutral">workspace جدا</Pill>}
-            >
-              <div className="vendor-note-card">
-                برای کار روی این سفارش، workspace جدا باز کن تا اسکرول و شلوغی کم بماند.
-              </div>
             </SectionCard>
           </div>
         </div>
