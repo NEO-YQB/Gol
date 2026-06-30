@@ -29,7 +29,7 @@ function getSettlementStatus(record: OrderRecord) {
 }
 
 function getCustomerText(record: OrderRecord) {
-  return readText(record, ['customerName', 'customer', 'recipientName', 'userId'], '—')
+  return readText(record, ['customerName', 'recipientName', 'customer.fullName', 'customer.name'], 'بدون نام')
 }
 
 function getExceptionSummary(record: OrderRecord) {
