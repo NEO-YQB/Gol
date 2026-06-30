@@ -70,7 +70,7 @@ export function HeroSection({
             </p>
           ) : null}
           {block.data.ctaText && block.data.ctaLink ? (
-            <a className="mt-8 inline-flex items-center rounded-full bg-[#fff3e7] px-6 py-3 text-sm font-black text-[#173126] transition hover:bg-white" href={String(block.data.ctaLink)}>
+            <a className="mt-10 inline-flex items-center rounded-full bg-[#fff3e7] px-6 py-3 text-sm font-black text-[#173126] transition hover:bg-white md:mt-12" href={String(block.data.ctaLink)}>
               {String(block.data.ctaText)}
             </a>
           ) : null}

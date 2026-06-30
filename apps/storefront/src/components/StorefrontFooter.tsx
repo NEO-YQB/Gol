@@ -153,7 +153,7 @@ export function StorefrontFooter({ page }: { page: EnrichedStorefrontPage }) {
         style={{ gridTemplateColumns: `${brandWidthPercent}% ${linksWidthPercent}% ${trustWidthPercent}%` }}
       >
         {footerConfig.brandEnabled !== false ? (
-          <section className="min-w-0">
+          <section className="min-w-0 text-center md:text-right">
             {footerConfig.brandLogoImageUrl ? (
               footerConfig.brandLogoHref ? (
                 <Link className="inline-flex overflow-hidden rounded-[24px]" href={footerConfig.brandLogoHref}>
@@ -202,7 +202,7 @@ export function StorefrontFooter({ page }: { page: EnrichedStorefrontPage }) {
               </h3>
             ) : null}
             {badges.length ? (
-              <div className={`${footerConfig.trustTitle ? 'mt-4' : ''} flex flex-wrap gap-3`}>
+              <div className={`${footerConfig.trustTitle ? 'mt-4' : ''} flex flex-wrap justify-center gap-3 md:justify-start`}>
                 {badges.map((badge, index) => {
                   const image = (
                     <img
@@ -226,7 +226,7 @@ export function StorefrontFooter({ page }: { page: EnrichedStorefrontPage }) {
             ) : null}
 
             {socials.length ? (
-              <div className={`${badges.length ? 'mt-5' : footerConfig.trustTitle ? 'mt-4' : ''} flex flex-wrap gap-3`}>
+              <div className={`${badges.length ? 'mt-5' : footerConfig.trustTitle ? 'mt-4' : ''} flex flex-wrap justify-center gap-3 md:justify-start`}>
                 {socials.map((social) => (
                   <Link className="inline-flex rounded-[18px] border p-1.5 transition hover:opacity-90" href={social.href} key={`${social.label}-${social.href}`} style={{ borderColor: footerConfig.borderColor || 'rgba(255,255,255,0.12)' }}>
                     <span className="flex h-11 w-11 items-center justify-center rounded-[14px]" style={{ color: footerConfig.textColor || '#f5efe4' }}>
