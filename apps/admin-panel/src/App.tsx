@@ -737,6 +737,17 @@ export default function App() {
 
   const navSections = buildNav(route, session)
   const currentScope = describeScope(session)
+  const accountName = session.user.fullName || session.user.phoneNumber
+  const accountRole = session.user.roles.join(' / ') || 'کاربر احراز هویت شده'
+  const accountActions = [
+    canAccessRoute(session, 'accessControl')
+      ? { label: 'مشاهده اطلاعات حساب', onClick: () => handleNavigate('accessControl') }
+      : null,
+    canAccessRoute(session, 'settings')
+      ? { label: 'تنظیمات پنل', onClick: () => handleNavigate('settings') }
+      : null,
+    { label: 'خروج از پنل', onClick: handleLogout, tone: 'danger' as const },
+  ].filter((action): action is NonNullable<typeof action> => action !== null)
 
   return (
     <AppShell
@@ -744,8 +755,8 @@ export default function App() {
       productName="مرکز کنترل ادمین"
       productSubtitle="عملیات بازار گل"
       workspaceLabel="پنل ادمین"
-      userName={session.user.fullName || session.user.phoneNumber}
-      userRole={session.user.roles.join(' / ') || 'کاربر احراز هویت شده'}
+      userName={accountName}
+      userRole={accountRole}
       pageEyebrow={pageMeta.eyebrow}
       pageTitle={pageMeta.title}
       pageDescription=""
@@ -755,12 +766,21 @@ export default function App() {
         { label: adminRouteLabels[route], tone: 'ghost' },
         { label: currentScope, tone: 'secondary' },
       ]}
+      accountMenu={{
+        profileLabel: 'حساب ادمین',
+        storeName: 'مرکز کنترل بازار گل',
+        phoneNumber: session.user.phoneNumber,
+        statusLabel: 'دسترسی فعال و همگام با نقش‌ها',
+        quickStats: [
+          { label: 'سطح دسترسی', value: currentScope },
+          { label: 'بخش فعلی', value: adminRouteLabels[route] },
+        ],
+        actions: accountActions,
+      }}
     >
       <div className="admin-toolbar-note">
         <Pill>{currentScope}</Pill>
-        <button className="admin-logout" onClick={handleLogout} type="button">
-          خروج از پنل
-        </button>
+        <Pill tone="success">نشست فعال</Pill>
       </div>
       {renderRoute(route, session, {
         ordersWorkspaceOrder,

@@ -297,14 +297,18 @@ export default function App() {
     return <VendorOnboardingPage onRefreshSession={refreshSessionBootstrap} session={session} />
   }
 
+  const storeName = session.bootstrap?.store?.name ?? 'فروشگاه شما'
+  const accountName = session.user.fullName || session.user.phoneNumber
+  const accountRole = session.user.roles.join(' / ') || 'کاربر فروشنده'
+
   return (
     <AppShell
       tone="vendor"
       productName="کارتابل فروشنده"
       productSubtitle="عملیات و رشد فروشگاه"
       workspaceLabel="پنل فروشنده"
-      userName={session.user.fullName || session.user.phoneNumber}
-      userRole={session.user.roles.join(' / ') || 'کاربر فروشنده'}
+      userName={accountName}
+      userRole={accountRole}
       pageEyebrow={pageMeta.eyebrow}
       pageTitle={pageMeta.title}
       pageDescription=""
@@ -314,10 +318,25 @@ export default function App() {
         { label: vendorRouteLabels[route], tone: 'ghost' },
         { label: 'نشست فعال', tone: 'ghost' },
       ]}
+      accountMenu={{
+        profileLabel: storeName,
+        storeName,
+        phoneNumber: session.user.phoneNumber,
+        statusLabel: session.bootstrap?.store?.isVerified ? 'فروشگاه تایید شده و آماده فروش' : 'نشست فعال فروشنده',
+        quickStats: [
+          { label: 'وضعیت', value: session.bootstrap?.store?.isVerified ? 'تایید شده' : 'در حال تکمیل' },
+          { label: 'بخش فعلی', value: vendorRouteLabels[route] },
+        ],
+        actions: [
+          { label: 'مشاهده پروفایل فروشگاه', onClick: () => setRoute('store') },
+          { label: 'اعلان‌ها و پیام‌ها', onClick: () => setRoute('notifications') },
+          { label: 'خروج از پنل', onClick: handleLogout, tone: 'danger' },
+        ],
+      }}
     >
       <div className="vendor-toolbar-note">
         <Pill tone="success">نشست فعال</Pill>
-        <button className="vendor-logout" onClick={handleLogout} type="button">خروج از پنل</button>
+        <Pill>{storeName}</Pill>
       </div>
       {renderRoute(route, session, setRoute, selectedOrder, setSelectedOrder)}
     </AppShell>

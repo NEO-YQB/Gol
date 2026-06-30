@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { cx } from '../cx'
-import type { NavSection, ShellAction } from '../types'
+import type { NavSection, ShellAccountMenu, ShellAction } from '../types'
 import { Pill } from './Pill'
 
 type AppShellProps = {
@@ -16,6 +16,7 @@ type AppShellProps = {
   navSections: NavSection[]
   onNavigate?: (key: string) => void
   actions?: ShellAction[]
+  accountMenu?: ShellAccountMenu
   children: ReactNode
 }
 
@@ -32,8 +33,13 @@ export function AppShell({
   navSections,
   onNavigate,
   actions = [],
+  accountMenu,
   children,
 }: AppShellProps) {
+  const accountInitial = userName.trim().slice(0, 1) || 'گ'
+  const accountStats = accountMenu?.quickStats ?? []
+  const accountActions = accountMenu?.actions ?? []
+
   return (
     <div className={cx('fm-shell', `fm-shell--${tone}`)} dir="rtl">
       <aside className="fm-sidebar">
@@ -98,15 +104,72 @@ export function AppShell({
                 </button>
               ))}
             </div>
-            <div className="fm-user-card">
-              <span className="fm-user-avatar" aria-hidden="true">
-                {userName.slice(0, 1)}
-              </span>
-              <div>
-                <strong>{userName}</strong>
-                <small>{userRole}</small>
+            <details className="fm-account-menu">
+              <summary className="fm-user-card" aria-label="باز کردن منوی حساب کاربری">
+                <span className="fm-user-avatar" aria-hidden="true">
+                  {accountInitial}
+                </span>
+                <span className="fm-user-copy">
+                  <strong>{userName}</strong>
+                  <small>{accountMenu?.profileLabel ?? userRole}</small>
+                </span>
+                <span className="fm-user-chevron" aria-hidden="true">⌄</span>
+              </summary>
+
+              <div className="fm-account-panel">
+                <div className="fm-account-hero">
+                  <span className="fm-account-logo" aria-hidden="true">
+                    {accountInitial}
+                  </span>
+                  <div>
+                    <p>{accountMenu?.statusLabel ?? 'نشست فعال و امن'}</p>
+                    <strong>{userName}</strong>
+                    <small>{userRole}</small>
+                  </div>
+                </div>
+
+                <div className="fm-account-details">
+                  {accountMenu?.storeName ? (
+                    <span>
+                      <small>فضای کاری</small>
+                      <strong>{accountMenu.storeName}</strong>
+                    </span>
+                  ) : null}
+                  {accountMenu?.phoneNumber ? (
+                    <span>
+                      <small>شماره موبایل</small>
+                      <strong dir="ltr">{accountMenu.phoneNumber}</strong>
+                    </span>
+                  ) : null}
+                </div>
+
+                {accountStats.length > 0 ? (
+                  <div className="fm-account-stats">
+                    {accountStats.map((stat) => (
+                      <span key={stat.label}>
+                        <small>{stat.label}</small>
+                        <strong>{stat.value}</strong>
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+
+                {accountActions.length > 0 ? (
+                  <div className="fm-account-actions">
+                    {accountActions.map((action) => (
+                      <button
+                        className={cx('fm-account-action', action.tone === 'danger' && 'fm-account-action--danger')}
+                        key={action.label}
+                        onClick={action.onClick}
+                        type="button"
+                      >
+                        {action.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </div>
-            </div>
+            </details>
           </div>
         </header>
 

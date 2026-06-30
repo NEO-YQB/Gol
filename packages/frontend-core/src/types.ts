@@ -18,6 +18,24 @@ export type ShellAction = {
   tone?: 'primary' | 'secondary' | 'ghost'
 }
 
+export type ShellAccountAction = {
+  label: string
+  onClick?: () => void
+  tone?: 'default' | 'danger'
+}
+
+export type ShellAccountMenu = {
+  profileLabel?: string
+  storeName?: string
+  phoneNumber?: string
+  statusLabel?: string
+  quickStats?: Array<{
+    label: string
+    value: string
+  }>
+  actions?: ShellAccountAction[]
+}
+
 export type StatTone = 'primary' | 'success' | 'warning' | 'danger'
 
 export type StatItem = {
