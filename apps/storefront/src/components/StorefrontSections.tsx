@@ -65,7 +65,7 @@ export function HeroSection({
         <div className={`w-full ${contentAlign === 'center' ? 'max-w-4xl' : 'max-w-3xl'}`}>
           <h1 className="text-4xl font-black leading-[1.15] md:text-6xl">{String(block.data.title ?? pageTitle)}</h1>
           {block.data.subtitle ? (
-            <p className={`mt-6 text-base leading-8 text-white/82 md:text-lg ${contentAlign === 'center' ? 'mx-auto max-w-2xl' : 'max-w-2xl'}`}>
+            <p className={`info-hero-subtitle-pill mt-5 inline-flex max-w-2xl rounded-[26px] border border-white/24 bg-white/14 px-4 py-2.5 text-sm font-black leading-7 text-[#fff5df] shadow-[0_14px_32px_rgba(0,0,0,0.12)] backdrop-blur md:rounded-full md:px-5 md:py-3 md:text-base ${contentAlign === 'center' ? 'mx-auto' : ''}`}>
               {String(block.data.subtitle)}
             </p>
           ) : null}
