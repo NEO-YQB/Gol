@@ -946,7 +946,7 @@ export function PageBuilderWorkspacePage({
   function patchCampaignBanner(blockId: string, index: number, key: string, value: unknown) {
     updateBlock(blockId, (block) => {
       const currentBanners = Array.isArray(block.data.banners) ? [...(block.data.banners as Array<Record<string, unknown>>)] : []
-      const currentBanner = currentBanners[index] ?? { imageUrl: '', link: '', colSpan: 1 }
+      const currentBanner = currentBanners[index] ?? { imageUrl: '', mobileImageUrl: '', link: '', colSpan: 1 }
 
       currentBanners[index] = {
         ...currentBanner,
@@ -970,7 +970,7 @@ export function PageBuilderWorkspacePage({
         ...block.data,
         banners: [
           ...(Array.isArray(block.data.banners) ? (block.data.banners as Array<Record<string, unknown>>) : []),
-          { imageUrl: '', link: '', colSpan: 1 },
+          { imageUrl: '', mobileImageUrl: '', link: '', colSpan: 1 },
         ],
       },
     }))
@@ -1230,8 +1230,8 @@ export function PageBuilderWorkspacePage({
         if (parts[2] === 'banner') {
           const bannerIndex = Number(parts[3])
           const field = parts[4]
-          if (field === 'imageUrl' && Number.isInteger(bannerIndex)) {
-            patchCampaignBanner(blockId, bannerIndex, 'imageUrl', uploaded.url)
+          if ((field === 'imageUrl' || field === 'mobileImageUrl') && Number.isInteger(bannerIndex)) {
+            patchCampaignBanner(blockId, bannerIndex, field, uploaded.url)
           }
           return
         }
@@ -1428,6 +1428,7 @@ export function PageBuilderWorkspacePage({
                 const current = typeof banner === 'object' && banner !== null ? (banner as Record<string, unknown>) : {}
                 return {
                   imageUrl: String(current.imageUrl ?? '').trim(),
+                  mobileImageUrl: String(current.mobileImageUrl ?? '').trim(),
                   link: String(current.link ?? '').trim(),
                   colSpan: Number(current.colSpan ?? 1) || 1,
                 }
@@ -2388,6 +2389,31 @@ export function PageBuilderWorkspacePage({
                                   {getImagePreview(banner.imageUrl) ? (
                                     <div className="admin-products-image-preview">
                                       <img alt={`Preview banner ${bannerIndex + 1}`} src={String(banner.imageUrl)} />
+                                    </div>
+                                  ) : null}
+                                </div>
+                                <label className="fm-field">
+                                  <span>Mobile Image URL</span>
+                                  <input
+                                    onChange={(event) => patchCampaignBanner(block.id, bannerIndex, 'mobileImageUrl', event.target.value)}
+                                    type="text"
+                                    value={String(banner.mobileImageUrl ?? '')}
+                                  />
+                                </label>
+                                <div className="admin-products-upload-card page-builder-field--wide">
+                                  <div className="admin-products-upload-actions">
+                                    <button
+                                      className="content-secondary-action"
+                                      disabled={uploadingImageTarget === `block:${block.id}:banner:${bannerIndex}:mobileImageUrl`}
+                                      onClick={() => openImagePicker(`block:${block.id}:banner:${bannerIndex}:mobileImageUrl`)}
+                                      type="button"
+                                    >
+                                      {uploadingImageTarget === `block:${block.id}:banner:${bannerIndex}:mobileImageUrl` ? 'در حال آپلود...' : 'انتخاب تصویر موبایل بنر'}
+                                    </button>
+                                  </div>
+                                  {getImagePreview(banner.mobileImageUrl) ? (
+                                    <div className="admin-products-image-preview">
+                                      <img alt={`Preview mobile banner ${bannerIndex + 1}`} src={String(banner.mobileImageUrl)} />
                                     </div>
                                   ) : null}
                                 </div>

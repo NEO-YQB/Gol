@@ -190,7 +190,12 @@ export function CampaignGridSection({ block }: { block: { id: string; data: Reco
               gridColumn: `span ${Math.min(Math.max(Number(banner.colSpan ?? 1), 1), 3)} / span ${Math.min(Math.max(Number(banner.colSpan ?? 1), 1), 3)}`,
             }}
           >
-            <img alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" src={resolveAssetUrl(String(banner.imageUrl ?? ''))} />
+            <picture className="block h-full w-full">
+              {banner.mobileImageUrl ? (
+                <source media="(max-width: 767px)" srcSet={resolveAssetUrl(String(banner.mobileImageUrl))} />
+              ) : null}
+              <img alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" src={resolveAssetUrl(String(banner.imageUrl ?? banner.mobileImageUrl ?? ''))} />
+            </picture>
             <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/5 to-transparent" />
           </a>
         ))}
