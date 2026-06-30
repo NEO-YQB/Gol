@@ -9,21 +9,11 @@ type OrderRecord = Record<string, unknown>
 const ordersPerPage = 10
 const exceptionsPerPage = 5
 
-const orderColumns = [
-  { key: 'id', label: 'شناسه' },
-  { key: 'customer', label: 'مشتری' },
-  { key: 'nationalId', label: 'کد ملی' },
-  { key: 'status', label: 'وضعیت سفارش' },
-  { key: 'payment', label: 'پرداخت' },
-  { key: 'settlement', label: 'تسویه' },
-]
-
 const exceptionColumns = [
-  { key: 'id', label: 'شناسه سفارش' },
+  { key: 'id', label: 'شناسه' },
   { key: 'status', label: 'وضعیت' },
   { key: 'payment', label: 'پرداخت' },
-  { key: 'settlement', label: 'تسویه' },
-  { key: 'reason', label: 'علت نیاز به رسیدگی' },
+  { key: 'reason', label: 'علت' },
 ]
 
 function getOrderStatus(record: OrderRecord) {
@@ -233,19 +223,6 @@ export function OrdersPage({
     setOrdersPage((current) => Math.min(current, ordersPageCount))
   }, [ordersPageCount])
 
-  const orderRows = useMemo(
-    () =>
-      currentOrders.map((item, index) => ({
-        id: readText(item, ['id'], String(index + 1)),
-        customer: getCustomerText(item),
-        nationalId: readText(item, ['customerNationalId'], '—'),
-        status: getOrderStatusLabel(getOrderStatus(item)),
-        payment: getPaymentStatusLabel(getPaymentStatus(item)),
-        settlement: getSettlementStatusLabel(getSettlementStatus(item)),
-      })),
-    [currentOrders],
-  )
-
   const exceptionsPageCount = Math.max(1, Math.ceil(exceptions.length / exceptionsPerPage))
   const currentExceptions = useMemo(() => {
     const start = (exceptionsPage - 1) * exceptionsPerPage
@@ -262,7 +239,6 @@ export function OrdersPage({
         id: readText(item, ['id'], String(index + 1)),
         status: getOrderStatusLabel(getOrderStatus(item)),
         payment: getPaymentStatusLabel(getPaymentStatus(item)),
-        settlement: getSettlementStatusLabel(getSettlementStatus(item)),
         reason: getExceptionSummary(item),
       })),
     [currentExceptions],
@@ -293,8 +269,7 @@ export function OrdersPage({
       label: 'کل سفارش‌ها',
       value: String(orders.length),
       delta: `${filteredOrders.length} مورد در نمای فعلی`,
-      detail: 'پایه جدول و ورود به میزکار',
-      hint: 'این کارت نشان می‌دهد چند سفارش در کل داریم و چند سفارش با فیلترهای فعلی دیده می‌شوند.',
+      detail: '',
       tone: 'primary' as const,
     },
     {
@@ -303,24 +278,21 @@ export function OrdersPage({
         orders.filter((item) => ['PENDING', 'PAID', 'ACCEPTED', 'SHIPPED'].includes(getOrderStatus(item))).length,
       ),
       delta: 'جریان‌های باز',
-      detail: 'کاندیدهای اصلی برای میزکار متمرکز',
-      hint: 'این عدد کمک می‌کند سریع بفهمی چند سفارش هنوز به تصمیم یا اقدام عملیاتی نیاز دارند.',
+      detail: '',
       tone: 'warning' as const,
     },
     {
       label: 'استثناهای عملیاتی',
       value: String(exceptions.length),
       delta: 'صف سفارش و مالی',
-      detail: 'موارد نیازمند رسیدگی فوری',
-      hint: 'این بخش سفارش‌هایی را می‌شمارد که از نظر پرداخت یا تسویه به رسیدگی فوری نیاز دارند.',
+      detail: '',
       tone: 'danger' as const,
     },
     {
       label: 'فیلترهای فعال',
       value: String(statusOptions(orders).length - 1),
       delta: statusFilter === 'ALL' ? 'همه وضعیت‌ها' : getOrderStatusLabel(statusFilter),
-      detail: 'آماده برای نماهای ذخیره شده بعدی',
-      hint: 'از اینجا می‌توانی بفهمی چند وضعیت مختلف در فهرست فعلی حضور دارند.',
+      detail: '',
       tone: 'success' as const,
     },
   ]
@@ -336,10 +308,8 @@ export function OrdersPage({
 
         <SectionCard
           eyebrow="کارتابل سفارش"
-          title="فهرست سفارش‌ها و صف ورود به میزکار"
-          description="این صفحه فقط برای پیدا کردن سفارش، دیدن وضعیت کلی و ورود به میزکار رسیدگی است. همه کارهای سنگین در میزکار انجام می‌شوند تا صفحه شلوغ نشود."
-          hint="ابتدا سفارش را پیدا کن، بعد خلاصه کوتاه آن را ببین و سپس وارد میزکار شو تا ادامه رسیدگی را آنجا انجام دهی."
-          actions={<Pill tone="primary">کارتابل فهرست</Pill>}
+          title="سفارش‌ها"
+          actions={<Pill tone="primary">{`${filteredOrders.length} سفارش`}</Pill>}
         >
           <div className="orders-toolbar">
             <div className="fm-field orders-search">
@@ -347,7 +317,7 @@ export function OrdersPage({
               <input
                 id="orders-search"
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="شناسه سفارش، نام مشتری، فروشگاه، وضعیت پرداخت یا وضعیت تسویه"
+                placeholder="شناسه، مشتری یا فروشگاه"
                 value={search}
               />
             </div>
@@ -366,9 +336,46 @@ export function OrdersPage({
             </div>
           </div>
 
+          {selectedOrder ? (
+            <div className="orders-selected-bar">
+              <div>
+                <span>انتخاب شده</span>
+                <strong>{`#${readText(selectedOrder, ['id'], '—')} · ${getCustomerText(selectedOrder)}`}</strong>
+              </div>
+              <Pill tone="warning">{getOrderStatusLabel(getOrderStatus(selectedOrder))}</Pill>
+              <button
+                className="orders-primary-button"
+                onClick={() => onOpenOrdersWorkspace(selectedOrder)}
+                type="button"
+              >
+                میزکار سفارش
+              </button>
+            </div>
+          ) : null}
+
           <div className="orders-layout">
             <div className="orders-table-card">
-              <DataTable columns={orderColumns} rows={orderRows} />
+              <div className="orders-board-list">
+                {currentOrders.map((item) => {
+                  const orderId = readText(item, ['id'], '')
+                  const isActive = selectedOrderId === orderId
+
+                  return (
+                    <button
+                      className={`orders-board-item${isActive ? ' is-active' : ''}`}
+                      key={orderId}
+                      onClick={() => setSelectedOrderId(orderId)}
+                      type="button"
+                    >
+                      <span className="orders-board-id">{`#${orderId}`}</span>
+                      <strong>{getCustomerText(item)}</strong>
+                      <span>{getOrderStatusLabel(getOrderStatus(item))}</span>
+                      <span>{getPaymentStatusLabel(getPaymentStatus(item))}</span>
+                      <span>{getSettlementStatusLabel(getSettlementStatus(item))}</span>
+                    </button>
+                  )
+                })}
+              </div>
 
               {ordersPageCount > 1 ? (
                 <div className="orders-pagination">
@@ -391,34 +398,12 @@ export function OrdersPage({
                   </button>
                 </div>
               ) : null}
-
-              <div className="orders-selection-list">
-                {currentOrders.map((item) => {
-                  const orderId = readText(item, ['id'], '')
-                  const isActive = selectedOrderId === orderId
-
-                  return (
-                    <button
-                      className={`orders-selection-item${isActive ? ' is-active' : ''}`}
-                      key={orderId}
-                      onClick={() => setSelectedOrderId(orderId)}
-                      type="button"
-                    >
-                      <strong>{`سفارش #${orderId}`}</strong>
-                      <span>{`${getCustomerText(item)} - ${getOrderStatusLabel(getOrderStatus(item))}`}</span>
-                      <small>{`${getPaymentStatusLabel(getPaymentStatus(item))} / ${getSettlementStatusLabel(getSettlementStatus(item))}`}</small>
-                    </button>
-                  )
-                })}
-              </div>
             </div>
 
             <div className="orders-detail-column">
               <SectionCard
                 eyebrow="سفارش انتخاب شده"
-                title={selectedOrder ? `آماده ورود به میزکار سفارش #${readText(selectedOrder, ['id'], '—')}` : 'سفارشی انتخاب نشده'}
-                description="این خلاصه کوتاه است تا فقط تصمیم ورود به میزکار را آسان کند. جزئیات اصلی و کارهای عملیاتی در میزکار نمایش داده می‌شوند."
-                hint="اگر اطلاعات این بخش کافی نبود، طبیعی است. اینجا فقط برای انتخاب است و ادامه کار در میزکار انجام می‌شود."
+                title={selectedOrder ? `#${readText(selectedOrder, ['id'], '—')}` : 'بدون انتخاب'}
                 actions={<Pill tone="warning">{selectedOrder ? getOrderStatusLabel(getOrderStatus(selectedOrder)) : 'بدون انتخاب'}</Pill>}
               >
                 {selectedSummary.length ? (
@@ -431,30 +416,13 @@ export function OrdersPage({
                     ))}
                   </div>
                 ) : (
-                  <div className="fm-message">برای ادامه، یک سفارش را از فهرست انتخاب کن.</div>
+                  <div className="fm-message">سفارشی انتخاب نشده.</div>
                 )}
-
-                <div className="orders-workspace-entry">
-                  <p>
-                    کارهای اصلی مثل تایید سفارش، ثبت ارسال، ثبت تحویل، رسیدگی به پرداخت، بازگشت وجه و آزادسازی تسویه
-                    از این صفحه جدا شده‌اند تا روند کار ساده و روشن بماند.
-                  </p>
-                  <button
-                    className="orders-primary-button"
-                    disabled={!selectedOrder}
-                    onClick={() => selectedOrder && onOpenOrdersWorkspace(selectedOrder)}
-                    type="button"
-                  >
-                    ورود به میزکار سفارش
-                  </button>
-                </div>
               </SectionCard>
 
               <SectionCard
                 eyebrow="صف استثناها"
-                title="مواردی که باید زودتر بررسی شوند"
-                description="این فهرست برای سفارش‌هایی است که از نظر پرداخت یا تسویه نیاز به توجه بیشتری دارند."
-                hint="اگر سفارشی در این بخش دیده می‌شود، بهتر است زودتر وارد میزکار همان سفارش شوی و دلیل مشکل را بررسی کنی."
+                title="استثناها"
                 actions={<Pill tone="danger">{`${exceptions.length} استثنا`}</Pill>}
               >
                 <DataTable columns={exceptionColumns} rows={exceptionRows} />
@@ -490,7 +458,7 @@ export function OrdersPage({
                       </article>
                     ))
                   ) : (
-                    <div className="fm-message">برای سفارش انتخاب‌شده در صف استثناها مورد مستقیمی دیده نمی‌شود.</div>
+                    <div className="fm-message">بدون مورد.</div>
                   )}
                 </div>
               </SectionCard>
