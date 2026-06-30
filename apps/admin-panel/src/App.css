@@ -1253,19 +1253,19 @@
 
 .vendors-toolbar {
   display: grid;
-  gap: 16px;
+  gap: 10px;
 }
 
 .vendors-filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
 }
 
 .vendors-filter-chip,
 .vendors-page-button {
-  min-height: 38px;
-  padding: 0 14px;
+  min-height: 34px;
+  padding: 0 12px;
   border-radius: 999px;
   border: 1px solid var(--fm-border-soft);
   background: rgba(255, 253, 248, 0.82);
@@ -1281,7 +1281,7 @@
 .vendors-pagination {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
   justify-content: space-between;
   color: var(--fm-text-secondary);
@@ -1291,22 +1291,22 @@
   opacity: 0.45;
 }
 
-.vendors-table-card,
+.vendors-board-card,
 .vendors-policy-stack {
   display: grid;
-  gap: 16px;
+  gap: 10px;
 }
 
 .vendors-selection-list {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .vendors-selection-item {
   border: 1px solid var(--fm-border-soft);
   background: rgba(255, 253, 248, 0.86);
-  border-radius: 18px;
-  padding: 14px 16px;
+  border-radius: 16px;
+  padding: 12px;
   text-align: right;
   display: grid;
   gap: 4px;
@@ -1347,10 +1347,9 @@
 .vendors-finance-grid,
 .vendors-brief-grid,
 .vendors-policy-grid,
-.vendors-detail-grid,
-.vendors-workflow-grid {
+.vendors-detail-grid {
   display: grid;
-  gap: 12px;
+  gap: 8px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: start;
 }
@@ -1358,14 +1357,13 @@
 .vendors-finance-item,
 .vendors-brief-item,
 .vendors-policy-item,
-.vendors-detail-item,
-.vendors-workflow-item {
+.vendors-detail-item {
   border: 1px solid var(--fm-border-soft);
-  border-radius: 18px;
-  padding: 16px;
+  border-radius: 16px;
+  padding: 12px;
   background: rgba(255, 253, 248, 0.86);
   display: grid;
-  gap: 8px;
+  gap: 4px;
   align-content: start;
 }
 
@@ -1385,46 +1383,22 @@
   line-height: 1.8;
 }
 
-.vendors-brief-item small,
-.vendors-preview-item {
+.vendors-brief-item small {
   color: var(--fm-text-secondary);
   line-height: 1.9;
-}
-
-.vendors-workflow-item small {
-  color: var(--fm-text-secondary);
-  line-height: 1.9;
-}
-
-.vendors-preview-list {
-  display: grid;
-  gap: 12px;
-}
-
-.vendors-preview-item {
-  border: 1px solid var(--fm-border-soft);
-  border-radius: 18px;
-  padding: 16px;
-  background: rgba(255, 253, 248, 0.86);
-}
-
-.vendors-preview-item strong {
-  color: var(--fm-text-primary);
 }
 
 .vendors-brief-item small {
   display: block;
-  margin-top: 10px;
+  margin-top: 6px;
 }
 
 .vendors-workspace-topbar,
 .vendors-workspace-lanes,
 .vendors-workspace-action-grid,
-.vendors-workspace-checklist,
-.vendors-workspace-surface-grid,
-.vendors-workspace-workflow-grid {
+.vendors-workspace-surface-grid {
   display: grid;
-  gap: 16px;
+  gap: 10px;
 }
 
 .vendors-workspace-topbar {
@@ -1437,24 +1411,20 @@
 
 .vendors-workspace-lanes,
 .vendors-workspace-action-grid,
-.vendors-workspace-checklist,
 .vendors-workspace-policy-grid,
-.vendors-workspace-surface-grid,
-.vendors-workspace-workflow-grid {
+.vendors-workspace-surface-grid {
   display: grid;
-  gap: 12px;
+  gap: 8px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: start;
 }
 
 .vendors-workspace-lane-card,
 .vendors-workspace-action-card,
-.vendors-workspace-check-item,
-.vendors-workspace-surface-card,
-.vendors-workspace-workflow-item {
+.vendors-workspace-surface-card {
   border: 1px solid var(--fm-border-soft);
-  border-radius: 18px;
-  padding: 18px;
+  border-radius: 16px;
+  padding: 12px;
   background: rgba(255, 253, 248, 0.86);
   align-content: start;
   height: fit-content;
@@ -1471,28 +1441,15 @@
 
 .vendors-workspace-lane-card strong,
 .vendors-workspace-action-card strong,
-.vendors-workspace-check-item strong,
-.vendors-workspace-surface-card strong,
-.vendors-workspace-workflow-item strong {
+.vendors-workspace-surface-card strong {
   display: block;
   color: var(--fm-text-primary);
 }
 
-.vendors-workspace-lane-card p,
-.vendors-workspace-action-card p,
-.vendors-workspace-check-item p,
-.vendors-workspace-surface-card p,
-.vendors-workspace-workflow-item p {
-  margin: 10px 0 0;
-  color: var(--fm-text-secondary);
-  line-height: 1.9;
-}
-
 .vendors-workspace-lane-card small,
-.vendors-workspace-check-item span,
-.vendors-workspace-workflow-item span {
+.vendors-workspace-action-card small {
   display: block;
-  margin-top: 10px;
+  margin-top: 6px;
   color: var(--fm-text-secondary);
   font-size: 0.88rem;
   line-height: 1.8;
@@ -1503,7 +1460,7 @@
 .vendors-workspace-wallet-summary,
 .vendors-transaction-list {
   display: grid;
-  gap: 16px;
+  gap: 10px;
 }
 
 .vendors-workspace-wallet-grid {
@@ -1513,14 +1470,14 @@
 .vendors-workspace-toggle-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 8px;
 }
 
 .vendors-workspace-toggle {
   display: inline-flex;
   gap: 8px;
   align-items: center;
-  padding: 12px 14px;
+  padding: 10px 12px;
   border: 1px solid var(--fm-border-soft);
   border-radius: 16px;
   background: rgba(255, 253, 248, 0.86);
@@ -1529,8 +1486,8 @@
 
 .vendors-transaction-item {
   border: 1px solid var(--fm-border-soft);
-  border-radius: 18px;
-  padding: 16px;
+  border-radius: 16px;
+  padding: 12px;
   background: rgba(255, 253, 248, 0.86);
   display: grid;
   gap: 6px;
@@ -1550,14 +1507,11 @@
   .vendors-brief-grid,
   .vendors-policy-grid,
   .vendors-detail-grid,
-  .vendors-workflow-grid,
   .vendors-workspace-wallet-grid,
   .vendors-workspace-lanes,
   .vendors-workspace-action-grid,
-  .vendors-workspace-checklist,
   .vendors-workspace-policy-grid,
-  .vendors-workspace-surface-grid,
-  .vendors-workspace-workflow-grid {
+  .vendors-workspace-surface-grid {
     grid-template-columns: 1fr;
   }
 }

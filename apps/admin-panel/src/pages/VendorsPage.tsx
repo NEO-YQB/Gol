@@ -1,4 +1,4 @@
-import { ActivityFeed, DataTable, Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
+import { ActivityFeed, Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
 import { useEffect, useMemo, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { useNoticeEffect } from '../components/NoticeCenter'
@@ -7,14 +7,6 @@ import { readText, toArray } from '../lib/normalize'
 import type { AuthSession } from '../lib/session'
 
 type VendorRecord = Record<string, unknown>
-
-const vendorColumns = [
-  { key: 'store', label: 'فروشگاه' },
-  { key: 'status', label: 'وضعیت سلامت' },
-  { key: 'score', label: 'امتیاز سلامت' },
-  { key: 'rating', label: 'امتیاز مشتری' },
-  { key: 'tickets', label: 'تیکت دوره' },
-]
 
 const riskStatuses = ['ALL', 'AT_RISK', 'WATCHLIST', 'GOOD', 'EXCELLENT'] as const
 
@@ -61,8 +53,10 @@ function getStatusLabel(status: string) {
       return 'پایدار'
     case 'EXCELLENT':
       return 'عالی'
+    case 'ALL':
+      return 'همه'
     default:
-      return status || 'نامشخص'
+      return status && status !== 'UNKNOWN' ? status : 'نامشخص'
   }
 }
 
@@ -119,12 +113,6 @@ function summarizePolicyFlags(policy: unknown) {
 
   if (!activeFlags.length) return 'محدودیت فعالی دیده نمی‌شود'
   return activeFlags.map((item) => translatePolicyKey(item)).join(' / ')
-}
-
-function getSuggestedRoute(status: string) {
-  if (status === 'AT_RISK') return 'مسیر ریسک و مالی'
-  if (status === 'WATCHLIST') return 'مسیر ریسک و هماهنگی'
-  return 'مسیر مالی و پایش'
 }
 
 function translatePolicyKey(key: string) {
@@ -280,19 +268,6 @@ export function VendorsPage({
     }
   }, [selectedStoreId, session])
 
-  const vendorRows = useMemo(
-    () =>
-      riskSummary.map((item, index) => ({
-        id: readText(item, ['storeId'], String(index + 1)),
-        store: readText(item, ['storeName', 'storeSlug'], '—'),
-        status: getStatusLabel(readText(item, ['vendorHealthStatus'], 'UNKNOWN')),
-        score: formatPersianNumber(readText(item, ['vendorHealthScore'], '—')),
-        rating: formatPersianNumber(readText(item, ['customerRatingAverage'], '—')),
-        tickets: formatPersianNumber(toDisplayValue(getMetric(item, 'ticketCount'))),
-      })),
-    [riskSummary],
-  )
-
   const statusCounts = useMemo(
     () =>
       riskSummary.reduce<Record<string, number>>((accumulator, item) => {
@@ -327,35 +302,31 @@ export function VendorsPage({
   const stats = useMemo(
     () => [
       {
-        label: 'فروشنده‌های این view',
+        label: 'فروشنده‌ها',
         value: formatPersianNumber(riskSummary.length),
         delta: `${formatPersianNumber(totalStores)} فروشگاه در کل`,
-        detail: 'تعداد فروشنده‌های دیده‌شده در صفحه فعلی',
-        hint: 'این عدد فقط فروشنده‌های همین صفحه را نشان می‌دهد، نه کل نتیجه‌ها را.',
+        detail: '',
         tone: 'primary' as const,
       },
       {
         label: 'پرریسک',
         value: formatPersianNumber(statusCounts.AT_RISK ?? 0),
-        delta: 'نیازمند کنترل فوری',
-        detail: 'فروشگاه‌هایی که رسیدگی فوری می‌خواهند',
-        hint: 'اگر این عدد بالا باشد، بهتر است از همین گروه شروع شود.',
+        delta: 'فوری',
+        detail: '',
         tone: 'danger' as const,
       },
       {
         label: 'تحت نظر',
         value: formatPersianNumber(statusCounts.WATCHLIST ?? 0),
-        delta: 'صف مانیتورینگ',
-        detail: 'فروشگاه‌هایی که باید با دقت بیشتری دیده شوند',
-        hint: 'این گروه هنوز بحرانی نیست ولی اگر رها شود ممکن است به بخش پرریسک برسد.',
+        delta: 'پایش',
+        detail: '',
         tone: 'warning' as const,
       },
       {
-        label: 'تسویه‌های انجام‌شده',
+        label: 'تسویه‌ها',
         value: formatPersianNumber(getFinanceNumber(financeSummary, ['settlements', 'settled'])),
         delta: rangeLabel,
-        detail: 'خلاصه وضعیت مالی در همین بازه گزارش',
-        hint: 'برای فهم جریان مالی کل پنل، این کارت را کنار موجودی‌ها و صف ریسک بخوان.',
+        detail: '',
         tone: 'success' as const,
       },
     ],
@@ -427,85 +398,32 @@ export function VendorsPage({
       ]
     : []
 
-  const workspacePreview = selectedSummaryRecord
-    ? [
-        'مسیر مالی و تسویه برای نگه‌داری، آزادسازی و رسیدگی مالی',
-        'مسیر ریسک برای تغییر محدودیت‌ها و تصمیم‌های حساس',
-        'مسیر هماهنگی برای جمع‌کردن نظر مالی، پشتیبانی و عملیات',
-      ]
-    : []
-
   const healthBoard = [
     {
       label: 'عالی',
       value: formatPersianNumber(statusCounts.EXCELLENT ?? 0),
-      detail: 'فروشگاه‌های پایدار و کم‌ریسک',
+      detail: '',
       tone: 'success' as const,
     },
     {
       label: 'پایدار',
       value: formatPersianNumber(statusCounts.GOOD ?? 0),
-      detail: 'نیازمند مانیتورینگ سبک',
+      detail: '',
       tone: 'primary' as const,
     },
     {
       label: 'تحت نظر',
       value: formatPersianNumber(statusCounts.WATCHLIST ?? 0),
-      detail: 'صف فروشنده‌های نیازمند بازبینی',
+      detail: '',
       tone: 'warning' as const,
     },
     {
       label: 'پرریسک',
       value: formatPersianNumber(statusCounts.AT_RISK ?? 0),
-          detail: 'اولویت‌های فوری برای رسیدگی متمرکز',
+          detail: '',
           tone: 'danger' as const,
         },
       ]
-
-  const queueSummary = selectedSummaryRecord
-    ? [
-        {
-          label: 'مسیر پیشنهادی',
-          value: getSuggestedRoute(readText(selectedSummaryRecord, ['vendorHealthStatus'], '')),
-          detail: 'پیشنهاد شروع رسیدگی برای همکار پنل',
-        },
-        {
-          label: 'محدودیت‌های فعال',
-          value: summarizePolicyFlags(selectedPolicy.effective),
-          detail: 'خلاصه محدودیت‌های موثر روی فروشنده',
-        },
-        {
-          label: 'گام بعدی',
-          value: 'ورود به میزکار متمرکز',
-          detail: 'برای مرور کامل و اجرای اقدام‌های اصلی',
-        },
-      ]
-    : []
-
-  const workflowBoard = selectedSummaryRecord
-    ? [
-        {
-          label: '۱. تشخیص ریسک',
-          value: getStatusLabel(readText(selectedSummaryRecord, ['vendorHealthStatus'], '—')),
-          detail: `امتیاز سلامت ${formatPersianNumber(readText(selectedSummaryRecord, ['vendorHealthScore'], '—'))} و ${formatPersianNumber(toDisplayValue(getMetric(selectedSummaryRecord, 'ticketCount')))} تیکت`,
-        },
-        {
-          label: '۲. مرور محدودیت',
-          value: summarizePolicyFlags(selectedPolicy.effective),
-          detail: 'پیش از هر اقدام واقعی باید وضعیت محدودیت‌های موثر خوانده شود.',
-        },
-        {
-          label: '۳. جمع‌بندی مالی',
-          value: `${formatPersianNumber(toDisplayValue(getMetric(selectedSummaryRecord, 'refundCount')))} بازگشت به مشتری`,
-          detail: `${formatPersianNumber(toDisplayValue(getMetric(selectedSummaryRecord, 'reversalCount')))} واریز به فروشنده و ${formatPersianNumber(toDisplayValue(getMetric(selectedSummaryRecord, 'escalatedCount')))} ارجاع مالی`,
-        },
-        {
-          label: '۴. ورود به میزکار',
-          value: 'اجرای اقدام‌های زنده',
-          detail: 'فعال‌سازی فروشگاه، بازمحاسبه سلامت، کنترل محدودیت و عملیات مالی در میزکار انجام می‌شود.',
-        },
-      ]
-    : []
 
   return (
     <div className="fm-stack">
@@ -517,10 +435,8 @@ export function VendorsPage({
         </div>
 
         <SectionCard
-          eyebrow="کارتابل فروشنده‌ها"
-          title="صف ریسک فروشنده‌ها و گزارش مالی"
-          description="این صفحه برای پیدا کردن فروشنده مهم، دیدن خلاصه ریسک و مرور گزارش مالی ساخته شده است. اقدام‌های اصلی در میزکار جدا انجام می‌شود."
-          hint="اول وضعیت صف را با فیلترها ببین، بعد فروشنده را انتخاب کن و اگر نیاز به اقدام داشتی وارد میزکار او شو."
+          eyebrow="فروشنده‌ها"
+          title="ریسک فروشنده‌ها"
           actions={<Pill tone="warning">{rangeLabel}</Pill>}
         >
           <div className="vendors-toolbar">
@@ -535,7 +451,7 @@ export function VendorsPage({
                   }}
                   type="button"
                 >
-                  {status === 'ALL' ? 'همه وضعیت‌ها' : getStatusLabel(status)}
+                  {getStatusLabel(status)}
                 </button>
               ))}
             </div>
@@ -564,14 +480,10 @@ export function VendorsPage({
 
         <SectionCard
           eyebrow="صف فروشنده‌ها"
-          title="فروشنده‌های اولویت‌دار برای رسیدگی"
-          description="این فهرست فقط برای انتخاب سریع و مقایسه اولیه است تا صفحه اصلی شلوغ و کشیده نشود."
-          hint="از ستون کنار جدول برای انتخاب سریع فروشنده استفاده کن؛ جدول برای مقایسه و ستون کناری برای ورود سریع‌تر مناسب‌تر است."
+          title="فروشنده‌های اولویت‌دار"
           actions={<Pill tone="danger">{`${formatPersianNumber(totalStores)} فروشگاه`}</Pill>}
         >
-          <div className="vendors-table-card">
-            <DataTable columns={vendorColumns} rows={vendorRows} />
-
+          <div className="vendors-board-card">
             <div className="vendors-selection-list">
               {riskSummary.map((item) => {
                 const storeId = readText(item, ['storeId'], '')
@@ -596,32 +508,8 @@ export function VendorsPage({
         </SectionCard>
 
         <SectionCard
-          eyebrow="گردش کار"
-          title="مراحل رسیدگی در این route"
-          description="این route از انتخاب فروشنده تا ورود به میزکار متمرکز، یک workflow روشن و کوتاه دارد تا صفحه اصلی شلوغ و کش‌آمده نشود."
-          hint="اگر اپراتور تازه وارد این صفحه شده، این چهار گام بهترین شروع برای رسیدگی مرحله‌ای است."
-          actions={<Pill tone="primary">workflow روشن</Pill>}
-        >
-          {workflowBoard.length ? (
-            <div className="vendors-workflow-grid">
-              {workflowBoard.map((item) => (
-                <article className="vendors-workflow-item" key={item.label}>
-                  <span>{item.label}</span>
-                  <strong>{item.value}</strong>
-                  <small>{item.detail}</small>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <div className="fm-message">بعد از انتخاب فروشنده، workflow رسیدگی اینجا کامل می‌شود.</div>
-          )}
-        </SectionCard>
-
-        <SectionCard
           eyebrow="فروشنده انتخاب‌شده"
           title={selectedSummaryRecord ? `جزئیات ${readText(selectedSummaryRecord, ['storeName'], '—')}` : 'فروشنده‌ای انتخاب نشده'}
-          description="این بخش فقط خلاصه می‌دهد؛ اقدام‌های جدی و فرم‌های اصلی در میزکار جدا هستند تا این صفحه سبک بماند."
-          hint="اگر این خلاصه کافی نبود، دکمه ورود به میزکار را بزن تا فرم‌ها، رخدادها و تصمیم‌های کامل را ببینی."
           actions={
             <div className="vendors-inline-actions">
               <Pill tone={getStatusTone(readText(selectedSummaryRecord ?? {}, ['vendorHealthStatus'], ''))}>
@@ -657,9 +545,7 @@ export function VendorsPage({
 
         <SectionCard
           eyebrow="نمای سلامت"
-          title="وضعیت سلامت کل صف فروشنده‌ها"
-          description="این بخش نشان می‌دهد فشار اصلی صف روی کدام گروه از فروشنده‌ها قرار دارد."
-          hint="اگر تعداد فروشنده‌های پرریسک و تحت نظر بالا باشد، بهتر است رسیدگی گروهی و مرحله‌ای انجام شود."
+          title="سلامت صف"
           actions={<Pill tone="neutral">مرور وضعیت</Pill>}
         >
           <div className="vendors-brief-grid">
@@ -675,9 +561,7 @@ export function VendorsPage({
 
         <SectionCard
           eyebrow="خلاصه تصمیم"
-          title="جمع‌بندی سریع برای تصمیم بعدی"
-          description="پیش از ورود به میزکار، این بخش یک تصویر کوتاه و ساده از وضعیت فروشنده می‌دهد."
-          hint="اگر هنوز تصمیم بعدی روشن نیست، از همین سه کارت برای جمع‌کردن ذهن استفاده کن."
+          title="جمع‌بندی"
           actions={<Pill tone="neutral">مرور سریع</Pill>}
         >
           {operationalDigest.length ? (
@@ -696,32 +580,8 @@ export function VendorsPage({
         </SectionCard>
 
         <SectionCard
-          eyebrow="راهنمای ورود"
-          title="راهنمای عبور از صف به میزکار"
-          description="این بخش روشن می‌کند فروشنده انتخاب‌شده بهتر است از کدام مسیر وارد رسیدگی شود."
-          hint="این راهنما برای ساده‌کردن شروع کار است؛ بعد از ورود به میزکار می‌توانی جزئیات بیشتری ببینی."
-          actions={<Pill tone="primary">مسیر پیشنهادی</Pill>}
-        >
-          {queueSummary.length ? (
-            <div className="vendors-brief-grid">
-              {queueSummary.map((item) => (
-                <article className="vendors-brief-item" key={item.label}>
-                  <span>{item.label}</span>
-                  <strong>{item.value}</strong>
-                  <small>{item.detail}</small>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <div className="fm-message">بعد از انتخاب فروشنده، مسیر پیشنهادی رسیدگی اینجا نمایش داده می‌شود.</div>
-          )}
-        </SectionCard>
-
-        <SectionCard
           eyebrow="گزارش مالی"
-          title="خلاصه کیف پول‌ها، تسویه‌ها و گردش مالی"
-          description="این بخش تصویر کلی پول در گردش را می‌دهد تا قبل از ورود به میزکار، وضعیت مالی صف روشن باشد."
-          hint="برای تصمیم دقیق روی یک فروشنده، این بخش را کنار خلاصه همان فروشنده بخوان؛ نه به‌تنهایی."
+          title="کیف پول و تسویه"
           actions={<Pill tone="success">مرور مالی</Pill>}
         >
           <div className="vendors-finance-grid">
@@ -735,30 +595,8 @@ export function VendorsPage({
         </SectionCard>
 
         <SectionCard
-          eyebrow="پیش‌نمایش میزکار"
-          title="کارهایی که در میزکار فروشنده ادامه پیدا می‌کند"
-          description="این صفحه فقط برای انتخاب و مرور است؛ ادامه رسیدگی در میزکار فروشنده و در مسیرهای جدا انجام می‌شود."
-          hint="اگر می‌خواهی بدانی بعد از ورود به میزکار چه چیزی منتظر توست، این بخش را بخوان."
-          actions={<Pill tone="primary">ادامه رسیدگی</Pill>}
-        >
-          {workspacePreview.length ? (
-            <div className="vendors-preview-list">
-              {workspacePreview.map((item) => (
-                <article className="vendors-preview-item" key={item}>
-                  <strong>{item}</strong>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <div className="fm-message">بعد از انتخاب فروشنده، ادامه مسیر رسیدگی اینجا نمایش داده می‌شود.</div>
-          )}
-        </SectionCard>
-
-        <SectionCard
           eyebrow="رخدادهای ریسک"
           title={selectedStoreId ? `رخدادهای فروشگاه #${selectedStoreId}` : 'رخدادهای فروشنده'}
-          description="این فهرست فقط برای دیدن سابقه تصمیم‌ها و محدودیت‌هاست؛ اقدام‌های واقعی در میزکار جدا انجام می‌شود."
-          hint="اگر نمی‌دانی چرا این فروشنده در این وضعیت قرار گرفته، از همین رخدادها شروع کن."
           actions={<Pill tone="warning">{timelineLoading ? 'در حال بارگذاری' : `${formatPersianNumber(timeline.length)} رخداد`}</Pill>}
         >
           {!timelineError ? (
