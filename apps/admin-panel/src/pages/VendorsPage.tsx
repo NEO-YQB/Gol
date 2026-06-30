@@ -105,16 +105,6 @@ function formatPolicy(policy: unknown) {
   return entries.length ? entries.join(' | ') : '—'
 }
 
-function summarizePolicyFlags(policy: unknown) {
-  const record = toObject(policy)
-  const activeFlags = Object.entries(record)
-    .filter(([, value]) => value === true)
-    .map(([key]) => key)
-
-  if (!activeFlags.length) return 'محدودیت فعالی دیده نمی‌شود'
-  return activeFlags.map((item) => translatePolicyKey(item)).join(' / ')
-}
-
 function translatePolicyKey(key: string) {
   switch (key) {
     case 'autoSettlementHoldEnabled':
