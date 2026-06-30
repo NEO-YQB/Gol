@@ -91,9 +91,9 @@ function getPaymentStatusLabel(status: string) {
     case 'EXPIRED':
       return 'منقضی شده'
     case 'REFUNDED':
-      return 'بازگشت کامل وجه'
+      return 'بازگشت کامل به مشتری'
     case 'PARTIALLY_REFUNDED':
-      return 'بازگشت جزئی وجه'
+      return 'بازگشت جزئی به مشتری'
     default:
       return status || 'نامشخص'
   }
@@ -108,7 +108,7 @@ function getSettlementStatusLabel(status: string) {
     case 'RELEASED':
       return 'آزاد شده'
     case 'REVERSED':
-      return 'برگشت خورده'
+      return 'واریز به فروشنده'
     default:
       return status || 'نامشخص'
   }
@@ -258,7 +258,7 @@ function getRecommendedActionLabel(options: {
   }
 
   if (options.canManualRefund) {
-    return 'بازگشت وجه'
+    return 'بازگشت به مشتری'
   }
 
   if (options.canCancel) {
@@ -884,8 +884,8 @@ export function OrdersWorkspacePage({
                       </SectionCard>
 
                       <SectionCard
-                        eyebrow="بازگشت وجه دستی"
-                        title="بازگشت وجه دستی"
+                        eyebrow="بازگشت به مشتری دستی"
+                        title="بازگشت به مشتری دستی"
                         actions={<Pill tone={canManualRefund ? 'danger' : 'warning'}>{canManualRefund ? 'قابل اجرا' : 'غیرفعال'}</Pill>}
                       >
                         <form
@@ -893,12 +893,12 @@ export function OrdersWorkspacePage({
                           onSubmit={(event) => {
                             event.preventDefault()
                             if (!paymentId || paymentId === '—') {
-                              setActionError('برای ثبت بازگشت وجه دستی باید رکورد پرداخت معتبر وجود داشته باشد.')
+                              setActionError('برای ثبت بازگشت به مشتری دستی باید رکورد پرداخت معتبر وجود داشته باشد.')
                               return
                             }
 
                             if (!refundForm.reason.trim()) {
-                              setActionError('علت بازگشت وجه دستی الزامی است.')
+                              setActionError('علت بازگشت به مشتری دستی الزامی است.')
                               return
                             }
 
@@ -909,12 +909,12 @@ export function OrdersWorkspacePage({
                                   reason: refundForm.reason.trim(),
                                   note: refundForm.note.trim() || undefined,
                                 }),
-                              'بازگشت وجه دستی این پرداخت با موفقیت ثبت شد.',
+                              'بازگشت به مشتری دستی این پرداخت با موفقیت ثبت شد.',
                             )
                           }}
                         >
                           <div className="fm-field">
-                            <label htmlFor="orders-refund-reason">علت بازگشت وجه</label>
+                            <label htmlFor="orders-refund-reason">علت بازگشت به مشتری</label>
                             <input
                               id="orders-refund-reason"
                               onChange={(event) => setRefundForm((current) => ({ ...current, reason: event.target.value }))}
@@ -923,7 +923,7 @@ export function OrdersWorkspacePage({
                             />
                           </div>
                           <div className="fm-field">
-                            <label htmlFor="orders-refund-note">یادداشت بازگشت وجه</label>
+                            <label htmlFor="orders-refund-note">یادداشت بازگشت به مشتری</label>
                             <textarea
                               id="orders-refund-note"
                               onChange={(event) => setRefundForm((current) => ({ ...current, note: event.target.value }))}
@@ -933,7 +933,7 @@ export function OrdersWorkspacePage({
                             />
                           </div>
                           <button className="orders-danger-button" disabled={!canManualRefund || actionBusy === 'manual-refund'} type="submit">
-                            {actionBusy === 'manual-refund' ? 'در حال ثبت بازگشت وجه...' : 'ثبت بازگشت وجه دستی'}
+                            {actionBusy === 'manual-refund' ? 'در حال ثبت بازگشت به مشتری...' : 'ثبت بازگشت به مشتری دستی'}
                           </button>
                         </form>
                       </SectionCard>
@@ -1254,7 +1254,7 @@ export function OrdersWorkspacePage({
                       <strong>{canInitiatePayment ? 'مجاز' : 'غیرفعال'}</strong>
                     </article>
                     <article className="orders-capability-item">
-                      <span>بازگشت وجه دستی</span>
+                      <span>بازگشت به مشتری دستی</span>
                       <strong>{canManualRefund ? 'مجاز' : 'غیرفعال'}</strong>
                     </article>
                     <article className="orders-capability-item">

@@ -71,11 +71,11 @@ function translateAnyStatus(status: string) {
     case 'EXPIRED':
       return 'منقضی شده'
     case 'REFUNDED':
-      return 'بازگشت کامل وجه'
+      return 'بازگشت کامل به مشتری'
     case 'PARTIALLY_REFUNDED':
-      return 'بازگشت بخشی از وجه'
+      return 'بازگشت جزئی به مشتری'
     case 'REVERSED':
-      return 'برگشت خورده'
+      return 'واریز به فروشنده'
     case 'RELEASED':
       return 'آزاد شده'
     case 'ON_HOLD':
@@ -89,7 +89,7 @@ function translateAnyStatus(status: string) {
     case 'ORDER_EARNING_RELEASE':
       return 'آزادسازی درآمد سفارش'
     case 'ORDER_EARNING_REVERSAL':
-      return 'برگشت درآمد سفارش'
+      return 'واریز درآمد سفارش به فروشنده'
     case 'CREDIT':
       return 'واریز'
     case 'DEBIT':
@@ -108,7 +108,7 @@ function getSettlementStatusLabel(status: string) {
     case 'RELEASED':
       return 'آزاد شده'
     case 'REVERSED':
-      return 'برگشت خورده'
+      return 'واریز به فروشنده'
     default:
       return translateAnyStatus(status)
   }
@@ -139,7 +139,7 @@ function getSettlementId(record: FinanceRecord, index = 0) {
 function getSettlementTitle(record: FinanceRecord) {
   const status = getSettlementStatus(record)
   if (status === 'ON_HOLD') return 'تسویه عقب‌افتاده'
-  if (status === 'REVERSED') return 'برگشت مبلغ تسویه'
+  if (status === 'REVERSED') return 'واریز مبلغ تسویه به فروشنده'
   return getSettlementStatusLabel(status)
 }
 
@@ -148,7 +148,7 @@ function getSettlementReason(record: FinanceRecord) {
   if (status === 'ON_HOLD') return 'زمان تسویه رسیده اما درآمد هنوز آزاد نشده است.'
   if (status === 'REVERSED') {
     const amount = formatPersianNumber(readText(record, ['settlementReversedAmount'], '—'))
-    return `مبلغ برگشتی: ${amount}`
+    return `مبلغ واریزی به فروشنده: ${amount}`
   }
 
   const reason = readText(record, ['reason', 'message', 'type'], '')
@@ -195,7 +195,7 @@ export function SettlementsPage({ session, onOpenFinanceWorkspace }: { session: 
             { label: 'کیف پول', value: wallets, detail: '', tone: 'primary' },
             { label: 'استثناها', value: exceptions, detail: '', tone: 'warning' },
             { label: 'خلاصه مالی', value: financeSummary, detail: '', tone: 'success' },
-            { label: 'بازگشت وجه', value: refundSummary, detail: '', tone: 'danger' },
+            { label: 'بازگشت به مشتری', value: refundSummary, detail: '', tone: 'danger' },
           ]),
         )
         setWallets(walletList)

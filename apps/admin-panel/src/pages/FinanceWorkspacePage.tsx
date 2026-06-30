@@ -25,7 +25,7 @@ function translateFinanceEnum(value: string) {
     case 'CANCELLED':
       return 'لغو شده'
     case 'REVERSED':
-      return 'برگشت خورده'
+      return 'واریز به فروشنده'
     case 'RELEASED':
       return 'آزاد شده'
     case 'ON_HOLD':
@@ -49,9 +49,9 @@ function translateFinanceEnum(value: string) {
     case 'FAILED':
       return 'ناموفق'
     case 'REFUNDED':
-      return 'بازگشت کامل وجه'
+      return 'بازگشت کامل به مشتری'
     case 'PARTIALLY_REFUNDED':
-      return 'بازگشت بخشی از وجه'
+      return 'بازگشت جزئی به مشتری'
     case 'REJECTED_BY_VENDOR':
       return 'رد شده توسط فروشنده'
     case 'WALLET':
@@ -65,7 +65,7 @@ function translateFinanceEnum(value: string) {
     case 'ORDER_EARNING_RELEASE':
       return 'آزادسازی درآمد سفارش'
     case 'ORDER_EARNING_REVERSAL':
-      return 'برگشت درآمد سفارش'
+      return 'واریز درآمد سفارش به فروشنده'
     case 'CREDIT':
       return 'واریز'
     case 'DEBIT':
@@ -143,7 +143,7 @@ function getSettlementStatusLabel(status: string) {
     case 'RELEASED':
       return 'آزاد شده'
     case 'REVERSED':
-      return 'برگشت خورده'
+      return 'واریز به فروشنده'
     default:
       return translateFinanceEnum(status)
   }
@@ -486,13 +486,13 @@ export function FinanceWorkspacePage({
             {activeLane === 'refunds' || activeLane === 'overview' ? (
               <SectionCard
                 eyebrow="جمع‌بندی"
-                title="مالی و بازگشت وجه"
+                title="مالی و بازگشت به مشتری"
                 actions={<Pill tone="danger">گزارش فشرده</Pill>}
               >
                 <div className="orders-summary-grid">
                   {[
                     { label: 'خلاصه کیف پول', value: readText(financeSummary ?? {}, ['total', 'count'], '—') },
-                    { label: 'خلاصه بازگشت وجه', value: readText(refundSummary ?? {}, ['total', 'count'], '—') },
+                    { label: 'خلاصه بازگشت به مشتری', value: readText(refundSummary ?? {}, ['total', 'count'], '—') },
                     { label: 'آخرین بروزرسانی خلاصه', value: formatJalaliDate(readText(financeSummary ?? {}, ['updatedAt'], ''), true), wide: true },
                   ].map((item) => (
                     <article className={`orders-detail-item${item.wide ? ' orders-detail-item--wide' : ''}`} key={item.label}>

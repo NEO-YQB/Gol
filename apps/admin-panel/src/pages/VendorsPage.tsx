@@ -402,8 +402,8 @@ export function VendorsPage({
         { label: 'آخرین محاسبه', value: formatJalaliDate(selectedSummaryRecord.vendorHealthCalculatedAt) },
         { label: 'تیکت‌های بازه', value: formatPersianNumber(toDisplayValue(getMetric(selectedSummaryRecord, 'ticketCount'))) },
         { label: 'ارجاع مالی', value: formatPersianNumber(toDisplayValue(getMetric(selectedSummaryRecord, 'escalatedCount'))) },
-        { label: 'بازگشت وجه', value: formatPersianNumber(toDisplayValue(getMetric(selectedSummaryRecord, 'refundCount'))) },
-        { label: 'برگشت تراکنش', value: formatPersianNumber(toDisplayValue(getMetric(selectedSummaryRecord, 'reversalCount'))) },
+        { label: 'بازگشت به مشتری', value: formatPersianNumber(toDisplayValue(getMetric(selectedSummaryRecord, 'refundCount'))) },
+        { label: 'واریز به فروشنده', value: formatPersianNumber(toDisplayValue(getMetric(selectedSummaryRecord, 'reversalCount'))) },
       ]
     : []
 
@@ -496,8 +496,8 @@ export function VendorsPage({
         },
         {
           label: '۳. جمع‌بندی مالی',
-          value: `${formatPersianNumber(toDisplayValue(getMetric(selectedSummaryRecord, 'refundCount')))} بازگشت وجه`,
-          detail: `${formatPersianNumber(toDisplayValue(getMetric(selectedSummaryRecord, 'reversalCount')))} برگشت تراکنش و ${formatPersianNumber(toDisplayValue(getMetric(selectedSummaryRecord, 'escalatedCount')))} ارجاع مالی`,
+          value: `${formatPersianNumber(toDisplayValue(getMetric(selectedSummaryRecord, 'refundCount')))} بازگشت به مشتری`,
+          detail: `${formatPersianNumber(toDisplayValue(getMetric(selectedSummaryRecord, 'reversalCount')))} واریز به فروشنده و ${formatPersianNumber(toDisplayValue(getMetric(selectedSummaryRecord, 'escalatedCount')))} ارجاع مالی`,
         },
         {
           label: '۴. ورود به میزکار',

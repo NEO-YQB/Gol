@@ -106,9 +106,9 @@ function getPaymentStatusLabel(status: string) {
     case 'EXPIRED':
       return 'منقضی شده'
     case 'REFUNDED':
-      return 'بازگشت کامل وجه'
+      return 'بازگشت کامل به مشتری'
     case 'PARTIALLY_REFUNDED':
-      return 'بازگشت جزئی وجه'
+      return 'بازگشت جزئی به مشتری'
     default:
       return status || 'نامشخص'
   }
@@ -123,7 +123,7 @@ function getSettlementStatusLabel(status: string) {
     case 'RELEASED':
       return 'آزاد شده'
     case 'REVERSED':
-      return 'برگشت خورده'
+      return 'واریز به فروشنده'
     default:
       return status || 'نامشخص'
   }

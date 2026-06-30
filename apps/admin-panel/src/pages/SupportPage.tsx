@@ -57,15 +57,15 @@ function getTicketReasonLabel(reason: string) {
 function getFinanceOutcomeLabel(outcome: string) {
   switch (outcome) {
     case 'NO_ACTION_RELEASE':
-      return 'بدون اقدام و آزادسازی'
+      return 'آزادسازی بدون تغییر مالی'
     case 'FULL_REFUND':
-      return 'بازگشت کامل وجه'
+      return 'بازگشت کامل به مشتری'
     case 'PARTIAL_REFUND':
-      return 'بازگشت بخشی از وجه'
+      return 'بازگشت جزئی به مشتری'
     case 'FULL_REVERSAL':
-      return 'برگشت کامل تراکنش'
+      return 'واریز کامل به فروشنده'
     case 'PARTIAL_REVERSAL':
-      return 'برگشت بخشی از تراکنش'
+      return 'واریز جزئی به فروشنده'
     case 'EXTEND_HOLD':
       return 'تمدید نگه‌داری'
     default:

@@ -121,10 +121,10 @@ async function buildDashboardPayload(session: AuthSession): Promise<DashboardPay
       stats: [
         { label: 'کیف پول های قابل مشاهده', value: String(countOf(wallets)), delta: 'لایه مالی', detail: '', tone: 'primary' },
         { label: 'خلاصه مالی', value: String(countOf(financeSummary)), delta: 'وضعیت تجمعی', detail: '', tone: 'success' },
-        { label: 'بازگشت وجه / برگشت', value: String(countOf(refunds)), delta: 'پیگیری مالی', detail: '', tone: 'warning' },
+        { label: 'بازگشت به مشتری / واریز به فروشنده', value: String(countOf(refunds)), delta: 'پیگیری مالی', detail: '', tone: 'warning' },
         { label: 'دامنه این نقش', value: 'مالی', delta: 'نقش تخصصی', detail: '', tone: 'danger' },
       ],
-      feed: [...makeFeed(toArray(wallets), 'کیف پول'), ...makeFeed(toArray(refunds), 'بازگشت وجه')].slice(0, 6),
+      feed: [...makeFeed(toArray(wallets), 'کیف پول'), ...makeFeed(toArray(refunds), 'بازگشت به مشتری')].slice(0, 6),
       spotlight: {
         eyebrow: 'نمای اپراتور مالی',
         title: 'مالی و تسویه',

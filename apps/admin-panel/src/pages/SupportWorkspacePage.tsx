@@ -78,15 +78,15 @@ function getSupportReasonLabel(reason: string) {
 function getFinanceOutcomeLabel(outcome: string) {
   switch (outcome) {
     case 'NO_ACTION_RELEASE':
-      return 'بدون اقدام و آزادسازی'
+      return 'آزادسازی بدون تغییر مالی'
     case 'FULL_REFUND':
-      return 'بازگشت کامل وجه'
+      return 'بازگشت کامل به مشتری'
     case 'PARTIAL_REFUND':
-      return 'بازگشت بخشی از وجه'
+      return 'بازگشت جزئی به مشتری'
     case 'FULL_REVERSAL':
-      return 'برگشت کامل تراکنش'
+      return 'واریز کامل به فروشنده'
     case 'PARTIAL_REVERSAL':
-      return 'برگشت بخشی از تراکنش'
+      return 'واریز جزئی به فروشنده'
     case 'EXTEND_HOLD':
       return 'تمدید نگه‌داری'
     default:
@@ -132,9 +132,9 @@ function getPaymentStatusLabel(status: string) {
     case 'EXPIRED':
       return 'منقضی شده'
     case 'REFUNDED':
-      return 'بازگشت کامل وجه'
+      return 'بازگشت کامل به مشتری'
     case 'PARTIALLY_REFUNDED':
-      return 'بازگشت بخشی از وجه'
+      return 'بازگشت جزئی به مشتری'
     default:
       return status && status !== 'UNKNOWN' ? status : 'نامشخص'
   }
@@ -149,7 +149,7 @@ function getSettlementStatusLabel(status: string) {
     case 'RELEASED':
       return 'آزاد شده'
     case 'REVERSED':
-      return 'برگشت خورده'
+      return 'واریز به فروشنده'
     default:
       return status && status !== 'UNKNOWN' ? status : 'نامشخص'
   }
@@ -644,7 +644,7 @@ export function SupportWorkspacePage({
               />
             </div>
             <div className="fm-field">
-              <label htmlFor="finance-refund-reason">دلیل بازگشت وجه</label>
+              <label htmlFor="finance-refund-reason">دلیل بازگشت به مشتری</label>
               <input
                 id="finance-refund-reason"
                 onChange={(event) => setFinanceForm((current) => ({ ...current, refundReason: event.target.value }))}
@@ -652,7 +652,7 @@ export function SupportWorkspacePage({
               />
             </div>
             <div className="fm-field">
-              <label htmlFor="finance-refund-note">توضیح تکمیلی بازگشت وجه</label>
+              <label htmlFor="finance-refund-note">توضیح تکمیلی بازگشت به مشتری</label>
               <textarea
                 id="finance-refund-note"
                 onChange={(event) => setFinanceForm((current) => ({ ...current, refundNote: event.target.value }))}

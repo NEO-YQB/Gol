@@ -463,7 +463,7 @@ export function VendorWorkspacePage({
       key: 'finance' as const,
       title: 'مسیر مالی و تسویه',
       description: 'برای رسیدگی به پول، تسویه و فشار مالی فروشنده.',
-      detail: `${formatPersianNumber(metrics.refundTickets)} بازگشت وجه / ${formatPersianNumber(metrics.reversalTickets)} برگشت تراکنش`,
+      detail: `${formatPersianNumber(metrics.refundTickets)} بازگشت به مشتری / ${formatPersianNumber(metrics.reversalTickets)} واریز به فروشنده`,
     },
     {
       key: 'policy' as const,
@@ -496,7 +496,7 @@ export function VendorWorkspacePage({
       bullets: [
         `موجودی آزاد: ${formatPersianNumber(wallet.availableBalance)}`,
         `موجودی نگه‌داری‌شده: ${formatPersianNumber(wallet.heldBalance)}`,
-        `تعداد بازگشت وجه: ${formatPersianNumber(metrics.refundTickets)}`,
+        `تعداد بازگشت به مشتری: ${formatPersianNumber(metrics.refundTickets)}`,
         'اگر باید تسویه یک سفارش را آزاد کنی، شناسه سفارش را در فرم پایین ثبت کن.',
       ],
       statusLabel: 'اقدام مالی',
@@ -542,7 +542,7 @@ export function VendorWorkspacePage({
     },
     {
       label: '۳. مالی',
-      value: `${formatPersianNumber(metrics.refundTickets)} بازگشت وجه / ${formatPersianNumber(metrics.reversalTickets)} برگشت تراکنش`,
+      value: `${formatPersianNumber(metrics.refundTickets)} بازگشت به مشتری / ${formatPersianNumber(metrics.reversalTickets)} واریز به فروشنده`,
       note: 'در این مرحله نیاز به نگه‌داری، آزادسازی یا اصلاح مالی سنجیده می‌شود.',
     },
     {
