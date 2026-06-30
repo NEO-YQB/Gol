@@ -54,8 +54,24 @@ function translateFinanceEnum(value: string) {
       return 'بازگشت بخشی از وجه'
     case 'REJECTED_BY_VENDOR':
       return 'رد شده توسط فروشنده'
+    case 'WALLET':
+      return 'کیف پول فروشگاه'
+    case 'MANUAL_CREDIT':
+      return 'شارژ دستی'
+    case 'MANUAL_DEBIT':
+      return 'برداشت دستی'
+    case 'ORDER_EARNING_HOLD':
+      return 'درآمد سفارش در انتظار تسویه'
+    case 'ORDER_EARNING_RELEASE':
+      return 'آزادسازی درآمد سفارش'
+    case 'ORDER_EARNING_REVERSAL':
+      return 'برگشت درآمد سفارش'
+    case 'CREDIT':
+      return 'واریز'
+    case 'DEBIT':
+      return 'برداشت'
     default:
-      return value || 'نامشخص'
+      return value && value !== 'UNKNOWN' ? value : 'نامشخص'
   }
 }
 
@@ -118,6 +134,8 @@ function getDecisionLabel(options: {
 
 function getSettlementStatusLabel(status: string) {
   switch (status) {
+    case 'WALLET':
+      return 'کیف پول فروشگاه'
     case 'PENDING':
       return 'در انتظار نگه داری'
     case 'ON_HOLD':
@@ -127,7 +145,7 @@ function getSettlementStatusLabel(status: string) {
     case 'REVERSED':
       return 'برگشت خورده'
     default:
-      return status || 'نامشخص'
+      return translateFinanceEnum(status)
   }
 }
 
@@ -170,9 +188,10 @@ export function FinanceWorkspacePage({
   const settlementId = readText(settlement ?? {}, ['id', 'orderId'], '')
   const storeId = readText(settlement ?? {}, ['storeId'], '')
   const orderId = readText(settlement ?? {}, ['orderId', 'id'], '')
-  const settlementStatus = readText(settlement ?? {}, ['status'], 'UNKNOWN')
+  const settlementStatus = readText(settlement ?? {}, ['settlementStatus', 'status'], 'UNKNOWN')
+  const isWalletWorkspace = settlementStatus === 'WALLET'
   const canAdjustWallet = hasPermission(session, 'update', 'StoreWallet') || hasPermission(session, 'manage', 'all')
-  const canReleaseSettlement = (hasPermission(session, 'update', 'StoreWallet') || hasPermission(session, 'manage', 'all')) && settlementStatus === 'ON_HOLD'
+  const canReleaseSettlement = !isWalletWorkspace && (hasPermission(session, 'update', 'StoreWallet') || hasPermission(session, 'manage', 'all')) && settlementStatus === 'ON_HOLD'
 
   const loadWorkspace = useCallback(async () => {
     if (!settlementId) {
@@ -190,7 +209,7 @@ export function FinanceWorkspacePage({
         adminApi.getRefundSummary(session),
       ])
 
-      setWalletDetail(walletPayload ? toObject(walletPayload) : null)
+      setWalletDetail(walletPayload ? toObject(walletPayload) : isWalletWorkspace ? toObject(settlement) : null)
       setFinanceSummary(toObject(summaryPayload))
       setRefundSummary(toObject(refundPayload))
     } catch (loadError) {
@@ -198,7 +217,7 @@ export function FinanceWorkspacePage({
     } finally {
       setLoading(false)
     }
-  }, [session, settlementId, storeId])
+  }, [isWalletWorkspace, session, settlement, settlementId, storeId])
 
   useEffect(() => {
     void loadWorkspace()
@@ -208,7 +227,7 @@ export function FinanceWorkspacePage({
     {
       label: 'وضعیت تسویه',
       value: getSettlementStatusLabel(settlementStatus),
-      delta: translateFinanceEnum(readText(settlement ?? {}, ['type'], '—')),
+      delta: translateFinanceEnum(readText(settlement ?? {}, ['type', 'settlementStatus', 'status'], '—')),
       detail: '',
       tone: getToneByStatus(settlementStatus),
     },
@@ -251,11 +270,11 @@ export function FinanceWorkspacePage({
   })
 
   const overviewItems = [
-    { label: 'شناسه مورد', value: settlementId || '—' },
-    { label: 'شناسه سفارش', value: orderId || '—' },
+    { label: 'شناسه مورد', value: isWalletWorkspace ? storeId || settlementId || '—' : settlementId || '—' },
+    { label: 'شناسه سفارش', value: isWalletWorkspace ? '—' : orderId || '—' },
     { label: 'وضعیت', value: getSettlementStatusLabel(settlementStatus) },
     { label: 'فروشگاه', value: readText(settlement ?? {}, ['storeName', 'store', 'storeId'], '—') },
-    { label: 'علت', value: readText(settlement ?? {}, ['reason', 'message'], '—'), wide: true },
+    { label: 'علت', value: translateFinanceEnum(readText(settlement ?? {}, ['reason', 'message', 'settlementStatus'], '—')), wide: true },
     { label: 'آخرین به روزرسانی', value: formatJalaliDate(readText(settlement ?? {}, ['updatedAt', 'createdAt'], ''), true), wide: true },
   ]
 
@@ -285,7 +304,7 @@ export function FinanceWorkspacePage({
 
         <SectionCard
           eyebrow="میزکار مالی"
-          title={`مالی #${settlementId || '—'}`}
+          title={isWalletWorkspace ? `مالی ${readText(settlement ?? {}, ['storeName', 'store', 'storeId'], '—')}` : `مالی #${settlementId || '—'}`}
           actions={
             <div className="orders-workspace-header-actions">
               <Pill tone={getToneByStatus(settlementStatus)}>{getSettlementStatusLabel(settlementStatus)}</Pill>

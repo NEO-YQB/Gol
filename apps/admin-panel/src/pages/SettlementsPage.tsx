@@ -1,4 +1,4 @@
-import { DataTable, Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
+import { Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
 import { useEffect, useMemo, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { adminApi } from '../lib/api'
@@ -16,14 +16,6 @@ function readDisplayValue(value: unknown, fallback = '—') {
   if (typeof value === 'object') return fallback
   return String(value)
 }
-
-const walletColumns = [
-  { key: 'id', label: 'شناسه' },
-  { key: 'store', label: 'فروشگاه' },
-  { key: 'balance', label: 'موجودی' },
-  { key: 'held', label: 'نگه‌داری‌شده' },
-  { key: 'updated', label: 'آخرین تغییر' },
-]
 
 function formatPersianNumber(value: unknown) {
   if (typeof value === 'number') return new Intl.NumberFormat('fa-IR').format(value)
@@ -88,8 +80,22 @@ function translateAnyStatus(status: string) {
       return 'آزاد شده'
     case 'ON_HOLD':
       return 'در نگه داری'
+    case 'MANUAL_CREDIT':
+      return 'شارژ دستی'
+    case 'MANUAL_DEBIT':
+      return 'برداشت دستی'
+    case 'ORDER_EARNING_HOLD':
+      return 'درآمد سفارش در انتظار تسویه'
+    case 'ORDER_EARNING_RELEASE':
+      return 'آزادسازی درآمد سفارش'
+    case 'ORDER_EARNING_REVERSAL':
+      return 'برگشت درآمد سفارش'
+    case 'CREDIT':
+      return 'واریز'
+    case 'DEBIT':
+      return 'برداشت'
     default:
-      return status || 'نامشخص'
+      return status && status !== 'UNKNOWN' ? status : 'نامشخص'
   }
 }
 
@@ -104,24 +110,49 @@ function getSettlementStatusLabel(status: string) {
     case 'REVERSED':
       return 'برگشت خورده'
     default:
-      return status || 'نامشخص'
+      return translateAnyStatus(status)
   }
 }
 
 function getSettlementStatus(record: FinanceRecord) {
-  return readText(record, ['status'], 'UNKNOWN')
+  return readText(record, ['settlementStatus', 'status'], 'UNKNOWN')
 }
 
-function getSettlementReason(record: FinanceRecord) {
-  const reason = record.reason
-  const type = record.type
-  const message = record.message
-  return readDisplayValue(reason) !== '—' ? readDisplayValue(reason) : readDisplayValue(type) !== '—' ? readDisplayValue(type) : readDisplayValue(message)
+function getStoreId(record: FinanceRecord) {
+  const store = toObject(record.store)
+  return readText(record, ['storeId'], readText(store, ['id'], ''))
 }
 
 function getWalletStore(record: FinanceRecord) {
   const store = toObject(record.store)
   return readText(store, ['name', 'slug'], readDisplayValue(record.storeName, readDisplayValue(record.storeId)))
+}
+
+function getWalletId(record: FinanceRecord, index = 0) {
+  return readText(record, ['id'], readText(record, ['storeId'], String(index + 1)))
+}
+
+function getSettlementId(record: FinanceRecord, index = 0) {
+  return readText(record, ['id', 'orderId'], String(index + 1))
+}
+
+function getSettlementTitle(record: FinanceRecord) {
+  const status = getSettlementStatus(record)
+  if (status === 'ON_HOLD') return 'تسویه عقب‌افتاده'
+  if (status === 'REVERSED') return 'برگشت مبلغ تسویه'
+  return getSettlementStatusLabel(status)
+}
+
+function getSettlementReason(record: FinanceRecord) {
+  const status = getSettlementStatus(record)
+  if (status === 'ON_HOLD') return 'زمان تسویه رسیده اما درآمد هنوز آزاد نشده است.'
+  if (status === 'REVERSED') {
+    const amount = formatPersianNumber(readText(record, ['settlementReversedAmount'], '—'))
+    return `مبلغ برگشتی: ${amount}`
+  }
+
+  const reason = readText(record, ['reason', 'message', 'type'], '')
+  return reason ? translateAnyStatus(reason) : 'نیازمند بررسی مالی'
 }
 
 function statusOptions(items: FinanceRecord[]) {
@@ -137,6 +168,7 @@ export function SettlementsPage({ session, onOpenFinanceWorkspace }: { session: 
   const [exceptions, setExceptions] = useState<FinanceRecord[]>([])
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [selectedSettlementId, setSelectedSettlementId] = useState<string | null>(null)
+  const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null)
 
   useEffect(() => {
     let active = true
@@ -168,8 +200,11 @@ export function SettlementsPage({ session, onOpenFinanceWorkspace }: { session: 
         )
         setWallets(walletList)
         setExceptions(exceptionList)
+        if (walletList.length > 0) {
+          setSelectedWalletId(getWalletId(walletList[0]))
+        }
         if (exceptionList.length > 0) {
-          setSelectedSettlementId(readText(exceptionList[0], ['id', 'orderId'], ''))
+          setSelectedSettlementId(getSettlementId(exceptionList[0]))
         }
       } catch (loadError) {
         if (!active) return
@@ -198,41 +233,66 @@ export function SettlementsPage({ session, onOpenFinanceWorkspace }: { session: 
     }
 
     const hasSelected = filteredExceptions.some(
-      (item) => readText(item, ['id', 'orderId'], '') === selectedSettlementId,
+      (item) => getSettlementId(item) === selectedSettlementId,
     )
     if (!hasSelected) {
-      setSelectedSettlementId(readText(filteredExceptions[0], ['id', 'orderId'], ''))
+      setSelectedSettlementId(getSettlementId(filteredExceptions[0]))
     }
   }, [filteredExceptions, selectedSettlementId])
 
-  const walletRows = useMemo(
-    () =>
-      wallets.slice(0, 10).map((item, index) => ({
-        id: readText(item, ['id', 'storeId'], String(index + 1)),
-        store: getWalletStore(item),
-        balance: formatPersianNumber(readText(item, ['balance', 'availableBalance'], '—')),
-        held: formatPersianNumber(readText(item, ['heldBalance', 'heldAmount'], '—')),
-        updated: formatJalaliDate(readText(item, ['updatedAt'], ''), true),
-      })),
-    [wallets],
-  )
+  useEffect(() => {
+    if (wallets.length === 0) {
+      setSelectedWalletId(null)
+      return
+    }
+
+    const hasSelected = wallets.some((item, index) => getWalletId(item, index) === selectedWalletId)
+    if (!hasSelected) {
+      setSelectedWalletId(getWalletId(wallets[0]))
+    }
+  }, [wallets, selectedWalletId])
 
   const selectedSettlement = useMemo(
     () =>
-      filteredExceptions.find((item) => readText(item, ['id', 'orderId'], '') === selectedSettlementId) ?? null,
+      filteredExceptions.find((item, index) => getSettlementId(item, index) === selectedSettlementId) ?? null,
     [filteredExceptions, selectedSettlementId],
+  )
+
+  const selectedWallet = useMemo(
+    () => wallets.find((item, index) => getWalletId(item, index) === selectedWalletId) ?? null,
+    [wallets, selectedWalletId],
   )
 
   const selectedSummary = selectedSettlement
     ? [
-        { label: 'شناسه', value: readText(selectedSettlement, ['id', 'orderId'], '—') },
+        { label: 'شناسه سفارش', value: getSettlementId(selectedSettlement) },
         { label: 'وضعیت', value: getSettlementStatusLabel(getSettlementStatus(selectedSettlement)) },
-        { label: 'علت', value: translateAnyStatus(getSettlementReason(selectedSettlement)) },
+        { label: 'دلیل', value: getSettlementReason(selectedSettlement) },
         { label: 'فروشگاه', value: getWalletStore(selectedSettlement) },
         { label: 'بروزرسانی', value: formatJalaliDate(readText(selectedSettlement, ['updatedAt', 'createdAt'], ''), true) },
-        { label: 'نوع', value: readText(selectedSettlement, ['type'], '—') },
+        { label: 'مبلغ آزادشده', value: formatPersianNumber(readText(selectedSettlement, ['settlementReleasedAmount'], '—')) },
       ]
     : []
+
+  const selectedWalletSummary = selectedWallet
+    ? [
+        { label: 'فروشگاه', value: getWalletStore(selectedWallet) },
+        { label: 'موجودی', value: formatPersianNumber(readText(selectedWallet, ['availableBalance', 'balance'], '—')) },
+        { label: 'نگه‌داری‌شده', value: formatPersianNumber(readText(selectedWallet, ['heldBalance', 'heldAmount'], '—')) },
+        { label: 'آخرین تغییر', value: formatJalaliDate(readText(selectedWallet, ['updatedAt'], ''), true) },
+      ]
+    : []
+
+  function openWalletWorkspace(wallet: FinanceRecord) {
+    onOpenFinanceWorkspace({
+      ...wallet,
+      id: `wallet-${getStoreId(wallet) || getWalletId(wallet)}`,
+      storeId: getStoreId(wallet),
+      storeName: getWalletStore(wallet),
+      status: 'WALLET',
+      settlementStatus: 'WALLET',
+    })
+  }
 
   return (
     <div className="fm-stack">
@@ -268,7 +328,44 @@ export function SettlementsPage({ session, onOpenFinanceWorkspace }: { session: 
             title="کیف پول فروشگاه‌ها"
             actions={<Pill tone="success">{`${wallets.length} کیف پول`}</Pill>}
           >
-            <DataTable columns={walletColumns} rows={walletRows} />
+            <div className="settlements-board-list">
+              {wallets.slice(0, 10).map((item, index) => {
+                const id = getWalletId(item, index)
+                const isActive = id === selectedWalletId
+
+                return (
+                  <button
+                    className={`settlements-board-item ${isActive ? 'is-active' : ''}`}
+                    key={id}
+                    onClick={() => setSelectedWalletId(id)}
+                    type="button"
+                  >
+                    <span className="settlements-board-id">#{getStoreId(item) || id}</span>
+                    <strong>{getWalletStore(item)}</strong>
+                    <span>{`موجودی: ${formatPersianNumber(readText(item, ['availableBalance', 'balance'], '—'))}`}</span>
+                    <small>{`نگه‌داری‌شده: ${formatPersianNumber(readText(item, ['heldBalance', 'heldAmount'], '—'))}`}</small>
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className="settlements-wallet-summary">
+              {selectedWalletSummary.map((item) => (
+                <article className="settlements-detail-item" key={item.label}>
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                </article>
+              ))}
+            </div>
+
+            <button
+              className="orders-secondary-button settlements-wallet-action"
+              disabled={!selectedWallet}
+              onClick={() => selectedWallet && openWalletWorkspace(selectedWallet)}
+              type="button"
+            >
+              ورود به مالی فروشگاه
+            </button>
           </SectionCard>
 
           <div className="settlements-detail-column">
@@ -278,8 +375,8 @@ export function SettlementsPage({ session, onOpenFinanceWorkspace }: { session: 
               actions={<Pill tone="warning">{`${filteredExceptions.length} استثنا`}</Pill>}
             >
               <div className="settlements-board-list">
-                {filteredExceptions.slice(0, 10).map((item) => {
-                  const id = readText(item, ['id', 'orderId'], '—')
+                {filteredExceptions.slice(0, 10).map((item, index) => {
+                  const id = getSettlementId(item, index)
                   const isActive = id === selectedSettlementId
 
                   return (
@@ -290,8 +387,8 @@ export function SettlementsPage({ session, onOpenFinanceWorkspace }: { session: 
                       type="button"
                     >
                       <span className="settlements-board-id">#{id}</span>
-                      <strong>{getSettlementStatusLabel(getSettlementStatus(item))}</strong>
-                      <span>{translateAnyStatus(getSettlementReason(item))}</span>
+                      <strong>{getSettlementTitle(item)}</strong>
+                      <span>{getSettlementReason(item)}</span>
                       <small>{formatJalaliDate(readText(item, ['updatedAt', 'createdAt'], ''), true)}</small>
                     </button>
                   )
@@ -301,7 +398,7 @@ export function SettlementsPage({ session, onOpenFinanceWorkspace }: { session: 
 
             <SectionCard
               eyebrow="انتخاب شده"
-              title={selectedSettlement ? `استثنا #${readText(selectedSettlement, ['id', 'orderId'], '—')}` : 'استثنایی انتخاب نشده'}
+              title={selectedSettlement ? `استثنا #${getSettlementId(selectedSettlement)}` : 'استثنایی انتخاب نشده'}
               actions={
                 selectedSettlement ? (
                   <div className="orders-workspace-header-actions">
