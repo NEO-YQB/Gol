@@ -40,6 +40,36 @@ export function AppShell({
   const accountStats = accountMenu?.quickStats ?? []
   const accountActions = accountMenu?.actions ?? []
 
+  const renderNavigation = (closeOnSelect = false) => (
+    <nav className="fm-nav" aria-label="Main navigation">
+      {navSections.map((section) => (
+        <section className="fm-nav-section" key={section.title}>
+          <p className="fm-nav-title">{section.title}</p>
+          <div className="fm-nav-items">
+            {section.items.map((item) => (
+              <button
+                className={cx('fm-nav-item', item.active && 'is-active')}
+                key={`${section.title}-${item.label}`}
+                onClick={(event) => {
+                  onNavigate?.(item.key)
+                  if (closeOnSelect) {
+                    event.currentTarget.closest('details')?.removeAttribute('open')
+                  }
+                }}
+                type="button"
+              >
+                <span>
+                  <strong>{item.label}</strong>
+                </span>
+                {item.badge ? <Pill>{item.badge}</Pill> : null}
+              </button>
+            ))}
+          </div>
+        </section>
+      ))}
+    </nav>
+  )
+
   return (
     <div className={cx('fm-shell', `fm-shell--${tone}`)} dir="rtl">
       <aside className="fm-sidebar">
@@ -51,28 +81,7 @@ export function AppShell({
           </div>
         </div>
 
-        <nav className="fm-nav" aria-label="Main navigation">
-          {navSections.map((section) => (
-            <section className="fm-nav-section" key={section.title}>
-              <p className="fm-nav-title">{section.title}</p>
-              <div className="fm-nav-items">
-                {section.items.map((item) => (
-                  <button
-                    className={cx('fm-nav-item', item.active && 'is-active')}
-                    key={`${section.title}-${item.label}`}
-                    onClick={() => onNavigate?.(item.key)}
-                    type="button"
-                  >
-                    <span>
-                      <strong>{item.label}</strong>
-                    </span>
-                    {item.badge ? <Pill>{item.badge}</Pill> : null}
-                  </button>
-                ))}
-              </div>
-            </section>
-          ))}
-        </nav>
+        {renderNavigation()}
 
         <div className="fm-sidebar-footer">
           <strong>{workspaceLabel}</strong>
@@ -80,6 +89,27 @@ export function AppShell({
       </aside>
 
       <main className="fm-main">
+        <details className="fm-mobile-menu">
+          <summary className="fm-mobile-menu__trigger" aria-label="باز کردن منوی پنل">
+            <span className="fm-hamburger" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </span>
+            <span>
+              <strong>{pageTitle}</strong>
+              <small>{workspaceLabel}</small>
+            </span>
+          </summary>
+          <div className="fm-mobile-menu__panel">
+            <div className="fm-mobile-menu__head">
+              <strong>{productName}</strong>
+              <small>{productSubtitle}</small>
+            </div>
+            {renderNavigation(true)}
+          </div>
+        </details>
+
         <header className="fm-topbar">
           <div>
             <p className="fm-page-eyebrow">{pageEyebrow}</p>
