@@ -2383,13 +2383,13 @@
 
 .orders-workspace-shell {
   display: grid;
-  gap: 18px;
+  gap: 12px;
 }
 
 .orders-workspace-header-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   flex-wrap: wrap;
   justify-content: flex-end;
 }
@@ -2397,18 +2397,18 @@
 .orders-workspace-lanes {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
+  gap: 8px;
 }
 
 .orders-lane-card {
   border: 1px solid var(--fm-border-soft);
   background: linear-gradient(180deg, rgba(255, 253, 248, 0.96), rgba(246, 239, 227, 0.88));
-  border-radius: 22px;
-  padding: 18px;
+  border-radius: 16px;
+  padding: 12px;
   text-align: right;
   display: grid;
-  gap: 8px;
-  min-height: 150px;
+  gap: 4px;
+  min-height: 86px;
   transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
 }
 
@@ -2420,7 +2420,7 @@
 .orders-lane-card span,
 .orders-lane-card small {
   color: var(--fm-text-secondary);
-  line-height: 1.8;
+  line-height: 1.5;
 }
 
 .orders-lane-card.is-active,
@@ -2433,7 +2433,7 @@
 .orders-workspace-body {
   display: grid;
   grid-template-columns: minmax(0, 1.22fr) minmax(320px, 0.78fr);
-  gap: 18px;
+  gap: 12px;
   align-items: start;
 }
 
@@ -2443,12 +2443,11 @@
 .orders-summary-grid,
 .orders-payment-grid,
 .orders-flags-grid,
-.orders-guidance-list,
 .orders-capability-list,
 .orders-items-grid,
 .orders-exceptions-list {
   display: grid;
-  gap: 16px;
+  gap: 10px;
 }
 
 .orders-workspace-side {
@@ -2477,13 +2476,13 @@
 .orders-action-form,
 .orders-action-stack {
   display: grid;
-  gap: 14px;
+  gap: 10px;
 }
 
 .orders-inline-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
 }
 
 .orders-pagination {
@@ -2563,21 +2562,19 @@
 .orders-payment-card,
 .orders-flag-card,
 .orders-capability-item,
-.orders-guidance-item,
 .orders-item-card,
 .orders-exception-item {
   border: 1px solid var(--fm-border-soft);
-  border-radius: 20px;
-  padding: 16px;
+  border-radius: 16px;
+  padding: 12px;
   background: rgba(255, 253, 248, 0.86);
   display: grid;
-  gap: 8px;
+  gap: 4px;
 }
 
 .orders-payment-card span,
 .orders-flag-card small,
 .orders-capability-item span,
-.orders-guidance-item p,
 .orders-item-card span,
 .orders-item-card small,
 .orders-exception-item span,
@@ -2589,7 +2586,6 @@
 .orders-payment-card strong,
 .orders-flag-card strong,
 .orders-capability-item strong,
-.orders-guidance-item strong,
 .orders-item-card strong,
 .orders-exception-item strong {
   color: var(--fm-text-primary);
@@ -2891,23 +2887,15 @@
 
 
 .orders-decision-strip {
-  display: grid;
-  gap: 8px;
-  padding: 14px 16px;
-  border-radius: 18px;
+  padding: 10px 12px;
+  border-radius: 16px;
   border: 1px solid var(--fm-border-soft);
   background: rgba(255, 252, 246, 0.82);
 }
 
 .orders-decision-strip strong {
   color: var(--fm-text-primary);
-  line-height: 1.8;
-}
-
-.orders-decision-strip p {
   margin: 0;
-  color: var(--fm-text-secondary);
-  line-height: 1.9;
 }
 
 

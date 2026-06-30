@@ -173,7 +173,8 @@ function getToneByStatus(status: string) {
 }
 
 function getCustomerLabel(order: OrderRecord) {
-  return readText(order, ['customerName', 'recipientName', 'customer', 'userId'], '—')
+  const user = toObject(order.user)
+  return readText(user, ['fullName'], readText(order, ['customerName'], readText(user, ['phoneNumber'], readText(order, ['customerPhoneNumber'], 'بدون نام'))))
 }
 
 function getStoreLabel(order: OrderRecord) {
@@ -192,7 +193,7 @@ function getAddressLabel(order: OrderRecord) {
     .filter(Boolean)
     .join(' | ')
 
-  return line || 'آدرس سفارش در جزئیات فعلی برنگشته است.'
+  return line || 'ثبت نشده'
 }
 
 function getNationalIdLabel(order: OrderRecord) {
@@ -233,38 +234,38 @@ function getRecommendedActionLabel(options: {
   operationalFlagsCount: number
 }) {
   if (options.paymentExceptionsCount > 0 || options.operationalFlagsCount > 0) {
-    return 'اول استثناها و هشدارهای این سفارش را بررسی کن.'
+    return 'بررسی استثناها'
   }
 
   if (options.canInitiatePayment) {
-    return 'این سفارش هنوز به پرداخت تازه نیاز دارد؛ از lane پرداخت شروع کن.'
+    return 'ایجاد پرداخت'
   }
 
   if (options.canAccept) {
-    return 'سفارش آماده تایید اولیه است.'
+    return 'تایید سفارش'
   }
 
   if (options.canShip) {
-    return 'سفارش آماده ارسال است.'
+    return 'ثبت ارسال'
   }
 
   if (options.canDeliver) {
-    return 'بعد از اطمینان از تحویل، وضعیت را به تحویل شده تغییر بده.'
+    return 'ثبت تحویل'
   }
 
   if (options.canReleaseSettlement) {
-    return 'اگر مانع فعالی وجود ندارد، تسویه را آزاد کن.'
+    return 'آزادسازی تسویه'
   }
 
   if (options.canManualRefund) {
-    return 'این سفارش در وضعیت مناسبی برای بازگشت وجه دستی قرار دارد.'
+    return 'بازگشت وجه'
   }
 
   if (options.canCancel) {
-    return 'اگر ادامه سفارش منطقی نیست، لغو را با دلیل روشن ثبت کن.'
+    return 'لغو سفارش'
   }
 
-  return 'برای این سفارش فعلا action مستقیمی از سمت پنل پیشنهاد نمی شود.'
+  return 'اقدام مستقیمی نیست'
 }
 
 function toPositiveNumber(value: string) {
@@ -475,32 +476,28 @@ export function OrdersWorkspacePage({
       label: 'وضعیت سفارش',
       value: getOrderStatusLabel(orderStatus),
       delta: getPaymentStatusLabel(paymentStatus),
-      detail: 'مرحله فعلی رسیدگی',
-      hint: 'این کارت نشان می‌دهد سفارش اکنون در چه وضعیتی است و پرداخت آن در چه مرحله‌ای قرار دارد.',
+      detail: '',
       tone: getToneByStatus(orderStatus),
     },
     {
       label: 'مبلغ سفارش',
       value: formatPersianNumber(readText(currentOrder, ['totalAmount'], '—')),
       delta: `${formatPersianNumber(orderItems.length)} قلم`,
-      detail: 'جمع فعلی اقلام و مبلغ نهایی',
-      hint: 'با این کارت سریع می‌بینی چند قلم در سفارش هست و مبلغ کل آن چقدر است.',
+      detail: '',
       tone: 'primary' as const,
     },
     {
       label: 'تسویه',
       value: getSettlementStatusLabel(settlementStatus),
       delta: formatJalaliDate(readText(currentOrder, ['settlementEligibleAt'], '')),
-      detail: 'وضعیت نگه داری و آزادسازی سفارش',
-      hint: 'اگر تسویه در نگه داری باشد، زمان تقریبی آزاد شدن آن در این کارت دیده می‌شود.',
+      detail: '',
       tone: getToneByStatus(settlementStatus),
     },
     {
       label: 'بررسی پرداخت',
       value: getReviewStatusLabel(reviewStatus),
       delta: paymentId && paymentId !== '—' ? `پرداخت #${paymentId}` : 'بدون رکورد پرداخت',
-      detail: 'دید روشن برای بررسی و بازگشت وجه',
-      hint: 'اگر پرداخت به بررسی یا بازگشت وجه نیاز داشته باشد، از همین کارت می‌توانی وضعیت کلی را بفهمی.',
+      detail: '',
       tone: getToneByStatus(reviewStatus),
     },
   ]
@@ -509,25 +506,25 @@ export function OrdersWorkspacePage({
     {
       key: 'overview' as const,
       title: 'نمای کلی',
-      description: 'شناخت سریع سفارش، مشتری، اقلام و رخدادها',
-      detail: 'زمینه کامل سفارش',
+      description: '',
+      detail: `${formatPersianNumber(orderItems.length)} قلم`,
     },
     {
       key: 'payment' as const,
-      title: 'پرداخت و تسویه',
-      description: 'رسیدگی به پرداخت، بررسی مالی و تسویه',
+      title: 'پرداخت',
+      description: '',
       detail: getPaymentStatusLabel(paymentStatus),
     },
     {
       key: 'fulfillment' as const,
-      title: 'اجرای سفارش',
-      description: 'تایید، ارسال، تحویل یا لغو سفارش',
+      title: 'اجرا',
+      description: '',
       detail: getOrderStatusLabel(orderStatus),
     },
     {
       key: 'exceptions' as const,
-      title: 'استثناها و ریسک',
-      description: 'نشانه های هشدار، ناسازگاری‌ها و صف مالی',
+      title: 'استثناها',
+      description: '',
       detail: `${formatPersianNumber(operationalFlags.length)} مورد`,
     },
   ]
@@ -601,8 +598,6 @@ export function OrdersWorkspacePage({
         <SectionCard
           eyebrow="جریان سفارش"
           title={`میزکار سفارش #${readText(currentOrder, ['id'], '—')}`}
-          description="در این بخش، رسیدگی عملیاتی سفارش از کارتابل جدا شده تا تصمیم‌های مهم با زمینه کامل، بخش مشخص و عملیات واقعی بک‌اند انجام شوند."
-          hint="از بالا به پایین حرکت کن: اول تصویر کلی را ببین، بعد وارد بخش مربوط به پرداخت یا اجرای سفارش شو و در پایان اگر لازم بود استثناها را بررسی کن."
           actions={
             <div className="orders-workspace-header-actions">
               <Pill tone={getToneByStatus(orderStatus)}>{getOrderStatusLabel(orderStatus)}</Pill>
@@ -622,7 +617,7 @@ export function OrdersWorkspacePage({
                   type="button"
                 >
                   <strong>{lane.title}</strong>
-                  <span>{lane.description}</span>
+                  {lane.description ? <span>{lane.description}</span> : null}
                   <small>{lane.detail}</small>
                 </button>
               ))}
@@ -633,8 +628,6 @@ export function OrdersWorkspacePage({
                 <SectionCard
                   eyebrow="خلاصه سفارش"
                   title="تصویر عملیاتی سریع"
-                  description="این بخش برای جمع‌بندی سریع وضعیت سفارش ساخته شده تا کاربر در چند ثانیه بداند با چه سفارشی روبه‌رو است."
-                  hint="این کارت باید فقط به اندازه محتوای خودش دیده شود. اگر جزئیات بیشتری لازم داشتی، در بخش‌های پایین‌تر یا بخش‌های کناری ادامه بده."
                   actions={<Pill tone="primary">{getStoreLabel(currentOrder)}</Pill>}
                 >
                   <div className="orders-summary-grid">
@@ -653,18 +646,10 @@ export function OrdersWorkspacePage({
                 <SectionCard
                   eyebrow="پیشنهاد اقدام"
                   title="الان مهم ترین کار روی این سفارش چیست؟"
-                  description="این نوار تصمیم فقط برای کم کردن تردید اپراتور ساخته شده و باید در چند ثانیه مسیر اقدام را روشن کند."
                   actions={<Pill tone={operationalFlags.length || paymentExceptions.length ? 'warning' : 'primary'}>{operationalFlags.length || paymentExceptions.length ? 'نیازمند توجه' : 'عادی'}</Pill>}
                 >
                   <div className="orders-decision-strip">
                     <strong>{recommendedActionLabel}</strong>
-                    <p>
-                      {paymentExceptions.length > 0
-                        ? `برای این سفارش ${formatPersianNumber(paymentExceptions.length)} استثنای پرداخت یا مالی ثبت شده است.`
-                        : operationalFlags.length > 0
-                          ? `برای این سفارش ${formatPersianNumber(operationalFlags.length)} پرچم عملیاتی فعال دیده می شود.`
-                          : 'در وضعیت فعلی، این سفارش هشدار فوری ثبت شده ای ندارد و می توانی بر اساس مرحله طبیعی آن پیش بروی.'}
-                    </p>
                   </div>
                 </SectionCard>
 
@@ -673,8 +658,6 @@ export function OrdersWorkspacePage({
                     <SectionCard
                       eyebrow="اقلام سفارش"
                       title="جزئیات محصول و مبلغ"
-                      description="برای بررسی نهایی اقلام، تعداد، فروشگاه و جمع مبلغ قبل از هر تصمیم عملیاتی."
-                      hint="پیش از تایید یا لغو، این بخش را ببین تا مطمئن شوی اقلام و مبلغ با انتظار کاربر هماهنگ است."
                       actions={<Pill tone="warning">{`${formatPersianNumber(orderItems.length)} قلم`}</Pill>}
                     >
                       <div className="orders-items-grid">
@@ -690,7 +673,7 @@ export function OrdersWorkspacePage({
                             )
                           })
                         ) : (
-                          <div className="fm-message">در پاسخ فعلی بک‌اند، لیست اقلام این سفارش خالی است.</div>
+                          <div className="fm-message">اقلامی ثبت نشده.</div>
                         )}
                       </div>
 
@@ -720,8 +703,6 @@ export function OrdersWorkspacePage({
                     <SectionCard
                       eyebrow="ردیف رخدادها"
                       title="رخدادهای سفارش و پرداخت"
-                      description="در این بخش می‌توانی مسیر اتفاق‌های مهم سفارش و پرداخت را به ترتیب زمان ببینی."
-                      hint="اگر دنبال دلیل یک وضعیت یا تغییر هستی، از همین بخش شروع کن؛ رخدادها به ترتیب دیده می‌شوند."
                       actions={<Pill tone="success">{`${formatPersianNumber(combinedFeed.length)} رخداد`}</Pill>}
                     >
                       <ActivityFeed items={currentFeed} />
@@ -756,8 +737,6 @@ export function OrdersWorkspacePage({
                     <SectionCard
                       eyebrow="نمای مالی"
                       title="وضعیت پرداخت و تسویه"
-                      description="در این بخش می‌توانی وضعیت پرداخت را بخوانی و در صورت نیاز برای آن تصمیم مالی بگیری."
-                      hint="اگر سفارش پرداخت نشده، از ساخت پرداخت جدید شروع کن. اگر پرداخت مسئله دارد، بخش بررسی را پر کن. اگر سفارش لغو شده، سراغ بازگشت وجه برو."
                       actions={<Pill tone={getToneByStatus(paymentStatus)}>{getPaymentStatusLabel(paymentStatus)}</Pill>}
                     >
                       <div className="orders-payment-grid">
@@ -788,8 +767,6 @@ export function OrdersWorkspacePage({
                       <SectionCard
                         eyebrow="شروع مجدد پرداخت"
                         title="ایجاد پرداخت جدید"
-                        description="اگر سفارش هنوز پرداخت نشده یا پرداخت قبلی ناموفق یا منقضی شده، از این فرم یک پرداخت تازه بساز."
-                        hint="معمولا فقط وقتی از این بخش استفاده می‌شود که سفارش آنلاین باشد و هنوز به پرداخت موفق نرسیده باشد."
                         actions={<Pill tone={canInitiatePayment ? 'success' : 'warning'}>{canInitiatePayment ? 'مجاز' : 'غیرفعال'}</Pill>}
                       >
                         <form
@@ -844,8 +821,6 @@ export function OrdersWorkspacePage({
                       <SectionCard
                         eyebrow="بررسی دستی"
                         title="ثبت وضعیت بررسی پرداخت"
-                        description="اگر پرداخت نیاز به بررسی دارد، از این فرم وضعیت بررسی و توضیح آن را ثبت کن."
-                        hint="وقتی بین وضعیت سفارش و وضعیت پرداخت اختلاف می‌بینی، این بخش بهترین جا برای ثبت توضیح است."
                         actions={<Pill tone="warning">{getReviewStatusLabel(reviewStatus)}</Pill>}
                       >
                         <form
@@ -911,8 +886,6 @@ export function OrdersWorkspacePage({
                       <SectionCard
                         eyebrow="بازگشت وجه دستی"
                         title="بازگشت وجه دستی"
-                        description="این بخش برای زمانی است که سفارش لغو شده یا به نتیجه نرسیده و باید پول به صورت دستی برگردانده شود."
-                        hint="اگر سفارش هنوز لغو نشده یا پرداخت موفق نداشته، این بخش به صورت طبیعی غیرفعال می‌ماند."
                         actions={<Pill tone={canManualRefund ? 'danger' : 'warning'}>{canManualRefund ? 'قابل اجرا' : 'غیرفعال'}</Pill>}
                       >
                         <form
@@ -968,16 +941,9 @@ export function OrdersWorkspacePage({
                       <SectionCard
                         eyebrow="آزادسازی تسویه"
                         title="آزادسازی دستی تسویه"
-                        description="اگر زمان نگه داری به پایان رسیده و مانع فعالی وجود ندارد، از اینجا تسویه را آزاد کن."
-                        hint="قبل از آزادسازی، مطمئن شو که برای سفارش تیکت باز یا مانع مالی فعالی وجود ندارد."
                         actions={<Pill tone={canReleaseSettlement ? 'success' : 'warning'}>{canReleaseSettlement ? 'آماده آزادسازی' : 'غیرفعال'}</Pill>}
                       >
                         <div className="orders-action-stack">
-                          <p className="orders-inline-note">
-                            {canReleaseSettlement
-                              ? 'این سفارش در وضعیت مناسبی برای آزادسازی تسویه قرار دارد.'
-                              : 'آزادسازی فقط برای سفارش‌هایی فعال است که هنوز در نگه داری هستند و آزاد نشده‌اند.'}
-                          </p>
                           <button
                             className="orders-primary-button"
                             disabled={!canReleaseSettlement || actionBusy === 'release-settlement'}
@@ -1003,8 +969,6 @@ export function OrdersWorkspacePage({
                     <SectionCard
                       eyebrow="پیشبرد سفارش"
                       title="پذیرش، ارسال و تحویل"
-                      description="در این بخش وضعیت اجرایی سفارش را یک مرحله جلو می‌بری؛ از تایید تا ارسال و تحویل."
-                      hint="اگر فقط می‌خواهی روند سفارش را جلو ببری، همین بخش کافی است و نیازی به رفتن به بخش‌های دیگر نداری."
                       actions={<Pill tone="primary">{getOrderStatusLabel(orderStatus)}</Pill>}
                     >
                       <form className="orders-action-form">
@@ -1069,8 +1033,6 @@ export function OrdersWorkspacePage({
                     <SectionCard
                       eyebrow="لغو عمومی"
                       title="لغو سفارش از سطح ادمین"
-                      description="برای لغوهای عمومی، درخواست مشتری یا تصمیم عملیاتی ادمین از این فرم استفاده کن."
-                      hint="اگر لغو به خاطر تصمیم فروشنده است، بهتر است از بخش لغو فروشنده استفاده کنی تا دلیل روشن‌تر ثبت شود."
                       actions={<Pill tone={canCancel ? 'warning' : 'danger'}>{canCancel ? 'مجاز' : 'غیرفعال'}</Pill>}
                     >
                       <form
@@ -1102,7 +1064,7 @@ export function OrdersWorkspacePage({
                           <textarea
                             id="orders-cancel-note"
                             onChange={(event) => setCancelForm((current) => ({ ...current, note: event.target.value }))}
-                            placeholder="توضیح تکمیلی برای ثبت در سابقه سفارش"
+                            placeholder="یادداشت داخلی"
                             rows={4}
                             value={cancelForm.note}
                           />
@@ -1116,8 +1078,6 @@ export function OrdersWorkspacePage({
                     <SectionCard
                       eyebrow="لغو از سمت فروشنده"
                       title="ثبت لغو از سمت فروشنده"
-                      description="اگر فروشنده نتواند سفارش را آماده یا تامین کند، دلیل لغو را از اینجا ثبت کن."
-                      hint="این بخش کمک می‌کند بعدا معلوم باشد لغو به تصمیم فروشنده بوده، نه مشتری یا ادمین."
                       actions={<Pill tone={canCancel ? 'danger' : 'warning'}>{canCancel ? 'قابل ثبت' : 'غیرفعال'}</Pill>}
                     >
                       <form
@@ -1180,8 +1140,6 @@ export function OrdersWorkspacePage({
                     <SectionCard
                       eyebrow="نشانه های مهم"
                       title="نقاط نیازمند توجه"
-                      description="این بخش خلاصه می‌کند چه نشانه‌هایی می‌گویند این سفارش نیاز به توجه بیشتر دارد."
-                      hint="اگر نمی‌دانی مشکل اصلی سفارش کجاست، ابتدا همین نشانه‌ها را بخوان؛ معمولا مسیر رسیدگی را روشن می‌کنند."
                       actions={<Pill tone="danger">{`${formatPersianNumber(operationalFlags.length)} مورد فعال`}</Pill>}
                     >
                       <div className="orders-flags-grid">
@@ -1223,8 +1181,6 @@ export function OrdersWorkspacePage({
                     <SectionCard
                       eyebrow="صف پرداخت"
                       title="استثناهای پرداخت مرتبط"
-                      description="اگر پرداخت این سفارش در صف تطبیق یا بررسی قرار گرفته باشد، موارد اینجا نمایش داده می‌شوند."
-                      hint="وقتی پرداخت چند بار ناموفق شده یا به بررسی دستی رفته، این بخش دلیل و وضعیت آن را روشن می‌کند."
                       actions={<Pill tone="warning">{`${formatPersianNumber(paymentExceptions.length)} مورد`}</Pill>}
                     >
                       <div className="orders-exceptions-list">
@@ -1233,11 +1189,11 @@ export function OrdersWorkspacePage({
                             <article className="orders-exception-item" key={readText(item, ['id'], String(index + 1))}>
                               <strong>{`پرداخت #${readText(item, ['id'], '—')} - ${getPaymentStatusLabel(readText(item, ['status'], 'UNKNOWN'))}`}</strong>
                               <span>{`بررسی: ${getReviewStatusLabel(readText(item, ['reviewStatus'], '—'))}`}</span>
-                              <small>{readText(item, ['reviewReason', 'reviewNote'], 'بدون توضیح ثبت شده')}</small>
+                              <small>{readText(item, ['reviewReason', 'reviewNote'], 'بدون یادداشت')}</small>
                             </article>
                           ))
                         ) : (
-                          <div className="fm-message">در صف پرداخت، مورد مستقیمی برای این سفارش دیده نمی‌شود.</div>
+                          <div className="fm-message">بدون مورد.</div>
                         )}
                       </div>
 
@@ -1274,8 +1230,6 @@ export function OrdersWorkspacePage({
                 <SectionCard
                   eyebrow="مرکز اقدام"
                   title="خلاصه مجوزهای عملیاتی"
-                  description="قبل از اجرای عملیات، این خلاصه نشان می‌دهد چه کارهایی برای این سفارش مجاز و باز هستند."
-                  hint="اگر دکمه‌ای برایت غیرفعال است، اول این بخش را ببین تا متوجه شوی آن کار برای این سفارش مجاز هست یا نه."
                   actions={<Pill tone="primary">داده زنده</Pill>}
                 >
                   <div className="orders-capability-list">
@@ -1306,29 +1260,6 @@ export function OrdersWorkspacePage({
                     <article className="orders-capability-item">
                       <span>آزادسازی تسویه</span>
                       <strong>{canReleaseSettlement ? 'مجاز' : 'غیرفعال'}</strong>
-                    </article>
-                  </div>
-                </SectionCard>
-
-                <SectionCard
-                  eyebrow="راهنمای تصمیم"
-                  title="الگوی توصیه شده برای اپراتور"
-                  description="این راهنما کمک می‌کند مسیر رسیدگی را ساده و مرحله به مرحله جلو ببری."
-                  hint="اگر حس می‌کنی صفحه پیچیده شده، همین سه گام را دنبال کن. بیشتر کارها با همین ترتیب روشن می‌شوند."
-                  actions={<Pill tone="warning">جریان جدا</Pill>}
-                >
-                  <div className="orders-guidance-list">
-                    <article className="orders-guidance-item">
-                      <strong>۱. ابتدا زمینه را مرور کن</strong>
-                      <p>در بخش نمای کلی، وضعیت سفارش، آدرس، اقلام و رخدادها را ببین.</p>
-                    </article>
-                    <article className="orders-guidance-item">
-                      <strong>۲. بعد کار اصلی را انتخاب کن</strong>
-                      <p>تایید، ارسال و تحویل در بخش اجرا انجام می‌شود و کارهای مالی در بخش پرداخت و تسویه انجام می‌شوند.</p>
-                    </article>
-                    <article className="orders-guidance-item">
-                      <strong>۳. اگر ابهام یا ریسک دیدی</strong>
-                      <p>بخش استثناها را باز کن تا نشانه های مهم و صف پرداخت برای همین سفارش دیده شوند.</p>
                     </article>
                   </div>
                 </SectionCard>
