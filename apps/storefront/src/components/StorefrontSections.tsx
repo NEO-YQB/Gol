@@ -174,16 +174,16 @@ export function VendorCarouselSection({ block }: { block: { id: string; data: Re
 export function CampaignGridSection({ block }: { block: { id: string; data: Record<string, unknown> } }) {
   const banners = Array.isArray(block.data.banners) ? (block.data.banners as Array<Record<string, unknown>>) : []
   return (
-    <section className={storefrontShared.campaignSection} key={block.id} style={{ background: String(block.data.backgroundColor || '#f2e7d8') }}>
+    <section className={`${storefrontShared.campaignSection} px-3 py-5 md:px-8 md:py-8`} key={block.id} style={{ background: String(block.data.backgroundColor || '#f2e7d8') }}>
       {block.data.title ? (
         <div className="mb-6">
           <h2 className="text-3xl font-black text-[#173126]">{String(block.data.title)}</h2>
         </div>
       ) : null}
-      <div className="grid auto-rows-[180px] grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid auto-rows-[420px] grid-cols-1 gap-3 md:auto-rows-[180px] md:grid-cols-3 md:gap-4">
         {banners.map((banner, bannerIndex) => (
           <a
-            className="group relative overflow-hidden rounded-[30px] shadow-[0_16px_36px_rgba(52,36,17,0.12)]"
+            className="group relative overflow-hidden rounded-[26px] shadow-[0_16px_36px_rgba(52,36,17,0.12)] md:rounded-[30px]"
             href={String(banner.link ?? '#')}
             key={`${block.id}-${bannerIndex}`}
             style={{
