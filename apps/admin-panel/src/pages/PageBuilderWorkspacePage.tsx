@@ -68,15 +68,6 @@ type FooterSocialForm = {
   href: string
 }
 
-type FooterAppDownloadForm = {
-  enabled: boolean
-  title: string
-  bazaarUrl: string
-  bazaarImageUrl: string
-  directUrl: string
-  directImageUrl: string
-}
-
 type ColorFieldProps = {
   label: string
   value: string
@@ -582,12 +573,17 @@ function mapApiPageToForm(page: Record<string, unknown>): PageForm {
     footerTrustTitle: readText(footerConfig, ['trustTitle'], ''),
     footerBadges,
     footerSocials,
-    footerAppDownloadEnabled: footerConfig.appDownload?.enabled !== false,
-    footerAppDownloadTitle: readText(footerConfig.appDownload ?? {}, ['title'], 'دانلود اپلیکیشن'),
-    footerAppDownloadBazaarUrl: readText(footerConfig.appDownload ?? {}, ['bazaarUrl'], ''),
-    footerAppDownloadBazaarImageUrl: readText(footerConfig.appDownload ?? {}, ['bazaarImageUrl'], ''),
-    footerAppDownloadDirectUrl: readText(footerConfig.appDownload ?? {}, ['directUrl'], ''),
-    footerAppDownloadDirectImageUrl: readText(footerConfig.appDownload ?? {}, ['directImageUrl'], ''),
+    ...(function parseAppDownload() {
+      const ad = (typeof footerConfig.appDownload === 'object' && footerConfig.appDownload !== null ? footerConfig.appDownload : {}) as Record<string, unknown>
+      return {
+        footerAppDownloadEnabled: ad.enabled !== false,
+        footerAppDownloadTitle: readText(ad, ['title'], 'دانلود اپلیکیشن'),
+        footerAppDownloadBazaarUrl: readText(ad, ['bazaarUrl'], ''),
+        footerAppDownloadBazaarImageUrl: readText(ad, ['bazaarImageUrl'], ''),
+        footerAppDownloadDirectUrl: readText(ad, ['directUrl'], ''),
+        footerAppDownloadDirectImageUrl: readText(ad, ['directImageUrl'], ''),
+      }
+    })(),
     footerLegalEnabled: footerConfig.legalEnabled !== false,
     footerLegalText: readText(footerConfig, ['legalText'], 'تمامی حقوق برای گلینو محفوظ است'),
     metaTitle: readText(page, ['metaTitle'], ''),
