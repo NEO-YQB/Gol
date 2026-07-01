@@ -30,6 +30,15 @@ type FooterSocial = {
   href: string
 }
 
+type FooterAppDownload = {
+  enabled?: boolean
+  title?: string | null
+  bazaarUrl?: string | null
+  bazaarImageUrl?: string | null
+  directUrl?: string | null
+  directImageUrl?: string | null
+}
+
 type FooterConfig = {
   enabled?: boolean
   backgroundColor?: string | null
@@ -50,6 +59,7 @@ type FooterConfig = {
   trustTitle?: string | null
   badges?: FooterBadge[]
   socials?: FooterSocial[]
+  appDownload?: FooterAppDownload
   legalEnabled?: boolean
   legalText?: string | null
 }
@@ -238,6 +248,40 @@ export function StorefrontFooter({ page }: { page: EnrichedStorefrontPage }) {
                     </span>
                   </Link>
                 ))}
+              </div>
+            ) : null}
+
+            {footerConfig.appDownload?.enabled !== false && (footerConfig.appDownload?.bazaarUrl || footerConfig.appDownload?.directUrl) ? (
+              <div className={`${socials.length ? 'mt-5' : badges.length ? 'mt-5' : footerConfig.trustTitle ? 'mt-4' : ''}`}>
+                {footerConfig.appDownload?.title ? (
+                  <h4 className="mb-3 text-xs font-bold" style={{ color: footerConfig.mutedTextColor || 'rgba(245,239,228,0.72)' }}>
+                    {footerConfig.appDownload.title}
+                  </h4>
+                ) : null}
+                <div className="flex flex-wrap justify-center gap-2 md:justify-start">
+                  {footerConfig.appDownload?.bazaarUrl ? (
+                    <Link className="inline-flex items-center gap-2 rounded-[12px] border px-3 py-2 transition hover:opacity-90" href={footerConfig.appDownload.bazaarUrl} style={{ borderColor: footerConfig.borderColor || 'rgba(255,255,255,0.12)' }}>
+                      {footerConfig.appDownload.bazaarImageUrl ? (
+                        <img alt="بازار" className="h-6 w-6 rounded-[6px] object-cover" src={resolveAssetUrl(footerConfig.appDownload.bazaarImageUrl)} />
+                      ) : (
+                        <span className="text-lg">🏪</span>
+                      )}
+                      <span className="text-xs font-bold" style={{ color: footerConfig.textColor || '#f5efe4' }}>دانلود از بازار</span>
+                    </Link>
+                  ) : null}
+                  {footerConfig.appDownload?.directUrl ? (
+                    <Link className="inline-flex items-center gap-2 rounded-[12px] border px-3 py-2 transition hover:opacity-90" href={footerConfig.appDownload.directUrl} style={{ borderColor: footerConfig.borderColor || 'rgba(255,255,255,0.12)' }}>
+                      {footerConfig.appDownload.directImageUrl ? (
+                        <img alt="اندروید" className="h-6 w-6 rounded-[6px] object-cover" src={resolveAssetUrl(footerConfig.appDownload.directImageUrl)} />
+                      ) : (
+                        <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M3.18 23.76c.36.21.78.24 1.14.06l3.42-1.78L3.5 18.6c-.48-.25-.72-.78-.52-1.26.2-.48.68-.72 1.16-.52l4.24 2.22 4.24-2.22c.48-.2.96.04 1.16.52.2.48-.04 1.01-.52 1.26l-4.24 3.44 3.42 1.78c.36.18.78.15 1.14-.06.36-.21.54-.63.54-1.08V1.32c0-.45-.18-.87-.54-1.08C14.46.03 14.1 0 13.74 0h-3.48c-.36 0-.72.03-1.02.24-.36.21-.54.63-.54 1.08v21.36c0 .45.18.87.54 1.08zM7.2 8.4c0 .66.54 1.2 1.2 1.2s1.2-.54 1.2-1.2-.54-1.2-1.2-1.2-1.2.54-1.2 1.2zm7.2 0c0 .66.54 1.2 1.2 1.2s1.2-.54 1.2-1.2-.54-1.2-1.2-1.2-1.2.54-1.2 1.2z"/>
+                        </svg>
+                      )}
+                      <span className="text-xs font-bold" style={{ color: footerConfig.textColor || '#f5efe4' }}>دانلود مستقیم</span>
+                    </Link>
+                  ) : null}
+                </div>
               </div>
             ) : null}
           </section>

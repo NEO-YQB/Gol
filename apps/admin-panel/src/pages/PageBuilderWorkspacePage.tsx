@@ -68,6 +68,15 @@ type FooterSocialForm = {
   href: string
 }
 
+type FooterAppDownloadForm = {
+  enabled: boolean
+  title: string
+  bazaarUrl: string
+  bazaarImageUrl: string
+  directUrl: string
+  directImageUrl: string
+}
+
 type ColorFieldProps = {
   label: string
   value: string
@@ -135,6 +144,12 @@ type PageForm = {
   footerTrustTitle: string
   footerBadges: FooterBadgeForm[]
   footerSocials: FooterSocialForm[]
+  footerAppDownloadEnabled: boolean
+  footerAppDownloadTitle: string
+  footerAppDownloadBazaarUrl: string
+  footerAppDownloadBazaarImageUrl: string
+  footerAppDownloadDirectUrl: string
+  footerAppDownloadDirectImageUrl: string
   footerLegalEnabled: boolean
   footerLegalText: string
   metaTitle: string
@@ -302,6 +317,12 @@ function createEmptyForm(): PageForm {
     footerTrustTitle: '',
     footerBadges: [],
     footerSocials: [],
+    footerAppDownloadEnabled: true,
+    footerAppDownloadTitle: 'دانلود اپلیکیشن',
+    footerAppDownloadBazaarUrl: '',
+    footerAppDownloadBazaarImageUrl: '',
+    footerAppDownloadDirectUrl: '',
+    footerAppDownloadDirectImageUrl: '',
     footerLegalEnabled: true,
     footerLegalText: 'تمامی حقوق برای گلینو محفوظ است',
     metaTitle: '',
@@ -561,6 +582,12 @@ function mapApiPageToForm(page: Record<string, unknown>): PageForm {
     footerTrustTitle: readText(footerConfig, ['trustTitle'], ''),
     footerBadges,
     footerSocials,
+    footerAppDownloadEnabled: footerConfig.appDownload?.enabled !== false,
+    footerAppDownloadTitle: readText(footerConfig.appDownload ?? {}, ['title'], 'دانلود اپلیکیشن'),
+    footerAppDownloadBazaarUrl: readText(footerConfig.appDownload ?? {}, ['bazaarUrl'], ''),
+    footerAppDownloadBazaarImageUrl: readText(footerConfig.appDownload ?? {}, ['bazaarImageUrl'], ''),
+    footerAppDownloadDirectUrl: readText(footerConfig.appDownload ?? {}, ['directUrl'], ''),
+    footerAppDownloadDirectImageUrl: readText(footerConfig.appDownload ?? {}, ['directImageUrl'], ''),
     footerLegalEnabled: footerConfig.legalEnabled !== false,
     footerLegalText: readText(footerConfig, ['legalText'], 'تمامی حقوق برای گلینو محفوظ است'),
     metaTitle: readText(page, ['metaTitle'], ''),
@@ -1223,6 +1250,16 @@ export function PageBuilderWorkspacePage({
         return
       }
 
+      if (target === 'page:footerAppDownloadBazaar') {
+        updateForm('footerAppDownloadBazaarImageUrl', uploaded.url)
+        return
+      }
+
+      if (target === 'page:footerAppDownloadDirect') {
+        updateForm('footerAppDownloadDirectImageUrl', uploaded.url)
+        return
+      }
+
       if (target.startsWith('block:')) {
         const parts = target.split(':')
         const blockId = parts[1]
@@ -1345,6 +1382,14 @@ export function PageBuilderWorkspacePage({
             href: social.href.trim(),
           }))
           .filter((social) => social.label.length > 0 && social.href.length > 0 && (social.icon || social.imageUrl)),
+        appDownload: {
+          enabled: form.footerAppDownloadEnabled,
+          title: toOptionalText(form.footerAppDownloadTitle),
+          bazaarUrl: toOptionalText(form.footerAppDownloadBazaarUrl),
+          bazaarImageUrl: toOptionalText(form.footerAppDownloadBazaarImageUrl),
+          directUrl: toOptionalText(form.footerAppDownloadDirectUrl),
+          directImageUrl: toOptionalText(form.footerAppDownloadDirectImageUrl),
+        },
         legalEnabled: form.footerLegalEnabled,
         legalText: toOptionalText(form.footerLegalText),
       },
@@ -1951,6 +1996,62 @@ export function PageBuilderWorkspacePage({
                     </button>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            <div className="page-builder-banner-editor page-builder-field--wide">
+              <div className="page-builder-banner-editor__header">
+                <strong>دانلود اپلیکیشن</strong>
+              </div>
+              <div className="fm-grid page-builder-form-grid">
+                <label className="fm-field page-builder-checkbox">
+                  <span>فعال</span>
+                  <input checked={form.footerAppDownloadEnabled} onChange={(event) => updateForm('footerAppDownloadEnabled', event.target.checked)} type="checkbox" />
+                </label>
+                <label className="fm-field page-builder-field--wide">
+                  <span>عنوان بخش</span>
+                  <input onChange={(event) => updateForm('footerAppDownloadTitle', event.target.value)} type="text" value={form.footerAppDownloadTitle} />
+                </label>
+                <label className="fm-field page-builder-field--wide">
+                  <span>لینک بازار</span>
+                  <input onChange={(event) => updateForm('footerAppDownloadBazaarUrl', event.target.value)} placeholder="https://cafebazaar.ir/app/..." type="text" value={form.footerAppDownloadBazaarUrl} />
+                </label>
+                <label className="fm-field page-builder-field--wide">
+                  <span>تصویر آیکون بازار (URL - اختیاری)</span>
+                  <input onChange={(event) => updateForm('footerAppDownloadBazaarImageUrl', event.target.value)} type="text" value={form.footerAppDownloadBazaarImageUrl} />
+                </label>
+                <div className="admin-products-upload-card page-builder-field--wide">
+                  <div className="admin-products-upload-actions">
+                    <button className="content-secondary-action" disabled={uploadingImageTarget === 'page:footerAppDownloadBazaar'} onClick={() => openImagePicker('page:footerAppDownloadBazaar')} type="button">
+                      {uploadingImageTarget === 'page:footerAppDownloadBazaar' ? 'در حال آپلود...' : 'آپلود آیکون بازار'}
+                    </button>
+                  </div>
+                  {getImagePreview(form.footerAppDownloadBazaarImageUrl) ? (
+                    <div className="admin-products-image-preview">
+                      <img alt="Preview bazaar icon" src={form.footerAppDownloadBazaarImageUrl} />
+                    </div>
+                  ) : null}
+                </div>
+                <label className="fm-field page-builder-field--wide">
+                  <span>لینک دانلود مستقیم (APK)</span>
+                  <input onChange={(event) => updateForm('footerAppDownloadDirectUrl', event.target.value)} placeholder="https://your-server.com/app.apk" type="text" value={form.footerAppDownloadDirectUrl} />
+                </label>
+                <label className="fm-field page-builder-field--wide">
+                  <span>تصویر آیکون اندروید (URL - اختیاری)</span>
+                  <input onChange={(event) => updateForm('footerAppDownloadDirectImageUrl', event.target.value)} type="text" value={form.footerAppDownloadDirectImageUrl} />
+                </label>
+                <div className="admin-products-upload-card page-builder-field--wide">
+                  <div className="admin-products-upload-actions">
+                    <button className="content-secondary-action" disabled={uploadingImageTarget === 'page:footerAppDownloadDirect'} onClick={() => openImagePicker('page:footerAppDownloadDirect')} type="button">
+                      {uploadingImageTarget === 'page:footerAppDownloadDirect' ? 'در حال آپلود...' : 'آپلود آیکون اندروید'}
+                    </button>
+                  </div>
+                  {getImagePreview(form.footerAppDownloadDirectImageUrl) ? (
+                    <div className="admin-products-image-preview">
+                      <img alt="Preview android icon" src={form.footerAppDownloadDirectImageUrl} />
+                    </div>
+                  ) : null}
+                </div>
               </div>
             </div>
 

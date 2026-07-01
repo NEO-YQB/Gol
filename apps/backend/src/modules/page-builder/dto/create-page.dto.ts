@@ -283,6 +283,43 @@ export class FooterSocialItemDto {
   href!: string;
 }
 
+export class FooterAppDownloadDto {
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  enabled?: boolean;
+
+  @ApiPropertyOptional({ example: 'دانلود اپلیکیشن' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  title?: string;
+
+  @ApiPropertyOptional({ example: 'https://cafebazaar.ir/app/com.golino.vendorapp' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  bazaarUrl?: string;
+
+  @ApiPropertyOptional({ example: 'https://cdn.example.com/bazaar-icon.png' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  bazaarImageUrl?: string;
+
+  @ApiPropertyOptional({ example: 'https://cdn.example.com/app.apk' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  directUrl?: string;
+
+  @ApiPropertyOptional({ example: 'https://cdn.example.com/android-icon.png' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  directImageUrl?: string;
+}
+
 export class StorefrontFooterConfigDto {
   @ApiPropertyOptional({ example: true })
   @IsOptional()
@@ -405,6 +442,12 @@ export class StorefrontFooterConfigDto {
   @ValidateNested({ each: true })
   @Type(() => FooterSocialItemDto)
   socials?: FooterSocialItemDto[];
+
+  @ApiPropertyOptional({ type: FooterAppDownloadDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => FooterAppDownloadDto)
+  appDownload?: FooterAppDownloadDto;
 
   @ApiPropertyOptional({ example: true })
   @IsOptional()

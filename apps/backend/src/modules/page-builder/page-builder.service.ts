@@ -436,6 +436,16 @@ export class PageBuilderService {
           href: this.normalizeText(social.href),
         }))
         .filter((social) => social.label.length > 0 && social.href.length > 0),
+      appDownload: footerConfig.appDownload
+        ? {
+            enabled: footerConfig.appDownload.enabled !== false,
+            title: this.normalizeNullableText(footerConfig.appDownload.title),
+            bazaarUrl: this.normalizeNullableText(footerConfig.appDownload.bazaarUrl),
+            bazaarImageUrl: this.normalizeNullableText(footerConfig.appDownload.bazaarImageUrl),
+            directUrl: this.normalizeNullableText(footerConfig.appDownload.directUrl),
+            directImageUrl: this.normalizeNullableText(footerConfig.appDownload.directImageUrl),
+          }
+        : null,
       legalEnabled: footerConfig.legalEnabled !== false,
       legalText: this.normalizeNullableText(footerConfig.legalText),
     };
