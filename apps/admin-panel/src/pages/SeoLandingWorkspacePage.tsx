@@ -28,6 +28,8 @@ type LandingFormState = {
   seoContent: string
 }
 
+type FlatItem = { id: string; name: string; depth: number; slug?: string }
+
 function createEmptyForm(): LandingFormState {
   return {
     internalName: '',
@@ -77,6 +79,26 @@ function countMatches(text: string, pattern: RegExp) {
   return (text.match(pattern) || []).length
 }
 
+function flattenTree(
+  items: Record<string, unknown>[],
+  nameKey: string,
+  childrenKey: string,
+  depth = 0,
+): FlatItem[] {
+  return items.flatMap((item) => {
+    const children = Array.isArray(item[childrenKey]) ? (item[childrenKey] as Record<string, unknown>[]) : []
+    return [
+      { id: String(item.id), name: readText(item, [nameKey], '—'), depth, slug: readText(item, ['slug'], '') },
+      ...flattenTree(children, nameKey, childrenKey, depth + 1),
+    ]
+  })
+}
+
+const FILTER_TYPES = [
+  { value: 'productType', label: 'نوع محصول' },
+  { value: 'element', label: 'عنصر / ماده اولیه' },
+] as const
+
 export function SeoLandingWorkspacePage({ session, mode, landingId, onBack }: SeoLandingWorkspacePageProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -85,7 +107,9 @@ export function SeoLandingWorkspacePage({ session, mode, landingId, onBack }: Se
   useNoticeEffect(submitMessage, 'success')
   const [editorMode, setEditorMode] = useState<'create' | 'edit'>(mode)
   const [currentLandingId, setCurrentLandingId] = useState<number | null>(landingId)
-  const [categories, setCategories] = useState<Record<string, unknown>[]>([])
+  const [categories, setCategories] = useState<FlatItem[]>([])
+  const [productTypes, setProductTypes] = useState<FlatItem[]>([])
+  const [elements, setElements] = useState<FlatItem[]>([])
   const [form, setForm] = useState<LandingFormState>(() => createEmptyForm())
   const [seoOpen, setSeoOpen] = useState(false)
   const [referenceVersion, setReferenceVersion] = useState(0)
@@ -104,13 +128,22 @@ export function SeoLandingWorkspacePage({ session, mode, landingId, onBack }: Se
       setError(null)
 
       try {
-        const [categoriesPayload, landingPayload] = await Promise.all([
+        const [categoriesPayload, productTypesPayload, elementsPayload, landingPayload] = await Promise.all([
           adminApi.getCategories(session),
+          adminApi.getProductTypes(session),
+          adminApi.getProductElements(session),
           currentLandingId ? adminApi.getSeoLanding(session, currentLandingId) : Promise.resolve(null),
         ])
 
         if (!active) return
-        setCategories(toArray(categoriesPayload))
+
+        setCategories(flattenTree(toArray(categoriesPayload), 'name', 'children'))
+        setProductTypes(flattenTree(toArray(productTypesPayload), 'name', 'children'))
+        setElements(toArray(elementsPayload).map((item) => ({
+          id: String(item.id),
+          name: readText(item, ['name'], '—'),
+          depth: 0,
+        })))
 
         if (currentLandingId && landingPayload) {
           setForm(mapLandingToForm(landingPayload as Record<string, unknown>))
@@ -136,7 +169,7 @@ export function SeoLandingWorkspacePage({ session, mode, landingId, onBack }: Se
   const h2Count = countMatches(form.seoContent, /<h2\b/gi)
   const internalLinkCount = countMatches(form.seoContent, /href="(\/|https?:\/\/[^\"]*?(products|categories))/gi)
 
-  const selectedCategory = categories.find((c) => String(c.id) === form.categoryId)
+  const selectedCategory = categories.find((c) => c.id === form.categoryId)
 
   function update<Key extends keyof LandingFormState>(key: Key, value: LandingFormState[Key]) {
     setForm((current) => ({ ...current, [key]: value }))
@@ -145,15 +178,26 @@ export function SeoLandingWorkspacePage({ session, mode, landingId, onBack }: Se
   function addFilterEntry() {
     setForm((current) => ({
       ...current,
-      filterConfig: [...current.filterConfig, { type: '', valueId: 0, label: '' }],
+      filterConfig: [...current.filterConfig, { type: 'productType', valueId: 0, label: '' }],
     }))
   }
 
-  function updateFilterEntry(index: number, field: keyof FilterEntry, value: string | number) {
+  function updateFilterType(index: number, type: string) {
     setForm((current) => ({
       ...current,
       filterConfig: current.filterConfig.map((entry, i) =>
-        i === index ? { ...entry, [field]: value } : entry,
+        i === index ? { ...entry, type, valueId: 0, label: '' } : entry,
+      ),
+    }))
+  }
+
+  function updateFilterValue(index: number, valueId: number) {
+    const options = getFilterOptions(form.filterConfig[index].type)
+    const selected = options.find((o) => o.id === String(valueId))
+    setForm((current) => ({
+      ...current,
+      filterConfig: current.filterConfig.map((entry, i) =>
+        i === index ? { ...entry, valueId, label: selected?.name || '' } : entry,
       ),
     }))
   }
@@ -163,6 +207,16 @@ export function SeoLandingWorkspacePage({ session, mode, landingId, onBack }: Se
       ...current,
       filterConfig: current.filterConfig.filter((_, i) => i !== index),
     }))
+  }
+
+  function getFilterOptions(type: string): FlatItem[] {
+    if (type === 'productType') return productTypes
+    if (type === 'element') return elements
+    return []
+  }
+
+  function getFilterLabel(type: string): string {
+    return FILTER_TYPES.find((t) => t.value === type)?.label || type
   }
 
   async function handleSubmit() {
@@ -224,7 +278,7 @@ export function SeoLandingWorkspacePage({ session, mode, landingId, onBack }: Se
     }
   }
 
-  const categoryPath = selectedCategory ? `/categories/${readText(selectedCategory, ['slug'], '')}` : '/categories/...'
+  const categoryPath = selectedCategory ? `/categories/${selectedCategory.slug}` : '/categories/...'
 
   return (
     <div className="fm-stack">
@@ -285,17 +339,11 @@ export function SeoLandingWorkspacePage({ session, mode, landingId, onBack }: Se
                     <span>دسته‌بندی اصلی</span>
                     <select onChange={(event) => update('categoryId', event.target.value)} value={form.categoryId}>
                       <option value="">انتخاب دسته‌بندی</option>
-                      {categories.map((item) => {
-                        const id = String(item.id)
-                        const parent = item.parent as Record<string, unknown> | undefined
-                        const parentLabel = parent ? readText(parent, ['name'], '') : ''
-                        return (
-                          <option key={id} value={id}>
-                            {parentLabel ? `${parentLabel} / ` : ''}
-                            {readText(item, ['name'], '—')}
-                          </option>
-                        )
-                      })}
+                      {categories.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {'\u00A0\u00A0'.repeat(item.depth)}{item.depth > 0 ? '└ ' : ''}{item.name}
+                        </option>
+                      ))}
                     </select>
                   </label>
 
@@ -319,38 +367,47 @@ export function SeoLandingWorkspacePage({ session, mode, landingId, onBack }: Se
                         <div className="fm-message">هنوز فیلتری تعریف نشده. فیلترها مشخص می‌کنند این لندینگ روی کدام ترکیب از صفحه آرشیو فعال شود.</div>
                       ) : (
                         <div className="content-filter-list">
-                          {form.filterConfig.map((entry, index) => (
-                            <div className="content-filter-row" key={index}>
-                              <label className="fm-field">
-                                <span>نوع فیلتر</span>
-                                <input
-                                  onChange={(event) => updateFilterEntry(index, 'type', event.target.value)}
-                                  placeholder="مثلاً: occasion, productType, element"
-                                  value={entry.type}
-                                />
-                              </label>
-                              <label className="fm-field">
-                                <span>شناسه مقدار</span>
-                                <input
-                                  onChange={(event) => updateFilterEntry(index, 'valueId', Number(event.target.value) || 0)}
-                                  placeholder="شناسه عددی"
-                                  type="number"
-                                  value={entry.valueId || ''}
-                                />
-                              </label>
-                              <label className="fm-field">
-                                <span>برچسب نمایشی</span>
-                                <input
-                                  onChange={(event) => updateFilterEntry(index, 'label', event.target.value)}
-                                  placeholder="مثلاً: خواستگاری"
-                                  value={entry.label}
-                                />
-                              </label>
-                              <button className="content-secondary-action content-filter-remove" onClick={() => removeFilterEntry(index)} type="button">
-                                حذف
-                              </button>
-                            </div>
-                          ))}
+                          {form.filterConfig.map((entry, index) => {
+                            const options = getFilterOptions(entry.type)
+                            return (
+                              <div className="content-filter-row" key={index}>
+                                <label className="fm-field">
+                                  <span>نوع فیلتر</span>
+                                  <select
+                                    onChange={(event) => updateFilterType(index, event.target.value)}
+                                    value={entry.type}
+                                  >
+                                    <option value="">انتخاب نوع</option>
+                                    {FILTER_TYPES.map((ft) => (
+                                      <option key={ft.value} value={ft.value}>{ft.label}</option>
+                                    ))}
+                                  </select>
+                                </label>
+                                <label className="fm-field">
+                                  <span>مقدار فیلتر</span>
+                                  <select
+                                    disabled={!entry.type}
+                                    onChange={(event) => updateFilterValue(index, Number(event.target.value))}
+                                    value={entry.valueId || ''}
+                                  >
+                                    <option value="">{entry.type ? 'انتخاب کنید' : 'ابتدا نوع را انتخاب کنید'}</option>
+                                    {options.map((opt) => (
+                                      <option key={opt.id} value={opt.id}>
+                                        {'\u00A0\u00A0'.repeat(opt.depth)}{opt.depth > 0 ? '└ ' : ''}{opt.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                                <div className="content-filter-label-display">
+                                  <span>برچسب</span>
+                                  <strong>{entry.label || '—'}</strong>
+                                </div>
+                                <button className="content-secondary-action content-filter-remove" onClick={() => removeFilterEntry(index)} type="button">
+                                  حذف
+                                </button>
+                              </div>
+                            )
+                          })}
                         </div>
                       )}
                     </div>
@@ -462,6 +519,16 @@ export function SeoLandingWorkspacePage({ session, mode, landingId, onBack }: Se
                       <span>H1 صفحه</span>
                       <strong>{form.h1Tag}</strong>
                     </article>
+                  </div>
+                ) : null}
+                {form.filterConfig.length > 0 ? (
+                  <div className="content-detail-grid">
+                    {form.filterConfig.map((f, i) => (
+                      <article className="content-detail-item" key={i}>
+                        <span>{getFilterLabel(f.type)}</span>
+                        <strong>{f.label || '—'}</strong>
+                      </article>
+                    ))}
                   </div>
                 ) : null}
               </SectionCard>

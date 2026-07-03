@@ -3581,3 +3581,25 @@
   min-height: 38px;
   align-self: end;
 }
+
+.content-filter-label-display {
+  display: grid;
+  gap: 4px;
+}
+
+.content-filter-label-display span {
+  font-size: 0.78rem;
+  color: var(--fm-text-muted);
+}
+
+.content-filter-label-display strong {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  border: 1px solid var(--fm-border-soft);
+  border-radius: 12px;
+  background: rgba(255, 253, 248, 0.6);
+  font-weight: 500;
+  color: var(--fm-text-primary);
+}
