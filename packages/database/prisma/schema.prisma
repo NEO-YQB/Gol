@@ -253,10 +253,11 @@ model ProductType {
   slug            String   @unique
   description     String?  @db.Text
   image           String?
+  imageAlt        String?
   metaTitle       String?
   metaDescription String?
   isIndexed       Boolean  @default(true)
-  allowedElements Json?    
+  allowedElements Json?
   products        Product[]
   createdAt       DateTime @default(now())
 }
@@ -267,6 +268,7 @@ model Category {
   slug            String   @unique
   description     String?  @db.Text
   image           String?
+  imageAlt        String?
   parentId        Int?
   parent          Category?  @relation("CategoryToCategory", fields: [parentId], references: [id])
   children        Category[] @relation("CategoryToCategory")

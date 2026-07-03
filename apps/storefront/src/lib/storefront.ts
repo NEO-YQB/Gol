@@ -98,6 +98,7 @@ export type CategorySummary = {
   slug: string
   description?: string | null
   image?: string | null
+  imageAlt?: string | null
   metaTitle?: string | null
   metaDescription?: string | null
   isIndexed?: boolean | null
@@ -159,6 +160,7 @@ export type ProductTypeSummary = {
   slug: string
   description?: string | null
   image?: string | null
+  imageAlt?: string | null
   metaTitle?: string | null
   metaDescription?: string | null
   isIndexed?: boolean | null

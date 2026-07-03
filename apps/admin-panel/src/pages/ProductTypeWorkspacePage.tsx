@@ -19,6 +19,7 @@ type ProductTypeFormState = {
   slug: string
   description: string
   image: string
+  imageAlt: string
   metaTitle: string
   metaDescription: string
   isIndexed: boolean
@@ -31,6 +32,7 @@ function createEmptyProductTypeForm(): ProductTypeFormState {
     slug: '',
     description: '',
     image: '',
+    imageAlt: '',
     metaTitle: '',
     metaDescription: '',
     isIndexed: true,
@@ -45,6 +47,7 @@ function mapProductTypeToForm(productType: ProductTypeRecord): ProductTypeFormSt
     slug: readText(productType, ['slug'], ''),
     description: readText(productType, ['description'], ''),
     image: readText(productType, ['image'], ''),
+    imageAlt: readText(productType, ['imageAlt'], ''),
     metaTitle: readText(productType, ['metaTitle'], ''),
     metaDescription: readText(productType, ['metaDescription'], ''),
     isIndexed: productType.isIndexed !== false,
@@ -167,6 +170,7 @@ export function ProductTypeWorkspacePage({ session, onBack }: ProductTypeWorkspa
       slug: form.slug.trim(),
       description: toOptionalText(form.description),
       image: toOptionalText(form.image),
+      imageAlt: toOptionalText(form.imageAlt),
       metaTitle: toOptionalText(form.metaTitle),
       metaDescription: toOptionalText(form.metaDescription),
       isIndexed: form.isIndexed,
@@ -297,10 +301,20 @@ export function ProductTypeWorkspacePage({ session, onBack }: ProductTypeWorkspa
               </div>
               {form.image.trim() ? (
                 <div className="admin-products-image-preview">
-                  <img alt="Preview product type" src={form.image} />
+                  <img alt={form.imageAlt || 'Preview product type'} src={form.image} />
                 </div>
               ) : null}
             </div>
+
+            <label className="fm-field page-builder-field--wide">
+              <span>متن جایگزین تصویر (Alt Text)</span>
+              <input
+                onChange={(event) => updateForm('imageAlt', event.target.value)}
+                placeholder="توصیف تصویر برای موتورهای جستجو و دسترسی‌پذیری"
+                type="text"
+                value={form.imageAlt}
+              />
+            </label>
 
             <label className="fm-field">
               <span>Meta title</span>

@@ -26,7 +26,12 @@ export class CreateCategoryDto {
   @ApiPropertyOptional({ description: 'آدرس تصویر دسته‌بندی (اختیاری)', example: 'https://example.com/category-image.jpg' })
   @IsOptional()
   @IsString({ message: 'آدرس تصویر باید رشته باشد' })
-  image?: string; 
+  image?: string;
+
+  @ApiPropertyOptional({ description: 'متن جایگزین تصویر دسته‌بندی (Alt)', example: 'دسته گیاهان آپارتمانی' })
+  @IsOptional()
+  @IsString({ message: 'متن ALT تصویر باید رشته باشد' })
+  imageAlt?: string;
 
   @ApiPropertyOptional({ description: 'عنوان متا برای SEO', example: 'خرید گیاهان آپارتمانی' })
   @IsOptional()

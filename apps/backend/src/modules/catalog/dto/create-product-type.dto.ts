@@ -38,6 +38,11 @@ export class CreateProductTypeDto {
   @IsString()
   image?: string;
 
+  @ApiPropertyOptional({ description: 'متن جایگزین تصویر نوع محصول (Alt)' })
+  @IsOptional()
+  @IsString()
+  imageAlt?: string;
+
   @ApiPropertyOptional({ description: 'عنوان متا برای SEO' })
   @IsOptional()
   @IsString()

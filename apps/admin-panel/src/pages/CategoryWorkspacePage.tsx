@@ -19,6 +19,7 @@ type CategoryFormState = {
   parentId: string
   description: string
   image: string
+  imageAlt: string
   metaTitle: string
   metaDescription: string
   isIndexed: boolean
@@ -32,6 +33,7 @@ function createEmptyCategoryForm(): CategoryFormState {
     parentId: '',
     description: '',
     image: '',
+    imageAlt: '',
     metaTitle: '',
     metaDescription: '',
     isIndexed: true,
@@ -58,6 +60,7 @@ function mapCategoryToForm(category: CategoryRecord): CategoryFormState {
     parentId: readText(category, ['parentId'], ''),
     description: readText(category, ['description'], ''),
     image: readText(category, ['image'], ''),
+    imageAlt: readText(category, ['imageAlt'], ''),
     metaTitle: readText(category, ['metaTitle'], ''),
     metaDescription: readText(category, ['metaDescription'], ''),
     isIndexed: category.isIndexed !== false,
@@ -181,6 +184,7 @@ export function CategoryWorkspacePage({ session, onBack }: CategoryWorkspacePage
       parentId: form.parentId ? Number(form.parentId) : undefined,
       description: toOptionalText(form.description),
       image: toOptionalText(form.image),
+      imageAlt: toOptionalText(form.imageAlt),
       metaTitle: toOptionalText(form.metaTitle),
       metaDescription: toOptionalText(form.metaDescription),
       isIndexed: form.isIndexed,
@@ -407,10 +411,20 @@ export function CategoryWorkspacePage({ session, onBack }: CategoryWorkspacePage
                 </div>
                 {form.image.trim() ? (
                   <div className="admin-products-image-preview">
-                    <img alt="Preview category" src={form.image} />
+                    <img alt={form.imageAlt || 'Preview category'} src={form.image} />
                   </div>
                 ) : null}
               </div>
+
+              <label className="fm-field page-builder-field--wide">
+                <span>متن جایگزین تصویر (Alt Text)</span>
+                <input
+                  onChange={(event) => updateForm('imageAlt', event.target.value)}
+                  placeholder="توصیف تصویر برای موتورهای جستجو و دسترسی‌پذیری"
+                  type="text"
+                  value={form.imageAlt}
+                />
+              </label>
 
               <label className="fm-field">
                 <span>Meta title</span>
