@@ -3,7 +3,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { useNoticeEffect } from '../components/NoticeCenter'
 import { adminApi } from '../lib/api'
-import { formatPersianNumber, formatJalaliDate, readText, toArray } from '../lib/normalize'
+import { formatPersianNumber, formatJalaliDate } from '../lib/content'
+import { readText, toArray } from '../lib/normalize'
 import type { AuthSession } from '../lib/session'
 
 type SeoLandingsPageProps = {

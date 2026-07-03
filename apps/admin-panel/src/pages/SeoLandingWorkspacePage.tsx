@@ -1,9 +1,10 @@
 import { FormatTextarea, Pill, SectionCard } from '@flower-marketplace/frontend-core'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { useNoticeEffect } from '../components/NoticeCenter'
 import { adminApi } from '../lib/api'
-import { formatPersianNumber, normalizeSlug, readText, toArray } from '../lib/normalize'
+import { formatPersianNumber, normalizeSlug } from '../lib/content'
+import { readText, toArray } from '../lib/normalize'
 import type { AuthSession } from '../lib/session'
 
 type SeoLandingWorkspacePageProps = {
@@ -84,7 +85,6 @@ export function SeoLandingWorkspacePage({ session, mode, landingId, onBack }: Se
   useNoticeEffect(submitMessage, 'success')
   const [editorMode, setEditorMode] = useState<'create' | 'edit'>(mode)
   const [currentLandingId, setCurrentLandingId] = useState<number | null>(landingId)
-  const [landingDetail, setLandingDetail] = useState<Record<string, unknown> | null>(null)
   const [categories, setCategories] = useState<Record<string, unknown>[]>([])
   const [form, setForm] = useState<LandingFormState>(() => createEmptyForm())
   const [seoOpen, setSeoOpen] = useState(false)
@@ -113,10 +113,8 @@ export function SeoLandingWorkspacePage({ session, mode, landingId, onBack }: Se
         setCategories(toArray(categoriesPayload))
 
         if (currentLandingId && landingPayload) {
-          setLandingDetail(landingPayload as Record<string, unknown>)
           setForm(mapLandingToForm(landingPayload as Record<string, unknown>))
         } else {
-          setLandingDetail(null)
           setForm(createEmptyForm())
         }
       } catch (loadError) {
@@ -214,7 +212,6 @@ export function SeoLandingWorkspacePage({ session, mode, landingId, onBack }: Se
       const record = result as Record<string, unknown>
       const nextId = Number(readText(record, ['id'], String(currentLandingId ?? '')))
 
-      setLandingDetail(record)
       setForm(mapLandingToForm(record))
       setEditorMode('edit')
       setCurrentLandingId(nextId || currentLandingId)
