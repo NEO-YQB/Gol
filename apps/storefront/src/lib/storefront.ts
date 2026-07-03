@@ -1518,6 +1518,52 @@ export async function getStorefrontSeoSettings(): Promise<SeoSettings | null> {
   }
 }
 
+export type SeoLandingMatch = {
+  id: number
+  internalName: string
+  slug: string
+  categoryId: number
+  filterConfig: Array<{ type: string; valueId: number; label?: string }>
+  isActive: boolean
+  metaTitle?: string | null
+  metaDescription?: string | null
+  h1Tag?: string | null
+  seoContent?: string | null
+  category: {
+    id: number
+    name: string
+    slug: string
+  }
+}
+
+export async function matchSeoLanding(
+  categoryId: number,
+  filterIds: number[],
+): Promise<SeoLandingMatch | null> {
+  const filterIdsStr = filterIds.length > 0 ? filterIds.join(',') : ''
+  const params = new URLSearchParams({
+    categoryId: String(categoryId),
+    filterIds: filterIdsStr,
+  })
+
+  try {
+    const result = await requestCached<SeoLandingMatch | null>(
+      `/seo-landings/match?${params.toString()}`,
+    )
+    return result ?? null
+  } catch {
+    return null
+  }
+}
+
+export async function getSeoLandingsForSitemap(): Promise<SeoLandingMatch[]> {
+  try {
+    return await requestCached<SeoLandingMatch[]>('/seo-landings')
+  } catch {
+    return []
+  }
+}
+
 export async function getStorefrontInfoPagesSettings(): Promise<StorefrontInfoPagesSettings | null> {
   try {
     return await requestNoStore<StorefrontInfoPagesSettings>('/settings/storefront-info-pages')

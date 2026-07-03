@@ -1042,4 +1042,27 @@ export const adminApi = {
       body: JSON.stringify(body),
     }, session.accessToken)
   },
+  getSeoLandings(session: AuthSession) {
+    return request<unknown[]>('/seo-landings', {}, session.accessToken)
+  },
+  getSeoLanding(session: AuthSession, id: number) {
+    return request<unknown>(`/seo-landings/${id}`, {}, session.accessToken)
+  },
+  createSeoLanding(session: AuthSession, body: Record<string, unknown>) {
+    return request<unknown>('/seo-landings', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  updateSeoLanding(session: AuthSession, id: number, body: Record<string, unknown>) {
+    return request<unknown>(`/seo-landings/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  deleteSeoLanding(session: AuthSession, id: number) {
+    return request<unknown>(`/seo-landings/${id}`, {
+      method: 'DELETE',
+    }, session.accessToken)
+  },
 }

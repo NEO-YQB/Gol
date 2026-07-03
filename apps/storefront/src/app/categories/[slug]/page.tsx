@@ -7,10 +7,19 @@ import {
   buildCollectionPageJsonLd,
   getStorefrontCatalogData,
   getStorefrontCategoryBySlug,
+  getStorefrontProductTypeBySlug,
+  matchSeoLanding,
 } from '../../../lib/storefront'
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+export async function generateMetadata({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
+}) {
   const { slug } = await params
+  const query = (await searchParams) ?? {}
   const category = await getStorefrontCategoryBySlug(slug)
 
   if (!category) {
@@ -18,6 +27,34 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       title: 'دسته‌بندی پیدا نشد | گلینو',
       description: 'این دسته‌بندی در دسترس نیست.',
       path: `/categories/${slug}`,
+    })
+  }
+
+  const elementIds = typeof query.elementIds === 'string'
+    ? query.elementIds.split(',').map((item) => Number(item.trim())).filter((item) => Number.isInteger(item) && item > 0)
+    : []
+
+  const productType = typeof query.type === 'string' && query.type
+    ? await getStorefrontProductTypeBySlug(query.type)
+    : null
+
+  const filterIds = [...elementIds]
+  if (productType) {
+    filterIds.push(productType.id)
+  }
+
+  const matchedLanding = filterIds.length > 0
+    ? await matchSeoLanding(category.id, filterIds)
+    : null
+
+  if (matchedLanding) {
+    return buildArchiveMetadata({
+      title: matchedLanding.metaTitle || `${matchedLanding.h1Tag || matchedLanding.internalName} | گلینو`,
+      description: matchedLanding.metaDescription || category.metaDescription || category.description || `آرشیو محصولات ${category.name} در گلینو.`,
+      path: `/categories/${slug}`,
+      image: category.image,
+      indexable: true,
+      keywords: [category.name, matchedLanding.internalName, 'دسته‌بندی محصولات', 'خرید گل', 'گلینو'],
     })
   }
 
@@ -63,14 +100,35 @@ export default async function CategoryArchivePage({
         ? query.elementIds.split(',').map((item) => Number(item.trim())).filter((item) => Number.isInteger(item) && item > 0)
         : undefined,
   })
-  const pageTitle = resolvedCategory.name
-  const pageDescription = `محصولات مرتبط با ${resolvedCategory.name}`
+
+  const elementIds = typeof query.elementIds === 'string'
+    ? query.elementIds.split(',').map((item) => Number(item.trim())).filter((item) => Number.isInteger(item) && item > 0)
+    : []
+
+  const productType = typeof query.type === 'string' && query.type
+    ? await getStorefrontProductTypeBySlug(query.type)
+    : null
+
+  const filterIds = [...elementIds]
+  if (productType) {
+    filterIds.push(productType.id)
+  }
+
+  const matchedLanding = filterIds.length > 0
+    ? await matchSeoLanding(category.id, filterIds)
+    : null
+
+  const pageTitle = matchedLanding?.h1Tag || matchedLanding?.internalName || resolvedCategory.name
+  const pageDescription = matchedLanding?.metaDescription || `محصولات مرتبط با ${resolvedCategory.name}`
   const categoryPath = `/categories/${slug}`
+
   const breadcrumbJsonLd = buildBreadcrumbJsonLd([
     { name: 'خانه', path: '/' },
     { name: 'فروشگاه', path: '/shop' },
     { name: resolvedCategory.name, path: categoryPath },
+    ...(matchedLanding ? [{ name: matchedLanding.internalName, path: categoryPath }] : []),
   ])
+
   const collectionJsonLd = buildCollectionPageJsonLd({
     title: pageTitle,
     description: pageDescription,
@@ -91,7 +149,7 @@ export default async function CategoryArchivePage({
         activeCategorySlug={slug}
         activeProductTypeSlug={typeof query.type === 'string' ? query.type : ''}
         activeSort={catalog.activeSort}
-        archiveDescription={resolvedCategory.description || ''}
+        archiveDescription={matchedLanding?.seoContent || resolvedCategory.description || ''}
         basePath={`/categories/${slug}`}
         categories={catalog.categories}
         currentPage={catalog.page}

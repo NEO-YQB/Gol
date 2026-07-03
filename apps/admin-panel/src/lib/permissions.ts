@@ -153,6 +153,19 @@ const routeRequirements: Partial<Record<AdminRoute, AccessRequirement>> = {
       { action: 'update', subject: 'Article' },
     ],
   },
+  seoLandings: {
+    anyOf: [
+      { action: 'manage', subject: 'all' },
+      { action: 'read', subject: 'Article' },
+    ],
+  },
+  seoLandingWorkspace: {
+    anyOf: [
+      { action: 'manage', subject: 'all' },
+      { action: 'create', subject: 'Article' },
+      { action: 'update', subject: 'Article' },
+    ],
+  },
   alerts: {
     roles: ['ADMIN'],
   },

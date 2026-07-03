@@ -3548,3 +3548,36 @@
     grid-column: 1 / -1;
   }
 }
+
+.content-filter-section {
+  display: grid;
+  gap: 12px;
+}
+
+.content-filter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.content-filter-list {
+  display: grid;
+  gap: 10px;
+}
+
+.content-filter-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 10px;
+  align-items: end;
+  padding: 12px;
+  border: 1px solid var(--fm-border-soft);
+  border-radius: 12px;
+  background: rgba(255, 253, 248, 0.5);
+}
+
+.content-filter-remove {
+  min-height: 38px;
+  align-self: end;
+}

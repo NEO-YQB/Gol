@@ -31,6 +31,8 @@ import { PageBuilderWorkspacePage } from './pages/PageBuilderWorkspacePage'
 import { PaymentGatewayWorkspacePage } from './pages/PaymentGatewayWorkspacePage'
 import { SeoSettingsWorkspacePage } from './pages/SeoSettingsWorkspacePage'
 import { PushNotificationWorkspacePage } from './pages/PushNotificationWorkspacePage'
+import { SeoLandingsPage } from './pages/SeoLandingsPage'
+import { SeoLandingWorkspacePage } from './pages/SeoLandingWorkspacePage'
 import { SettingsPage } from './pages/SettingsPage'
 import { SmsSettingsWorkspacePage } from './pages/SmsSettingsWorkspacePage'
 import { StorefrontInfoPagesWorkspacePage } from './pages/StorefrontInfoPagesWorkspacePage'
@@ -67,9 +69,10 @@ function buildNav(currentRoute: AdminRoute, session: AuthSession): NavSection[] 
     },
     {
       title: isAccessOnly ? 'پیکربندی دسترسی' : isSeoOnly ? 'کیفیت محتوا' : 'رشد و کنترل',
-      requirements: ['content', 'pageBuilder', 'alerts', 'accessControl'],
+      requirements: ['content', 'seoLandings', 'pageBuilder', 'alerts', 'accessControl'],
       items: [
         { key: 'content', label: 'محتوا و سئو', hint: 'تحریریه، taxonomy و auditهای محتوا', active: currentRoute === 'content' || currentRoute === 'contentWorkspace' },
+        { key: 'seoLandings', label: 'لندینگ‌های ترکیبی (SEO)', hint: 'لندینگ‌های سئو شده از ترکیب دسته و فیلتر', active: currentRoute === 'seoLandings' || currentRoute === 'seoLandingWorkspace' },
         { key: 'pageBuilder', label: 'صفحه‌ساز استور', hint: 'landing pageها، homepage و چیدمان بلاک‌های storefront', active: currentRoute === 'pageBuilder' || currentRoute === 'pageBuilderWorkspace' },
         { key: 'alerts', label: 'هشدارها و اعلان ها', hint: 'outbox و رخدادهای مهم عملیاتی', active: currentRoute === 'alerts' },
         { key: 'accessControl', label: 'کاربران و دسترسی', hint: 'مدیریت user، role و permission', active: currentRoute === 'accessControl' || currentRoute === 'accessControlWorkspace', badge: hasPermission(session, 'assignPermissions', 'AdminRole') ? 'قابل ویرایش' : 'فقط مشاهده' },
@@ -176,6 +179,18 @@ function getPageMeta(route: AdminRoute) {
       return {
         eyebrow: 'کارتابل محتوا',
         title: 'محتوا و سئو',
+        description: '',
+      }
+    case 'seoLandings':
+      return {
+        eyebrow: 'لندینگ‌های سئو',
+        title: 'لندینگ‌های ترکیبی',
+        description: '',
+      }
+    case 'seoLandingWorkspace':
+      return {
+        eyebrow: 'میزکار لندینگ سئو',
+        title: 'ویرایش لندینگ سئو',
         description: '',
       }
     case 'pageBuilder':
@@ -307,6 +322,11 @@ function renderRoute(
     onOpenPaymentGatewayWorkspace: () => void
     onBackToSettings: () => void
     onBackToAlerts: () => void
+    seoLandingWorkspaceId: number | null
+    seoLandingWorkspaceMode: 'create' | 'edit'
+    onOpenSeoLandingWorkspaceForCreate: () => void
+    onOpenSeoLandingWorkspaceForEdit: (landingId: number) => void
+    onBackToSeoLandings: () => void
   },
 ) {
   switch (route) {
@@ -340,6 +360,10 @@ function renderRoute(
       return <ProductTypeWorkspacePage onBack={options.onBackToProductsFromProductTypes} session={session} />
     case 'content':
       return <ContentPage onCreateArticle={options.onOpenContentWorkspaceForCreate} onEditArticle={options.onOpenContentWorkspaceForEdit} session={session} />
+    case 'seoLandings':
+      return <SeoLandingsPage onCreateLanding={options.onOpenSeoLandingWorkspaceForCreate} onEditLanding={options.onOpenSeoLandingWorkspaceForEdit} session={session} />
+    case 'seoLandingWorkspace':
+      return <SeoLandingWorkspacePage landingId={options.seoLandingWorkspaceId} mode={options.seoLandingWorkspaceMode} onBack={options.onBackToSeoLandings} session={session} />
     case 'pageBuilder':
       return <PageBuilderPage onCreatePage={options.onOpenPageBuilderWorkspaceForCreate} onEditPage={options.onOpenPageBuilderWorkspaceForEdit} session={session} />
     case 'settings':
@@ -384,6 +408,8 @@ export default function App() {
   const [pageBuilderWorkspaceMode, setPageBuilderWorkspaceMode] = useState<'create' | 'edit'>('create')
   const [contentWorkspaceArticleId, setContentWorkspaceArticleId] = useState<string | null>(null)
   const [contentWorkspaceMode, setContentWorkspaceMode] = useState<'create' | 'edit'>('create')
+  const [seoLandingWorkspaceId, setSeoLandingWorkspaceId] = useState<number | null>(null)
+  const [seoLandingWorkspaceMode, setSeoLandingWorkspaceMode] = useState<'create' | 'edit'>('create')
   const [phoneNumber, setPhoneNumber] = useState('')
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
@@ -657,6 +683,22 @@ export default function App() {
     handleNavigate('content')
   }
 
+  function handleOpenSeoLandingWorkspaceForCreate() {
+    setSeoLandingWorkspaceMode('create')
+    setSeoLandingWorkspaceId(null)
+    handleNavigate('seoLandingWorkspace')
+  }
+
+  function handleOpenSeoLandingWorkspaceForEdit(landingId: number) {
+    setSeoLandingWorkspaceMode('edit')
+    setSeoLandingWorkspaceId(landingId)
+    handleNavigate('seoLandingWorkspace')
+  }
+
+  function handleBackToSeoLandings() {
+    handleNavigate('seoLandings')
+  }
+
   function handleOpenPageBuilderWorkspaceForCreate() {
     setPageBuilderWorkspaceMode('create')
     setPageBuilderWorkspacePageId(null)
@@ -826,6 +868,11 @@ export default function App() {
         onOpenPaymentGatewayWorkspace: handleOpenPaymentGatewayWorkspace,
         onBackToSettings: handleBackToSettings,
         onBackToAlerts: () => handleNavigate('alerts'),
+        seoLandingWorkspaceId,
+        seoLandingWorkspaceMode,
+        onOpenSeoLandingWorkspaceForCreate: handleOpenSeoLandingWorkspaceForCreate,
+        onOpenSeoLandingWorkspaceForEdit: handleOpenSeoLandingWorkspaceForEdit,
+        onBackToSeoLandings: handleBackToSeoLandings,
       })}
     </AppShell>
   )

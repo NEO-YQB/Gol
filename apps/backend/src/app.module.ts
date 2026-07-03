@@ -25,6 +25,7 @@ import { VendorDashboardModule } from './modules/vendor-dashboard/vendor-dashboa
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ContentModule } from './modules/content/content.module';
+import { SeoLandingModule } from './modules/seo-landing/seo-landing.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -59,6 +60,7 @@ import { PrismaService } from './prisma/prisma.service';
     ReviewsModule,
     NotificationsModule,
     ContentModule,
+    SeoLandingModule,
     SettingsModule,
   ],
   controllers: [AppController],

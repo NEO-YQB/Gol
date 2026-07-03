@@ -7,6 +7,7 @@ import {
   getStorefrontLatestArticles,
   getStorefrontSeoSettings,
   getStores,
+  getSeoLandingsForSitemap,
 } from '../lib/storefront'
 
 function buildUrl(siteUrl: string, path: string) {
@@ -23,13 +24,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const seo = await getStorefrontSeoSettings()
   const siteUrl = seo?.siteUrl || 'https://golino.shop'
 
-  const [products, categories, stores, productTypes, articles, articleCategories] = await Promise.all([
+  const [products, categories, stores, productTypes, articles, articleCategories, seoLandings] = await Promise.all([
     getAllStorefrontProductsForSitemap(100),
     getCategories(),
     getStores(),
     getProductTypes(),
     getStorefrontLatestArticles(200),
     getStorefrontArticleCategories(),
+    getSeoLandingsForSitemap(),
   ])
 
   const urls: MetadataRoute.Sitemap = [
@@ -85,6 +87,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: buildUrl(siteUrl, `/mag/${category.slug}`),
       changeFrequency: 'monthly',
       priority: 0.5,
+    })
+  }
+
+  for (const landing of seoLandings) {
+    if (!landing.isActive || !landing.category?.slug) continue
+    urls.push({
+      url: buildUrl(siteUrl, `/categories/${landing.category.slug}/${landing.slug}`),
+      changeFrequency: 'weekly',
+      priority: 0.7,
     })
   }
 

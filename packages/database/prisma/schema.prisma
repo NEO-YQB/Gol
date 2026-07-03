@@ -277,7 +277,29 @@ model Category {
   products        Product[]
   promotions      PromotionOnCategories[]
   couponScopes    CouponOnCategories[]
+  seoLandings     SeoLandingRule[]
   createdAt       DateTime @default(now())
+}
+
+model SeoLandingRule {
+  id              Int      @id @default(autoincrement())
+  internalName    String
+  slug            String   @unique
+  categoryId      Int
+  category        Category @relation(fields: [categoryId], references: [id])
+  filterConfig    Json
+  isActive        Boolean  @default(true)
+
+  metaTitle       String?
+  metaDescription String?
+  h1Tag           String?
+  seoContent      String?  @db.Text
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([categoryId, isActive])
+  @@index([slug])
 }
 
 enum ArticleStatus {
