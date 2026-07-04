@@ -80,7 +80,7 @@ export function HeroSection({
   )
 }
 
-function CarouselRow({ children }: { children: React.ReactNode }) {
+function CarouselRow({ children, showNav = true }: { children: React.ReactNode; showNav?: boolean }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [offset, setOffset] = useState(0)
   const [maxOffset, setMaxOffset] = useState(0)
@@ -88,9 +88,7 @@ function CarouselRow({ children }: { children: React.ReactNode }) {
   function measure() {
     const el = containerRef.current
     if (!el) return
-    const scrollWidth = el.scrollWidth
-    const clientWidth = el.clientWidth
-    setMaxOffset(Math.max(0, scrollWidth - clientWidth))
+    setMaxOffset(Math.max(0, el.scrollWidth - el.clientWidth))
   }
 
   useEffect(() => {
@@ -111,6 +109,19 @@ function CarouselRow({ children }: { children: React.ReactNode }) {
 
   function goRight() {
     setOffset((prev) => Math.max(0, prev - (containerRef.current?.clientWidth ?? 300) * 0.6))
+  }
+
+  if (!showNav) {
+    return (
+      <div className="md:flex md:flex-wrap md:justify-center md:gap-6">
+        <div className="flex md:hidden flex-nowrap gap-5">
+          {children}
+        </div>
+        <div className="hidden md:flex flex-wrap justify-center gap-6">
+          {children}
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -166,7 +177,7 @@ export function CategoryCirclesSection({ block }: { block: { id: string; categor
       ) : null}
       {productTypes.length > 0 ? (
         <div>
-          <CarouselRow>
+          <CarouselRow showNav={false}>
             {productTypes.map((productType) => (
               <ProductTypeCircle productType={productType} key={productType.id} />
             ))}
