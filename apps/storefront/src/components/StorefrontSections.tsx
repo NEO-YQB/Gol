@@ -81,42 +81,43 @@ export function HeroSection({
 }
 
 function CarouselRow({ children }: { children: React.ReactNode }) {
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const [atStart, setAtStart] = useState(true)
-  const [atEnd, setAtEnd] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [offset, setOffset] = useState(0)
+  const [maxOffset, setMaxOffset] = useState(0)
 
-  function updateScrollState() {
-    const el = scrollRef.current
+  function measure() {
+    const el = containerRef.current
     if (!el) return
-    const scrollLeft = el.scrollLeft || 0
-    setAtStart(scrollLeft <= 2)
-    setAtEnd(scrollLeft + el.clientWidth >= el.scrollWidth - 2)
+    const scrollWidth = el.scrollWidth
+    const clientWidth = el.clientWidth
+    setMaxOffset(Math.max(0, scrollWidth - clientWidth))
   }
 
   useEffect(() => {
-    const el = scrollRef.current
+    measure()
+    const el = containerRef.current
     if (!el) return
-    updateScrollState()
-    el.addEventListener('scroll', updateScrollState, { passive: true })
-    const ro = new ResizeObserver(updateScrollState)
+    const ro = new ResizeObserver(measure)
     ro.observe(el)
-    return () => {
-      el.removeEventListener('scroll', updateScrollState)
-      ro.disconnect()
-    }
-  })
+    return () => ro.disconnect()
+  }, [children])
 
-  function scrollLeft() {
-    const el = scrollRef.current
+  function slidePrev() {
+    const el = containerRef.current
     if (!el) return
-    el.scrollLeft -= el.offsetWidth * 0.6
+    const step = el.clientWidth * 0.6
+    setOffset((prev) => Math.max(0, prev - step))
   }
 
-  function scrollRight() {
-    const el = scrollRef.current
+  function slideNext() {
+    const el = containerRef.current
     if (!el) return
-    el.scrollLeft += el.offsetWidth * 0.6
+    const step = el.clientWidth * 0.6
+    setOffset((prev) => Math.min(maxOffset, prev + step))
   }
+
+  const atStart = offset <= 2
+  const atEnd = offset >= maxOffset - 2
 
   return (
     <div className="relative px-12 md:px-14">
@@ -124,24 +125,26 @@ function CarouselRow({ children }: { children: React.ReactNode }) {
         aria-label="Previous"
         className="absolute left-0 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-[#173126]/15 bg-white text-[#173126] shadow-lg transition hover:bg-[#173126] hover:text-white disabled:cursor-default disabled:opacity-30"
         disabled={atStart}
-        onClick={scrollLeft}
+        onClick={slidePrev}
         type="button"
       >
         <svg className="h-5 w-5 rotate-180" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
         </svg>
       </button>
-      <div
-        ref={scrollRef}
-        className="carousel-scroll flex flex-nowrap gap-5 overflow-x-auto scroll-smooth pb-2"
-      >
-        {children}
+      <div ref={containerRef} className="overflow-hidden">
+        <div
+          className="flex flex-nowrap gap-5 transition-transform duration-300 ease-out"
+          style={{ transform: `translateX(${-offset}px)` }}
+        >
+          {children}
+        </div>
       </div>
       <button
         aria-label="Next"
         className="absolute right-0 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-[#173126]/15 bg-white text-[#173126] shadow-lg transition hover:bg-[#173126] hover:text-white disabled:cursor-default disabled:opacity-30"
         disabled={atEnd}
-        onClick={scrollRight}
+        onClick={slideNext}
         type="button"
       >
         <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
