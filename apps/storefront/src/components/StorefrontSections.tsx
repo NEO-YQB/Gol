@@ -88,8 +88,9 @@ function CarouselRow({ children }: { children: React.ReactNode }) {
   function updateScrollState() {
     const el = scrollRef.current
     if (!el) return
-    setAtStart(el.scrollLeft <= 2)
-    setAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 2)
+    const scrollLeft = el.scrollLeft || 0
+    setAtStart(scrollLeft <= 2)
+    setAtEnd(scrollLeft + el.clientWidth >= el.scrollWidth - 2)
   }
 
   useEffect(() => {
@@ -97,50 +98,50 @@ function CarouselRow({ children }: { children: React.ReactNode }) {
     if (!el) return
     updateScrollState()
     el.addEventListener('scroll', updateScrollState, { passive: true })
-    const observer = new ResizeObserver(updateScrollState)
-    observer.observe(el)
+    const ro = new ResizeObserver(updateScrollState)
+    ro.observe(el)
     return () => {
       el.removeEventListener('scroll', updateScrollState)
-      observer.disconnect()
+      ro.disconnect()
     }
   })
 
-  function scrollPrev() {
-    if (!scrollRef.current) return
-    const amount = scrollRef.current.offsetWidth * 0.6
-    scrollRef.current.scrollBy({ left: -amount, behavior: 'smooth' })
+  function scrollLeft() {
+    const el = scrollRef.current
+    if (!el) return
+    el.scrollLeft -= el.offsetWidth * 0.6
   }
 
-  function scrollNext() {
-    if (!scrollRef.current) return
-    const amount = scrollRef.current.offsetWidth * 0.6
-    scrollRef.current.scrollBy({ left: amount, behavior: 'smooth' })
+  function scrollRight() {
+    const el = scrollRef.current
+    if (!el) return
+    el.scrollLeft += el.offsetWidth * 0.6
   }
 
   return (
-    <div className="relative">
+    <div className="relative px-12 md:px-14">
       <button
         aria-label="Previous"
-        className="absolute -left-2 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-[#173126]/15 bg-white text-[#173126] shadow-lg transition hover:bg-[#173126] hover:text-white disabled:cursor-default disabled:opacity-30"
+        className="absolute left-0 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-[#173126]/15 bg-white text-[#173126] shadow-lg transition hover:bg-[#173126] hover:text-white disabled:cursor-default disabled:opacity-30"
         disabled={atStart}
-        onClick={scrollPrev}
+        onClick={scrollLeft}
         type="button"
       >
-        <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+        <svg className="h-5 w-5 rotate-180" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
         </svg>
       </button>
       <div
         ref={scrollRef}
-        className="carousel-scroll flex flex-nowrap gap-5 overflow-x-auto scroll-smooth pb-2 px-10 md:px-0"
+        className="carousel-scroll flex flex-nowrap gap-5 overflow-x-auto scroll-smooth pb-2"
       >
         {children}
       </div>
       <button
         aria-label="Next"
-        className="absolute -right-2 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-[#173126]/15 bg-white text-[#173126] shadow-lg transition hover:bg-[#173126] hover:text-white disabled:cursor-default disabled:opacity-30"
+        className="absolute right-0 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-[#173126]/15 bg-white text-[#173126] shadow-lg transition hover:bg-[#173126] hover:text-white disabled:cursor-default disabled:opacity-30"
         disabled={atEnd}
-        onClick={scrollNext}
+        onClick={scrollRight}
         type="button"
       >
         <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
