@@ -127,7 +127,7 @@ function CarouselRow({ children }: { children: React.ReactNode }) {
       ) : null}
       <div
         ref={scrollRef}
-        className="flex flex-nowrap gap-5 overflow-x-auto scroll-smooth pb-2 px-1 snap-x snap-mandatory md:snap-none md:overflow-x-hidden md:px-0"
+        className="carousel-scroll flex flex-nowrap gap-5 overflow-x-auto scroll-smooth pb-2 px-1 snap-x snap-mandatory md:snap-none md:px-0"
         onScroll={updateScrollState}
       >
         {children}
