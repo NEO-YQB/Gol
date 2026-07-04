@@ -84,6 +84,8 @@ function CarouselRow({ children, showNav = true }: { children: React.ReactNode; 
   const containerRef = useRef<HTMLDivElement>(null)
   const [offset, setOffset] = useState(0)
   const [maxOffset, setMaxOffset] = useState(0)
+  const touchStart = useRef<number | null>(null)
+  const touchDelta = useRef(0)
 
   function measure() {
     const el = containerRef.current
@@ -111,14 +113,45 @@ function CarouselRow({ children, showNav = true }: { children: React.ReactNode; 
     setOffset((prev) => Math.max(0, prev - (containerRef.current?.clientWidth ?? 300) * 0.6))
   }
 
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStart.current = e.touches[0].clientX
+    touchDelta.current = 0
+  }
+
+  function handleTouchMove(e: React.TouchEvent) {
+    if (touchStart.current === null) return
+    touchDelta.current = e.touches[0].clientX - touchStart.current
+  }
+
+  function handleTouchEnd() {
+    if (touchStart.current === null) return
+    const delta = touchDelta.current
+    touchStart.current = null
+    if (Math.abs(delta) < 30) return
+    if (delta < 0) {
+      setOffset((prev) => Math.min(maxOffset, prev + Math.abs(delta)))
+    } else {
+      setOffset((prev) => Math.max(0, prev - delta))
+    }
+    setOffset((prev) => Math.max(0, Math.min(maxOffset, prev)))
+  }
+
   if (!showNav) {
     return (
-      <div className="md:flex md:flex-wrap md:justify-center md:gap-6">
-        <div className="flex md:hidden flex-nowrap gap-5">
-          {children}
-        </div>
-        <div className="hidden md:flex flex-wrap justify-center gap-6">
-          {children}
+      <div>
+        <div
+          ref={containerRef}
+          className="overflow-hidden md:overflow-visible"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          <div
+            className="flex flex-nowrap gap-5 transition-transform duration-300 ease-out md:transform-none md:flex-wrap md:justify-center md:gap-6"
+            style={{ transform: `translateX(${offset}px)` }}
+          >
+            {children}
+          </div>
         </div>
       </div>
     )
@@ -137,7 +170,13 @@ function CarouselRow({ children, showNav = true }: { children: React.ReactNode; 
           <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
         </svg>
       </button>
-      <div ref={containerRef} className="overflow-hidden">
+      <div
+        ref={containerRef}
+        className="overflow-hidden"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         <div
           className="flex flex-nowrap gap-5 transition-transform duration-300 ease-out"
           style={{ transform: `translateX(${offset}px)` }}
