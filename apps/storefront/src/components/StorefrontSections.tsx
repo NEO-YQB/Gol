@@ -83,10 +83,16 @@ export function HeroSection({
 function CarouselRow({ children }: { children: React.ReactNode }) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  function scroll(direction: 'left' | 'right') {
+  function scrollPrev() {
     if (!scrollRef.current) return
     const amount = scrollRef.current.offsetWidth * 0.7
-    scrollRef.current.scrollBy({ left: direction === 'right' ? -amount : amount, behavior: 'smooth' })
+    scrollRef.current.scrollBy({ left: -amount, behavior: 'smooth' })
+  }
+
+  function scrollNext() {
+    if (!scrollRef.current) return
+    const amount = scrollRef.current.offsetWidth * 0.7
+    scrollRef.current.scrollBy({ left: amount, behavior: 'smooth' })
   }
 
   return (
@@ -94,18 +100,18 @@ function CarouselRow({ children }: { children: React.ReactNode }) {
       <button
         aria-label="Previous"
         className="absolute left-0 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-[#173126]/10 bg-white/90 text-[#173126] shadow-md backdrop-blur transition hover:bg-white md:hidden"
-        onClick={() => scroll('right')}
+        onClick={scrollPrev}
         type="button"
       >
         ‹
       </button>
-      <div ref={scrollRef} className="flex gap-5 overflow-x-auto scroll-smooth pb-2 px-8 md:px-0 md:justify-center md:overflow-visible">
+      <div ref={scrollRef} className="flex gap-5 overflow-x-auto scroll-smooth pb-2 px-8 md:flex-wrap md:justify-center md:overflow-visible md:px-0">
         {children}
       </div>
       <button
         aria-label="Next"
         className="absolute right-0 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-[#173126]/10 bg-white/90 text-[#173126] shadow-md backdrop-blur transition hover:bg-white md:hidden"
-        onClick={() => scroll('left')}
+        onClick={scrollNext}
         type="button"
       >
         ›

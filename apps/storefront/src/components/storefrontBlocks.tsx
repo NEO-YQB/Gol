@@ -174,7 +174,7 @@ export function CategoryCircle({ category }: { category: CategorySummary }) {
 
 export function ProductTypeCircle({ productType }: { productType: ProductTypeSummary }) {
   return (
-    <Link className={storefrontStyles.categoryCircle} href={`/shop?type=${productType.slug}`}>
+    <Link className={storefrontStyles.categoryCircle} href={`/product-types/${productType.slug}`}>
       <div className={storefrontStyles.categoryCircleMedia}>
         {productType.image ? (
           <img alt={productType.imageAlt || productType.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-110" src={resolveAssetUrl(productType.image)} />

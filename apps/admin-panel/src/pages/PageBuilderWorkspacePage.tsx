@@ -175,6 +175,7 @@ function getDefaultBlockData(type: PageBlockType): Record<string, unknown> {
     case 'CATEGORY_CIRCLES':
       return {
         categoryIds: [],
+        productTypeIds: [],
         showTitles: true,
       }
     case 'PRODUCT_CAROUSEL':
@@ -1422,6 +1423,7 @@ export function PageBuilderWorkspacePage({
             loadingMode: 'eager',
             data: {
               categoryIds: normalizeIdList(block.data.categoryIds),
+              productTypeIds: normalizeIdList(block.data.productTypeIds),
               showTitles: block.data.showTitles !== false,
             },
           }
