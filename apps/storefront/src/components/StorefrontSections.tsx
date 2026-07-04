@@ -128,7 +128,7 @@ function CarouselRow({ children, showNav = true }: { children: React.ReactNode; 
     const delta = touchDelta.current
     touchStart.current = null
     if (Math.abs(delta) < 30) return
-    setOffset((prev) => Math.max(0, Math.min(maxOffset, prev - delta)))
+    setOffset((prev) => Math.max(0, Math.min(maxOffset, prev + delta)))
   }
 
   if (!showNav) {
