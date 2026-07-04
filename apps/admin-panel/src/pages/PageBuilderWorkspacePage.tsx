@@ -1424,6 +1424,8 @@ export function PageBuilderWorkspacePage({
             data: {
               categoryIds: normalizeIdList(block.data.categoryIds),
               productTypeIds: normalizeIdList(block.data.productTypeIds),
+              categoryTitle: String(block.data.categoryTitle ?? ''),
+              productTypeTitle: String(block.data.productTypeTitle ?? ''),
               showTitles: block.data.showTitles !== false,
             },
           }
@@ -2341,6 +2343,24 @@ export function PageBuilderWorkspacePage({
                             })}
                           </select>
                           <small>برای انتخاب چند نوع محصول، `Ctrl/Cmd` را نگه دار.</small>
+                        </label>
+                        <label className="fm-field page-builder-field--wide">
+                          <span>عنوان ردیف دسته‌ها</span>
+                          <input
+                            onChange={(event) => patchBlockData(block.id, 'categoryTitle', event.target.value)}
+                            placeholder="مثلاً: دسته‌بندی‌ها"
+                            type="text"
+                            value={String(data.categoryTitle ?? '')}
+                          />
+                        </label>
+                        <label className="fm-field page-builder-field--wide">
+                          <span>عنوان ردیف انواع محصول</span>
+                          <input
+                            onChange={(event) => patchBlockData(block.id, 'productTypeTitle', event.target.value)}
+                            placeholder="مثلاً: انواع محصول"
+                            type="text"
+                            value={String(data.productTypeTitle ?? '')}
+                          />
                         </label>
                         <label className="fm-field page-builder-checkbox">
                           <span>نمایش عنوان دسته‌ها</span>

@@ -180,6 +180,18 @@ export class CategoryCirclesBlockDataDto {
   @IsString({ each: true })
   productTypeIds?: string[];
 
+  @ApiPropertyOptional({ example: 'دسته‌بندی‌ها' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  categoryTitle?: string;
+
+  @ApiPropertyOptional({ example: 'انواع محصول' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  productTypeTitle?: string;
+
   @ApiProperty({ example: true })
   @IsBoolean()
   showTitles!: boolean;

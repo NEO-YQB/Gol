@@ -194,14 +194,17 @@ function CarouselRow({ children, showNav = true }: { children: React.ReactNode; 
   )
 }
 
-export function CategoryCirclesSection({ block }: { block: { id: string; categories?: CategorySummary[]; productTypes?: ProductTypeSummary[] } }) {
+export function CategoryCirclesSection({ block }: { block: { id: string; data: Record<string, unknown>; categories?: CategorySummary[]; productTypes?: ProductTypeSummary[] } }) {
   const categories = Array.isArray(block.categories) ? block.categories : []
   const productTypes = Array.isArray(block.productTypes) ? block.productTypes : []
+  const categoryTitle = String(block.data.categoryTitle ?? '').trim()
+  const productTypeTitle = String(block.data.productTypeTitle ?? '').trim()
 
   return (
     <section className={storefrontShared.sectionCard} key={block.id}>
       {categories.length > 0 ? (
         <div className="mb-6">
+          {categoryTitle ? <h3 className="mb-4 text-xl font-black text-[#173126]">{categoryTitle}</h3> : null}
           <CarouselRow>
             {categories.map((category) => (
               <CategoryCircle category={category} key={category.id} />
@@ -211,6 +214,7 @@ export function CategoryCirclesSection({ block }: { block: { id: string; categor
       ) : null}
       {productTypes.length > 0 ? (
         <div>
+          {productTypeTitle ? <h3 className="mb-4 text-xl font-black text-[#173126]">{productTypeTitle}</h3> : null}
           <CarouselRow showNav={false}>
             {productTypes.map((productType) => (
               <ProductTypeCircle productType={productType} key={productType.id} />
