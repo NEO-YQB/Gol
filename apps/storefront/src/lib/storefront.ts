@@ -350,6 +350,7 @@ export type EnrichedBlock = Record<string, unknown> & {
   loadingMode?: 'eager' | 'lazy' | 'viewport'
   data: Record<string, unknown>
   categories?: CategorySummary[]
+  productTypes?: ProductTypeSummary[]
   products?: ProductSummary[]
   vendors?: StoreSummary[]
   articles?: ArticleSummary[]
@@ -1018,10 +1019,16 @@ async function enrichBlock(
     const categoryIds = Array.isArray(normalizedBlock.data.categoryIds)
       ? normalizedBlock.data.categoryIds.map((item) => String(item))
       : []
+    const productTypeIds = Array.isArray(normalizedBlock.data.productTypeIds)
+      ? normalizedBlock.data.productTypeIds.map((item) => String(item))
+      : []
+
+    const allProductTypes = cacheEnabled ? await getProductTypes() : await requestNoStore<ProductTypeSummary[]>('/product-types')
 
     return {
       ...normalizedBlock,
       categories: categories.filter((category) => categoryIds.includes(String(category.id))),
+      productTypes: allProductTypes.filter((pt) => productTypeIds.includes(String(pt.id))),
     }
   }
 
@@ -1172,6 +1179,7 @@ async function enrichBlockSafely(
       return {
         ...fallbackBlock,
         categories: [],
+        productTypes: [],
       }
     }
 

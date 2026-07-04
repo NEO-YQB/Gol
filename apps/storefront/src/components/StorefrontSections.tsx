@@ -1,9 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
-import { resolveAssetUrl, type CategorySummary, type ProductSummary, type StoreSummary } from '../lib/storefront'
-import { CategoryCircle, ProductCard, StorefrontPill, VendorCard } from './storefrontBlocks'
+import { useMemo, useRef, useState } from 'react'
+import { resolveAssetUrl, type CategorySummary, type ProductSummary, type ProductTypeSummary, type StoreSummary } from '../lib/storefront'
+import { CategoryCircle, ProductTypeCircle, ProductCard, StorefrontPill, VendorCard } from './storefrontBlocks'
 import { storefrontShared } from './storefrontShared'
 
 export function HeroSection({
@@ -80,15 +80,64 @@ export function HeroSection({
   )
 }
 
-export function CategoryCirclesSection({ block }: { block: { id: string; categories?: CategorySummary[] } }) {
+function CarouselRow({ children }: { children: React.ReactNode }) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  function scroll(direction: 'left' | 'right') {
+    if (!scrollRef.current) return
+    const amount = scrollRef.current.offsetWidth * 0.7
+    scrollRef.current.scrollBy({ left: direction === 'right' ? -amount : amount, behavior: 'smooth' })
+  }
+
+  return (
+    <div className="relative">
+      <button
+        aria-label="Previous"
+        className="absolute left-0 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-[#173126]/10 bg-white/90 text-[#173126] shadow-md backdrop-blur transition hover:bg-white md:hidden"
+        onClick={() => scroll('right')}
+        type="button"
+      >
+        ‹
+      </button>
+      <div ref={scrollRef} className="flex gap-5 overflow-x-auto scroll-smooth pb-2 px-8 md:px-0 md:justify-center md:overflow-visible">
+        {children}
+      </div>
+      <button
+        aria-label="Next"
+        className="absolute right-0 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-[#173126]/10 bg-white/90 text-[#173126] shadow-md backdrop-blur transition hover:bg-white md:hidden"
+        onClick={() => scroll('left')}
+        type="button"
+      >
+        ›
+      </button>
+    </div>
+  )
+}
+
+export function CategoryCirclesSection({ block }: { block: { id: string; categories?: CategorySummary[]; productTypes?: ProductTypeSummary[] } }) {
   const categories = Array.isArray(block.categories) ? block.categories : []
+  const productTypes = Array.isArray(block.productTypes) ? block.productTypes : []
+
   return (
     <section className={storefrontShared.sectionCard} key={block.id}>
-      <div className="flex gap-5 overflow-x-auto pb-2">
-        {categories.map((category) => (
-          <CategoryCircle category={category} key={category.id} />
-        ))}
-      </div>
+      {categories.length > 0 ? (
+        <div className="mb-6">
+          <CarouselRow>
+            {categories.map((category) => (
+              <CategoryCircle category={category} key={category.id} />
+            ))}
+          </CarouselRow>
+        </div>
+      ) : null}
+      {productTypes.length > 0 ? (
+        <div>
+          <CarouselRow>
+            {productTypes.map((productType) => (
+              <ProductTypeCircle productType={productType} key={productType.id} />
+            ))}
+          </CarouselRow>
+        </div>
+      ) : null}
     </section>
   )
 }

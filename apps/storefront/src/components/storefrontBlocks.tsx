@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { resolveAssetUrl, type CategorySummary, type ProductSummary, type StoreSummary } from '../lib/storefront'
+import { resolveAssetUrl, type CategorySummary, type ProductSummary, type ProductTypeSummary, type StoreSummary } from '../lib/storefront'
 import { addCartItem, getCart, readStoredToken } from '../lib/storefrontAuth'
 import { emitStorefrontAuthRequired, emitStorefrontToast } from './storefrontToast'
 import { storefrontShared } from './storefrontShared'
@@ -162,12 +162,27 @@ export function CategoryCircle({ category }: { category: CategorySummary }) {
     <Link className={storefrontStyles.categoryCircle} href={getCategoryHref(category)}>
       <div className={storefrontStyles.categoryCircleMedia}>
         {category.image ? (
-          <img alt={category.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-110" src={resolveAssetUrl(category.image)} />
+          <img alt={category.imageAlt || category.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-110" src={resolveAssetUrl(category.image)} />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_top,_#f4cab6,_#e6d6bf_72%)] text-3xl">✿</div>
         )}
       </div>
       <span className="text-sm font-bold text-[#214032]">{category.name}</span>
+    </Link>
+  )
+}
+
+export function ProductTypeCircle({ productType }: { productType: ProductTypeSummary }) {
+  return (
+    <Link className={storefrontStyles.categoryCircle} href={`/shop?type=${productType.slug}`}>
+      <div className={storefrontStyles.categoryCircleMedia}>
+        {productType.image ? (
+          <img alt={productType.imageAlt || productType.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-110" src={resolveAssetUrl(productType.image)} />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_top,_#c6e8d8,_#d6e6df_72%)] text-3xl">❋</div>
+        )}
+      </div>
+      <span className="text-sm font-bold text-[#214032]">{productType.name}</span>
     </Link>
   )
 }

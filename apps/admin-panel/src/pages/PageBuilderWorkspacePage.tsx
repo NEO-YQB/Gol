@@ -1011,21 +1011,41 @@ export function PageBuilderWorkspacePage({
   function renderSelectionPreview(block: BlockForm) {
     if (block.type === 'CATEGORY_CIRCLES') {
       const categoryIds = normalizeIdList(block.data.categoryIds)
+      const productTypeIds = normalizeIdList(block.data.productTypeIds)
 
       return (
         <div className="page-builder-preview-card page-builder-field--wide">
-          <strong>پیش‌نمایش انتخاب دسته‌ها</strong>
-          {categoryIds.length ? (
-            <div className="page-builder-preview-tags">
-              {categoryIds.map((id) => (
-                <span className="page-builder-preview-tag" key={id}>
-                  {categoryNameById.get(id) ?? `دسته با شناسه ${id}`}
-                </span>
-              ))}
+          <strong>پیش‌نمایش انتخاب</strong>
+          <div style={{ display: 'grid', gap: '8px' }}>
+            <div>
+              <small>دسته‌ها:</small>
+              {categoryIds.length ? (
+                <div className="page-builder-preview-tags">
+                  {categoryIds.map((id) => (
+                    <span className="page-builder-preview-tag" key={id}>
+                      {categoryNameById.get(id) ?? `دسته با شناسه ${id}`}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p>هنوز دسته‌ای انتخاب نشده است.</p>
+              )}
             </div>
-          ) : (
-            <p>هنوز دسته‌ای انتخاب نشده است.</p>
-          )}
+            <div>
+              <small>انواع محصول:</small>
+              {productTypeIds.length ? (
+                <div className="page-builder-preview-tags">
+                  {productTypeIds.map((id) => (
+                    <span className="page-builder-preview-tag" key={id}>
+                      {productTypeNameById.get(id) ?? `نوع محصول با شناسه ${id}`}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p>هنوز نوع محصولی انتخاب نشده است.</p>
+              )}
+            </div>
+          </div>
         </div>
       )
     }
@@ -2285,6 +2305,40 @@ export function PageBuilderWorkspacePage({
                             })}
                           </select>
                           <small>برای انتخاب چند دسته، `Ctrl/Cmd` را نگه دار.</small>
+                        </label>
+                        <label className="fm-field page-builder-field--wide">
+                          <span>Product Type IDs</span>
+                          <input
+                            onChange={(event) => patchBlockData(block.id, 'productTypeIds', event.target.value)}
+                            type="text"
+                            value={Array.isArray(data.productTypeIds) ? (data.productTypeIds as string[]).join(', ') : String(data.productTypeIds ?? '')}
+                          />
+                          <small>به صورت comma-separated مثل `1, 3`</small>
+                        </label>
+                        <label className="fm-field page-builder-field--wide">
+                          <span>انتخاب از لیست انواع محصول</span>
+                          <select
+                            multiple
+                            onChange={(event) =>
+                              patchBlockData(
+                                block.id,
+                                'productTypeIds',
+                                Array.from(event.target.selectedOptions).map((option) => option.value),
+                              )
+                            }
+                            value={normalizeIdList(data.productTypeIds)}
+                          >
+                            {referenceProductTypes.map((productType) => {
+                              const productTypeId = readText(productType, ['id'], '')
+                              const productTypeName = readText(productType, ['name', 'title'], 'بدون نام')
+                              return (
+                                <option key={productTypeId} value={productTypeId}>
+                                  {productTypeName}
+                                </option>
+                              )
+                            })}
+                          </select>
+                          <small>برای انتخاب چند نوع محصول، `Ctrl/Cmd` را نگه دار.</small>
                         </label>
                         <label className="fm-field page-builder-checkbox">
                           <span>نمایش عنوان دسته‌ها</span>
