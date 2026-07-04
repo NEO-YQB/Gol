@@ -153,7 +153,7 @@ function CarouselRow({ children, showNav = true }: { children: React.ReactNode; 
   }
 
   return (
-    <div className="relative px-12 md:px-14">
+    <div className="relative pl-2 pr-2 md:px-14">
       <button
         aria-label="Next"
         className="absolute left-0 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-[#173126]/15 bg-white text-[#173126] shadow-lg transition hover:bg-[#173126] hover:text-white disabled:cursor-default disabled:opacity-30"
