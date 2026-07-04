@@ -102,30 +102,24 @@ function CarouselRow({ children }: { children: React.ReactNode }) {
     return () => ro.disconnect()
   }, [children])
 
-  function slidePrev() {
-    const el = containerRef.current
-    if (!el) return
-    const step = el.clientWidth * 0.6
-    setOffset((prev) => Math.max(0, prev - step))
-  }
-
-  function slideNext() {
-    const el = containerRef.current
-    if (!el) return
-    const step = el.clientWidth * 0.6
-    setOffset((prev) => Math.min(maxOffset, prev + step))
-  }
-
   const atStart = offset <= 2
   const atEnd = offset >= maxOffset - 2
+
+  function goLeft() {
+    setOffset((prev) => Math.min(maxOffset, prev + (containerRef.current?.clientWidth ?? 300) * 0.6))
+  }
+
+  function goRight() {
+    setOffset((prev) => Math.max(0, prev - (containerRef.current?.clientWidth ?? 300) * 0.6))
+  }
 
   return (
     <div className="relative px-12 md:px-14">
       <button
-        aria-label="Previous"
+        aria-label="Next"
         className="absolute left-0 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-[#173126]/15 bg-white text-[#173126] shadow-lg transition hover:bg-[#173126] hover:text-white disabled:cursor-default disabled:opacity-30"
-        disabled={atStart}
-        onClick={slidePrev}
+        disabled={atEnd}
+        onClick={goLeft}
         type="button"
       >
         <svg className="h-5 w-5 rotate-180" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
@@ -135,16 +129,16 @@ function CarouselRow({ children }: { children: React.ReactNode }) {
       <div ref={containerRef} className="overflow-hidden">
         <div
           className="flex flex-nowrap gap-5 transition-transform duration-300 ease-out"
-          style={{ transform: `translateX(${-offset}px)` }}
+          style={{ transform: `translateX(${offset}px)` }}
         >
           {children}
         </div>
       </div>
       <button
-        aria-label="Next"
+        aria-label="Previous"
         className="absolute right-0 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-[#173126]/15 bg-white text-[#173126] shadow-lg transition hover:bg-[#173126] hover:text-white disabled:cursor-default disabled:opacity-30"
-        disabled={atEnd}
-        onClick={slideNext}
+        disabled={atStart}
+        onClick={goRight}
         type="button"
       >
         <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
