@@ -167,12 +167,18 @@ export class HeroHeaderBlockDataDto {
 export class CategoryCirclesBlockDataDto {
   @ApiProperty({ type: [String], example: ['1', '2', '3'] })
   @IsArray()
-  @ArrayMinSize(1)
   @ArrayMaxSize(20)
   @ArrayUnique()
   @IsString({ each: true })
-  @IsNotEmpty({ each: true })
-  categoryIds!: string[];
+  categoryIds?: string[];
+
+  @ApiProperty({ type: [String], example: ['1', '2'] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @ArrayUnique()
+  @IsString({ each: true })
+  productTypeIds?: string[];
 
   @ApiProperty({ example: true })
   @IsBoolean()

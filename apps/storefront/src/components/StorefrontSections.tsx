@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState, useEffect } from 'react'
 import { resolveAssetUrl, type CategorySummary, type ProductSummary, type ProductTypeSummary, type StoreSummary } from '../lib/storefront'
 import { CategoryCircle, ProductTypeCircle, ProductCard, StorefrontPill, VendorCard } from './storefrontBlocks'
 import { storefrontShared } from './storefrontShared'
@@ -82,6 +82,24 @@ export function HeroSection({
 
 function CarouselRow({ children }: { children: React.ReactNode }) {
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [canScrollPrev, setCanScrollPrev] = useState(false)
+  const [canScrollNext, setCanScrollNext] = useState(false)
+
+  function updateScrollState() {
+    const el = scrollRef.current
+    if (!el) return
+    setCanScrollPrev(el.scrollLeft > 2)
+    setCanScrollNext(el.scrollLeft + el.clientWidth < el.scrollWidth - 2)
+  }
+
+  useEffect(() => {
+    updateScrollState()
+    const el = scrollRef.current
+    if (!el) return
+    const observer = new ResizeObserver(updateScrollState)
+    observer.observe(el)
+    return () => observer.disconnect()
+  })
 
   function scrollPrev() {
     if (!scrollRef.current) return
@@ -96,26 +114,34 @@ function CarouselRow({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="relative">
-      <button
-        aria-label="Previous"
-        className="absolute left-0 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-[#173126]/10 bg-white/90 text-[#173126] shadow-md backdrop-blur transition hover:bg-white md:hidden"
-        onClick={scrollPrev}
-        type="button"
+    <div className="relative group/carousel">
+      {canScrollPrev ? (
+        <button
+          aria-label="Previous"
+          className="absolute -left-3 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-[#173126]/10 bg-white/90 text-[#173126] shadow-md backdrop-blur transition hover:bg-white"
+          onClick={scrollPrev}
+          type="button"
+        >
+          ‹
+        </button>
+      ) : null}
+      <div
+        ref={scrollRef}
+        className="flex flex-nowrap gap-5 overflow-x-auto scroll-smooth pb-2 px-1 snap-x snap-mandatory md:snap-none md:overflow-x-hidden md:px-0"
+        onScroll={updateScrollState}
       >
-        ‹
-      </button>
-      <div ref={scrollRef} className="flex gap-5 overflow-x-auto scroll-smooth pb-2 px-8 md:flex-wrap md:justify-center md:overflow-visible md:px-0">
         {children}
       </div>
-      <button
-        aria-label="Next"
-        className="absolute right-0 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-[#173126]/10 bg-white/90 text-[#173126] shadow-md backdrop-blur transition hover:bg-white md:hidden"
-        onClick={scrollNext}
-        type="button"
-      >
-        ›
-      </button>
+      {canScrollNext ? (
+        <button
+          aria-label="Next"
+          className="absolute -right-3 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-[#173126]/10 bg-white/90 text-[#173126] shadow-md backdrop-blur transition hover:bg-white"
+          onClick={scrollNext}
+          type="button"
+        >
+          ›
+        </button>
+      ) : null}
     </div>
   )
 }
