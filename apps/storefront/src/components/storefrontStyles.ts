@@ -4,7 +4,7 @@ export const storefrontStyles = {
   productImageWrap: 'mb-4 block overflow-hidden rounded-[24px] bg-[#f4eadc]',
   productImage: 'h-56 w-full object-cover transition duration-500 group-hover:scale-[1.04]',
   categoryCircle:
-    'group flex min-w-[120px] flex-col items-center gap-4 text-center',
+    'group flex w-[130px] flex-shrink-0 flex-col items-center gap-3 text-center',
   categoryCircleMedia:
     'relative h-28 w-28 overflow-hidden rounded-full border border-white/70 bg-[#f6eadc] shadow-[0_18px_36px_rgba(52,36,17,0.08)]',
   vendorCard:

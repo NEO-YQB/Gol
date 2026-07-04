@@ -82,66 +82,67 @@ export function HeroSection({
 
 function CarouselRow({ children }: { children: React.ReactNode }) {
   const scrollRef = useRef<HTMLDivElement>(null)
-  const [canScrollPrev, setCanScrollPrev] = useState(false)
-  const [canScrollNext, setCanScrollNext] = useState(false)
+  const [atStart, setAtStart] = useState(true)
+  const [atEnd, setAtEnd] = useState(false)
 
   function updateScrollState() {
     const el = scrollRef.current
     if (!el) return
-    setCanScrollPrev(el.scrollLeft > 2)
-    setCanScrollNext(el.scrollLeft + el.clientWidth < el.scrollWidth - 2)
+    setAtStart(el.scrollLeft <= 2)
+    setAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 2)
   }
 
   useEffect(() => {
-    updateScrollState()
     const el = scrollRef.current
     if (!el) return
+    updateScrollState()
+    el.addEventListener('scroll', updateScrollState, { passive: true })
     const observer = new ResizeObserver(updateScrollState)
     observer.observe(el)
-    return () => observer.disconnect()
+    return () => {
+      el.removeEventListener('scroll', updateScrollState)
+      observer.disconnect()
+    }
   })
 
   function scrollPrev() {
     if (!scrollRef.current) return
-    const amount = scrollRef.current.offsetWidth * 0.7
+    const amount = scrollRef.current.offsetWidth * 0.6
     scrollRef.current.scrollBy({ left: -amount, behavior: 'smooth' })
   }
 
   function scrollNext() {
     if (!scrollRef.current) return
-    const amount = scrollRef.current.offsetWidth * 0.7
+    const amount = scrollRef.current.offsetWidth * 0.6
     scrollRef.current.scrollBy({ left: amount, behavior: 'smooth' })
   }
 
   return (
-    <div className="relative group/carousel">
-      {canScrollPrev ? (
-        <button
-          aria-label="Previous"
-          className="absolute -left-3 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-[#173126]/10 bg-white/90 text-[#173126] shadow-md backdrop-blur transition hover:bg-white"
-          onClick={scrollPrev}
-          type="button"
-        >
-          ‹
-        </button>
-      ) : null}
+    <div className="relative">
+      <button
+        aria-label="Previous"
+        className="absolute -left-2 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-[#173126]/10 bg-white/90 text-[#173126] shadow-md backdrop-blur transition hover:bg-white disabled:invisible disabled:opacity-0"
+        disabled={atStart}
+        onClick={scrollPrev}
+        type="button"
+      >
+        ‹
+      </button>
       <div
         ref={scrollRef}
-        className="carousel-scroll flex flex-nowrap gap-5 overflow-x-auto scroll-smooth pb-2 px-1 snap-x snap-mandatory md:snap-none md:px-0"
-        onScroll={updateScrollState}
+        className="carousel-scroll flex flex-nowrap gap-5 overflow-x-auto scroll-smooth pb-2 px-6 md:px-0"
       >
         {children}
       </div>
-      {canScrollNext ? (
-        <button
-          aria-label="Next"
-          className="absolute -right-3 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-[#173126]/10 bg-white/90 text-[#173126] shadow-md backdrop-blur transition hover:bg-white"
-          onClick={scrollNext}
-          type="button"
-        >
-          ›
-        </button>
-      ) : null}
+      <button
+        aria-label="Next"
+        className="absolute -right-2 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-[#173126]/10 bg-white/90 text-[#173126] shadow-md backdrop-blur transition hover:bg-white disabled:invisible disabled:opacity-0"
+        disabled={atEnd}
+        onClick={scrollNext}
+        type="button"
+      >
+        ›
+      </button>
     </div>
   )
 }
