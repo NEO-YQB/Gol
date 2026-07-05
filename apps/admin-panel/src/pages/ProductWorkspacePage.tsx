@@ -145,6 +145,40 @@ function toOptionalText(value: string) {
   return normalized === '' ? undefined : normalized
 }
 
+function getPublicationStatusLabel(status: string) {
+  switch (status) {
+    case 'DRAFT':
+      return 'پیش‌نویس'
+    case 'SUBMITTED':
+      return 'در بازبینی'
+    case 'CHANGES_REQUESTED':
+      return 'نیازمند اصلاح'
+    case 'APPROVED':
+      return 'تایید شده'
+    case 'PUBLISHED':
+      return 'منتشرشده'
+    case 'REJECTED':
+      return 'رد شده'
+    default:
+      return status || 'نامشخص'
+  }
+}
+
+function getProductElementTypeLabel(type: string) {
+  switch (type) {
+    case 'FLOWER':
+      return 'گل'
+    case 'FILLER':
+      return 'پرکننده'
+    case 'BASE':
+      return 'بیس'
+    case 'ACCESSORY':
+      return 'اکسسوری'
+    default:
+      return type || 'نامشخص'
+  }
+}
+
 function mapProductToForm(product: ProductRecord): ProductFormState {
   const images = Array.isArray(product.images) ? product.images.filter((item): item is string => typeof item === 'string') : []
   const gallery = Array.isArray(product.gallery)
@@ -310,7 +344,7 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
       { label: 'دسته‌بندی', value: productDetail ? getProductCategory(productDetail) : readText(categories.find((item) => readText(item, ['id'], '') === productForm.categoryId) ?? {}, ['name', 'title'], 'هنوز انتخاب نشده') },
       { label: 'نوع محصول', value: productDetail ? getProductType(productDetail) : readText(productTypes.find((item) => readText(item, ['id'], '') === productForm.productTypeId) ?? {}, ['name'], 'هنوز انتخاب نشده') },
       { label: 'آخرین ویرایش', value: productDetail ? formatJalaliDate(productDetail.updatedAt ?? productDetail.createdAt, true) : 'هنوز ثبت نشده' },
-      { label: 'وضعیت انتشار', value: productForm.publicationStatus || 'DRAFT' },
+      { label: 'وضعیت انتشار', value: getPublicationStatusLabel(productForm.publicationStatus) },
       { label: 'قابلیت خرید', value: productForm.isPurchasable ? 'قابل خرید' : 'غیرقابل خرید' },
     ],
     [categories, productDetail, productForm.categoryId, productForm.isPurchasable, productForm.productTypeId, productForm.publicationStatus, productForm.storeId, productTypes, stores, workspaceMode],
@@ -318,10 +352,10 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
 
   const workspaceSignals = useMemo(
     () => [
-      { label: 'تصویرها', value: formatPersianNumber((productForm.mainImage.trim() ? 1 : 0) + galleryImages.length), hint: 'تصویر اصلی و گالری' },
-      { label: 'قیمت نهایی', value: productForm.discountPrice ? formatCurrency(productForm.discountPrice) : productForm.price ? formatCurrency(productForm.price) : 'ثبت نشده', hint: 'مبنای نمایش فعلی' },
-      { label: 'المان‌های آماده', value: formatPersianNumber(elements.length), hint: 'برای composition بعدی' },
-      { label: 'حجم توضیح', value: formatPersianNumber(productForm.description.replace(/<[^>]*>/g, ' ').trim().length), hint: 'تقریبی از محتوای بدنه' },
+      { label: 'تصویرها', value: formatPersianNumber((productForm.mainImage.trim() ? 1 : 0) + galleryImages.length) },
+      { label: 'قیمت نهایی', value: productForm.discountPrice ? formatCurrency(productForm.discountPrice) : productForm.price ? formatCurrency(productForm.price) : 'ثبت نشده' },
+      { label: 'المان‌ها', value: formatPersianNumber(elements.length) },
+      { label: 'حجم توضیح', value: formatPersianNumber(productForm.description.replace(/<[^>]*>/g, ' ').trim().length) },
     ],
     [elements.length, galleryImages.length, productForm.description, productForm.discountPrice, productForm.mainImage, productForm.price],
   )
@@ -334,15 +368,6 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
       { label: 'خلاصه کوتاه', value: productForm.shortDescription.trim() ? 'ثبت شده' : 'نیازمند تکمیل' },
     ],
     [productForm.metaDescription, productForm.metaTitle, productForm.shortDescription, productForm.slug],
-  )
-
-  const operationalNotes = useMemo(
-    () => [
-      `این محصول از نظر محتوا ${contentReadiness} است و باید قبل از انتشار، متن و رسانه‌اش یکدست بماند.`,
-      `آمادگی سئو فعلاً ${seoReadiness} است؛ قبل از نهایی‌سازی، عنوان متا و توضیح متا را بازبینی کن.`,
-      productForm.quantity ? `موجودی فعلی ${formatPersianNumber(productForm.quantity)} عدد است و باید با قیمت ثبت‌شده هم‌خوان بماند.` : 'موجودی هنوز مشخص نشده و برای تصمیم‌گیری عملیاتی باید کامل شود.',
-    ],
-    [contentReadiness, productForm.quantity, seoReadiness],
   )
 
   const previewTitle = productForm.metaTitle.trim() || productForm.name.trim() || 'عنوان محصول'
@@ -889,7 +914,7 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
           ))}
         </div>
 
-        <SectionCard eyebrow="برداشت سریع" title="خلاصه تصمیم‌محور میزکار" description="قبل از ورود به فرم‌های عمیق، همین‌جا باید بدانی این محصول از نظر محتوا، سئو و عملیات در چه وضعیتی است.">
+        <SectionCard eyebrow="خلاصه" title="وضعیت محصول">
           <div className="content-workspace-signal-grid product-workspace-signal-grid">
             <article className="content-workspace-signal-item">
               <span>آمادگی محتوایی</span>
@@ -906,21 +931,13 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
               </article>
             ))}
           </div>
-          <div className="product-workspace-note-list">
-            {operationalNotes.map((note) => (
-              <article className="product-workspace-note-item" key={note}>
-                <strong>یادداشت اجرایی</strong>
-                <p>{note}</p>
-              </article>
-            ))}
-          </div>
         </SectionCard>
 
-        <SectionCard eyebrow="وضعیت اجرایی" title="بازبینی ادمین و availability" description="این بخش حالا به workflow واقعی backend وصل است و انتشار یا خریدپذیری محصول را بدون حذف فیزیکی کنترل می‌کند.">
+        <SectionCard eyebrow="عملیات" title="انتشار و خرید">
           <div className="content-workspace-checklist-grid product-workspace-checklist-grid">
             <article className="content-workspace-check-item">
               <span>وضعیت انتشار</span>
-              <strong>{productForm.publicationStatus || 'DRAFT'}</strong>
+              <strong>{getPublicationStatusLabel(productForm.publicationStatus)}</strong>
             </article>
             <article className="content-workspace-check-item">
               <span>قابل خرید</span>
@@ -948,20 +965,10 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
               </button>
             ) : null}
           </div>
-          <div className="product-workspace-note-list">
-            <article className="product-workspace-note-item">
-              <strong>workflow تایید محصول</strong>
-              <p>محصول فروشنده حالا می‌تواند در صف بازبینی بماند، برای اصلاح برگردد، تایید شود و بعد توسط ادمین منتشر شود.</p>
-            </article>
-            <article className="product-workspace-note-item">
-              <strong>حذف نکردن محصول</strong>
-              <p>برای حفظ جایگاه سئو، رفتار اصلی این route حذف فیزیکی نیست؛ محصول می‌تواند غیرقابل‌خرید یا آرشیو شود و بعداً دوباره برگردد.</p>
-            </article>
-          </div>
         </SectionCard>
 
         <div className="content-workspace-stack product-workspace-stack">
-          <SectionCard eyebrow="اطلاعات پایه" title="هسته محصول" description="نام، اسلاگ، خلاصه و قیمت‌ها را اینجا کامل کن تا هویت محصول روشن شود.">
+          <SectionCard eyebrow="اطلاعات پایه" title="هسته محصول">
             <div className="content-editor-grid">
               <label className="content-select-field">
                 <span>نام محصول</span>
@@ -1019,7 +1026,7 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
             </div>
           </SectionCard>
 
-          <SectionCard eyebrow="مالکیت و دسته‌بندی" title="فروشگاه، دسته و نوع محصول" description="این بخش مسیر ناوبری، مالکیت و تفسیر محتوایی محصول را مشخص می‌کند.">
+          <SectionCard eyebrow="تاکسونومی" title="فروشگاه و نوع">
             <div className="content-editor-grid">
               <label className="content-select-field">
                 <span>فروشگاه</span>
@@ -1060,7 +1067,6 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
           <SectionCard
             eyebrow="رسانه‌ها"
             title="تصویر و ویدیو"
-            description="این بخش کمک می‌کند تیم محتوا سریع ببیند محصول از نظر رسانه آماده است یا نه."
             actions={
               <button className={`content-accordion-trigger${openSections.media ? ' is-open' : ''}`} onClick={() => toggleSection('media')} type="button">
                 {openSections.media ? 'بستن رسانه‌ها' : 'باز کردن رسانه‌ها'}
@@ -1083,7 +1089,6 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
                         onChange={(event) => void handleMainImageChoose(event.target.files)}
                         type="file"
                       />
-                      <span className="admin-products-upload-hint">لینک مستقیم تصویر پنهان شده تا UI شلوغ نشود؛ بعد از انتخاب فایل، آدرس نهایی خودکار ثبت می‌شود.</span>
                     </div>
 
                     {productForm.mainImage ? (
@@ -1119,7 +1124,6 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
                         onChange={(event) => void handleGalleryChoose(event.target.files)}
                         type="file"
                       />
-                      <span className="admin-products-upload-hint">برای هر تصویر گالری هم ALT لازم است؛ فعلاً هر خط ALT متناظر با همان تصویر در همان ترتیب ذخیره می‌شود.</span>
                     </div>
 
                     {galleryImages.length ? (
@@ -1165,14 +1169,13 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
                 </label>
               </div>
             ) : (
-              <p className="content-collapsed-note">برای جلوگیری از طول زیاد صفحه، رسانه‌ها در این بخش collapsible نگه داشته می‌شوند.</p>
+              <p className="content-collapsed-note">رسانه‌ها بسته هستند.</p>
             )}
           </SectionCard>
 
           <SectionCard
-            eyebrow="سئو و پیش‌نمایش"
-            title="metadata، snippet و readiness"
-            description="این بخش مخصوص تیم سئو است تا بدون شلوغ شدن route، آماده‌بودن خروجی جستجو را ببیند."
+            eyebrow="سئو"
+            title="metadata و preview"
             actions={
               <button className={`content-accordion-trigger${openSections.seo ? ' is-open' : ''}`} onClick={() => toggleSection('seo')} type="button">
                 {openSections.seo ? 'بستن تنظیمات سئو' : 'باز کردن تنظیمات سئو'}
@@ -1191,7 +1194,7 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
                 </label>
               </div>
             ) : (
-              <p className="content-collapsed-note">تنظیمات سئو در این بخش جمع می‌شوند تا تمرکز روی هسته محصول حفظ شود.</p>
+              <p className="content-collapsed-note">تنظیمات سئو بسته هستند.</p>
             )}
 
             <div className="content-workspace-checklist-grid product-workspace-checklist-grid">
@@ -1212,7 +1215,7 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
               <article className="content-preview-card">
                 <span>سیگنال سئو</span>
                 <strong>{seoReadiness}</strong>
-                <p>اسلاگ، عنوان متا و توضیح متا معیارهای اولیه این نمای readiness هستند.</p>
+                <p>{seoReadiness}</p>
               </article>
               <article className="content-preview-card">
                 <span>پیش‌نمایش محصول</span>
@@ -1223,9 +1226,8 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
           </SectionCard>
 
           <SectionCard
-            eyebrow="سیگنال‌ها و بازبینی"
-            title="نمای کوتاه برای تیم محتوا و سئو"
-            description="این بخش فقط برای decision support است و قرار نیست جای فرم اصلی را بگیرد."
+            eyebrow="سیگنال‌ها"
+            title="بازبینی سریع"
             actions={
               <button className={`content-accordion-trigger${openSections.signals ? ' is-open' : ''}`} onClick={() => toggleSection('signals')} type="button">
                 {openSections.signals ? 'بستن سیگنال‌ها' : 'باز کردن سیگنال‌ها'}
@@ -1256,14 +1258,13 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
                 </article>
               </div>
             ) : (
-              <p className="content-collapsed-note">signalهای کوتاه برای بازبینی سریع در این بخش فشرده نگه داشته می‌شوند.</p>
+              <p className="content-collapsed-note">سیگنال‌ها بسته هستند.</p>
             )}
           </SectionCard>
 
           <SectionCard
             eyebrow="ترکیب محصول"
-            title="elementها و composition"
-            description="در این نسخه، visibility این بخش اضافه شده تا type و elementهای مجاز برای توسعه بعدی روشن بمانند."
+            title="اجزای محصول"
             actions={
               <button className={`content-accordion-trigger${openSections.composition ? ' is-open' : ''}`} onClick={() => toggleSection('composition')} type="button">
                 {openSections.composition ? 'بستن composition' : 'باز کردن composition'}
@@ -1310,7 +1311,7 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
                           >
                             {elements.map((entry) => (
                               <option key={readText(entry, ['id'], '')} value={readText(entry, ['id'], '')}>
-                                {`${readText(entry, ['name'], 'المان')} · ${readText(entry, ['type'], '—')}`}
+                                {`${readText(entry, ['name'], 'المان')} · ${getProductElementTypeLabel(readText(entry, ['type'], ''))}`}
                               </option>
                             ))}
                           </select>
@@ -1324,7 +1325,7 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
                           <select className="fm-input" onChange={(event) => updateCompositionRow(index, { elementType: event.target.value })} value={item.elementType}>
                             {['FLOWER', 'FILLER', 'BASE', 'ACCESSORY'].map((type) => (
                               <option key={type} value={type}>
-                                {type}
+                                {getProductElementTypeLabel(type)}
                               </option>
                             ))}
                           </select>
@@ -1341,28 +1342,15 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
                 <div className="content-mini-checklist">
                   {elements.slice(0, 8).map((item) => (
                     <article className="content-mini-checklist-item" key={readText(item, ['id'], '')}>
-                      <span>{readText(item, ['type'], 'المان')}</span>
+                      <span>{getProductElementTypeLabel(readText(item, ['type'], ''))}</span>
                       <strong>{readText(item, ['name'], 'بدون نام')}</strong>
                     </article>
                   ))}
                 </div>
               </>
             ) : (
-              <p className="content-collapsed-note">composition در این فاز بیشتر برای visibility و آمادگی توسعه بعدی نگه داشته شده است.</p>
+              <p className="content-collapsed-note">اجزای محصول بسته هستند.</p>
             )}
-          </SectionCard>
-
-          <SectionCard eyebrow="راهنمای کار" title="قاعده این workspace" description="این صفحه برای ویرایش متمرکز ساخته شده است؛ summary کوتاه می‌دهد اما فرم اصلی را از دید کاربر پنهان نمی‌کند.">
-            <div className="product-workspace-note-list">
-              <article className="product-workspace-note-item">
-                <strong>ترتیب پیشنهادی</strong>
-                <p>اول هویت محصول و قیمت را کامل کن، بعد رسانه‌ها را ببند، و در آخر metadata و preview جستجو را بازبینی کن.</p>
-              </article>
-              <article className="product-workspace-note-item">
-                <strong>قاعده انتشار</strong>
-                <p>اگر خلاصه، توضیح، تصویر اصلی و metadata ناقص باشد، این محصول هنوز برای بازبینی نهایی و تصمیم محتوایی آماده نیست.</p>
-              </article>
-            </div>
           </SectionCard>
         </div>
       </LoadableState>

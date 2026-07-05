@@ -63,6 +63,21 @@ function toOptionalText(value: string) {
   return normalized.length > 0 ? normalized : undefined
 }
 
+function getProductElementTypeLabel(type: string) {
+  switch (type) {
+    case 'FLOWER':
+      return 'گل'
+    case 'FILLER':
+      return 'پرکننده'
+    case 'BASE':
+      return 'بیس'
+    case 'ACCESSORY':
+      return 'اکسسوری'
+    default:
+      return type || 'نامشخص'
+  }
+}
+
 export function ProductTypeWorkspacePage({ session, onBack }: ProductTypeWorkspacePageProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -232,45 +247,43 @@ export function ProductTypeWorkspacePage({ session, onBack }: ProductTypeWorkspa
         />
 
         <SectionCard
-          eyebrow="catalog product types"
-          title="مدیریت نوع محصول"
-          description="ساخت و ویرایش product typeها به همراه تصویر، SEO و المان‌های مجاز هر نوع محصول."
+          eyebrow="نوع کالا"
+          title="نوع محصول"
           actions={
             <div className="page-builder-workspace__actions">
               <button className="fm-button fm-button--ghost" onClick={onBack} type="button">
                 بازگشت
               </button>
               <button className="fm-button fm-button--secondary" onClick={() => { setSelectedProductTypeId('new'); setForm(createEmptyProductTypeForm()) }} type="button">
-                نوع محصول جدید
+                نوع جدید
               </button>
               {selectedProductTypeId !== 'new' ? (
                 <button className="fm-button fm-button--secondary" disabled={submitting} onClick={() => void handleDelete()} type="button">
-                  حذف نوع محصول
+                  حذف نوع
                 </button>
               ) : null}
               <button className="fm-button fm-button--primary" disabled={submitting} onClick={() => void handleSubmit()} type="button">
-                {submitting ? 'در حال ذخیره...' : selectedProductTypeId === 'new' ? 'ساخت نوع محصول' : 'ذخیره تغییرات'}
+                {submitting ? 'در حال ذخیره...' : selectedProductTypeId === 'new' ? 'ساخت نوع' : 'ذخیره تغییرات'}
               </button>
             </div>
           }
         >
           <div className="page-builder-workspace__pills">
-            <Pill>{selectedProductTypeId === 'new' ? 'نوع محصول جدید' : `شناسه ${selectedProductTypeId}`}</Pill>
-            <Pill>{`${productTypes.length} نوع محصول`}</Pill>
+            <Pill>{selectedProductTypeId === 'new' ? 'نوع جدید' : `#${selectedProductTypeId}`}</Pill>
+            <Pill>{`${productTypes.length} نوع`}</Pill>
             <Pill>{`${form.allowedElementIds.length} المان مجاز`}</Pill>
           </div>
         </SectionCard>
 
         <SectionCard
-          eyebrow="product type manager"
-          title="فرم نوع محصول"
-          description="همین‌جا نام، اسلاگ، تصویر، توضیحات و المان‌های مجاز را تعیین کن."
+          eyebrow="ویرایش"
+          title="اطلاعات نوع"
         >
           <div className="fm-grid page-builder-form-grid">
             <label className="fm-field page-builder-field--wide">
-              <span>انتخاب نوع محصول برای ویرایش</span>
+              <span>انتخاب نوع</span>
               <select onChange={(event) => setSelectedProductTypeId(event.target.value)} value={selectedProductTypeId}>
-                <option value="new">نوع محصول جدید</option>
+                <option value="new">نوع جدید</option>
                 {productTypes.map((productType) => {
                   const id = readText(productType, ['id'], '')
                   const name = readText(productType, ['name'], 'بدون نام')
@@ -284,7 +297,7 @@ export function ProductTypeWorkspacePage({ session, onBack }: ProductTypeWorkspa
             </label>
 
             <label className="fm-field">
-              <span>نام نوع محصول</span>
+              <span>نام نوع</span>
               <input onChange={(event) => updateForm('name', event.target.value)} type="text" value={form.name} />
             </label>
             <label className="fm-field">
@@ -297,13 +310,13 @@ export function ProductTypeWorkspacePage({ session, onBack }: ProductTypeWorkspa
             </label>
 
             <label className="fm-field page-builder-field--wide">
-              <span>تصویر نوع محصول</span>
+              <span>تصویر نوع</span>
               <input onChange={(event) => updateForm('image', event.target.value)} type="text" value={form.image} />
             </label>
             <div className="admin-products-upload-card page-builder-field--wide">
               <div className="admin-products-upload-actions">
                 <button className="content-secondary-action" disabled={uploadingImage} onClick={() => imageInputRef.current?.click()} type="button">
-                  {uploadingImage ? 'در حال آپلود...' : 'آپلود تصویر نوع محصول'}
+                  {uploadingImage ? 'در حال آپلود...' : 'آپلود تصویر'}
                 </button>
               </div>
               {form.image.trim() ? (
@@ -352,15 +365,14 @@ export function ProductTypeWorkspacePage({ session, onBack }: ProductTypeWorkspa
                 {elements.map((element) => {
                   const id = readText(element, ['id'], '')
                   const name = readText(element, ['name'], 'بدون نام')
-                  const type = readText(element, ['type'], '—')
+                  const type = getProductElementTypeLabel(readText(element, ['type'], ''))
                   return (
                     <option key={id} value={id}>
-                      {`${name} / ${type}`}
+                      {`${name} · ${type}`}
                     </option>
                   )
                 })}
               </select>
-              <small>برای انتخاب چند المان، `Ctrl/Cmd` را نگه دار.</small>
             </label>
 
             {selectedElementNames.length ? (

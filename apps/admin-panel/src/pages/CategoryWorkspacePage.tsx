@@ -246,9 +246,8 @@ export function CategoryWorkspacePage({ session, onBack }: CategoryWorkspacePage
         />
 
         <SectionCard
-          eyebrow="catalog taxonomy"
-          title="مدیریت دسته‌بندی محصولات"
-          description="ساخت، ویرایش و سازمان‌دهی دسته‌بندی‌های مادر و فرزند محصولات با دید درختی، تصویر و SEO هر دسته."
+          eyebrow="تاکسونومی"
+          title="دسته‌بندی‌ها"
           actions={
             <div className="page-builder-workspace__actions">
               <button className="fm-button fm-button--ghost" onClick={onBack} type="button">
@@ -276,7 +275,7 @@ export function CategoryWorkspacePage({ session, onBack }: CategoryWorkspacePage
           }
         >
           <div className="page-builder-workspace__pills">
-            <Pill>{selectedCategoryId === 'new' ? 'دسته جدید' : `شناسه ${selectedCategoryId}`}</Pill>
+            <Pill>{selectedCategoryId === 'new' ? 'دسته جدید' : `#${selectedCategoryId}`}</Pill>
             <Pill>{`${categoryOptions.length} دسته / زیر‌دسته`}</Pill>
             <Pill>{selectedCategory ? getCategoryDepthLabel(selectedCategory.depth) : 'آماده ساخت'}</Pill>
           </div>
@@ -284,9 +283,8 @@ export function CategoryWorkspacePage({ session, onBack }: CategoryWorkspacePage
 
         <div className="category-workspace-layout">
           <SectionCard
-            eyebrow="tree navigator"
-            title="ساختار درختی دسته‌بندی‌ها"
-            description="ابتدا یک دسته را از درخت انتخاب کن یا دسته جدید بساز. عمق، والد و تعداد فرزندها همین‌جا مشخص است."
+            eyebrow="درخت"
+            title="ساختار دسته‌ها"
           >
             <div className="category-workspace-tree">
               <button
@@ -299,7 +297,7 @@ export function CategoryWorkspacePage({ session, onBack }: CategoryWorkspacePage
               >
                 <span className="category-tree-card__content">
                   <strong className="category-tree-card__title">+ ساخت دسته جدید</strong>
-                  <span className="category-tree-card__meta">یک node جدید در taxonomy بساز</span>
+                  <span className="category-tree-card__meta">دسته تازه</span>
                 </span>
               </button>
 
@@ -336,9 +334,8 @@ export function CategoryWorkspacePage({ session, onBack }: CategoryWorkspacePage
           </SectionCard>
 
           <SectionCard
-            eyebrow="category manager"
-            title="فرم دسته‌بندی"
-            description="همین‌جا دسته مادر، توضیح، تصویر و SEO دسته را تنظیم کن."
+            eyebrow="ویرایش"
+            title="اطلاعات دسته"
           >
             <div className="fm-grid page-builder-form-grid">
               <label className="fm-field page-builder-field--wide">
@@ -365,7 +362,7 @@ export function CategoryWorkspacePage({ session, onBack }: CategoryWorkspacePage
                 </div>
                 <div>
                   <strong>{form.parentId ? 'دارای والد' : 'دسته ریشه'}</strong>
-                  <span>{form.parentId ? 'در حال اتصال به دسته بالادست' : 'در بالاترین سطح taxonomy'}</span>
+                  <span>{form.parentId ? 'زیرمجموعه' : 'سطح اصلی'}</span>
                 </div>
                 <div>
                   <strong>{form.isCampaign ? 'کمپینی' : 'استاندارد'}</strong>
@@ -414,7 +411,6 @@ export function CategoryWorkspacePage({ session, onBack }: CategoryWorkspacePage
                   <button className="content-secondary-action" disabled={uploadingImage} onClick={() => imageInputRef.current?.click()} type="button">
                     {uploadingImage ? 'در حال آپلود...' : 'آپلود تصویر دسته'}
                   </button>
-                  <span className="admin-products-upload-hint">تصویر از همان سرویس upload سراسری استفاده می‌کند.</span>
                 </div>
                 {form.image.trim() ? (
                   <div className="admin-products-image-preview">

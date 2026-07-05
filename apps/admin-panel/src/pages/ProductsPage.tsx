@@ -1,4 +1,4 @@
-import { DataTable, Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
+import { Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
 import { useEffect, useMemo, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { useNoticeEffect } from '../components/NoticeCenter'
@@ -33,17 +33,41 @@ type ProductsPageProps = {
 type ProductRecord = Record<string, unknown>
 type ProductElementRecord = Record<string, unknown>
 
-const productColumns = [
-  { key: 'name', label: 'محصول' },
-  { key: 'store', label: 'فروشنده' },
-  { key: 'catalog', label: 'دسته و نوع' },
-  { key: 'pricing', label: 'قیمت و موجودی' },
-  { key: 'status', label: 'وضعیت اجرایی' },
-  { key: 'readiness', label: 'آمادگی' },
-  { key: 'updatedAt', label: 'آخرین ویرایش' },
-]
-
 const selectionPageSize = 8
+
+function getProductElementTypeLabel(type: string) {
+  switch (type) {
+    case 'FLOWER':
+      return 'گل'
+    case 'FILLER':
+      return 'پرکننده'
+    case 'BASE':
+      return 'بیس'
+    case 'ACCESSORY':
+      return 'اکسسوری'
+    default:
+      return type || 'نامشخص'
+  }
+}
+
+function getPublicationStatusLabel(status: string) {
+  switch (status) {
+    case 'DRAFT':
+      return 'پیش‌نویس'
+    case 'SUBMITTED':
+      return 'در بازبینی'
+    case 'CHANGES_REQUESTED':
+      return 'نیازمند اصلاح'
+    case 'APPROVED':
+      return 'تایید شده'
+    case 'PUBLISHED':
+      return 'منتشرشده'
+    case 'REJECTED':
+      return 'رد شده'
+    default:
+      return status || 'نامشخص'
+  }
+}
 
 export function ProductsPage({ session, onCreateProduct, onEditProduct, onOpenCategoryWorkspace, onOpenProductTypeWorkspace }: ProductsPageProps) {
   const [loading, setLoading] = useState(true)
@@ -172,54 +196,35 @@ export function ProductsPage({ session, onCreateProduct, onEditProduct, onOpenCa
   const stats = useMemo(
     () => [
       {
-        label: 'کل محصول‌ها',
+        label: 'کل',
         value: formatPersianNumber(products.length),
-        delta: `${formatPersianNumber(filteredProducts.length)} در نمای فعلی`,
-        detail: 'کارتابل اصلی برای تیم محتوا و سئو',
-        hint: 'این عدد نشان می‌دهد چند محصول در کل وجود دارد و چند مورد با فیلترهای فعلی دیده می‌شوند.',
+        delta: `${formatPersianNumber(filteredProducts.length)} در فیلتر`,
+        detail: '',
         tone: 'primary' as const,
       },
       {
-        label: 'محصول آماده سئو',
+        label: 'سئو آماده',
         value: formatPersianNumber(products.filter((item) => getProductSeoReadinessLabel(item) === 'آماده').length),
-        delta: 'آماده برای بهینه سازی',
-        detail: 'محصول‌هایی که عنوان، توضیح متا و اسلاگ‌شان کامل‌تر است',
-        hint: 'محصولی که metadata پایه‌اش تکمیل باشد راحت‌تر وارد مرحله بازبینی و انتشار می‌شود.',
+        delta: 'metadata کامل',
+        detail: '',
         tone: 'success' as const,
       },
       {
-        label: 'کم موجودی / ناموجود',
+        label: 'موجودی کم',
         value: formatPersianNumber(products.filter((item) => getProductQuantity(item) < 5).length),
         delta: 'نیازمند توجه',
-        detail: 'ترکیب وضعیت موجودی برای تصمیم‌های سریع‌تر',
-        hint: 'این عدد کمک می‌کند تیم ادمین زودتر محصول‌های نیازمند رسیدگی یا بازنویسی را پیدا کند.',
+        detail: '',
         tone: 'warning' as const,
       },
       {
-        label: 'در صف بازبینی',
+        label: 'بازبینی',
         value: formatPersianNumber(products.filter((item) => readText(item, ['publicationStatus'], '') === 'SUBMITTED').length),
-        delta: 'نیازمند تصمیم ادمین',
-        detail: 'محصول‌هایی که فروشنده فرستاده و منتظر بررسی‌اند',
-        hint: 'این بخش همان queue واقعی برای triage محتوایی، سئو و تایید انتشار است.',
+        delta: 'منتظر تصمیم',
+        detail: '',
         tone: 'danger' as const,
       },
     ],
     [filteredProducts.length, products],
-  )
-
-  const rows = useMemo(
-    () =>
-      filteredProducts.slice(0, 20).map((item, index) => ({
-        id: readText(item, ['id'], String(index + 1)),
-        name: getProductName(item),
-        store: getProductStore(item),
-        catalog: `${getProductCategory(item)} / ${getProductType(item)}`,
-        pricing: `${formatCurrency(getProductPrice(item))} · ${formatPersianNumber(getProductQuantity(item))} عدد`,
-        readiness: `${getContentReadinessLabel(item)} · ${getProductSeoReadinessLabel(item)}`,
-        status: getProductStatusLabel(item),
-        updatedAt: formatJalaliDate(item.updatedAt ?? item.createdAt, true),
-      })),
-    [filteredProducts],
   )
 
   const paginatedSelection = useMemo(
@@ -234,7 +239,7 @@ export function ProductsPage({ session, onCreateProduct, onEditProduct, onOpenCa
         { label: 'وضعیت موجودی', value: getProductStatusLabel(selectedProduct) },
         { label: 'آمادگی محتوایی', value: getContentReadinessLabel(selectedProduct) },
         { label: 'آمادگی سئو', value: getProductSeoReadinessLabel(selectedProduct) },
-        { label: 'وضعیت انتشار', value: readText(selectedProduct, ['publicationStatus'], 'DRAFT') },
+        { label: 'انتشار', value: getPublicationStatusLabel(readText(selectedProduct, ['publicationStatus'], 'DRAFT')) },
         { label: 'قیمت فعلی', value: formatCurrency(getProductPrice(selectedProduct)) },
         {
           label: 'قیمت تخفیفی',
@@ -301,19 +306,18 @@ export function ProductsPage({ session, onCreateProduct, onEditProduct, onOpenCa
 
       <div className="products-toolbar">
         <SectionCard
-          eyebrow="کارتابل محصولات"
-          title="فهرست فشرده برای triage محتوایی، سئو و تعریف محصول"
-          description="این صفحه برای اسکن سریع محصول‌ها، تشخیص آمادگی و ورود به workspace کامل ساخت یا ویرایش محصول طراحی شده است."
+          eyebrow="محصولات"
+          title="کارتابل محصول"
           actions={
             <div className="products-header-actions">
               <button className="content-secondary-action" onClick={onOpenCategoryWorkspace} type="button">
-                مدیریت دسته‌بندی‌ها
+                دسته‌بندی
               </button>
               <button className="content-secondary-action" onClick={onOpenProductTypeWorkspace} type="button">
-                مدیریت نوع محصول
+                نوع کالا
               </button>
               <button className="content-secondary-action" onClick={onCreateProduct} type="button">
-                تعریف محصول جدید
+                محصول جدید
               </button>
             </div>
           }
@@ -322,7 +326,7 @@ export function ProductsPage({ session, onCreateProduct, onEditProduct, onOpenCa
             <input
               className="fm-input content-search"
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="جستجو در نام محصول، اسلاگ، فروشنده یا دسته بندی"
+              placeholder="جستجو محصول، اسلاگ، فروشنده"
               type="search"
               value={search}
             />
@@ -367,9 +371,8 @@ export function ProductsPage({ session, onCreateProduct, onEditProduct, onOpenCa
       </div>
 
       <SectionCard
-        eyebrow="المان‌های سراسری محصول"
-        title="تعریف گل، پرکننده، اکسسوری و بیس"
-        description="این بخش سراسری است و به یک محصول خاص وابسته نیست. هر موردی که اینجا بسازی، بعداً در composition همه محصولات قابل انتخاب می‌شود."
+        eyebrow="المان‌ها"
+        title="اجزای سراسری"
       >
         <div className="products-elements-layout product-workspace-page">
           <div className="products-elements-form">
@@ -385,10 +388,10 @@ export function ProductsPage({ session, onCreateProduct, onEditProduct, onOpenCa
             <label className="fm-field">
               <span>نوع</span>
               <select className="fm-input" onChange={(event) => setElementForm((current) => ({ ...current, type: event.target.value as typeof current.type }))} value={elementForm.type}>
-                <option value="FLOWER">FLOWER</option>
-                <option value="FILLER">FILLER</option>
-                <option value="ACCESSORY">ACCESSORY</option>
-                <option value="BASE">BASE</option>
+                <option value="FLOWER">گل</option>
+                <option value="FILLER">پرکننده</option>
+                <option value="ACCESSORY">اکسسوری</option>
+                <option value="BASE">بیس</option>
               </select>
             </label>
             <label className="fm-field">
@@ -411,7 +414,7 @@ export function ProductsPage({ session, onCreateProduct, onEditProduct, onOpenCa
             </label>
             <div className="products-header-actions">
               <button className="content-primary-action" disabled={savingElement} onClick={() => void handleCreateElement()} type="button">
-                {savingElement ? 'در حال ثبت...' : 'افزودن جزء جدید'}
+                {savingElement ? 'در حال ثبت...' : 'افزودن جزء'}
               </button>
             </div>
             {elementMessage ? <p className="products-muted-note">{elementMessage}</p> : null}
@@ -423,7 +426,7 @@ export function ProductsPage({ session, onCreateProduct, onEditProduct, onOpenCa
               elements.map((item) => (
                 <article className="products-element-item" key={readText(item, ['id'], '')}>
                   <strong>{readText(item, ['name'], 'جزء بدون نام')}</strong>
-                  <span>{`${readText(item, ['type'], '—')} · ${readText(item, ['unit'], 'واحد نامشخص')}`}</span>
+                  <span>{`${getProductElementTypeLabel(readText(item, ['type'], ''))} · ${readText(item, ['unit'], 'واحد نامشخص')}`}</span>
                   <div className="products-header-actions">
                     <button className="content-secondary-action" disabled={savingElement} onClick={() => void handleRemoveElement(readText(item, ['id'], ''))} type="button">
                       حذف
@@ -439,14 +442,8 @@ export function ProductsPage({ session, onCreateProduct, onEditProduct, onOpenCa
       </SectionCard>
 
       <div className="products-layout">
-        <div className="products-table-card">
-          <SectionCard eyebrow="نمای جدولی" title="کارتابل خلاصه محصول‌ها" description="جدول برای scan سریع و مقایسه استفاده می‌شود؛ ویرایش کامل داخل workspace جدا انجام می‌شود.">
-            <DataTable columns={productColumns} rows={rows} />
-          </SectionCard>
-        </div>
-
         <div className="products-lower-grid">
-          <SectionCard eyebrow="صف انتخاب" title="محصول‌های نمای فعلی" description="در این بخش محصول موردنظر را انتخاب کن تا summary کوتاه و actionهای سریع آن را ببینی.">
+          <SectionCard eyebrow="فهرست" title="محصول‌ها">
             <div className="products-selection-list">
               {paginatedSelection.map((item) => {
                 const slug = readText(item, ['slug'], '')
@@ -457,11 +454,16 @@ export function ProductsPage({ session, onCreateProduct, onEditProduct, onOpenCa
                     className={`products-selection-item${active ? ' is-active' : ''}`}
                     onClick={() => setSelectedProductSlug(slug)}
                     type="button"
-                  >
-                    <strong>{getProductName(item)}</strong>
-                    <span>{getProductStore(item)}</span>
-                    <small>{`${getProductCategory(item)} / ${getProductType(item)}`}</small>
-                  </button>
+                    >
+                      <strong>{getProductName(item)}</strong>
+                      <span>{getProductStore(item)}</span>
+                      <small>{`${getProductCategory(item)} / ${getProductType(item)}`}</small>
+                      <div className="products-selection-meta">
+                        <Pill>{getPublicationStatusLabel(readText(item, ['publicationStatus'], 'DRAFT'))}</Pill>
+                        <Pill tone={getProductQuantity(item) > 0 ? 'success' : 'danger'}>{getProductStatusLabel(item)}</Pill>
+                        <Pill>{formatCurrency(getProductPrice(item))}</Pill>
+                      </div>
+                    </button>
                 )
               })}
             </div>
@@ -490,13 +492,12 @@ export function ProductsPage({ session, onCreateProduct, onEditProduct, onOpenCa
           </SectionCard>
 
           <SectionCard
-            eyebrow="ورود به workspace"
+            eyebrow="میزکار"
             title={selectedProduct ? `ادامه روی ${getProductName(selectedProduct)}` : 'هنوز محصولی انتخاب نشده'}
-            description="ورود به workspace باید کنار فهرست انتخاب بماند تا بعد از انتخاب، کاربر سریع وارد سطح focused ویرایش شود."
             actions={
               selectedProduct ? (
                 <button className="content-primary-action" onClick={() => onEditProduct(selectedProduct)} type="button">
-                  ورود به workspace محصول
+                  باز کردن میزکار
                 </button>
               ) : undefined
             }
@@ -517,34 +518,25 @@ export function ProductsPage({ session, onCreateProduct, onEditProduct, onOpenCa
         </div>
 
         <div className="products-detail-column">
-          <SectionCard eyebrow="تصمیم سریع" title="برداشت اجرایی از محصول" description="بدون بازکردن editor کامل هم باید بدانی این محصول الان بیشتر به چه نوع رسیدگی نیاز دارد.">
+          <SectionCard eyebrow="خلاصه" title="وضعیت انتخاب">
             {selectedProduct ? (
               <div className="products-brief-list">
                 <article className="products-brief-item">
-                  <strong>وضعیت کارتابل</strong>
-                  <p>{`این محصول برای ${getContentReadinessLabel(selectedProduct) === 'آماده' ? 'مرحله بازبینی و polish' : 'تکمیل محتوای اصلی'} مناسب‌تر است.`}</p>
+                  <strong>محتوا</strong>
+                  <p>{getContentReadinessLabel(selectedProduct)}</p>
                 </article>
                 <article className="products-brief-item">
-                  <strong>سیگنال سئو</strong>
-                  <p>{`آمادگی سئوی محصول در حال حاضر ${getProductSeoReadinessLabel(selectedProduct)} است و باید قبل از نهایی‌سازی بررسی شود.`}</p>
+                  <strong>سئو</strong>
+                  <p>{getProductSeoReadinessLabel(selectedProduct)}</p>
                 </article>
                 <article className="products-brief-item">
                   <strong>موجودی و قیمت</strong>
-                  <p>{`موجودی فعلی ${formatPersianNumber(getProductQuantity(selectedProduct))} عدد است و قیمت پایه ${formatCurrency(getProductPrice(selectedProduct))} ثبت شده.`}</p>
+                  <p>{`${formatPersianNumber(getProductQuantity(selectedProduct))} عدد · ${formatCurrency(getProductPrice(selectedProduct))}`}</p>
                 </article>
               </div>
             ) : (
               <p className="products-muted-note">این بخش بعد از انتخاب محصول، خلاصه تصمیم‌محور و کوتاه همان آیتم را نمایش می‌دهد.</p>
             )}
-          </SectionCard>
-
-          <SectionCard eyebrow="راهنمای UX" title="قاعده این route" description="صفحه اصلی سبک می‌ماند و فرم سنگین یا preview کامل را به workspace جدا می‌فرستد.">
-            <div className="access-control-capability-list compact-capability-list">
-              <Pill tone="success">تاریخ شمسی</Pill>
-              <Pill tone="warning">summary کوتاه</Pill>
-              <Pill>workspace جدا</Pill>
-              <Pill>hint فارسی</Pill>
-            </div>
           </SectionCard>
         </div>
       </div>
