@@ -334,7 +334,6 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
     let active = true
 
     async function loadWorkspace() {
-      setLoading(true)
       setError(null)
 
       try {
@@ -397,7 +396,9 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
         if (!active) return
         setError(loadError instanceof Error ? loadError.message : 'خطا در بارگذاری میزکار محتوا')
       } finally {
-        if (active) setLoading(false)
+        if (active) {
+          setLoading(false)
+        }
       }
     }
 

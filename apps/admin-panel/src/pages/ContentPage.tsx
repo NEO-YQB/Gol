@@ -410,16 +410,41 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
                       const articleId = readText(item, ['id'], '')
                       const isActive = selectedArticleId === articleId
                       return (
-                        <article className={`content-selection-item${isActive ? ' is-active' : ''}`} key={articleId} onClick={() => setSelectedArticleId(articleId)} role="button" tabIndex={0}>
-                          <strong>{getArticleTitle(item)}</strong>
-                          <span>{getArticleAuthor(item)}</span>
-                          <span>{getArticleCategory(item)}</span>
-                          <small>{readText(item, ['slug'], '—')}</small>
-                          <Pill tone={getArticleStatus(item) === 'PUBLISHED' ? 'success' : 'warning'}>
-                            {getArticleStatusLabel(item)}
-                          </Pill>
-                          <span>{formatJalaliDate(item.updatedAt, true)}</span>
-                          <button className="content-selection-edit" onClick={(event) => { event.stopPropagation(); onEditArticle(articleId) }} type="button">
+                        <article
+                          className={`content-selection-item${isActive ? ' is-active' : ''}`}
+                          key={articleId}
+                          onClick={() => setSelectedArticleId(articleId)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault()
+                              setSelectedArticleId(articleId)
+                            }
+                          }}
+                          role="button"
+                          tabIndex={0}
+                        >
+                          <div className="content-selection-main">
+                            <strong title={getArticleTitle(item)}>{getArticleTitle(item)}</strong>
+                            <span title={getArticleAuthor(item)}>{getArticleAuthor(item)}</span>
+                            <small title={getArticleCategory(item)}>{getArticleCategory(item)}</small>
+                          </div>
+
+                          <div className="content-selection-meta">
+                            <small title={readText(item, ['slug'], '—')}>{readText(item, ['slug'], '—')}</small>
+                            <Pill tone={getArticleStatus(item) === 'PUBLISHED' ? 'success' : 'warning'}>
+                              {getArticleStatusLabel(item)}
+                            </Pill>
+                            <span>{formatJalaliDate(item.updatedAt, true)}</span>
+                          </div>
+
+                          <button
+                            className="content-selection-edit"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              onEditArticle(articleId)
+                            }}
+                            type="button"
+                          >
                             ویرایش
                           </button>
                         </article>
