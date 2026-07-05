@@ -1,4 +1,4 @@
-import { DataTable, Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
+import { Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
 import { useEffect, useMemo, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { adminApi } from '../lib/api'
@@ -6,14 +6,6 @@ import { readText, toArray } from '../lib/normalize'
 import type { AuthSession } from '../lib/session'
 
 type RequestRecord = Record<string, unknown>
-
-const columns = [
-  { key: 'applicant', label: 'متقاضی' },
-  { key: 'business', label: 'کسب‌وکار' },
-  { key: 'applicationStatus', label: 'وضعیت درخواست' },
-  { key: 'productStatus', label: 'وضعیت محصول' },
-  { key: 'updatedAt', label: 'آخرین بروزرسانی' },
-]
 
 const statusFilters = ['ALL', 'DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'REJECTED'] as const
 
@@ -30,12 +22,13 @@ function formatJalaliDate(value: unknown) {
 
 function translateStatus(status: string) {
   switch (status) {
+    case 'ALL': return 'همه'
     case 'DRAFT': return 'پیش‌نویس'
     case 'SUBMITTED': return 'ارسال شده'
     case 'UNDER_REVIEW': return 'در بررسی'
     case 'APPROVED': return 'تایید شده'
     case 'REJECTED': return 'رد شده'
-    default: return status || 'نامشخص'
+    default: return status && status !== 'UNKNOWN' ? status : 'نامشخص'
   }
 }
 
@@ -51,6 +44,10 @@ function resolveApplicantName(item: RequestRecord) {
     readText(item, ['personalFullName'], '') ||
     readText(item, ['user', 'fullName'], readText(item, ['user', 'phoneNumber'], '—'))
   )
+}
+
+function resolveBusinessName(item: RequestRecord) {
+  return readText(item, ['businessName'], readText(item, ['businessSlug'], 'فروشگاه بدون نام'))
 }
 
 export function VendorOnboardingPage({
@@ -107,30 +104,18 @@ export function VendorOnboardingPage({
     }
   }, [page, session, statusFilter])
 
-  const rows = useMemo(
-    () => items.map((item, index) => ({
-      id: readText(item, ['id'], String(index + 1)),
-      applicant: resolveApplicantName(item),
-      business: readText(item, ['businessName', 'businessSlug'], '—'),
-      applicationStatus: translateStatus(readText(item, ['applicationStatus'], '')),
-      productStatus: translateStatus(readText(item, ['productStatus'], '')),
-      updatedAt: formatJalaliDate(item.updatedAt),
-    })),
-    [items],
-  )
-
   const stats = useMemo(() => {
     const submitted = items.filter((item) => readText(item, ['applicationStatus'], '') === 'SUBMITTED').length
     const underReview = items.filter((item) => readText(item, ['applicationStatus'], '') === 'UNDER_REVIEW').length
     const approved = items.filter((item) => readText(item, ['applicationStatus'], '') === 'APPROVED').length
     const rejected = items.filter((item) => readText(item, ['applicationStatus'], '') === 'REJECTED').length
     return [
-      { label: 'کل درخواست‌ها', value: new Intl.NumberFormat('fa-IR').format(items.length), delta: 'در فیلتر فعلی', detail: 'تعداد درخواست‌های بارگذاری‌شده', tone: 'primary' as const },
-      { label: 'ارسال‌شده', value: new Intl.NumberFormat('fa-IR').format(submitted), delta: 'منتظر شروع بررسی', detail: 'درخواست‌هایی که تازه ارسال شده‌اند', tone: 'warning' as const },
-      { label: 'در بررسی', value: new Intl.NumberFormat('fa-IR').format(underReview), delta: 'نیازمند تصمیم', detail: 'درخواست‌های روی میز بررسی', tone: 'warning' as const },
-      { label: 'نهایی‌شده', value: new Intl.NumberFormat('fa-IR').format(approved + rejected), delta: `${new Intl.NumberFormat('fa-IR').format(approved)} تایید / ${new Intl.NumberFormat('fa-IR').format(rejected)} رد`, detail: 'خروجی نهایی تصمیم‌ها', tone: 'success' as const },
+      { label: 'کل', value: new Intl.NumberFormat('fa-IR').format(items.length), delta: translateStatus(statusFilter), detail: '', tone: 'primary' as const },
+      { label: 'ارسالی', value: new Intl.NumberFormat('fa-IR').format(submitted), delta: 'منتظر بررسی', detail: '', tone: 'warning' as const },
+      { label: 'در بررسی', value: new Intl.NumberFormat('fa-IR').format(underReview), delta: 'روی میز', detail: '', tone: 'warning' as const },
+      { label: 'نهایی', value: new Intl.NumberFormat('fa-IR').format(approved + rejected), delta: `${new Intl.NumberFormat('fa-IR').format(approved)} تایید / ${new Intl.NumberFormat('fa-IR').format(rejected)} رد`, detail: '', tone: 'success' as const },
     ]
-  }, [items])
+  }, [items, statusFilter])
 
   const selected = useMemo(
     () => items.find((item) => readText(item, ['id'], '') === selectedRequestId) ?? null,
@@ -146,9 +131,8 @@ export function VendorOnboardingPage({
       </LoadableState>
 
       <SectionCard
-        eyebrow="درخواست‌های فروشندگی"
-        title="فروشنده‌های جدید و مدارک در انتظار بررسی"
-        description="از اینجا می‌توانی درخواست‌ها را غربال کنی، مدارک را ببینی و وارد workspace تصمیم‌گیری شوی."
+        eyebrow="درخواست‌ها"
+        title="فروشندگی"
       >
         <div className="vendor-orders-filters vendor-orders-filters--styled">
           {statusFilters.map((status) => (
@@ -161,7 +145,7 @@ export function VendorOnboardingPage({
               }}
               type="button"
             >
-              {status === 'ALL' ? 'همه' : translateStatus(status)}
+              {translateStatus(status)}
             </button>
           ))}
         </div>
@@ -169,7 +153,6 @@ export function VendorOnboardingPage({
         <div className="vendor-orders-layout">
           <SectionCard
             title="فهرست درخواست‌ها"
-            description="برای شروع بررسی، یک درخواست را انتخاب کن."
           >
             <div className="vendors-selection-list">
               {items.length ? (
@@ -183,9 +166,13 @@ export function VendorOnboardingPage({
                       onClick={() => setSelectedRequestId(itemId)}
                       type="button"
                     >
-                      <strong>{readText(item, ['businessName'], 'فروشگاه بدون نام')}</strong>
+                      <strong>{resolveBusinessName(item)}</strong>
                       <span>{resolveApplicantName(item)}</span>
-                      <small>{`${translateStatus(readText(item, ['applicationStatus'], ''))} / ${translateStatus(readText(item, ['productStatus'], ''))}`}</small>
+                      <small>{formatJalaliDate(item.updatedAt)}</small>
+                      <div className="vendor-onboarding-mini-pills">
+                        <Pill tone={statusTone(readText(item, ['applicationStatus'], ''))}>{translateStatus(readText(item, ['applicationStatus'], ''))}</Pill>
+                        <Pill tone={statusTone(readText(item, ['productStatus'], ''))}>{translateStatus(readText(item, ['productStatus'], ''))}</Pill>
+                      </div>
                     </button>
                   )
                 })
@@ -193,7 +180,6 @@ export function VendorOnboardingPage({
                 <div className="vendor-note-card">درخواستی برای این فیلتر پیدا نشد.</div>
               )}
             </div>
-            <DataTable columns={columns} rows={rows} />
             <div className="vendor-onboarding-admin-pagination">
               <button className="fm-button fm-button--ghost" disabled={page <= 1} onClick={() => setPage((current) => current - 1)} type="button">صفحه قبل</button>
               <span>صفحه {new Intl.NumberFormat('fa-IR').format(page)} از {new Intl.NumberFormat('fa-IR').format(lastPage)}</span>
@@ -202,17 +188,17 @@ export function VendorOnboardingPage({
           </SectionCard>
 
           <SectionCard
-            title="خلاصه درخواست انتخاب‌شده"
-            description="برای دیدن مدارک و تصمیم‌گیری، همین درخواست را در workspace باز کن."
+            title="خلاصه"
           >
             {selected ? (
               <div className="vendor-onboarding-admin-summary">
                 <div><strong>متقاضی</strong><span>{resolveApplicantName(selected)}</span></div>
-                <div><strong>کسب‌وکار</strong><span>{readText(selected, ['businessName'], '—')}</span></div>
-                <div><strong>وضعیت درخواست</strong><span><Pill tone={statusTone(readText(selected, ['applicationStatus'], ''))}>{translateStatus(readText(selected, ['applicationStatus'], ''))}</Pill></span></div>
-                <div><strong>وضعیت محصول</strong><span><Pill tone={statusTone(readText(selected, ['productStatus'], ''))}>{translateStatus(readText(selected, ['productStatus'], ''))}</Pill></span></div>
+                <div><strong>کسب‌وکار</strong><span>{resolveBusinessName(selected)}</span></div>
+                <div><strong>درخواست</strong><span><Pill tone={statusTone(readText(selected, ['applicationStatus'], ''))}>{translateStatus(readText(selected, ['applicationStatus'], ''))}</Pill></span></div>
+                <div><strong>محصول</strong><span><Pill tone={statusTone(readText(selected, ['productStatus'], ''))}>{translateStatus(readText(selected, ['productStatus'], ''))}</Pill></span></div>
+                <div><strong>بروزرسانی</strong><span>{formatJalaliDate(selected.updatedAt)}</span></div>
                 <div className="vendors-inline-actions">
-                  <button className="fm-button fm-button--primary" onClick={() => onOpenWorkspace(selected)} type="button">باز کردن workspace بررسی</button>
+                  <button className="fm-button fm-button--primary" onClick={() => onOpenWorkspace(selected)} type="button">باز کردن میزکار</button>
                 </div>
               </div>
             ) : (

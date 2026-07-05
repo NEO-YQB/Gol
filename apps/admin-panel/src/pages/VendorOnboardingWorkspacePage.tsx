@@ -23,12 +23,13 @@ function formatJalaliDate(value: unknown) {
 
 function translateStatus(status: string) {
   switch (status) {
+    case 'ALL': return 'همه'
     case 'DRAFT': return 'پیش‌نویس'
     case 'SUBMITTED': return 'ارسال شده'
     case 'UNDER_REVIEW': return 'در بررسی'
     case 'APPROVED': return 'تایید شده'
     case 'REJECTED': return 'رد شده'
-    default: return status || 'نامشخص'
+    default: return status && status !== 'UNKNOWN' ? status : 'نامشخص'
   }
 }
 
@@ -49,6 +50,12 @@ function getImageUrl(url: string) {
 function resolveApplicantName(item: RequestRecord | null) {
   return readText(item ?? {}, ['personalFullName'], '') ||
     readText(item ?? {}, ['user', 'fullName'], readText(item ?? {}, ['user', 'phoneNumber'], '—'))
+}
+
+function formatCompactMoney(value: unknown) {
+  const numeric = typeof value === 'number' ? value : Number(value)
+  if (Number.isNaN(numeric)) return value ? String(value) : '—'
+  return `${new Intl.NumberFormat('fa-IR').format(numeric)} تومان`
 }
 
 export function VendorOnboardingWorkspacePage({
@@ -106,10 +113,10 @@ export function VendorOnboardingWorkspacePage({
   const documents = useMemo(() => toArray(detail?.documents), [detail])
 
   const stats = useMemo(() => [
-    { label: 'وضعیت درخواست', value: translateStatus(readText(detail ?? {}, ['applicationStatus'], '')), delta: 'بررسی مدارک و هویت', detail: 'تصمیم اصلی ورود به جمع فروشنده‌ها', tone: statusTone(readText(detail ?? {}, ['applicationStatus'], '')) },
-    { label: 'وضعیت محصول', value: translateStatus(readText(detail ?? {}, ['productStatus'], '')), delta: 'گیت محتوا و SEO', detail: 'محصول اولیه بعد از تایید فروشنده', tone: statusTone(readText(detail ?? {}, ['productStatus'], '')) },
-    { label: 'مدارک', value: new Intl.NumberFormat('fa-IR').format(documents.length), delta: 'فایل و مدرک پیوست‌شده', detail: 'جواز و فایل‌های ارسالی متقاضی', tone: 'primary' as const },
-    { label: 'آخرین بروزرسانی', value: formatJalaliDate(detail?.updatedAt), delta: readText(detail ?? {}, ['user', 'phoneNumber'], '—'), detail: 'زمان آخرین تغییر روی درخواست', tone: 'warning' as const },
+    { label: 'درخواست', value: translateStatus(readText(detail ?? {}, ['applicationStatus'], '')), delta: '', detail: '', tone: statusTone(readText(detail ?? {}, ['applicationStatus'], '')) },
+    { label: 'محصول', value: translateStatus(readText(detail ?? {}, ['productStatus'], '')), delta: '', detail: '', tone: statusTone(readText(detail ?? {}, ['productStatus'], '')) },
+    { label: 'مدارک', value: new Intl.NumberFormat('fa-IR').format(documents.length), delta: '', detail: '', tone: 'primary' as const },
+    { label: 'بروزرسانی', value: formatJalaliDate(detail?.updatedAt), delta: readText(detail ?? {}, ['user', 'phoneNumber'], '—'), detail: '', tone: 'warning' as const },
   ], [detail, documents.length])
 
   async function handleApplicationDecision(approved: boolean) {
@@ -164,26 +171,34 @@ export function VendorOnboardingWorkspacePage({
       </LoadableState>
 
       <SectionCard
-        eyebrow="جزئیات متقاضی"
-        title="مدارک، اطلاعات کسب‌وکار و تصمیم نهایی"
-        description="در این workspace می‌توانی مدارک را ببینی، یادداشت ثبت کنی و درباره درخواست یا محصول اولیه تصمیم بگیری."
+        eyebrow="درخواست فروشندگی"
+        title="بررسی متقاضی"
         actions={<button className="fm-button fm-button--ghost" onClick={onBack} type="button">بازگشت به فهرست</button>}
       >
         <div className="vendor-onboarding-workspace-grid">
           <div className="vendor-onboarding-workspace-panel">
-            <div className="vendor-onboarding-admin-summary">
-              <div><strong>متقاضی</strong><span>{resolveApplicantName(detail)}</span></div>
-              <div><strong>نام کسب‌وکار</strong><span>{readText(detail ?? {}, ['businessName'], '—')}</span></div>
-              <div><strong>اسلاگ</strong><span>{readText(detail ?? {}, ['businessSlug'], '—')}</span></div>
-              <div><strong>آدرس</strong><span>{readText(detail ?? {}, ['businessAddress'], '—')}</span></div>
-              <div><strong>لوکیشن</strong><span>{readText(detail ?? {}, ['businessLat'], '—')} / {readText(detail ?? {}, ['businessLng'], '—')}</span></div>
-              <div><strong>شماره جواز</strong><span>{readText(detail ?? {}, ['licenseNumber'], '—')}</span></div>
-              <div><strong>ثبت درخواست</strong><span>{formatJalaliDate(detail?.submittedAt)}</span></div>
-            </div>
+            <SectionCard title="متقاضی">
+              <div className="vendor-onboarding-admin-summary">
+                <div><strong>متقاضی</strong><span>{resolveApplicantName(detail)}</span></div>
+                <div><strong>موبایل</strong><span>{readText(detail ?? {}, ['user', 'phoneNumber'], '—')}</span></div>
+                <div><strong>کد ملی</strong><span>{readText(detail ?? {}, ['personalNationalId'], '—')}</span></div>
+                <div><strong>ثبت</strong><span>{formatJalaliDate(detail?.submittedAt)}</span></div>
+              </div>
+            </SectionCard>
+
+            <SectionCard title="کسب‌وکار">
+              <div className="vendor-onboarding-admin-summary">
+                <div><strong>نام</strong><span>{readText(detail ?? {}, ['businessName'], '—')}</span></div>
+                <div><strong>اسلاگ</strong><span>{readText(detail ?? {}, ['businessSlug'], '—')}</span></div>
+                <div><strong>آدرس</strong><span>{readText(detail ?? {}, ['businessAddress'], '—')}</span></div>
+                <div><strong>لوکیشن</strong><span>{readText(detail ?? {}, ['businessLat'], '—')} / {readText(detail ?? {}, ['businessLng'], '—')}</span></div>
+                <div><strong>جواز</strong><span>{readText(detail ?? {}, ['licenseNumber'], '—')}</span></div>
+              </div>
+            </SectionCard>
           </div>
 
           <div className="vendor-onboarding-workspace-panel">
-            <SectionCard title="مدارک ارسالی" description="برای بررسی بهتر، روی هر تصویر کلیک کن تا بزرگ‌تر باز شود.">
+            <SectionCard title="مدارک">
               {documents.length ? (
                 <div className="vendor-doc-grid">
                   {documents.map((item, index) => {
@@ -202,12 +217,12 @@ export function VendorOnboardingWorkspacePage({
               )}
             </SectionCard>
 
-            <SectionCard title="محصول اولیه" description="بعد از تایید فروشنده، همین محصول باید بررسی شود.">
+            <SectionCard title="محصول اولیه">
               <div className="vendor-onboarding-admin-summary">
-                <div><strong>نام محصول</strong><span>{readText(detail ?? {}, ['productName'], '—')}</span></div>
+                <div><strong>نام</strong><span>{readText(detail ?? {}, ['productName'], '—')}</span></div>
                 <div><strong>دسته</strong><span>{readText(detail ?? {}, ['productCategoryId'], '—')}</span></div>
                 <div><strong>نوع</strong><span>{readText(detail ?? {}, ['productTypeId'], '—')}</span></div>
-                <div><strong>قیمت</strong><span>{readText(detail ?? {}, ['productPrice'], '—')}</span></div>
+                <div><strong>قیمت</strong><span>{formatCompactMoney(detail?.productPrice)}</span></div>
                 <div><strong>موجودی</strong><span>{readText(detail ?? {}, ['productQuantity'], '—')}</span></div>
                 <div><strong>توضیح</strong><span>{readText(detail ?? {}, ['productDescription'], '—')}</span></div>
               </div>
@@ -217,9 +232,8 @@ export function VendorOnboardingWorkspacePage({
       </SectionCard>
 
       <SectionCard
-        eyebrow="ثبت تصمیم"
-        title="تایید یا رد درخواست و محصول"
-        description="این تصمیم‌ها باید قابل‌ردیابی و روشن باشند تا فروشنده بعدا وضعیتش را ببیند."
+        eyebrow="تصمیم"
+        title="ثبت نتیجه"
       >
         <div className="fm-field">
           <label htmlFor="vendorOnboardingReviewNote">یادداشت بررسی</label>

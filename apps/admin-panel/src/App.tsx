@@ -63,7 +63,7 @@ function buildNav(currentRoute: AdminRoute, session: AuthSession): NavSection[] 
         { key: 'settlements', label: 'تسویه و مالی', hint: 'کارتابل triage مالی، کیف پول و صف استثناها', active: currentRoute === 'settlements' || currentRoute === 'financeWorkspace' },
         { key: 'support', label: 'پشتیبانی', hint: 'تیکت ها، noteها و رسیدگی بعدی', active: currentRoute === 'support' || currentRoute === 'supportWorkspace' },
         { key: 'vendors', label: 'فروشنده ها و ریسک', hint: 'visibility ریسک، policy و سلامت فروشنده', active: currentRoute === 'vendors' || currentRoute === 'vendorWorkspace' },
-        { key: 'vendorOnboarding', label: 'درخواست‌های فروشندگی', hint: 'مدارک، جواز و تصمیم‌گیری روی فروشنده‌های جدید', active: currentRoute === 'vendorOnboarding' || currentRoute === 'vendorOnboardingWorkspace' },
+        { key: 'vendorOnboarding', label: 'درخواست فروشندگی', hint: 'بررسی متقاضی', active: currentRoute === 'vendorOnboarding' || currentRoute === 'vendorOnboardingWorkspace' },
         { key: 'products', label: 'محصولات', hint: 'کارتابل catalog، کیفیت محتوا و سئوی محصول', active: currentRoute === 'products' || currentRoute === 'productWorkspace' },
       ],
     },
