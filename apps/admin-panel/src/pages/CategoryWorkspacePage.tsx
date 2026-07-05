@@ -157,7 +157,8 @@ export function CategoryWorkspacePage({ session, onBack }: CategoryWorkspacePage
     setError(null)
     try {
       const uploaded = await adminApi.uploadProductImage(session, file)
-      updateForm('image', uploaded.url)
+      const imageUrl = uploaded.variants?.thumbnail?.url || uploaded.url
+      updateForm('image', imageUrl)
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : 'آپلود تصویر دسته‌بندی ناموفق بود')
     } finally {

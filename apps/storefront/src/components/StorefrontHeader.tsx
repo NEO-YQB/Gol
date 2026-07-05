@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import type { CategorySummary, EnrichedStorefrontPage, ProductTypeSummary } from '../lib/storefront'
-import { resolveAssetUrl } from '../lib/storefront'
+import { resolveAssetUrl, getThumbUrl } from '../lib/storefront'
 import { clearStoredToken, completeProfile, getCart, getCurrentUser, readStoredToken, sendOtp, verifyOtp, writeStoredToken, type StorefrontCart, type StorefrontUser } from '../lib/storefrontAuth'
 import { STOREFRONT_CART_UPDATED_EVENT } from '../lib/storefrontCartEvents'
 import { CartIcon, MenuIcon, UserIcon } from './storefrontIcons'
@@ -392,7 +392,7 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
                           key={`header-cart-${item.id}`}
                         >
                           <div className="h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-white/70">
-                            <img alt={item.product.name} className="h-full w-full object-cover" src={resolveAssetUrl(item.product.mainImage)} />
+                             <img alt={item.product.name} className="h-full w-full object-cover" src={getThumbUrl(item.product.mainImage)} />
                           </div>
                           <div className="min-w-0 flex-1 text-right">
                             <strong className="block truncate text-sm text-[var(--header-dropdown-panel-text)]">{item.product.name}</strong>

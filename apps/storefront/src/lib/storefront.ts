@@ -425,6 +425,21 @@ function resolveAssetUrl(path: string | null | undefined) {
   return `${origin}${path}`
 }
 
+function getThumbUrl(path: string | null | undefined) {
+  if (!path) return ''
+  return resolveAssetUrl(path).replace(/\.([^.\s]+)$/, '-thumb.$1')
+}
+
+function getMediumUrl(path: string | null | undefined) {
+  if (!path) return ''
+  return resolveAssetUrl(path).replace(/\.([^.\s]+)$/, '-md.$1')
+}
+
+function getLargeUrl(path: string | null | undefined) {
+  if (!path) return ''
+  return resolveAssetUrl(path).replace(/\.([^.\s]+)$/, '-lg.$1')
+}
+
 type NextRequestInit = RequestInit & {
   next?: {
     revalidate?: number
@@ -1582,4 +1597,4 @@ export async function getStorefrontInfoPagesSettings(): Promise<StorefrontInfoPa
   }
 }
 
-export { resolveAssetUrl }
+export { resolveAssetUrl, getThumbUrl, getMediumUrl, getLargeUrl }

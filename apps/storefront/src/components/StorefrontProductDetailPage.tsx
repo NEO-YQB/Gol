@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import type { StorefrontProductDetail } from '../lib/storefront'
-import { resolveAssetUrl } from '../lib/storefront'
+import { resolveAssetUrl, getThumbUrl } from '../lib/storefront'
 import { pushToDataLayer, toAnalyticsItem } from '../lib/analytics'
 import { addCartItem, getCart, readStoredToken } from '../lib/storefrontAuth'
 import { storefrontCatalog } from './storefrontCatalog'
@@ -160,7 +160,7 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
                     onClick={() => setActiveImageUrl(item.url)}
                     type="button"
                   >
-                    <img alt={item.alt || product.name} className="h-24 w-full object-cover md:h-28" src={resolveAssetUrl(item.url)} />
+                    <img alt={item.alt || product.name} className="h-24 w-full object-cover md:h-28" src={getThumbUrl(item.url)} />
                   </button>
                 )
               })}

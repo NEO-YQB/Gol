@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { resolveAssetUrl } from '../lib/storefront'
+import { getThumbUrl } from '../lib/storefront'
 import { calculateCartValue, pushToDataLayer, toAnalyticsItem } from '../lib/analytics'
 import {
   clearCart,
@@ -208,7 +208,7 @@ export function StorefrontCartPage() {
                     return (
                       <article className="grid grid-cols-[88px_minmax(0,1fr)] gap-4 rounded-[28px] border border-[#1f6a52]/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,242,233,0.94))] p-4 md:grid-cols-[112px_minmax(0,1fr)]" key={item.id}>
                         <Link className="block aspect-square overflow-hidden rounded-[22px] bg-[#f4eadc] md:aspect-auto md:h-full md:rounded-[24px]" href={`/products/${item.product.slug}`}>
-                          <img alt={item.product.name} className="h-full w-full object-contain p-2 md:object-cover md:p-0" src={resolveAssetUrl(item.product.mainImage)} />
+                           <img alt={item.product.name} className="h-full w-full object-contain p-2 md:object-cover md:p-0" src={getThumbUrl(item.product.mainImage)} />
                         </Link>
 
                         <div className="flex flex-col gap-4">

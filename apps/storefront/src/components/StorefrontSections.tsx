@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useMemo, useRef, useState, useEffect } from 'react'
-import { resolveAssetUrl, type CategorySummary, type ProductSummary, type ProductTypeSummary, type StoreSummary } from '../lib/storefront'
+import { resolveAssetUrl, getThumbUrl, getLargeUrl, type CategorySummary, type ProductSummary, type ProductTypeSummary, type StoreSummary } from '../lib/storefront'
 import { CategoryCircle, ProductTypeCircle, ProductCard, StorefrontPill, VendorCard } from './storefrontBlocks'
 import { storefrontShared } from './storefrontShared'
 
@@ -266,7 +266,7 @@ export function EditorialSection({ block }: { block: { id: string; data: Record<
         <img
           alt={String(block.data.title ?? 'Editorial block')}
           className="h-[240px] w-full object-cover object-top md:h-full md:min-h-[260px] md:object-center"
-          src={resolveAssetUrl(String(block.data.imageUrl ?? ''))}
+          src={getLargeUrl(String(block.data.imageUrl ?? ''))}
         />
       </div>
       <div className={`${imageOnLeft ? 'md:order-2' : 'md:order-1'} flex flex-col justify-center px-6 py-8 md:px-10 md:py-8`}>
@@ -325,9 +325,9 @@ export function CampaignGridSection({ block }: { block: { id: string; data: Reco
           >
             <picture className="block h-full w-full">
               {banner.mobileImageUrl ? (
-                <source media="(max-width: 767px)" srcSet={resolveAssetUrl(String(banner.mobileImageUrl))} />
+                <source media="(max-width: 767px)" srcSet={getThumbUrl(String(banner.mobileImageUrl))} />
               ) : null}
-              <img alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" src={resolveAssetUrl(String(banner.imageUrl ?? banner.mobileImageUrl ?? ''))} />
+              <img alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" src={getLargeUrl(String(banner.imageUrl ?? banner.mobileImageUrl ?? ''))} />
             </picture>
             <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/5 to-transparent" />
           </a>
@@ -399,7 +399,7 @@ export function LatestArticlesShowcaseSection({ block }: { block: { id: string; 
                 <img
                   alt={featured.title}
                   className="absolute inset-0 block h-full w-full object-cover transition duration-700 group-hover:scale-105"
-                  src={resolveAssetUrl(featured.coverImage)}
+                   src={getThumbUrl(featured.coverImage)}
                 />
               ) : (
                 <div className="absolute inset-0 h-full w-full bg-[linear-gradient(135deg,#173126_0%,#29513f_55%,#d06c54_100%)]" />
@@ -433,7 +433,7 @@ export function LatestArticlesShowcaseSection({ block }: { block: { id: string; 
               >
                 <div className="h-16 w-16 shrink-0 overflow-hidden rounded-[18px] bg-[#efe1d2]">
                   {article.coverImage ? (
-                    <img alt={article.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" src={resolveAssetUrl(article.coverImage)} />
+                    <img alt={article.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" src={getThumbUrl(article.coverImage)} />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_top,_#f4cab6,_#e6d6bf_72%)] text-xl">✦</div>
                   )}

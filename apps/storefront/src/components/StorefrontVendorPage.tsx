@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { ProductCard } from './storefrontBlocks'
 import { storefrontCatalog } from './storefrontCatalog'
-import { resolveAssetUrl } from '../lib/storefront'
+import { getThumbUrl } from '../lib/storefront'
 import type {
   CategorySummary,
   ProductSummary,
@@ -163,7 +163,7 @@ export function StorefrontVendorPage({
               {store.logo ? (
                 <div className="flex shrink-0 justify-start sm:justify-end">
                   <div className="overflow-hidden rounded-[28px] border border-white/15 bg-white/95 p-3 shadow-[0_18px_44px_rgba(18,28,24,0.18)]">
-                    <img alt={store.name} className="h-20 w-20 rounded-[20px] object-cover md:h-24 md:w-24" src={resolveAssetUrl(store.logo)} />
+                     <img alt={store.name} className="h-20 w-20 rounded-[20px] object-cover md:h-24 md:w-24" src={getThumbUrl(store.logo)} />
                   </div>
                 </div>
               ) : null}
