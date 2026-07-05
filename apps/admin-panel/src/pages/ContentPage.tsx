@@ -108,11 +108,7 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
         if (articleList.length === 0) {
           setSelectedArticleId(null)
           setSelectedArticle(null)
-          return
         }
-
-        const hasSelected = articleList.some((item) => readText(item, ['id'], '') === selectedArticleId)
-        setSelectedArticleId(hasSelected ? selectedArticleId : readText(articleList[0], ['id'], ''))
       } catch (loadError) {
         if (!active) return
         setError(loadError instanceof Error ? loadError.message : 'خطا در بارگذاری کارتابل محتوا')
@@ -125,7 +121,7 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
     return () => {
       active = false
     }
-  }, [authorFilter, categoryFilter, selectedArticleId, session, statusFilter, tagFilter])
+  }, [authorFilter, categoryFilter, session, statusFilter, tagFilter])
 
   useEffect(() => {
     if (!selectedArticleId) {
@@ -191,6 +187,15 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
       setSelectedArticleId(readText(filteredArticles[0], ['id'], ''))
     }
   }, [filteredArticles, selectedArticleId])
+
+  useEffect(() => {
+    if (!selectedArticleId) return
+
+    const existsInCurrentList = articles.some((item) => readText(item, ['id'], '') === selectedArticleId)
+    if (!existsInCurrentList) {
+      setSelectedArticleId(articles.length > 0 ? readText(articles[0], ['id'], '') : null)
+    }
+  }, [articles, selectedArticleId])
 
   const stats = useMemo(
     () => [
