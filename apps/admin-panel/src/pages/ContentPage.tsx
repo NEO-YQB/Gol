@@ -397,102 +397,101 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
 
           <div className="content-layout">
             <div className="content-table-card content-table-card--full">
-            <div className="content-results-head">
-              <strong>فهرست مقاله‌ها</strong>
-              <span>
-                {formatPersianNumber(filteredArticles.length)} نتیجه از {formatPersianNumber(articles.length)} مقاله
-              </span>
-            </div>
-            {filteredArticles.length > 0 ? (
-              <>
-                <div className="content-selection-list">
-                  {articleSelectionItems.map((item) => {
-                    const articleId = readText(item, ['id'], '')
-                    const isActive = selectedArticleId === articleId
-                    return (
-                      <article className={`content-selection-item${isActive ? ' is-active' : ''}`} key={articleId} onClick={() => setSelectedArticleId(articleId)} role="button" tabIndex={0}>
-                        <strong>{getArticleTitle(item)}</strong>
-                        <span>{getArticleAuthor(item)}</span>
-                        <span>{getArticleCategory(item)}</span>
-                        <small>{readText(item, ['slug'], '—')}</small>
-                        <Pill tone={getArticleStatus(item) === 'PUBLISHED' ? 'success' : 'warning'}>
-                          {getArticleStatusLabel(item)}
-                        </Pill>
-                        <span>{formatJalaliDate(item.updatedAt, true)}</span>
-                        <button className="content-selection-edit" onClick={(event) => { event.stopPropagation(); onEditArticle(articleId) }} type="button">
-                          ویرایش
-                        </button>
-                      </article>
-                    )
-                  })}
-                </div>
-                {filteredArticles.length > articleSelectionPageSize ? (
-                  <div className="vendors-pagination">
-                    <button
-                      className="vendors-page-button"
-                      disabled={articleSelectionPage <= 1}
-                      onClick={() => setArticleSelectionPage((current) => Math.max(1, current - 1))}
-                      type="button"
-                    >
-                      مقاله‌های قبل
-                    </button>
-                    <span>{`صفحه ${formatPersianNumber(articleSelectionPage)} از ${formatPersianNumber(articleSelectionPageCount)}`}</span>
-                    <button
-                      className="vendors-page-button"
-                      disabled={articleSelectionPage >= articleSelectionPageCount}
-                      onClick={() => setArticleSelectionPage((current) => Math.min(articleSelectionPageCount, current + 1))}
-                      type="button"
-                    >
-                      مقاله‌های بعد
-                    </button>
-                  </div>
-                ) : null}
+              <div className="content-results-head">
+                <strong>فهرست مقاله‌ها</strong>
+                <span>
+                  {formatPersianNumber(filteredArticles.length)} نتیجه از {formatPersianNumber(articles.length)} مقاله
+                </span>
               </div>
-
-              <div className="content-detail-column">
-                <SectionCard
-                  eyebrow="انتخاب‌شده"
-                  title={selectedArticle ? getArticleTitle(selectedArticle) : selectedArticleId ? `مقاله #${selectedArticleId}` : 'انتخاب نشده'}
-                  actions={
-                    selectedArticleId ? (
-                      <button className="content-secondary-action" onClick={() => onEditArticle(selectedArticleId)} type="button">
-                        ویرایش
+              {filteredArticles.length > 0 ? (
+                <>
+                  <div className="content-selection-list">
+                    {articleSelectionItems.map((item) => {
+                      const articleId = readText(item, ['id'], '')
+                      const isActive = selectedArticleId === articleId
+                      return (
+                        <article className={`content-selection-item${isActive ? ' is-active' : ''}`} key={articleId} onClick={() => setSelectedArticleId(articleId)} role="button" tabIndex={0}>
+                          <strong>{getArticleTitle(item)}</strong>
+                          <span>{getArticleAuthor(item)}</span>
+                          <span>{getArticleCategory(item)}</span>
+                          <small>{readText(item, ['slug'], '—')}</small>
+                          <Pill tone={getArticleStatus(item) === 'PUBLISHED' ? 'success' : 'warning'}>
+                            {getArticleStatusLabel(item)}
+                          </Pill>
+                          <span>{formatJalaliDate(item.updatedAt, true)}</span>
+                          <button className="content-selection-edit" onClick={(event) => { event.stopPropagation(); onEditArticle(articleId) }} type="button">
+                            ویرایش
+                          </button>
+                        </article>
+                      )
+                    })}
+                  </div>
+                  {filteredArticles.length > articleSelectionPageSize ? (
+                    <div className="vendors-pagination">
+                      <button
+                        className="vendors-page-button"
+                        disabled={articleSelectionPage <= 1}
+                        onClick={() => setArticleSelectionPage((current) => Math.max(1, current - 1))}
+                        type="button"
+                      >
+                        مقاله‌های قبل
                       </button>
-                    ) : null
-                  }
-                >
-                  <div className="content-signal-grid">
-                    {editorialSignals.map((item) => (
-                      <article className="content-signal-item" key={item.label}>
+                      <span>{`صفحه ${formatPersianNumber(articleSelectionPage)} از ${formatPersianNumber(articleSelectionPageCount)}`}</span>
+                      <button
+                        className="vendors-page-button"
+                        disabled={articleSelectionPage >= articleSelectionPageCount}
+                        onClick={() => setArticleSelectionPage((current) => Math.min(articleSelectionPageCount, current + 1))}
+                        type="button"
+                      >
+                        مقاله‌های بعد
+                      </button>
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <div className="fm-message">با این فیلترها مقاله‌ای پیدا نشد.</div>
+              )}
+            </div>
+
+            <div className="content-detail-column">
+              <SectionCard
+                eyebrow="انتخاب‌شده"
+                title={selectedArticle ? getArticleTitle(selectedArticle) : selectedArticleId ? `مقاله #${selectedArticleId}` : 'انتخاب نشده'}
+                actions={
+                  selectedArticleId ? (
+                    <button className="content-secondary-action" onClick={() => onEditArticle(selectedArticleId)} type="button">
+                      ویرایش
+                    </button>
+                  ) : null
+                }
+              >
+                <div className="content-signal-grid">
+                  {editorialSignals.map((item) => (
+                    <article className="content-signal-item" key={item.label}>
+                      <span>{item.label}</span>
+                      <strong>{item.value}</strong>
+                    </article>
+                  ))}
+                </div>
+                {detailLoading ? <div className="fm-message">در حال بارگذاری جزئیات مقاله...</div> : null}
+                {!detailLoading && !detailError && selectedSummary.length > 0 ? (
+                  <div className="content-detail-grid">
+                    {selectedSummary.map((item) => (
+                      <article className="content-detail-item" key={item.label}>
                         <span>{item.label}</span>
                         <strong>{item.value}</strong>
                       </article>
                     ))}
+                    <article className="content-detail-item content-detail-item--wide">
+                      <span>خلاصه کوتاه</span>
+                      <strong>{readText(selectedArticle ?? {}, ['excerpt'], 'هنوز خلاصه کوتاه ثبت نشده است.')}</strong>
+                    </article>
                   </div>
-                  {detailLoading ? <div className="fm-message">در حال بارگذاری جزئیات مقاله...</div> : null}
-                  {!detailLoading && !detailError && selectedSummary.length > 0 ? (
-                    <div className="content-detail-grid">
-                      {selectedSummary.map((item) => (
-                        <article className="content-detail-item" key={item.label}>
-                          <span>{item.label}</span>
-                          <strong>{item.value}</strong>
-                        </article>
-                      ))}
-                      <article className="content-detail-item content-detail-item--wide">
-                        <span>خلاصه کوتاه</span>
-                        <strong>{readText(selectedArticle ?? {}, ['excerpt'], 'هنوز خلاصه کوتاه ثبت نشده است.')}</strong>
-                      </article>
-                    </div>
-                  ) : null}
-                  {!detailLoading && !detailError && selectedSummary.length === 0 ? (
-                    <div className="fm-message">برای مشاهده خلاصه یک مقاله را از لیست انتخاب کن.</div>
-                  ) : null}
-                </SectionCard>
-              </div>
-              </>
-            ) : (
-              <div className="fm-message">با این فیلترها مقاله‌ای پیدا نشد.</div>
-            )}
+                ) : null}
+                {!detailLoading && !detailError && selectedSummary.length === 0 ? (
+                  <div className="fm-message">برای مشاهده خلاصه یک مقاله را از لیست انتخاب کن.</div>
+                ) : null}
+              </SectionCard>
             </div>
           </div>
         </SectionCard>
