@@ -33,6 +33,11 @@ export class CreateCategoryDto {
   @IsString({ message: 'متن ALT تصویر باید رشته باشد' })
   imageAlt?: string;
 
+  @ApiPropertyOptional({ description: 'آدرس تصویر بندانگشتی' })
+  @IsOptional()
+  @IsString()
+  thumbnailUrl?: string;
+
   @ApiPropertyOptional({ description: 'عنوان متا برای SEO', example: 'خرید گیاهان آپارتمانی' })
   @IsOptional()
   @IsString({ message: 'عنوان متا باید رشته باشد' })

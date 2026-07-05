@@ -20,6 +20,7 @@ type ProductTypeFormState = {
   description: string
   image: string
   imageAlt: string
+  thumbnailUrl: string
   metaTitle: string
   metaDescription: string
   isIndexed: boolean
@@ -33,6 +34,7 @@ function createEmptyProductTypeForm(): ProductTypeFormState {
     description: '',
     image: '',
     imageAlt: '',
+    thumbnailUrl: '',
     metaTitle: '',
     metaDescription: '',
     isIndexed: true,
@@ -48,6 +50,7 @@ function mapProductTypeToForm(productType: ProductTypeRecord): ProductTypeFormSt
     description: readText(productType, ['description'], ''),
     image: readText(productType, ['image'], ''),
     imageAlt: readText(productType, ['imageAlt'], ''),
+    thumbnailUrl: readText(productType, ['thumbnailUrl'], ''),
     metaTitle: readText(productType, ['metaTitle'], ''),
     metaDescription: readText(productType, ['metaDescription'], ''),
     isIndexed: productType.isIndexed !== false,
@@ -144,8 +147,10 @@ export function ProductTypeWorkspacePage({ session, onBack }: ProductTypeWorkspa
     setError(null)
     try {
       const uploaded = await adminApi.uploadProductImage(session, file)
-      const imageUrl = uploaded.variants?.thumbnail?.url || uploaded.url
-      updateForm('image', imageUrl)
+      updateForm('image', uploaded.url)
+      if (uploaded.variants?.thumbnail?.url) {
+        updateForm('thumbnailUrl', uploaded.variants.thumbnail.url)
+      }
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : 'آپلود تصویر نوع محصول ناموفق بود')
     } finally {
@@ -172,6 +177,7 @@ export function ProductTypeWorkspacePage({ session, onBack }: ProductTypeWorkspa
       description: toOptionalText(form.description),
       image: toOptionalText(form.image),
       imageAlt: toOptionalText(form.imageAlt),
+      thumbnailUrl: toOptionalText(form.thumbnailUrl),
       metaTitle: toOptionalText(form.metaTitle),
       metaDescription: toOptionalText(form.metaDescription),
       isIndexed: form.isIndexed,

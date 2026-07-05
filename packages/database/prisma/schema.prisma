@@ -254,6 +254,7 @@ model ProductType {
   description     String?  @db.Text
   image           String?
   imageAlt        String?
+  thumbnailUrl    String?
   metaTitle       String?
   metaDescription String?
   isIndexed       Boolean  @default(true)
@@ -269,6 +270,7 @@ model Category {
   description     String?  @db.Text
   image           String?
   imageAlt        String?
+  thumbnailUrl    String?
   parentId        Int?
   parent          Category?  @relation("CategoryToCategory", fields: [parentId], references: [id])
   children        Category[] @relation("CategoryToCategory")

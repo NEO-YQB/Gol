@@ -20,6 +20,7 @@ type CategoryFormState = {
   description: string
   image: string
   imageAlt: string
+  thumbnailUrl: string
   metaTitle: string
   metaDescription: string
   isIndexed: boolean
@@ -34,6 +35,7 @@ function createEmptyCategoryForm(): CategoryFormState {
     description: '',
     image: '',
     imageAlt: '',
+    thumbnailUrl: '',
     metaTitle: '',
     metaDescription: '',
     isIndexed: true,
@@ -61,6 +63,7 @@ function mapCategoryToForm(category: CategoryRecord): CategoryFormState {
     description: readText(category, ['description'], ''),
     image: readText(category, ['image'], ''),
     imageAlt: readText(category, ['imageAlt'], ''),
+    thumbnailUrl: readText(category, ['thumbnailUrl'], ''),
     metaTitle: readText(category, ['metaTitle'], ''),
     metaDescription: readText(category, ['metaDescription'], ''),
     isIndexed: category.isIndexed !== false,
@@ -157,8 +160,10 @@ export function CategoryWorkspacePage({ session, onBack }: CategoryWorkspacePage
     setError(null)
     try {
       const uploaded = await adminApi.uploadProductImage(session, file)
-      const imageUrl = uploaded.variants?.thumbnail?.url || uploaded.url
-      updateForm('image', imageUrl)
+      updateForm('image', uploaded.url)
+      if (uploaded.variants?.thumbnail?.url) {
+        updateForm('thumbnailUrl', uploaded.variants.thumbnail.url)
+      }
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : 'آپلود تصویر دسته‌بندی ناموفق بود')
     } finally {
@@ -186,6 +191,7 @@ export function CategoryWorkspacePage({ session, onBack }: CategoryWorkspacePage
       description: toOptionalText(form.description),
       image: toOptionalText(form.image),
       imageAlt: toOptionalText(form.imageAlt),
+      thumbnailUrl: toOptionalText(form.thumbnailUrl),
       metaTitle: toOptionalText(form.metaTitle),
       metaDescription: toOptionalText(form.metaDescription),
       isIndexed: form.isIndexed,

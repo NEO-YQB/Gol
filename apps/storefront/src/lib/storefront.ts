@@ -99,6 +99,7 @@ export type CategorySummary = {
   description?: string | null
   image?: string | null
   imageAlt?: string | null
+  thumbnailUrl?: string | null
   metaTitle?: string | null
   metaDescription?: string | null
   isIndexed?: boolean | null
@@ -161,6 +162,7 @@ export type ProductTypeSummary = {
   description?: string | null
   image?: string | null
   imageAlt?: string | null
+  thumbnailUrl?: string | null
   metaTitle?: string | null
   metaDescription?: string | null
   isIndexed?: boolean | null
@@ -423,21 +425,6 @@ function resolveAssetUrl(path: string | null | undefined) {
   if (/^https?:\/\//i.test(path)) return path
   const origin = new URL(API_BASE_URL).origin
   return `${origin}${path}`
-}
-
-function getThumbUrl(path: string | null | undefined) {
-  if (!path) return ''
-  return resolveAssetUrl(path).replace(/\.([^.\s]+)$/, '-thumb.$1')
-}
-
-function getMediumUrl(path: string | null | undefined) {
-  if (!path) return ''
-  return resolveAssetUrl(path).replace(/\.([^.\s]+)$/, '-md.$1')
-}
-
-function getLargeUrl(path: string | null | undefined) {
-  if (!path) return ''
-  return resolveAssetUrl(path).replace(/\.([^.\s]+)$/, '-lg.$1')
 }
 
 type NextRequestInit = RequestInit & {
@@ -1597,4 +1584,4 @@ export async function getStorefrontInfoPagesSettings(): Promise<StorefrontInfoPa
   }
 }
 
-export { resolveAssetUrl, getThumbUrl, getMediumUrl, getLargeUrl }
+export { resolveAssetUrl }

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { resolveAssetUrl, getThumbUrl, type CategorySummary, type ProductSummary, type ProductTypeSummary, type StoreSummary } from '../lib/storefront'
+import { resolveAssetUrl, type CategorySummary, type ProductSummary, type ProductTypeSummary, type StoreSummary } from '../lib/storefront'
 import { addCartItem, getCart, readStoredToken } from '../lib/storefrontAuth'
 import { emitStorefrontAuthRequired, emitStorefrontToast } from './storefrontToast'
 import { storefrontShared } from './storefrontShared'
@@ -68,7 +68,7 @@ export function ProductCard({ product, className = '' }: { product: ProductSumma
   return (
     <article className={`${storefrontStyles.productCard} ${className}`.trim()}>
       <Link className={storefrontStyles.productImageWrap} href={productHref}>
-          <img alt={product.mainImageAlt || product.name} className={storefrontStyles.productImage} src={getThumbUrl(product.mainImage)} />
+          <img alt={product.mainImageAlt || product.name} className={storefrontStyles.productImage} src={resolveAssetUrl(product.mainImage)} />
       </Link>
       <div className="flex flex-1 flex-col">
         <div className="space-y-3">
@@ -158,11 +158,12 @@ export function ProductCard({ product, className = '' }: { product: ProductSumma
 }
 
 export function CategoryCircle({ category }: { category: CategorySummary }) {
+  const imgSrc = category.thumbnailUrl || category.image
   return (
     <Link className={storefrontStyles.categoryCircle} href={getCategoryHref(category)}>
       <div className={storefrontStyles.categoryCircleMedia}>
-        {category.image ? (
-          <img alt={category.imageAlt || category.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-110" src={getThumbUrl(category.image)} />
+        {imgSrc ? (
+          <img alt={category.imageAlt || category.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-110" src={resolveAssetUrl(imgSrc)} />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_top,_#f4cab6,_#e6d6bf_72%)] text-3xl">✿</div>
         )}
@@ -173,11 +174,12 @@ export function CategoryCircle({ category }: { category: CategorySummary }) {
 }
 
 export function ProductTypeCircle({ productType }: { productType: ProductTypeSummary }) {
+  const imgSrc = productType.thumbnailUrl || productType.image
   return (
     <Link className={storefrontStyles.categoryCircle} href={`/product-types/${productType.slug}`}>
       <div className={storefrontStyles.categoryCircleMedia}>
-        {productType.image ? (
-          <img alt={productType.imageAlt || productType.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-110" src={getThumbUrl(productType.image)} />
+        {imgSrc ? (
+          <img alt={productType.imageAlt || productType.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-110" src={resolveAssetUrl(imgSrc)} />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_top,_#c6e8d8,_#d6e6df_72%)] text-3xl">❋</div>
         )}
@@ -197,7 +199,7 @@ export function VendorCard({ vendor }: { vendor: StoreSummary }) {
       <div className="mb-5 flex items-center gap-4">
         <div className="h-16 w-16 overflow-hidden rounded-[20px] bg-[#efe1d2]">
           {vendor.logo ? (
-            <img alt={vendor.name} className="h-full w-full object-cover" src={getThumbUrl(vendor.logo)} />
+            <img alt={vendor.name} className="h-full w-full object-cover" src={resolveAssetUrl(vendor.logo)} />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-2xl">🏬</div>
           )}

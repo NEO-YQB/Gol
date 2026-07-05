@@ -43,6 +43,11 @@ export class CreateProductTypeDto {
   @IsString()
   imageAlt?: string;
 
+  @ApiPropertyOptional({ description: 'آدرس تصویر بندانگشتی' })
+  @IsOptional()
+  @IsString()
+  thumbnailUrl?: string;
+
   @ApiPropertyOptional({ description: 'عنوان متا برای SEO' })
   @IsOptional()
   @IsString()
