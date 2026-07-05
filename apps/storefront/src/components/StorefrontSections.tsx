@@ -44,6 +44,8 @@ export function HeroSection({
             <img
               alt={String(block.data.title ?? pageTitle)}
               className={imageFit === 'contain' ? 'h-full w-full object-contain' : 'h-full w-full object-cover'}
+              fetchPriority="high"
+              loading="eager"
               src={imageUrl}
               style={{ objectPosition: imageObjectPosition }}
             />
@@ -51,6 +53,8 @@ export function HeroSection({
             <img
               alt={String(block.data.title ?? pageTitle)}
               className={imageFit === 'contain' ? 'h-full w-full object-contain' : 'h-full w-full object-cover'}
+              fetchPriority="high"
+              loading="eager"
               src={mobileImageUrl}
               style={{ objectPosition: imageObjectPosition }}
             />
