@@ -577,8 +577,8 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
     () =>
       audits.slice(0, 4).map((item) => ({
         id: `${readText(item, ['type'], 'audit')}-${readText(item, ['count'], '0')}`,
-        title: translateContentAuditType(readText(item, ['type'], 'UNKNOWN')),
-        detail: readText(item, ['message'], '—'),
+        title: translateContentAuditType(readText(item, ['type'], '')),
+        detail: readText(item, ['message'], 'مورد خاصی برای نمایش ثبت نشده است.'),
         count: formatPersianNumber(readText(item, ['count'], '0')),
       })),
     [audits],
@@ -1596,7 +1596,7 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
               </SectionCard>
 
               <SectionCard
-                eyebrow="فید پایش"
+                eyebrow="پایش محتوا"
                 title="پایش محتوا"
                 actions={
                   <button
@@ -1612,7 +1612,7 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                 {openSections.audits ? (
                   <>
                     <div className="content-audit-preview-grid">
-                      {auditPreview.length ? (
+                        {auditPreview.length ? (
                         auditPreview.map((item) => (
                           <article className="content-audit-preview-item" key={item.id}>
                             <span>{item.title}</span>
@@ -1621,12 +1621,12 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                           </article>
                         ))
                       ) : (
-                        <div className="fm-message">فعلا پایش فعالی دیده نمی‌شود.</div>
+                        <div className="fm-message">فعلا موردی برای پایش ثبت نشده است.</div>
                       )}
                     </div>
                     {articleDetail ? (
                       <div className="content-workspace-summary-note">
-                        مقاله فعلی با عنوان «{getArticleTitle(articleDetail)}» در وضعیت {getArticleStatusLabel(articleDetail)} است و در دسته «{getArticleCategory(articleDetail)}» قرار دارد.
+                        این بخش فقط وضعیت‌های کنترلی مقاله را نشان می‌دهد. مقاله فعلی با عنوان «{getArticleTitle(articleDetail)}» در وضعیت {getArticleStatusLabel(articleDetail)} است و در دسته «{getArticleCategory(articleDetail)}» قرار دارد.
                         {getArticleTags(articleDetail).length > 0 ? ` برچسب‌های متصل: ${getArticleTags(articleDetail).join(' / ')}` : ' هنوز تگی به آن متصل نشده است.'}
                       </div>
                     ) : null}

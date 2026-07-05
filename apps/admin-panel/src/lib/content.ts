@@ -8,10 +8,10 @@ export const articleStatusLabels: Record<string, string> = {
 }
 
 export const contentAuditLabels: Record<string, string> = {
-  ARTICLES_WITHOUT_TAG: 'مقاله های بدون تگ',
-  ARTICLES_WITHOUT_FOCUS_KEYWORD: 'مقاله های بدون کلیدواژه کانونی',
-  ARTICLES_WITHOUT_CATEGORY: 'مقاله های بدون دسته بندی',
-  THIN_CATEGORIES: 'دسته بندی های کم محتوا',
+  ARTICLES_WITHOUT_TAG: 'مقاله‌های بدون تگ',
+  ARTICLES_WITHOUT_FOCUS_KEYWORD: 'مقاله‌های بدون کلیدواژه',
+  ARTICLES_WITHOUT_CATEGORY: 'مقاله‌های بدون دسته‌بندی',
+  THIN_CATEGORIES: 'دسته‌بندی‌های کم‌محتوا',
 }
 
 export function toContentRecord(value: unknown): ContentRecord {
@@ -56,7 +56,7 @@ export function translateArticleStatus(status: string) {
 }
 
 export function translateContentAuditType(type: string) {
-  return (contentAuditLabels[type] ?? type) || 'نامشخص';
+  return contentAuditLabels[type] ?? 'پایش نامشخص';
 }
 
 export function normalizeSlug(value: string) {

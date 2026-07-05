@@ -1594,6 +1594,7 @@
   background: rgba(255, 253, 248, 0.84);
   display: grid;
   gap: 8px;
+  min-height: 104px;
 }
 
 .content-queue-item {
