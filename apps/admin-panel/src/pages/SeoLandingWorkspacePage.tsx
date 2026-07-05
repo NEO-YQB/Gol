@@ -285,9 +285,7 @@ export function SeoLandingWorkspacePage({ session, mode, landingId, onBack }: Se
       <LoadableState error={error} loading={loading}>
         <SectionCard
           eyebrow="میزکار لندینگ سئو"
-          title={editorMode === 'edit' ? `ویرایش لندینگ #${currentLandingId ?? '—'}` : 'ساخت لندینگ سئو جدید'}
-          description="ترکیب دسته‌بندی و فیلترها را تعریف کن و متادیتای سئوی صفحه را تنظیم کن."
-          hint="از بالا به پایین حرکت کن: اول هویت لندینگ، بعد فیلترها و در پایان سئو را تکمیل کن."
+          title={editorMode === 'edit' ? `لندینگ #${currentLandingId ?? '—'}` : 'لندینگ جدید'}
           actions={
             <div className="content-workspace-topbar-actions">
               <Pill tone={editorMode === 'edit' ? 'success' : 'warning'}>
@@ -306,10 +304,7 @@ export function SeoLandingWorkspacePage({ session, mode, landingId, onBack }: Se
             <div className="content-workspace-form-grid">
               <SectionCard
                 eyebrow="هسته لندینگ"
-                title="هویت و ترکیب لندینگ"
-                description="نام داخلی، اسلاگ، دسته‌بندی و فیلترهای ترکیبی را تعریف کن."
-                hint="دسته‌بندی اصلی و فیلترها مشخص می‌کنند این لندینگ روی کدام صفحه آرشیو فعال می‌شود."
-                actions={<Pill tone="primary">هسته لندینگ</Pill>}
+                title="هویت لندینگ"
               >
                 <div className="content-editor-grid">
                   <label className="fm-field content-editor-field--wide">
@@ -364,7 +359,7 @@ export function SeoLandingWorkspacePage({ session, mode, landingId, onBack }: Se
                         </button>
                       </div>
                       {form.filterConfig.length === 0 ? (
-                        <div className="fm-message">هنوز فیلتری تعریف نشده. فیلترها مشخص می‌کنند این لندینگ روی کدام ترکیب از صفحه آرشیو فعال شود.</div>
+                        <div className="fm-message">هنوز فیلتری تعریف نشده.</div>
                       ) : (
                         <div className="content-filter-list">
                           {form.filterConfig.map((entry, index) => {
@@ -417,12 +412,9 @@ export function SeoLandingWorkspacePage({ session, mode, landingId, onBack }: Se
 
               <SectionCard
                 eyebrow="کنترل سئو"
-                title="متادیتا و محتوای سئو"
-                description="عنوان متا، توضیحات، H1 و محتوای غنی صفحه را تکمیل کن."
-                hint="اگر این فیلدها خالی باشند، مقادیر پیش‌فرض دسته‌بندی اصلی استفاده می‌شوند."
+                title="متادیتا"
                 actions={
                   <div className="content-accordion-actions">
-                    <Pill tone="danger">سئو محور</Pill>
                     <button
                       className={`content-accordion-trigger${seoOpen ? ' is-open' : ''}`}
                       onClick={() => setSeoOpen(!seoOpen)}
@@ -498,15 +490,13 @@ export function SeoLandingWorkspacePage({ session, mode, landingId, onBack }: Se
                     </div>
                   </div>
                 ) : (
-                  <div className="content-collapsed-note">برای تکمیل سئو و محتوای صفحه این بخش را باز کن.</div>
+                  <div className="content-collapsed-note">بخش سئو بسته است.</div>
                 )}
               </SectionCard>
 
               <SectionCard
                 eyebrow="پیش‌نمایش"
-                title="آدرس صفحه و پیش‌نمایش"
-                description="مسیر URL لندینگ و پیش‌نمایش ساختار صفحه را بررسی کن."
-                hint="این لندینگ در مسیر زیر در استورفرانت قابل دسترسی خواهد بود."
+                title="آدرس و preview"
               >
                 <div className="content-snippet-card">
                   <small>{categoryPath}/{form.slug || 'landing-slug'}</small>

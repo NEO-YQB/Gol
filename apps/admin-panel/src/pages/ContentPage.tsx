@@ -197,25 +197,22 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
       {
         label: 'مقاله‌ها',
         value: formatPersianNumber(articles.length),
-        delta: `${formatPersianNumber(filteredArticles.length)} در نمای فعلی`,
-        detail: 'کارتابل اصلی مقاله‌ها',
-        hint: 'این عدد نشان می‌دهد چند مقاله در کل داری و چند مورد با فیلترهای فعلی دیده می‌شوند.',
+        delta: `${formatPersianNumber(filteredArticles.length)} در فیلتر`,
+        detail: '',
         tone: 'primary' as const,
       },
       {
         label: 'نویسنده‌ها',
         value: formatPersianNumber(authors.length),
         delta: 'مالکیت تحریریه',
-        detail: 'پروفایل نویسنده و مالکیت محتوا',
-        hint: 'اگر نویسنده‌ها درست تعریف نشده باشند، مدیریت مقاله‌ها در ادامه سخت‌تر می‌شود.',
+        detail: '',
         tone: 'success' as const,
       },
       {
         label: 'تاکسونومی',
         value: formatPersianNumber(categories.length + tags.length),
         delta: `${formatPersianNumber(categories.length)} دسته / ${formatPersianNumber(tags.length)} تگ`,
-        detail: 'ساختار دسته‌بندی و تگ',
-        hint: 'دسته و تگ خوب باعث می‌شود جستجو، صفحه‌بندی و پیدا کردن مقاله‌ها ساده‌تر شود.',
+        detail: '',
         tone: 'warning' as const,
       },
     ],
@@ -311,11 +308,8 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
         <SectionCard
           eyebrow="کارتابل محتوا"
           title="مقاله‌ها"
-          description="این صفحه برای پیدا کردن مقاله‌ها، مرور سریع وضعیت آن‌ها و ورود مستقیم به ویرایشگر طراحی شده است."
-          hint="لیست را مرور کن، مقاله را انتخاب کن و در صورت نیاز مستقیم وارد ویرایشگر شو."
           actions={
             <div className="content-header-actions">
-              <Pill tone="primary">تحریریه و سئو</Pill>
               <button className="content-primary-action" onClick={onCreateArticle} type="button">
                 مقاله جدید
               </button>
@@ -401,7 +395,8 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
             </div>
           </div>
 
-          <div className="content-table-card content-table-card--full">
+          <div className="content-layout">
+            <div className="content-table-card content-table-card--full">
             <div className="content-results-head">
               <strong>فهرست مقاله‌ها</strong>
               <span>
@@ -415,33 +410,18 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
                     const articleId = readText(item, ['id'], '')
                     const isActive = selectedArticleId === articleId
                     return (
-                      <article className={`content-selection-item${isActive ? ' is-active' : ''}`} key={articleId}>
-                        <div className="content-selection-head">
-                          <div>
-                            <strong>{getArticleTitle(item)}</strong>
-                            <span>{readText(item, ['slug'], '—')}</span>
-                          </div>
-                          <Pill tone={getArticleStatus(item) === 'PUBLISHED' ? 'success' : 'warning'}>
-                            {getArticleStatusLabel(item)}
-                          </Pill>
-                        </div>
-                        <small>
-                          {getArticleAuthor(item)} / {getArticleCategory(item)}
-                        </small>
-                        <p className="content-selection-excerpt">
-                          {readText(item, ['excerpt'], '').trim() || 'هنوز خلاصه کوتاهی برای این مقاله ثبت نشده است.'}
-                        </p>
-                        <div className="content-selection-meta">
-                          <span>{formatJalaliDate(item.updatedAt, true)}</span>
-                          <div className="content-selection-actions">
-                            <button onClick={() => setSelectedArticleId(articleId)} type="button">
-                              خلاصه مقاله
-                            </button>
-                            <button onClick={() => onEditArticle(articleId)} type="button">
-                              ورود به ویرایشگر
-                            </button>
-                          </div>
-                        </div>
+                      <article className={`content-selection-item${isActive ? ' is-active' : ''}`} key={articleId} onClick={() => setSelectedArticleId(articleId)} role="button" tabIndex={0}>
+                        <strong>{getArticleTitle(item)}</strong>
+                        <span>{getArticleAuthor(item)}</span>
+                        <span>{getArticleCategory(item)}</span>
+                        <small>{readText(item, ['slug'], '—')}</small>
+                        <Pill tone={getArticleStatus(item) === 'PUBLISHED' ? 'success' : 'warning'}>
+                          {getArticleStatusLabel(item)}
+                        </Pill>
+                        <span>{formatJalaliDate(item.updatedAt, true)}</span>
+                        <button className="content-selection-edit" onClick={(event) => { event.stopPropagation(); onEditArticle(articleId) }} type="button">
+                          ویرایش
+                        </button>
                       </article>
                     )
                   })}
@@ -467,15 +447,16 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
                     </button>
                   </div>
                 ) : null}
+              </div>
 
+              <div className="content-detail-column">
                 <SectionCard
-                  eyebrow="مقاله انتخاب‌شده"
-                  title={selectedArticleId ? `خلاصه مقاله #${selectedArticleId}` : 'هیچ مقاله‌ای انتخاب نشده'}
-                  description="جزئیات مقاله انتخاب‌شده را اینجا می‌بینی."
+                  eyebrow="انتخاب‌شده"
+                  title={selectedArticle ? getArticleTitle(selectedArticle) : selectedArticleId ? `مقاله #${selectedArticleId}` : 'انتخاب نشده'}
                   actions={
                     selectedArticleId ? (
                       <button className="content-secondary-action" onClick={() => onEditArticle(selectedArticleId)} type="button">
-                        ورود به ویرایشگر
+                        ویرایش
                       </button>
                     ) : null
                   }
@@ -507,10 +488,12 @@ export function ContentPage({ session, onCreateArticle, onEditArticle }: Content
                     <div className="fm-message">برای مشاهده خلاصه یک مقاله را از لیست انتخاب کن.</div>
                   ) : null}
                 </SectionCard>
+              </div>
               </>
             ) : (
               <div className="fm-message">با این فیلترها مقاله‌ای پیدا نشد.</div>
             )}
+            </div>
           </div>
         </SectionCard>
 

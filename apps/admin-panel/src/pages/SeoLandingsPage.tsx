@@ -72,25 +72,22 @@ export function SeoLandingsPage({ session, onCreateLanding, onEditLanding }: Seo
       {
         label: 'لندینگ‌ها',
         value: formatPersianNumber(landings.length),
-        delta: `${formatPersianNumber(filteredLandings.length)} در نمای فعلی`,
-        detail: 'لندینگ‌های سئو تعریف‌شده',
-        hint: 'تعداد کل لندینگ‌های تعریف‌شده و تعداد نمایش داده‌شده با فیلتر فعلی.',
+        delta: `${formatPersianNumber(filteredLandings.length)} در فیلتر`,
+        detail: '',
         tone: 'primary' as const,
       },
       {
         label: 'فعال',
         value: formatPersianNumber(landings.filter((item) => item.isActive === true).length),
         delta: 'وضعیت ایندکس',
-        detail: 'لندینگ‌های فعال در لیست سفید',
-        hint: 'فقط لندینگ‌های فعال توسط استورفرانت مچ و رندر می‌شوند.',
+        detail: '',
         tone: 'success' as const,
       },
       {
         label: 'غیرفعال',
         value: formatPersianNumber(landings.filter((item) => item.isActive !== true).length),
-        delta: 'خارج از لیست سفید',
-        detail: 'لندینگ‌های غیرفعال',
-        hint: 'این لندینگ‌ها در حال حاضر در استورفرانت استفاده نمی‌شوند.',
+        delta: 'غیرفعال',
+        detail: '',
         tone: 'warning' as const,
       },
     ],
@@ -122,13 +119,10 @@ export function SeoLandingsPage({ session, onCreateLanding, onEditLanding }: Seo
         </div>
 
         <SectionCard
-          eyebrow="کارتابل لندینگ‌های سئو"
-          title="لندینگ‌های ترکیبی (SEO Landings)"
-          description="مدیریت لندینگ‌های سئو شده از ترکیب دسته‌بندی‌ها و فیلترها."
-          hint="لندینگ‌های فعال در لیست سفید قرار دارند و توسط استورفرانت برای صفحات آرشیو رندر می‌شوند."
+          eyebrow="لندینگ‌ها"
+          title="لندینگ‌های سئو"
           actions={
             <div className="content-header-actions">
-              <Pill tone="primary">سئو هوشمند</Pill>
               <button className="content-primary-action" onClick={onCreateLanding} type="button">
                 لندینگ جدید
               </button>
@@ -164,42 +158,22 @@ export function SeoLandingsPage({ session, onCreateLanding, onEditLanding }: Seo
 
                   return (
                     <article className="content-selection-item" key={id}>
-                      <div className="content-selection-head">
-                        <div>
-                          <strong>{readText(item, ['internalName'], '—')}</strong>
-                          <span>/categories/{readText(item, ['category', 'slug'], '')}/{readText(item, ['slug'], '')}</span>
-                        </div>
-                        <Pill tone={item.isActive === true ? 'success' : 'warning'}>
-                          {item.isActive === true ? 'فعال' : 'غیرفعال'}
-                        </Pill>
-                      </div>
-                      <small>
-                        {categoryName}
-                        {filterLabels.length > 0 ? ` / ${filterLabels.join(' + ')}` : ''}
-                      </small>
-                      <div className="content-selection-meta">
-                        <span>{formatJalaliDate(item.createdAt, true)}</span>
-                        <div className="content-selection-actions">
-                          <button onClick={() => onEditLanding(id)} type="button">
-                            ویرایش
+                      <strong>{readText(item, ['internalName'], '—')}</strong>
+                      <span>{categoryName}</span>
+                      <small>/categories/{readText(item, ['category', 'slug'], '')}/{readText(item, ['slug'], '')}</small>
+                      <span>{filterLabels.length > 0 ? filterLabels.join(' + ') : 'بدون فیلتر'}</span>
+                      <Pill tone={item.isActive === true ? 'success' : 'warning'}>
+                        {item.isActive === true ? 'فعال' : 'غیرفعال'}
+                      </Pill>
+                      <span>{formatJalaliDate(item.createdAt, true)}</span>
+                      <div className="content-selection-actions">
+                        <button onClick={() => onEditLanding(id)} type="button">ویرایش</button>
+                        <button onClick={() => setDeleteConfirmId(deleteConfirmId === id ? null : id)} type="button">{deleteConfirmId === id ? 'لغو' : 'حذف'}</button>
+                        {deleteConfirmId === id ? (
+                          <button className="content-primary-action" disabled={deleting} onClick={() => handleDelete(id)} type="button">
+                            {deleting ? 'حذف...' : 'تایید'}
                           </button>
-                          <button
-                            onClick={() => setDeleteConfirmId(deleteConfirmId === id ? null : id)}
-                            type="button"
-                          >
-                            {deleteConfirmId === id ? 'لغو' : 'حذف'}
-                          </button>
-                          {deleteConfirmId === id ? (
-                            <button
-                              className="content-primary-action"
-                              disabled={deleting}
-                              onClick={() => handleDelete(id)}
-                              type="button"
-                            >
-                              {deleting ? 'در حال حذف...' : 'تایید حذف'}
-                            </button>
-                          ) : null}
-                        </div>
+                        ) : null}
                       </div>
                     </article>
                   )

@@ -854,9 +854,7 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
         />
         <SectionCard
           eyebrow="میزکار نگارش"
-          title={editorMode === 'edit' ? `ویرایشگر مقاله #${currentArticleId ?? '—'}` : 'ساخت مقاله جدید'}
-          description="این صفحه برای نوشتن، ویرایش، سئو و مدیریت دسته‌ها و برچسب‌ها طراحی شده تا کاربر در یک مسیر متمرکز بماند."
-          hint="از بالا به پایین حرکت کن: اول هویت مقاله، بعد متن، بعد سئو و در پایان دسته‌ها، برچسب‌ها و نویسنده را بررسی کن."
+          title={editorMode === 'edit' ? `مقاله #${currentArticleId ?? '—'}` : 'مقاله جدید'}
           actions={
             <div className="content-workspace-topbar-actions">
               <Pill tone={editorMode === 'edit' ? 'success' : 'warning'}>
@@ -887,10 +885,7 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
             <div className="content-workspace-form-grid">
               <SectionCard
                 eyebrow="هسته مقاله"
-                title="هویت مقاله و کنترل انتشار"
-                description="عنوان، اسلاگ، نویسنده، دسته‌بندی و وضعیت انتشار را از اینجا کنترل کن."
-                hint="اگر این بخش درست پر شود، بقیه کار بسیار ساده‌تر پیش می‌رود."
-                actions={<Pill tone="primary">هسته نگارش</Pill>}
+                title="هویت مقاله"
               >
                 <div className="content-editor-grid">
                   <label className="fm-field content-editor-field--wide">
@@ -970,7 +965,6 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                       <button className="content-secondary-action" disabled={uploadingImageTarget === 'article:coverImage'} onClick={() => openImagePicker('article:coverImage')} type="button">
                         {uploadingImageTarget === 'article:coverImage' ? 'در حال آپلود...' : 'آپلود تصویر کاور'}
                       </button>
-                      <span className="admin-products-upload-hint">برای هدر خود مقاله و تصویر اصلی listing استفاده می‌شود.</span>
                     </div>
                     {getImagePreview(articleForm.coverImage) ? (
                       <div className="admin-products-image-preview">
@@ -993,10 +987,7 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
 
               <SectionCard
                 eyebrow="بدنه محتوا"
-                title="متن مقاله و ویرایشگر ساختار"
-                description="این بلوک برای نگارش متمرکز، پیش‌نمایش و ارزیابی ساختار محتوایی است."
-                hint="متن اصلی را اینجا کامل کن و بعد با بخش سیگنال‌ها کیفیت ساختار را بسنج."
-                actions={<Pill tone="success">آماده نگارش</Pill>}
+                title="متن مقاله"
               >
                 <FormatTextarea
                   id="article-content"
@@ -1008,12 +999,9 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
 
               <SectionCard
                 eyebrow="تاکسونومی"
-                title="برچسب‌ها و ارتباط‌های محتوایی"
-                description="برچسب‌های مقاله را همین‌جا مدیریت کن تا ارتباط مقاله با بقیه محتوا از همان ابتدا روشن باشد."
-                hint="اگر مقاله به سختی پیدا می‌شود یا به مطالب دیگر وصل نیست، معمولا مشکل از همین بخش است."
+                title="برچسب‌ها"
                 actions={
                   <div className="content-accordion-actions">
-                    <Pill tone="warning">ارتباط محتوایی</Pill>
                     <button
                       aria-expanded={openSections.taxonomy}
                       className={`content-accordion-trigger${openSections.taxonomy ? ' is-open' : ''}`}
@@ -1048,18 +1036,15 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                     )}
                   </div>
                 ) : (
-                  <div className="content-collapsed-note">برای مدیریت ارتباط‌های محتوایی و برچسب‌های مقاله این بخش را باز کن.</div>
+                  <div className="content-collapsed-note">بخش برچسب‌ها بسته است.</div>
                 )}
               </SectionCard>
 
               <SectionCard
                 eyebrow="کنترل سئو"
-                title="کنترل‌های سئو و دیده‌شدن"
-                description="فیلدهای توضیح جستجو، وضعیت دیده‌شدن و پیش‌نمایش شبکه‌های اجتماعی را اینجا کامل کن."
-                hint="اگر می‌خواهی صفحه در جستجو و اشتراک‌گذاری ظاهر درستی داشته باشد، این بخش را با دقت پر کن."
+                title="سئو و دیده‌شدن"
                 actions={
                   <div className="content-accordion-actions">
-                    <Pill tone="danger">سئو محور</Pill>
                     <button
                       aria-expanded={openSections.seo}
                       className={`content-accordion-trigger${openSections.seo ? ' is-open' : ''}`}
@@ -1112,7 +1097,6 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                       <button className="content-secondary-action" disabled={uploadingImageTarget === 'article:ogImage'} onClick={() => openImagePicker('article:ogImage')} type="button">
                         {uploadingImageTarget === 'article:ogImage' ? 'در حال آپلود...' : 'آپلود تصویر پیش‌نمایش'}
                       </button>
-                      <span className="admin-products-upload-hint">برای Open Graph، اشتراک‌گذاری و preview شبکه‌های اجتماعی استفاده می‌شود.</span>
                     </div>
                     {getImagePreview(articleForm.ogImage) ? (
                       <div className="admin-products-image-preview">
@@ -1138,18 +1122,15 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                   </div>
                 </div>
                 ) : (
-                  <div className="content-collapsed-note">برای تکمیل سئو، دیده‌شدن و پیش‌نمایش اشتراک‌گذاری این بخش را باز کن.</div>
+                  <div className="content-collapsed-note">بخش سئو بسته است.</div>
                 )}
               </SectionCard>
 
               <SectionCard
                 eyebrow="پیش‌نمایش سئو"
-                title="اسنیپت زنده و آمادگی انتشار"
-                description="قبل از انتشار، خروجی تقریبی عنوان، توضیح و مسیر صفحه را در همین‌جا مرور کن."
-                hint="این بخش کمک می‌کند قبل از انتشار بفهمی مقاله در نتیجه جستجو تقریبا چه شکلی دیده می‌شود."
+                title="Snippet"
                 actions={
                   <div className="content-accordion-actions">
-                    <Pill tone="primary">پیش‌نمایش جستجو</Pill>
                     <button
                       aria-expanded={openSections.preview}
                       className={`content-accordion-trigger${openSections.preview ? ' is-open' : ''}`}
@@ -1189,7 +1170,7 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                     </div>
                   </>
                 ) : (
-                  <div className="content-collapsed-note">برای دیدن پیش‌نمایش نهایی صفحه و آمادگی انتشار این بخش را باز کن.</div>
+                  <div className="content-collapsed-note">پیش‌نمایش بسته است.</div>
                 )}
               </SectionCard>
             </div>
@@ -1197,9 +1178,7 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
             <div className="content-helper-sections">
               <SectionCard
                 eyebrow="سیگنال تحریریه"
-                title="سیگنال‌های سریع برای نگارش و سئو"
-                description="این بخش‌های کمکی پایین صفحه مانده‌اند تا ستون اصلی نگارش تنگ و کشیده نشود."
-                hint="اگر نمی‌خواهی مدام بالا و پایین بروی، این بخش یک جمع‌بندی کوتاه از کیفیت متن و سئو به تو می‌دهد."
+                title="سیگنال‌ها"
                 actions={
                   <button
                     aria-expanded={openSections.signals}
@@ -1231,15 +1210,13 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                     </div>
                   </>
                 ) : (
-                  <div className="content-collapsed-note">برای مشاهده سیگنال‌های سریع نگارش و سئو این بخش را باز کن.</div>
+                  <div className="content-collapsed-note">سیگنال‌ها بسته هستند.</div>
                 )}
               </SectionCard>
 
               <SectionCard
                 eyebrow="مدیریت تاکسونومی"
-                title="مدیریت دسته‌بندی و برچسب"
-                description="مدیریت دسته و برچسب در همین صفحه حاضر است تا بدون خروج از روند اصلی، ساختار محتوا را کامل کنی."
-                hint="اگر هنگام نگارش متوجه شدی دسته یا برچسب کم است، لازم نیست از این صفحه خارج شوی."
+                title="دسته و تگ"
                 actions={
                   <button
                     aria-expanded={openSections.manager}
@@ -1396,7 +1373,7 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                     </div>
                     </>
                     ) : (
-                      <div className="content-collapsed-note">برای ایجاد یا ویرایش دسته‌بندی، این زیر بخش را باز کن.</div>
+                      <div className="content-collapsed-note">مدیریت دسته بسته است.</div>
                     )}
                   </div>
 
@@ -1515,20 +1492,18 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                     </div>
                     </>
                     ) : (
-                      <div className="content-collapsed-note">برای ایجاد یا ویرایش تگ، این زیر بخش را باز کن.</div>
+                      <div className="content-collapsed-note">مدیریت تگ بسته است.</div>
                     )}
                   </div>
                 </div>
                 ) : (
-                  <div className="content-collapsed-note">برای مدیریت دسته‌بندی‌ها و تگ‌ها این بخش را باز کن.</div>
+                  <div className="content-collapsed-note">مدیریت تاکسونومی بسته است.</div>
                 )}
               </SectionCard>
 
               <SectionCard
                 eyebrow="مدیریت نویسنده"
-                title="مدیریت نویسنده‌ها"
-                description="مالکیت محتوایی و پروفایل نویسنده را بدون خروج از این صفحه مدیریت کن."
-                hint="اگر نویسنده درست انتخاب یا تعریف نشود، گزارش‌ها و نسبت‌دادن محتوا هم اشتباه می‌شود."
+                title="نویسنده‌ها"
                 actions={
                   <button
                     aria-expanded={openSections.author}
@@ -1615,15 +1590,13 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                   </div>
                 </div>
                 ) : (
-                  <div className="content-collapsed-note">برای مدیریت پروفایل نویسنده و اتصال کاربری این بخش را باز کن.</div>
+                  <div className="content-collapsed-note">مدیریت نویسنده بسته است.</div>
                 )}
               </SectionCard>
 
               <SectionCard
                 eyebrow="فید پایش"
-                title="پایش‌های محتوایی فعال"
-                description="نمای خلاصه پایش‌ها همیشه کنار ویرایشگر می‌ماند تا تصمیم‌های محتوایی از سئو جدا نشوند."
-                hint="اگر مطمئن نیستی مقاله آماده انتشار هست یا نه، این بخش معمولا سریع‌ترین هشدارها را نشان می‌دهد."
+                title="پایش محتوا"
                 actions={
                   <button
                     aria-expanded={openSections.audits}
@@ -1658,7 +1631,7 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                     ) : null}
                   </>
                 ) : (
-                  <div className="content-collapsed-note">برای مرور پایش‌های محتوایی و وضعیت مقاله فعلی این بخش را باز کن.</div>
+                  <div className="content-collapsed-note">پایش‌ها بسته هستند.</div>
                 )}
               </SectionCard>
             </div>
