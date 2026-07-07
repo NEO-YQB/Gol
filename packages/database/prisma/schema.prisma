@@ -731,6 +731,11 @@ model Order {
   cancelledAt          DateTime?
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([storeId, createdAt])
+  @@index([status, createdAt])
+  @@index([settlementStatus, updatedAt])
 }
 
 enum PaymentGateway {

@@ -519,7 +519,7 @@ export const adminApi = {
     return request<unknown[]>('/admin/operations/settlements/exceptions', {}, session.accessToken)
   },
   getSupportTickets(session: AuthSession) {
-    return request<unknown[]>('/support/admin/tickets', {}, session.accessToken)
+    return request<unknown>('/support/admin/tickets?limit=100', {}, session.accessToken)
   },
   getSupportTicketDetail(session: AuthSession, ticketId: string) {
     return request<unknown>(`/support/tickets/${ticketId}`, {}, session.accessToken)

@@ -1012,6 +1012,7 @@ export class ContentService {
         },
         include: this.articleInclude,
         orderBy: [{ createdAt: 'desc' }],
+        take: 100,
       });
     }
 
@@ -1025,6 +1026,7 @@ export class ContentService {
         },
         include: this.articleInclude,
         orderBy: [{ createdAt: 'desc' }],
+        take: 100,
       });
     }
 
@@ -1048,6 +1050,7 @@ export class ContentService {
         },
       },
       orderBy: [{ createdAt: 'desc' }],
+      take: 100,
     });
   }
 

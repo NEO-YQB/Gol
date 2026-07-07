@@ -312,20 +312,6 @@ export class AdminReportsService {
     });
 
     const storeIds = stores.map((store) => store.id);
-    const tickets = storeIds.length
-      ? await this.prisma.supportTicket.findMany({
-          where: {
-            storeId: { in: storeIds },
-            createdAt: { gte: range.from, lte: range.to },
-          },
-          select: {
-            storeId: true,
-            status: true,
-            financeOutcome: true,
-          },
-        })
-      : [];
-
     const metricMap = new Map<
       number,
       {
@@ -337,35 +323,63 @@ export class AdminReportsService {
       }
     >();
 
-    for (const ticket of tickets) {
-      if (!ticket.storeId) {
-        continue;
+    if (storeIds.length) {
+      const ticketRange: Prisma.SupportTicketWhereInput = {
+        storeId: { in: storeIds },
+        createdAt: { gte: range.from, lte: range.to },
+      };
+
+      const ensureEntry = (storeId: number) => {
+        const current =
+          metricMap.get(storeId) ??
+          {
+            ticketCount: 0,
+            escalatedCount: 0,
+            refundCount: 0,
+            reversalCount: 0,
+            resolvedCount: 0,
+          };
+        metricMap.set(storeId, current);
+        return current;
+      };
+
+      // Aggregate counts in the database instead of loading every ticket row
+      // into memory — this is the same data, computed via groupBy + _count.
+      const [statusGroups, outcomeGroups] = await Promise.all([
+        this.prisma.supportTicket.groupBy({
+          by: ['storeId', 'status'],
+          where: ticketRange,
+          _count: { _all: true },
+        }),
+        this.prisma.supportTicket.groupBy({
+          by: ['storeId', 'financeOutcome'],
+          where: { ...ticketRange, financeOutcome: { not: null } },
+          _count: { _all: true },
+        }),
+      ]);
+
+      for (const group of statusGroups) {
+        if (!group.storeId) continue;
+        const entry = ensureEntry(group.storeId);
+        entry.ticketCount += group._count._all;
+        if (group.status === SupportTicketStatus.ESCALATED_TO_FINANCE) {
+          entry.escalatedCount += group._count._all;
+        }
+        if (group.status === SupportTicketStatus.RESOLVED) {
+          entry.resolvedCount += group._count._all;
+        }
       }
 
-      const current =
-        metricMap.get(ticket.storeId) ?? {
-          ticketCount: 0,
-          escalatedCount: 0,
-          refundCount: 0,
-          reversalCount: 0,
-          resolvedCount: 0,
-        };
-
-      current.ticketCount += 1;
-      if (ticket.status === SupportTicketStatus.ESCALATED_TO_FINANCE) {
-        current.escalatedCount += 1;
+      for (const group of outcomeGroups) {
+        if (!group.storeId || !group.financeOutcome) continue;
+        const entry = ensureEntry(group.storeId);
+        if (REFUND_OUTCOMES.includes(group.financeOutcome)) {
+          entry.refundCount += group._count._all;
+        }
+        if (REVERSAL_OUTCOMES.includes(group.financeOutcome)) {
+          entry.reversalCount += group._count._all;
+        }
       }
-      if (ticket.status === SupportTicketStatus.RESOLVED) {
-        current.resolvedCount += 1;
-      }
-      if (ticket.financeOutcome && REFUND_OUTCOMES.includes(ticket.financeOutcome)) {
-        current.refundCount += 1;
-      }
-      if (ticket.financeOutcome && REVERSAL_OUTCOMES.includes(ticket.financeOutcome)) {
-        current.reversalCount += 1;
-      }
-
-      metricMap.set(ticket.storeId, current);
     }
 
     const sorted = stores

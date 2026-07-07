@@ -33,6 +33,18 @@ type AuthenticatedUser = {
   roles: string[];
 };
 
+type OrderExpiryCheckShape = {
+  id: number;
+  status: OrderStatus;
+  storeId: number | null;
+  payment: {
+    id: number;
+    status: PaymentStatus;
+    expiresAt: Date | null;
+  } | null;
+  orderItems: Array<{ productId: number; quantity: number }>;
+};
+
 type ProductSnapshot = {
   id: number;
   name: string;
@@ -171,14 +183,16 @@ export class OrderService {
 
     const orders = await this.prisma.order.findMany({
       where: { userId: user.id },
-      include: this.getOrderInclude(),
+      include: this.getOrderListInclude(),
       orderBy: { createdAt: 'desc' },
+      take: 300,
     });
 
     return this.syncExpiredPaymentsAndRefetch(orders, {
       where: { userId: user.id },
-      include: this.getOrderInclude(),
+      include: this.getOrderListInclude(),
       orderBy: { createdAt: 'desc' },
+      take: 300,
     });
   }
 
@@ -191,8 +205,9 @@ export class OrderService {
           ownerId: user.id,
         },
       },
-      include: this.getOrderInclude(),
+      include: this.getOrderListInclude(),
       orderBy: { createdAt: 'desc' },
+      take: 300,
     });
 
     return this.syncExpiredPaymentsAndRefetch(orders, {
@@ -201,8 +216,9 @@ export class OrderService {
           ownerId: user.id,
         },
       },
-      include: this.getOrderInclude(),
+      include: this.getOrderListInclude(),
       orderBy: { createdAt: 'desc' },
+      take: 300,
     });
   }
 
@@ -210,13 +226,15 @@ export class OrderService {
     await this.assertAdminRole(user);
 
     const orders = await this.prisma.order.findMany({
-      include: this.getOrderInclude(),
+      include: this.getOrderListInclude(),
       orderBy: { createdAt: 'desc' },
+      take: 300,
     });
 
     return this.syncExpiredPaymentsAndRefetch(orders, {
-      include: this.getOrderInclude(),
+      include: this.getOrderListInclude(),
       orderBy: { createdAt: 'desc' },
+      take: 300,
     });
   }
 
@@ -1067,6 +1085,50 @@ export class OrderService {
     };
   }
 
+  /**
+   * Lighter relation set for list endpoints (findAll/findVendorOrders/findAdminOrders).
+   * Avoids pulling full Product rows, coupon details, status history and domain events
+   * for every order on every list load — those are only needed on the single-order
+   * detail view (see getOrderInclude/getOrderOrThrow), while still including everything
+   * expirePaymentIfNeeded() needs to detect and reconcile expired pending payments.
+   */
+  private getOrderListInclude() {
+    return {
+      payment: {
+        select: {
+          id: true,
+          status: true,
+          expiresAt: true,
+        },
+      },
+      user: {
+        select: {
+          id: true,
+          fullName: true,
+          phoneNumber: true,
+        },
+      },
+      store: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          ownerId: true,
+        },
+      },
+      orderItems: {
+        select: {
+          id: true,
+          productId: true,
+          quantity: true,
+          price: true,
+          productName: true,
+          productImage: true,
+        },
+      },
+    };
+  }
+
   private attachOperationalView(
     order: Awaited<ReturnType<OrderService['getOrderOrThrow']>>,
   ) {
@@ -1137,7 +1199,7 @@ export class OrderService {
   }
 
   private async syncExpiredPaymentsAndRefetch(
-    orders: Array<Awaited<ReturnType<OrderService['getOrderOrThrow']>>>,
+    orders: OrderExpiryCheckShape[],
     query: Prisma.OrderFindManyArgs,
   ) {
     let hasChanged = false;
@@ -1155,7 +1217,7 @@ export class OrderService {
   }
 
   private async expirePaymentIfNeeded(
-    order: Awaited<ReturnType<OrderService['getOrderOrThrow']>>,
+    order: OrderExpiryCheckShape,
   ) {
     const payment = order.payment;
 
