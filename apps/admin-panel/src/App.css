@@ -2221,6 +2221,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
   gap: 12px;
+  align-items: start;
 }
 
 .alerts-summary-grid {
@@ -2228,9 +2229,14 @@
   align-items: start;
 }
 
+.alerts-layout .fm-section-card,
 .alerts-detail-column {
   display: grid;
   gap: 12px;
+}
+
+.alerts-layout .fm-section-card {
+  align-self: start;
 }
 
 .alerts-selection-list {
