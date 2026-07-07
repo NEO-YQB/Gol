@@ -2856,7 +2856,7 @@
 .access-lane-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
+  gap: 12px;
   align-items: start;
 }
 
@@ -2868,8 +2868,8 @@
 
 .access-compact-summary-card,
 .access-mini-meta-card {
-  padding: 14px 16px;
-  border-radius: 18px;
+  padding: 12px 14px;
+  border-radius: 16px;
   border: 1px solid var(--fm-border-soft);
   background: rgba(255, 252, 247, 0.84);
 }
@@ -2898,16 +2898,39 @@
 }
 
 .compact-selection-item {
-  padding: 12px 14px;
+  padding: 10px 12px;
+  gap: 2px;
+}
+
+.access-selection-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.access-selection-head strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.access-selection-head span,
+.compact-selection-item small {
+  color: var(--fm-text-secondary);
+  font-size: 0.82rem;
 }
 
 .compact-detail-panel,
 .access-role-editor {
-  gap: 16px;
+  gap: 12px;
 }
 
 .compact-detail-section {
-  padding: 14px 16px;
+  padding: 12px 14px;
 }
 
 .access-mini-meta-grid {
@@ -2925,7 +2948,7 @@
 .access-form-cluster,
 .access-permission-preview {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .compact-form-grid,

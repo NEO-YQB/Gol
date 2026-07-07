@@ -81,24 +81,24 @@ export function AccessControlPage({ session, onOpenWorkspace }: AccessControlPag
   const stats = useMemo(
     () => [
       {
-        label: 'کاربران قابل مدیریت',
+        label: 'کاربران',
         value: String(users.length),
-        delta: 'در نمای فعلی',
-        detail: 'نمونه ای از کاربران همراه با نقش و گستره دسترسی',
+        delta: 'نمای فعلی',
+        detail: '',
         tone: 'primary' as const,
       },
       {
-        label: 'نقش های ثبت شده',
+        label: 'نقش‌ها',
         value: String(roles.length),
-        delta: 'در ماتریس نقش',
-        detail: 'نقش هایی که برای پنل و تیم های عملیاتی فعال اند',
+        delta: 'تعریف‌شده',
+        detail: '',
         tone: 'warning' as const,
       },
       {
-        label: 'دسترسی های مرجع',
+        label: 'دسترسی‌ها',
         value: String(permissions.length),
-        delta: 'برای bootstrap پنل',
-        detail: 'کاتالوگ فشرده دسترسی ها برای navigation و actionها',
+        delta: 'مرجع',
+        detail: '',
         tone: 'success' as const,
       },
     ],
@@ -146,47 +146,45 @@ export function AccessControlPage({ session, onOpenWorkspace }: AccessControlPag
 
       <div className="refined-access-overview">
         <SectionCard
-          eyebrow="تصویر کلی"
-          title="کارتابل جمع وجور کاربران، نقش ها و سطح کنترل"
-          description="این صفحه فقط برای اسکن سریع، تشخیص وضعیت و ورود به workspace کامل مدیریت دسترسی ساخته شده است."
+          eyebrow="کاربران"
+          title="کاربران و دسترسی‌ها"
           actions={
             <button className="fm-button fm-button--primary" onClick={onOpenWorkspace} type="button">
-              ورود به میزکار کامل دسترسی
+              ورود به میزکار
             </button>
           }
         >
           <div className="access-compact-summary-grid">
             <div className="access-compact-summary-card">
               <strong>مدیریت کاربران</strong>
-              <p>{canMutateUsers ? 'در این نشست، تغییر نقش و وضعیت کاربر ممکن است.' : 'در این نشست، فقط مشاهده کاربران مجاز است.'}</p>
+              <p>{canMutateUsers ? 'ویرایش کاربر فعال است.' : 'فقط مشاهده مجاز است.'}</p>
             </div>
             <div className="access-compact-summary-card">
-              <strong>مدیریت نقش ها</strong>
-              <p>{canMutateRoles ? 'ساخت یا ویرایش نقش و دسترسی فعال است.' : 'ویرایش نقش و دسترسی در این نشست غیرفعال است.'}</p>
+              <strong>مدیریت نقش‌ها</strong>
+              <p>{canMutateRoles ? 'ویرایش نقش فعال است.' : 'ویرایش نقش محدود است.'}</p>
             </div>
             <div className="access-compact-summary-card">
-              <strong>خروجی پنل</strong>
-              <p>navigation و actionها مستقیما از همین لایه دسترسی bootstrap می شوند.</p>
+              <strong>دامنه دسترسی</strong>
+              <p>منوها و عملیات از همین لایه کنترل می‌شوند.</p>
             </div>
           </div>
         </SectionCard>
 
-        <SectionCard eyebrow="نشست فعلی" title="توان واقعی این حساب" description="در این سطح، هیچ action یا labelی خام و بدون ترجمه از backend نمایش داده نمی شود.">
+        <SectionCard eyebrow="نشست" title="سطح دسترسی این حساب">
           <div className="access-control-capability-list compact-capability-list">
             <Pill tone={canMutateUsers ? 'success' : 'neutral'}>{canMutateUsers ? 'ویرایش کاربر فعال' : 'ویرایش کاربر محدود'}</Pill>
             <Pill tone={canMutateRoles ? 'warning' : 'neutral'}>{canMutateRoles ? 'ویرایش نقش فعال' : 'ویرایش نقش محدود'}</Pill>
-            <Pill>منوی دسترسی محور</Pill>
-            <Pill>واژه های فارسی سازی شده</Pill>
+            <Pill>نمای ترجمه‌شده</Pill>
           </div>
         </SectionCard>
       </div>
 
       <div className="refined-access-tables">
-        <SectionCard eyebrow="نمونه کاربران" title="نمای سریع کاربران" description="خلاصه کوتاه از کاربرها برای اینکه قبل از ورود به workspace، وضعیت کلی را ببینی.">
+        <SectionCard eyebrow="کاربران" title="فهرست کاربران">
           <DataTable columns={userColumns} rows={userRows} />
         </SectionCard>
 
-        <SectionCard eyebrow="نمونه نقش ها" title="نمای سریع نقش ها" description="ماتریس فشرده نقش ها با شمارش کاربر و دسترسی برای تصمیم سریع تر.">
+        <SectionCard eyebrow="نقش‌ها" title="فهرست نقش‌ها">
           <DataTable columns={roleColumns} rows={roleRows} />
         </SectionCard>
       </div>

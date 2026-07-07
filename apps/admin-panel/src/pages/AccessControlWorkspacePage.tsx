@@ -412,7 +412,7 @@ export function AccessControlWorkspacePage({ session, onBack }: AccessControlWor
     <div className="fm-stack access-workspace refined-access-workspace">
       <div className="access-workspace-toolbar access-workspace-toolbar--compact">
         <button className="fm-button fm-button--ghost" onClick={onBack} type="button">
-          بازگشت به کارتابل کاربران و دسترسی
+          بازگشت
         </button>
         <div className="access-workspace-toolbar__actions">
           <Pill tone={canCreateUser ? 'primary' : 'neutral'}>{canCreateUser ? 'ساخت کاربر فعال' : 'ساخت کاربر غیرفعال'}</Pill>
@@ -421,7 +421,7 @@ export function AccessControlWorkspacePage({ session, onBack }: AccessControlWor
         </div>
       </div>
 
-      <SectionCard eyebrow="ساخت کاربر جدید" title="ایجاد مستقیم کاربر برای پنل" description="مدیر کل یا مدیر دسترسی می تواند از همینجا کاربر جدید بسازد و همان لحظه نقش های اولیه را هم به او بدهد.">
+      <SectionCard eyebrow="کاربر جدید" title="ایجاد کاربر">
         <div className="access-form-grid compact-form-grid access-create-role-grid">
           <label className="fm-field">
             <span>شماره موبایل</span>
@@ -462,13 +462,13 @@ export function AccessControlWorkspacePage({ session, onBack }: AccessControlWor
         </label>
         <div className="access-inline-actions">
           <button className="fm-button fm-button--primary" disabled={!canCreateUser || saving} onClick={handleCreateUser} type="button">
-            ساخت کاربر جدید
+            ایجاد کاربر
           </button>
         </div>
       </SectionCard>
 
       <div className="access-lane-grid">
-        <SectionCard eyebrow="انتخاب کاربر" title="کارتابل کوتاه کاربران" description="فقط برای انتخاب سریع کاربر و ورود به جزئیات تصمیم گیری.">
+        <SectionCard eyebrow="کاربران" title="فهرست کاربران">
           <LoadableState error={error} loading={loading}>
             <div className="access-selection-list compact-selection-list">
               {users.map((user) => {
@@ -480,7 +480,10 @@ export function AccessControlWorkspacePage({ session, onBack }: AccessControlWor
                     onClick={() => setSelectedUserId(id)}
                     type="button"
                   >
-                    <strong>{toIdentity(user)}</strong>
+                    <div className="access-selection-head">
+                      <strong>{toIdentity(user)}</strong>
+                      <span>{readBoolean(user, ['isActive'], true) ? 'فعال' : 'غیرفعال'}</span>
+                    </div>
                     <small>{toArray(user.roles).map((role) => toRoleLabel(role as RoleRecord)).join(' / ') || 'بدون نقش'}</small>
                   </button>
                 )
@@ -489,15 +492,14 @@ export function AccessControlWorkspacePage({ session, onBack }: AccessControlWor
           </LoadableState>
         </SectionCard>
 
-        <SectionCard eyebrow="کاربر انتخاب شده" title="وضعیت، نقش ها و actionهای کاربر" description="همه actionهای اصلی کاربر در همین سطح کوتاه، روشن و بدون کش آمدگی جمع شده اند.">
+        <SectionCard eyebrow="جزئیات کاربر" title="کاربر انتخاب‌شده">
           <LoadableState error={error} loading={detailLoading && !selectedUser}>
             {selectedUser ? (
               <div className="access-detail-panel compact-detail-panel">
                 <div className="access-detail-section compact-detail-section">
                   <strong>{toIdentity(selectedUser)}</strong>
                   <p>
-                    {readBoolean(selectedUser, ['isActive'], true) ? 'حساب فعال است' : 'حساب غیرفعال است'}
-                    {' - '}
+                    {readBoolean(selectedUser, ['isActive'], true) ? 'حساب فعال است' : 'حساب غیرفعال است'} /{' '}
                     {readText(selectedUser, ['email'], 'ایمیلی ثبت نشده است')}
                   </p>
                 </div>
@@ -542,16 +544,16 @@ export function AccessControlWorkspacePage({ session, onBack }: AccessControlWor
 
                   <div className="access-inline-actions">
                     <button className="fm-button fm-button--secondary" disabled={!canAssignUserRoles || saving} onClick={handleSaveUserRoles} type="button">
-                      ذخیره نقش های کاربر
+                      ذخیره نقش‌ها
                     </button>
                     <button className="fm-button fm-button--ghost" disabled={!canUpdateUserStatus || saving} onClick={handleUserStatusToggle} type="button">
-                      {readBoolean(selectedUser, ['isActive'], true) ? 'غیرفعال کردن حساب' : 'فعال کردن دوباره حساب'}
+                      {readBoolean(selectedUser, ['isActive'], true) ? 'غیرفعال‌سازی حساب' : 'فعال‌سازی حساب'}
                     </button>
                   </div>
                 </div>
 
                 <div className="access-permission-preview">
-                  <strong>پیش نمایش دسترسی های موثر</strong>
+                  <strong>دسترسی‌های مؤثر</strong>
                   <div className="access-permission-chips compact-permission-chips">
                     {userPermissionPreview.length ? userPermissionPreview.map((permission, index) => (
                       <span className="access-permission-chip" key={readText(permission as Record<string, unknown>, ['id'], String(index))}>
@@ -569,7 +571,7 @@ export function AccessControlWorkspacePage({ session, onBack }: AccessControlWor
       </div>
 
       <div className="access-lane-grid">
-        <SectionCard eyebrow="فهرست نقش ها" title="کارتابل فشرده نقش ها" description="برای انتخاب سریع نقش و حرکت به بخش ویرایش آن.">
+        <SectionCard eyebrow="نقش‌ها" title="فهرست نقش‌ها">
           <div className="access-selection-list compact-selection-list">
             {roles.map((role) => {
               const id = readText(role, ['id'], '')
@@ -580,15 +582,18 @@ export function AccessControlWorkspacePage({ session, onBack }: AccessControlWor
                   onClick={() => setSelectedRoleId(id)}
                   type="button"
                 >
-                  <strong>{toRoleLabel(role)}</strong>
-                  <small>{readNumber(role, ['permissionCount'], 0)} دسترسی / {readNumber(role, ['userCount'], 0)} کاربر</small>
+                  <div className="access-selection-head">
+                    <strong>{toRoleLabel(role)}</strong>
+                    <span>{readNumber(role, ['userCount'], 0)} کاربر</span>
+                  </div>
+                  <small>{readNumber(role, ['permissionCount'], 0)} دسترسی</small>
                 </button>
               )
             })}
           </div>
         </SectionCard>
 
-        <SectionCard eyebrow="ویرایش نقش" title="عنوان، توضیح و دسترسی های نقش" description="این سطح برای ویرایش واقعی role طراحی شده و دیگر فقط نمایش خام داده نیست.">
+        <SectionCard eyebrow="جزئیات نقش" title="ویرایش نقش">
           <LoadableState error={error} loading={detailLoading && !selectedRole}>
             {selectedRole ? (
               <div className="access-role-editor">
@@ -610,7 +615,7 @@ export function AccessControlWorkspacePage({ session, onBack }: AccessControlWor
 
                 <div className="access-inline-actions">
                   <button className="fm-button fm-button--secondary" disabled={!canEditRole || saving} onClick={handleSaveRoleMeta} type="button">
-                    ذخیره مشخصات نقش
+                    ذخیره مشخصات
                   </button>
                 </div>
 
@@ -655,13 +660,13 @@ export function AccessControlWorkspacePage({ session, onBack }: AccessControlWor
 
                   <div className="access-inline-actions">
                     <button className="fm-button fm-button--primary" disabled={!canAssignRolePermissions || saving} onClick={handleSaveRolePermissions} type="button">
-                      ذخیره دسترسی های نقش
+                      ذخیره دسترسی‌ها
                     </button>
                   </div>
                 </div>
 
                 <div className="access-permission-preview">
-                  <strong>دسترسی های فعلی نقش</strong>
+                  <strong>دسترسی‌های فعلی</strong>
                   <div className="access-permission-chips compact-permission-chips">
                     {selectedRolePermissions.slice(0, 18).map((permission, index) => (
                       <span className="access-permission-chip" key={readText(permission as Record<string, unknown>, ['id'], String(index))}>
@@ -678,7 +683,7 @@ export function AccessControlWorkspacePage({ session, onBack }: AccessControlWor
         </SectionCard>
       </div>
 
-      <SectionCard eyebrow="ساخت نقش جدید" title="افزودن نقش عملیاتی تازه" description="اگر تیم جدیدی مثل مالی یا پشتیبانی نیاز به role جدا داشته باشد، از همینجا تعریف اولیه آن انجام می شود.">
+      <SectionCard eyebrow="نقش جدید" title="ایجاد نقش">
         <div className="access-form-grid compact-form-grid access-create-role-grid">
           <label className="fm-field">
             <span>نام سیستمی</span>
@@ -695,7 +700,7 @@ export function AccessControlWorkspacePage({ session, onBack }: AccessControlWor
         </label>
         <div className="access-inline-actions">
           <button className="fm-button fm-button--primary" disabled={!canCreateRole || saving} onClick={handleCreateRole} type="button">
-            ساخت نقش جدید
+            ایجاد نقش
           </button>
         </div>
       </SectionCard>
