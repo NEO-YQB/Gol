@@ -295,8 +295,10 @@ export function AlertsPage({
                       onClick={() => setSelectedAlertId(id)}
                       type="button"
                     >
-                      <strong>{getAlertTitle(item)}</strong>
-                      <span>{getAlertStatusLabel(item)}</span>
+                      <div className="alerts-selection-head">
+                        <strong>{getAlertTitle(item)}</strong>
+                        <span>{getAlertStatusLabel(item)}</span>
+                      </div>
                       <small>{formatJalaliDate(readText(item, ['updatedAt', 'createdAt'], ''), true)}</small>
                     </button>
                   )
@@ -362,8 +364,10 @@ export function AlertsPage({
                       onClick={() => setSelectedNotificationId(id)}
                       type="button"
                     >
-                      <strong>{readText(item, ['title', 'topic'], '—')}</strong>
-                      <span>{getNotificationStatusLabel(item)}</span>
+                      <div className="alerts-selection-head">
+                        <strong>{readText(item, ['title', 'topic'], '—')}</strong>
+                        <span>{getNotificationStatusLabel(item)}</span>
+                      </div>
                       <small>{getNotificationChannelLabel(item)}</small>
                     </button>
                   )
