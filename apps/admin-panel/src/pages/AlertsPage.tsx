@@ -1,8 +1,8 @@
-import { ActivityFeed, DataTable, Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
+import { DataTable, Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
 import { useEffect, useMemo, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { adminApi } from '../lib/api'
-import { makeFeed, makeRows, makeStats, readText, toArray } from '../lib/normalize'
+import { makeRows, makeStats, readText, toArray } from '../lib/normalize'
 import type { AuthSession } from '../lib/session'
 
 type AlertRecord = Record<string, unknown>
@@ -166,8 +166,6 @@ export function AlertsPage({
     [notifications],
   )
 
-  const feed = useMemo(() => makeFeed(filteredAlerts, 'alert lifecycle'), [filteredAlerts])
-
   const stats = useMemo(
     () =>
       makeStats([
@@ -280,30 +278,29 @@ export function AlertsPage({
             title="هشدارهای عملیاتی"
             actions={<Pill tone="warning">{`${filteredAlerts.length} هشدار`}</Pill>}
           >
-            <div className="alerts-table-card">
-              <ActivityFeed items={feed} />
+            <div className="alerts-selection-list">
+              {filteredAlerts.slice(0, 10).map((item) => {
+                const id = readText(item, ['id'], '—')
+                const isActive = id === selectedAlertId
 
-              <div className="alerts-selection-list">
-                {filteredAlerts.slice(0, 8).map((item) => {
-                  const id = readText(item, ['id'], '—')
-                  const isActive = id === selectedAlertId
-
-                  return (
-                    <button
-                      className={`alerts-selection-item ${isActive ? 'is-active' : ''}`}
-                      key={id}
-                      onClick={() => setSelectedAlertId(id)}
-                      type="button"
-                    >
-                      <div className="alerts-selection-head">
-                        <strong>{getAlertTitle(item)}</strong>
-                        <span>{getAlertStatusLabel(item)}</span>
-                      </div>
+                return (
+                  <button
+                    className={`alerts-selection-item ${isActive ? 'is-active' : ''}`}
+                    key={id}
+                    onClick={() => setSelectedAlertId(id)}
+                    type="button"
+                  >
+                    <div className="alerts-selection-head">
+                      <strong>{getAlertTitle(item)}</strong>
+                      <span>{getAlertStatusLabel(item)}</span>
+                    </div>
+                    <div className="alerts-selection-meta">
+                      <small>{readText(item, ['type'], '—')}</small>
                       <small>{formatJalaliDate(readText(item, ['updatedAt', 'createdAt'], ''), true)}</small>
-                    </button>
-                  )
-                })}
-              </div>
+                    </div>
+                  </button>
+                )
+              })}
             </div>
           </SectionCard>
 
