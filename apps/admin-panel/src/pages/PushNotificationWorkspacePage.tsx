@@ -60,6 +60,10 @@ export function PushNotificationWorkspacePage({ session, onBack }: Props) {
       })
 
       setMessage('پوش نوتیفیکیشن با موفقیت ارسال شد.')
+      setForm((current) => ({
+        ...DEFAULT_FORM,
+        userId: current.userId,
+      }))
     } catch (requestError) {
       if (requestError instanceof Error && 'status' in requestError) {
         const payload = requestError as Error & { message: string }
@@ -79,9 +83,8 @@ export function PushNotificationWorkspacePage({ session, onBack }: Props) {
   return (
     <div className="space-y-6">
       <SectionCard
-        eyebrow="workspace"
-        title="میزکار ارسال پوش نوتیفیکیشن"
-        description="ارسال push سفارشی برای سفارش، پشتیبانی، کمپین و پیام‌های عملیاتی از این workspace انجام می‌شود."
+        eyebrow="اعلان جدید"
+        title="ارسال پوش"
         actions={
           <button className="fm-button fm-button--secondary" onClick={onBack} type="button">
             بازگشت
@@ -89,16 +92,15 @@ export function PushNotificationWorkspacePage({ session, onBack }: Props) {
         }
       >
         <div className="flex flex-wrap gap-2">
-          <Pill>Push Workspace</Pill>
-          <Pill>Firebase Admin</Pill>
-          <Pill>Realtime Delivery</Pill>
+          <Pill>پوش</Pill>
+          <Pill>کاربر</Pill>
+          <Pill>سفارش / تیکت</Pill>
         </div>
       </SectionCard>
 
       <SectionCard
-        eyebrow="push form"
-        title="ارسال پوش سفارشی"
-        description="شناسه کاربر را وارد کن و در صورت نیاز شناسه سفارش یا تیکت را هم برای route شدن درست در اپ بفرست."
+        eyebrow="فرم ارسال"
+        title="ثبت اعلان"
       >
         <div className="fm-grid fm-grid--2">
           <label className="fm-field">
@@ -134,7 +136,7 @@ export function PushNotificationWorkspacePage({ session, onBack }: Props) {
             />
           </label>
           <label className="fm-field">
-            <span>topic</span>
+            <span>موضوع</span>
             <input
               onChange={(event) => setForm((current) => ({ ...current, topic: event.target.value }))}
               type="text"
@@ -167,7 +169,7 @@ export function PushNotificationWorkspacePage({ session, onBack }: Props) {
             onClick={() => void handleSubmit()}
             type="button"
           >
-            {saving ? 'در حال ارسال...' : 'ارسال پوش نوتیفیکیشن'}
+            {saving ? 'در حال ارسال...' : 'ارسال اعلان'}
           </button>
         </div>
 

@@ -1028,7 +1028,7 @@ export const adminApi = {
     }, session.accessToken)
   },
   getNotifications(session: AuthSession) {
-    return request<unknown>('/notifications/admin', {}, session.accessToken)
+    return request<unknown>('/notifications/admin?limit=100', {}, session.accessToken)
   },
   dispatchNotification(session: AuthSession, notificationId: string, body: Record<string, unknown>) {
     return request<unknown>(`/notifications/admin/${notificationId}/dispatch`, {
