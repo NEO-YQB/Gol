@@ -49,10 +49,6 @@ function getAlertTitle(record: AlertRecord) {
   return readText(record, ['title', 'topic', 'type'], '—')
 }
 
-function getAlertMeta(record: AlertRecord) {
-  return readText(record, ['updatedAt', 'createdAt', 'aggregateType'], '—')
-}
-
 function getNotificationStatusLabel(record: AlertRecord) {
   const status = readText(record, ['status'], 'UNKNOWN')
   return notificationStatusLabels[status] ?? status
