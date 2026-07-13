@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_glass_card.dart';
-import '../../../shared/widgets/app_section_heading.dart';
 import '../../../shared/widgets/app_shell_background.dart';
+import 'privacy_policy_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({
@@ -53,12 +53,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         height: 52,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(18),
-                          gradient: const LinearGradient(
-                            colors: [
-                              AppColors.primary,
-                              AppColors.secondary,
-                            ],
-                          ),
                           boxShadow: const [
                             BoxShadow(
                               color: Color(0x221F6A52),
@@ -67,15 +61,16 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ],
                         ),
-                        child: const Icon(
-                          Icons.local_florist_rounded,
-                          color: Colors.white,
+                        clipBehavior: Clip.antiAlias,
+                        child: Image.asset(
+                          'assets/icon/icon.png',
+                          fit: BoxFit.cover,
                         ),
                       ),
                       const SizedBox(width: AppSpacing.md),
                       Expanded(
                         child: Text(
-                          'Golino Seller',
+                          'فروشندگان گلینو',
                           style: theme.textTheme.titleMedium?.copyWith(
                             color: AppColors.textPrimary,
                           ),
@@ -84,17 +79,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                   ),
                   const SizedBox(height: 36),
-                  const AppSectionHeading(
-                    eyebrow: 'ورود سریع و امن',
-                    title: 'فروشگاهت را\nبا یک تجربه لوکس مدیریت کن',
-                    description:
-                        'برای ورود، فقط شماره موبایل فروشنده را وارد کن. کد تایید خیلی سریع ارسال می‌شود.',
-                  ),
-                  const SizedBox(height: 28),
-                  const AppGlassCard(
-                    child: _LoginFeatureStrip(),
-                  ),
-                  const SizedBox(height: 22),
                   AppGlassCard(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -141,11 +125,42 @@ class _LoginScreenState extends State<LoginScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 18),
-                  Text(
-                    'تجربه نسخه اول بر پایه سرعت، سادگی و حس premium طراحی می‌شود.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textSecondary,
+                  const SizedBox(height: AppSpacing.lg),
+                  Center(
+                    child: Wrap(
+                      alignment: WrapAlignment.center,
+                      children: [
+                        Text(
+                          'با عضویت در برنامه، ',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const PrivacyPolicyScreen(),
+                              ),
+                            );
+                          },
+                          child: Text(
+                            'سیاست حفظ حریم خصوصی',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: AppColors.primary,
+                              decoration: TextDecoration.underline,
+                              decorationColor: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          ' را می‌پذیرید.',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -158,38 +173,3 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-class _LoginFeatureStrip extends StatelessWidget {
-  const _LoginFeatureStrip();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    Widget item(IconData icon, String label) {
-      return Expanded(
-        child: Column(
-          children: [
-            Icon(
-              icon,
-              color: AppColors.primary,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.labelMedium,
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Row(
-      children: [
-        item(Icons.bolt_rounded, 'ورود سریع'),
-        item(Icons.shield_rounded, 'نشست امن'),
-        item(Icons.auto_graph_rounded, 'کنترل فروشگاه'),
-      ],
-    );
-  }
-}
