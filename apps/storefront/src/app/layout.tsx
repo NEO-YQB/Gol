@@ -9,15 +9,12 @@ export async function generateMetadata(): Promise<Metadata> {
   const favicons = await getFaviconSettings()
   const siteUrl = seo?.siteUrl || 'https://golino.shop'
 
-  const icons: Metadata['icons'] = {}
+  const iconList: Array<{ url: string; type?: string }> = []
   if (favicons?.storefront?.faviconIco) {
-    icons.icon = [{ url: favicons.storefront.faviconIco, type: 'image/x-icon' }]
+    iconList.push({ url: favicons.storefront.faviconIco, type: 'image/x-icon' })
   }
   if (favicons?.storefront?.faviconPng) {
-    icons.icon = [...(icons.icon || []), { url: favicons.storefront.faviconPng, type: 'image/png' }]
-  }
-  if (favicons?.storefront?.appleTouchIcon) {
-    icons.apple = favicons.storefront.appleTouchIcon
+    iconList.push({ url: favicons.storefront.faviconPng, type: 'image/png' })
   }
 
   return {
@@ -25,7 +22,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: seo?.siteName ? `${seo.siteName} | بازار گل و هدیه` : 'گلینو | بازار گل و هدیه',
     description: 'خرید آنلاین گل، باکس هدیه و سفارش از فروشگاه‌های منتخب گلینو',
     verification: seo?.googleSearchConsoleVerification ? { google: seo.googleSearchConsoleVerification } : undefined,
-    icons: Object.keys(icons).length > 0 ? icons : undefined,
+    icons: iconList.length > 0 ? { icon: iconList } : undefined,
   }
 }
 
