@@ -5,9 +5,10 @@ type SettingsPageProps = {
   onOpenPaymentGatewayWorkspace: () => void
   onOpenSeoSettingsWorkspace: () => void
   onOpenStorefrontInfoPagesWorkspace: () => void
+  onOpenFaviconSettingsWorkspace: () => void
 }
 
-export function SettingsPage({ onOpenSmsWorkspace, onOpenPaymentGatewayWorkspace, onOpenSeoSettingsWorkspace, onOpenStorefrontInfoPagesWorkspace }: SettingsPageProps) {
+export function SettingsPage({ onOpenSmsWorkspace, onOpenPaymentGatewayWorkspace, onOpenSeoSettingsWorkspace, onOpenStorefrontInfoPagesWorkspace, onOpenFaviconSettingsWorkspace }: SettingsPageProps) {
   return (
     <div className="space-y-6">
       <SectionCard eyebrow="settings hub" title="تنظیمات سراسری" description="هر integration را داخل workspace اختصاصی خودش مدیریت کن.">
@@ -23,6 +24,9 @@ export function SettingsPage({ onOpenSmsWorkspace, onOpenPaymentGatewayWorkspace
           </button>
           <button className="fm-button" onClick={onOpenPaymentGatewayWorkspace} type="button">
             ورود به workspace درگاه پرداخت
+          </button>
+          <button className="fm-button" onClick={onOpenFaviconSettingsWorkspace} type="button">
+            ورود به workspace فاوایکون
           </button>
         </div>
       </SectionCard>

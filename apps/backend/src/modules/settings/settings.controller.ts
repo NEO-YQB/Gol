@@ -6,6 +6,7 @@ import { TestSmsSettingsDto } from './dto/test-sms-settings.dto';
 import { UpdateSeoSettingsDto } from './dto/update-seo-settings.dto';
 import { UpdateStorefrontInfoPagesSettingsDto } from './dto/update-storefront-info-pages-settings.dto';
 import { UpdateSmsSettingsDto } from './dto/update-sms-settings.dto';
+import { UpdateFaviconSettingsDto } from './dto/update-favicon-settings.dto';
 import { SettingsService } from './settings.service';
 
 @ApiTags('Settings')
@@ -77,5 +78,20 @@ export class SettingsController {
     @Body() dto: UpdateStorefrontInfoPagesSettingsDto,
   ) {
     return this.settingsService.updateStorefrontInfoPagesSettings(user, { ...dto });
+  }
+
+  @Get('favicon')
+  @ApiOperation({ summary: 'دریافت تنظیمات فاوایکون' })
+  getFaviconSettings(@GetUser() user: { id: number; roles: string[] }) {
+    return this.settingsService.getFaviconSettings(user);
+  }
+
+  @Patch('favicon')
+  @ApiOperation({ summary: 'ذخیره تنظیمات فاوایکون' })
+  updateFaviconSettings(
+    @GetUser() user: { id: number; roles: string[] },
+    @Body() dto: UpdateFaviconSettingsDto,
+  ) {
+    return this.settingsService.updateFaviconSettings(user, { ...dto });
   }
 }

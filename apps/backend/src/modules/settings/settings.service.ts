@@ -6,6 +6,7 @@ import { SmsProviderService } from './sms-provider.service';
 const SMS_IR_SETTING_KEY = 'sms_ir_config';
 const STOREFRONT_INFO_PAGES_SETTING_KEY = 'storefront_info_pages_config';
 const SEO_SETTINGS_KEY = 'seo_settings_config';
+const FAVICON_SETTINGS_KEY = 'favicon_settings_config';
 
 type AuthenticatedUser = {
   id: number;
@@ -78,6 +79,38 @@ type StorefrontInfoPagesSettings = {
     bodyHtml: string;
     updatedAtLabel: string;
   };
+};
+
+type FaviconSettings = {
+  storefront: {
+    faviconIco: string;
+    faviconPng: string;
+    appleTouchIcon: string;
+  };
+  adminPanel: {
+    faviconIco: string;
+    faviconPng: string;
+  };
+  vendorPanel: {
+    faviconIco: string;
+    faviconPng: string;
+  };
+};
+
+const DEFAULT_FAVICON_SETTINGS: FaviconSettings = {
+  storefront: {
+    faviconIco: '',
+    faviconPng: '',
+    appleTouchIcon: '',
+  },
+  adminPanel: {
+    faviconIco: '',
+    faviconPng: '',
+  },
+  vendorPanel: {
+    faviconIco: '',
+    faviconPng: '',
+  },
 };
 
 const DEFAULT_INFO_PAGES_SETTINGS: StorefrontInfoPagesSettings = {
@@ -238,6 +271,44 @@ export class SettingsService {
 
   async getStorefrontInfoPagesSettingsPublic() {
     return this.readStorefrontInfoPagesSettings();
+  }
+
+  async getFaviconSettings(user: AuthenticatedUser) {
+    this.assertAdmin(user);
+    return this.readFaviconSettings();
+  }
+
+  async getFaviconSettingsPublic() {
+    return this.readFaviconSettings();
+  }
+
+  async updateFaviconSettings(
+    user: AuthenticatedUser,
+    input: Record<string, unknown>,
+  ) {
+    this.assertAdmin(user);
+    const current = await this.readFaviconSettings();
+    const nextValue = this.normalizeFaviconSettings(input, current);
+
+    const persisted = await this.prisma.appSetting.upsert({
+      where: { key: FAVICON_SETTINGS_KEY },
+      update: {
+        value: nextValue as unknown as Prisma.JsonObject,
+        description: 'Favicon configuration for storefront, admin panel and vendor panel',
+      },
+      create: {
+        key: FAVICON_SETTINGS_KEY,
+        value: nextValue as unknown as Prisma.JsonObject,
+        description: 'Favicon configuration for storefront, admin panel and vendor panel',
+      },
+    });
+
+    return this.normalizeFaviconSettings(
+      persisted.value && typeof persisted.value === 'object' && !Array.isArray(persisted.value)
+        ? (persisted.value as Record<string, unknown>)
+        : {},
+      DEFAULT_FAVICON_SETTINGS,
+    );
   }
 
   async updateStorefrontInfoPagesSettings(
@@ -448,5 +519,54 @@ export class SettingsService {
     if (!user.roles.includes('ADMIN')) {
       throw new ForbiddenException('این endpoint فقط برای ادمین مجاز است');
     }
+  }
+
+  private async readFaviconSettings(): Promise<FaviconSettings> {
+    const setting = await this.prisma.appSetting.findUnique({
+      where: { key: FAVICON_SETTINGS_KEY },
+    });
+
+    if (!setting?.value || typeof setting.value !== 'object' || Array.isArray(setting.value)) {
+      return DEFAULT_FAVICON_SETTINGS;
+    }
+
+    return this.normalizeFaviconSettings(
+      setting.value as Record<string, unknown>,
+      DEFAULT_FAVICON_SETTINGS,
+    );
+  }
+
+  private normalizeFaviconSettings(
+    input: Record<string, unknown>,
+    fallback: FaviconSettings,
+  ): FaviconSettings {
+    const storefront = this.toRecord(input.storefront);
+    const adminPanel = this.toRecord(input.adminPanel);
+    const vendorPanel = this.toRecord(input.vendorPanel);
+
+    return {
+      storefront: {
+        faviconIco: this.cleanAssetUrl(storefront.faviconIco, fallback.storefront.faviconIco),
+        faviconPng: this.cleanAssetUrl(storefront.faviconPng, fallback.storefront.faviconPng),
+        appleTouchIcon: this.cleanAssetUrl(storefront.appleTouchIcon, fallback.storefront.appleTouchIcon),
+      },
+      adminPanel: {
+        faviconIco: this.cleanAssetUrl(adminPanel.faviconIco, fallback.adminPanel.faviconIco),
+        faviconPng: this.cleanAssetUrl(adminPanel.faviconPng, fallback.adminPanel.faviconPng),
+      },
+      vendorPanel: {
+        faviconIco: this.cleanAssetUrl(vendorPanel.faviconIco, fallback.vendorPanel.faviconIco),
+        faviconPng: this.cleanAssetUrl(vendorPanel.faviconPng, fallback.vendorPanel.faviconPng),
+      },
+    };
+  }
+
+  private cleanAssetUrl(value: unknown, fallback = '') {
+    if (typeof value !== 'string') return fallback;
+    const trimmed = value.trim();
+    if (!trimmed) return '';
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    if (trimmed.startsWith('/')) return trimmed;
+    return fallback;
   }
 }

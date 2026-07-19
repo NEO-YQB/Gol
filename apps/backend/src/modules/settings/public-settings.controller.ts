@@ -19,4 +19,10 @@ export class PublicSettingsController {
   getStorefrontInfoPagesSettings() {
     return this.settingsService.getStorefrontInfoPagesSettingsPublic();
   }
+
+  @Get('favicon')
+  @ApiOperation({ summary: 'دریافت تنظیمات عمومی فاوایکون' })
+  getFaviconSettings() {
+    return this.settingsService.getFaviconSettingsPublic();
+  }
 }

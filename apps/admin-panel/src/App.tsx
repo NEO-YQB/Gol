@@ -30,6 +30,7 @@ import { PageBuilderPage } from './pages/PageBuilderPage'
 import { PageBuilderWorkspacePage } from './pages/PageBuilderWorkspacePage'
 import { PaymentGatewayWorkspacePage } from './pages/PaymentGatewayWorkspacePage'
 import { SeoSettingsWorkspacePage } from './pages/SeoSettingsWorkspacePage'
+import { FaviconSettingsWorkspacePage } from './pages/FaviconSettingsWorkspacePage'
 import { PushNotificationWorkspacePage } from './pages/PushNotificationWorkspacePage'
 import { SeoLandingsPage } from './pages/SeoLandingsPage'
 import { SeoLandingWorkspacePage } from './pages/SeoLandingWorkspacePage'
@@ -76,7 +77,7 @@ function buildNav(currentRoute: AdminRoute, session: AuthSession): NavSection[] 
         { key: 'pageBuilder', label: 'صفحه‌ساز استور', hint: 'landing pageها، homepage و چیدمان بلاک‌های storefront', active: currentRoute === 'pageBuilder' || currentRoute === 'pageBuilderWorkspace' },
         { key: 'alerts', label: 'هشدارها و اعلان ها', hint: 'outbox و رخدادهای مهم عملیاتی', active: currentRoute === 'alerts' },
         { key: 'accessControl', label: 'کاربران و دسترسی', hint: 'مدیریت user، role و permission', active: currentRoute === 'accessControl' || currentRoute === 'accessControlWorkspace', badge: hasPermission(session, 'assignPermissions', 'AdminRole') ? 'قابل ویرایش' : 'فقط مشاهده' },
-        { key: 'settings', label: 'تنظیمات', hint: 'تنظیمات سراسری سرویس‌ها و یکپارچه‌سازی‌ها', active: currentRoute === 'settings' || currentRoute === 'smsSettingsWorkspace' || currentRoute === 'storefrontInfoPagesWorkspace' || currentRoute === 'seoSettingsWorkspace' || currentRoute === 'paymentGatewayWorkspace' || currentRoute === 'pushNotificationWorkspace' },
+        { key: 'settings', label: 'تنظیمات', hint: 'تنظیمات سراسری سرویس‌ها و یکپارچه‌سازی‌ها', active: currentRoute === 'settings' || currentRoute === 'smsSettingsWorkspace' || currentRoute === 'storefrontInfoPagesWorkspace' || currentRoute === 'seoSettingsWorkspace' || currentRoute === 'paymentGatewayWorkspace' || currentRoute === 'pushNotificationWorkspace' || currentRoute === 'faviconSettingsWorkspace' },
       ],
     },
   ]
@@ -253,6 +254,12 @@ function getPageMeta(route: AdminRoute) {
         title: 'ارسال پوش نوتیفیکیشن',
         description: '',
       }
+    case 'faviconSettingsWorkspace':
+      return {
+        eyebrow: 'فاوایکون',
+        title: 'تنظیمات فاوایکون',
+        description: '',
+      }
     case 'accessControl':
       return {
         eyebrow: 'کنترل دسترسی',
@@ -320,6 +327,7 @@ function renderRoute(
     onOpenSeoSettingsWorkspace: () => void
     onOpenPushNotificationWorkspace: () => void
     onOpenPaymentGatewayWorkspace: () => void
+    onOpenFaviconSettingsWorkspace: () => void
     onBackToSettings: () => void
     onBackToAlerts: () => void
     seoLandingWorkspaceId: number | null
@@ -367,7 +375,7 @@ function renderRoute(
     case 'pageBuilder':
       return <PageBuilderPage onCreatePage={options.onOpenPageBuilderWorkspaceForCreate} onEditPage={options.onOpenPageBuilderWorkspaceForEdit} session={session} />
     case 'settings':
-      return <SettingsPage onOpenPaymentGatewayWorkspace={options.onOpenPaymentGatewayWorkspace} onOpenSeoSettingsWorkspace={options.onOpenSeoSettingsWorkspace} onOpenSmsWorkspace={options.onOpenSmsWorkspace} onOpenStorefrontInfoPagesWorkspace={options.onOpenStorefrontInfoPagesWorkspace} />
+      return <SettingsPage onOpenFaviconSettingsWorkspace={options.onOpenFaviconSettingsWorkspace} onOpenPaymentGatewayWorkspace={options.onOpenPaymentGatewayWorkspace} onOpenSeoSettingsWorkspace={options.onOpenSeoSettingsWorkspace} onOpenSmsWorkspace={options.onOpenSmsWorkspace} onOpenStorefrontInfoPagesWorkspace={options.onOpenStorefrontInfoPagesWorkspace} />
     case 'smsSettingsWorkspace':
       return <SmsSettingsWorkspacePage onBack={options.onBackToSettings} session={session} />
     case 'storefrontInfoPagesWorkspace':
@@ -378,6 +386,8 @@ function renderRoute(
       return <PaymentGatewayWorkspacePage onBack={options.onBackToSettings} session={session} />
     case 'pushNotificationWorkspace':
       return <PushNotificationWorkspacePage onBack={options.onBackToAlerts} session={session} />
+    case 'faviconSettingsWorkspace':
+      return <FaviconSettingsWorkspacePage onBack={options.onBackToSettings} session={session} />
     case 'pageBuilderWorkspace':
       return <PageBuilderWorkspacePage mode={options.pageBuilderWorkspaceMode} onBack={options.onBackToPageBuilder} pageId={options.pageBuilderWorkspacePageId} session={session} />
     case 'contentWorkspace':
@@ -739,6 +749,10 @@ export default function App() {
     handleNavigate('paymentGatewayWorkspace')
   }
 
+  function handleOpenFaviconSettingsWorkspace() {
+    handleNavigate('faviconSettingsWorkspace')
+  }
+
   function handleOpenSeoSettingsWorkspace() {
     handleNavigate('seoSettingsWorkspace')
   }
@@ -866,6 +880,7 @@ export default function App() {
         onOpenSeoSettingsWorkspace: handleOpenSeoSettingsWorkspace,
         onOpenPushNotificationWorkspace: handleOpenPushNotificationWorkspace,
         onOpenPaymentGatewayWorkspace: handleOpenPaymentGatewayWorkspace,
+        onOpenFaviconSettingsWorkspace: handleOpenFaviconSettingsWorkspace,
         onBackToSettings: handleBackToSettings,
         onBackToAlerts: () => handleNavigate('alerts'),
         seoLandingWorkspaceId,

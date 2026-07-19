@@ -95,6 +95,22 @@ export type SeoSettingsResponse = {
   sitemapPriority: string
 }
 
+export type FaviconSettingsResponse = {
+  storefront: {
+    faviconIco: string
+    faviconPng: string
+    appleTouchIcon: string
+  }
+  adminPanel: {
+    faviconIco: string
+    faviconPng: string
+  }
+  vendorPanel: {
+    faviconIco: string
+    faviconPng: string
+  }
+}
+
 export type PaymentGatewayConfigResponse = {
   id: number
   key: string
@@ -1023,6 +1039,15 @@ export const adminApi = {
   },
   updateStorefrontInfoPagesSettings(session: AuthSession, body: StorefrontInfoPagesSettingsResponse) {
     return request<StorefrontInfoPagesSettingsResponse>('/admin/settings/storefront-info-pages', {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  getFaviconSettings(session: AuthSession) {
+    return request<FaviconSettingsResponse>('/admin/settings/favicon', {}, session.accessToken)
+  },
+  updateFaviconSettings(session: AuthSession, body: Partial<FaviconSettingsResponse>) {
+    return request<FaviconSettingsResponse>('/admin/settings/favicon', {
       method: 'PATCH',
       body: JSON.stringify(body),
     }, session.accessToken)
