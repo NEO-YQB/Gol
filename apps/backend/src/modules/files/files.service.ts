@@ -114,11 +114,7 @@ export class FilesService {
   }
 
   async uploadFavicon(file: Express.Multer.File) {
-    const isIco = /\.ico$/i.test(file.originalname);
-    if (isIco) {
-      return this.uploadRawFile(file, 'site');
-    }
-    return this.uploadImage(file, 'site');
+    return this.uploadRawFile(file, 'site');
   }
 
   private async uploadImage(file: Express.Multer.File, folder: UploadFolder): Promise<UploadedImageResponse> {
