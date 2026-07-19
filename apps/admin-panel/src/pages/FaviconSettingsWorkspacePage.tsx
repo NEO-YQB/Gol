@@ -8,14 +8,8 @@ type Props = {
   onBack: () => void
 }
 
-type FaviconItemState = {
-  faviconIco: string
-  faviconPng: string
-  appleTouchIcon?: string
-}
-
 type FaviconFormState = {
-  storefront: FaviconItemState
+  storefront: { faviconIco: string; faviconPng: string; appleTouchIcon: string }
   adminPanel: { faviconIco: string; faviconPng: string }
   vendorPanel: { faviconIco: string; faviconPng: string }
 }
