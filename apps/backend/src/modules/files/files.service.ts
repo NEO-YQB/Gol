@@ -113,11 +113,41 @@ export class FilesService {
     return this.uploadImage(file, 'site');
   }
 
+  async uploadFavicon(file: Express.Multer.File) {
+    const isIco = /\.ico$/i.test(file.originalname);
+    if (isIco) {
+      return this.uploadRawFile(file, 'site');
+    }
+    return this.uploadImage(file, 'site');
+  }
+
   private async uploadImage(file: Express.Multer.File, folder: UploadFolder): Promise<UploadedImageResponse> {
     this.validateImageFile(file);
 
     const imageAsset = await this.prepareImageAsset(file, folder);
     return this.persistImageAsset(imageAsset, folder);
+  }
+
+  private async uploadRawFile(file: Express.Multer.File, folder: UploadFolder): Promise<{ url: string }> {
+    const ext = file.originalname.split('.').pop() || 'ico';
+    const key = `${folder}/${uuidv4()}.${ext}`;
+
+    if (this.client && this.bucket && this.publicUrl) {
+      await this.client.send(
+        new PutObjectCommand({
+          Bucket: this.bucket,
+          Key: key,
+          Body: file.buffer,
+          ContentType: file.mimetype || 'image/x-icon',
+        }),
+      );
+      return { url: `${this.publicUrl}/${key}` };
+    }
+
+    const targetDirectory = join(this.uploadsRoot, folder);
+    await mkdir(targetDirectory, { recursive: true });
+    await writeFile(join(this.uploadsRoot, key), file.buffer);
+    return { url: `/uploads/${key}` };
   }
 
   private buildFileName() {

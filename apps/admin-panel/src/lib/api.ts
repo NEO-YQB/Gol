@@ -1052,6 +1052,12 @@ export const adminApi = {
       body: JSON.stringify(body),
     }, session.accessToken)
   },
+  async uploadFavicon(session: AuthSession, file: File) {
+    const formData = new FormData()
+    formData.append('file', file)
+    const payload = await uploadRequest<{ url: string }>('/files/upload-favicon', formData, session.accessToken)
+    return { url: resolveAssetUrl(payload.url) }
+  },
   getNotifications(session: AuthSession) {
     return request<unknown>('/notifications/admin?limit=100', {}, session.accessToken)
   },

@@ -1,5 +1,5 @@
 import { Pill, SectionCard } from '@flower-marketplace/frontend-core'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { adminApi } from '../lib/api'
 import type { AuthSession } from '../lib/session'
 
@@ -27,6 +27,67 @@ function FaviconPreview({ url, label }: { url: string; label: string }) {
       <img alt={label} className="h-5 w-5 rounded" src={url} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
       <span className="truncate max-w-[180px] text-[#5f6f66]" dir="ltr">{url}</span>
     </span>
+  )
+}
+
+function UploadButton({ session, accept, label, onUploaded, disabled }: {
+  session: AuthSession
+  accept: string
+  label: string
+  onUploaded: (url: string) => void
+  disabled?: boolean
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
+
+  async function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      setUploading(true)
+      const result = await adminApi.uploadFavicon(session, file)
+      onUploaded(result.url)
+    } catch {
+      // error handled by parent
+    } finally {
+      setUploading(false)
+      if (inputRef.current) inputRef.current.value = ''
+    }
+  }
+
+  return (
+    <>
+      <input ref={inputRef} accept={accept} className="hidden" onChange={handleChange} type="file" />
+      <button
+        className="fm-button fm-button--secondary text-xs"
+        disabled={uploading || disabled}
+        onClick={() => inputRef.current?.click()}
+        type="button"
+      >
+        {uploading ? 'در حال آپلود...' : label}
+      </button>
+    </>
+  )
+}
+
+function FaviconField({ session, url, label, accept, onUrlChange }: {
+  session: AuthSession
+  url: string
+  label: string
+  accept: string
+  onUrlChange: (url: string) => void
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-[#e7dccb] bg-white/80 px-4 py-3">
+      <div className="min-w-0 flex-1">
+        <span className="mb-1 block text-xs font-medium text-[#5f6f66]">{label}</span>
+        {url ? <FaviconPreview label={label} url={url} /> : <span className="text-xs text-[#8a7e72]">فایلی بارگذاری نشده</span>}
+      </div>
+      <div className="flex shrink-0 gap-2">
+        <UploadButton accept={accept} label={url ? 'جایگزینی' : 'بارگذاری'} onUploaded={onUrlChange} session={session} />
+        {url && <button className="fm-button fm-button--secondary text-xs text-[#b44949]" onClick={() => onUrlChange('')} type="button">حذف</button>}
+      </div>
+    </div>
   )
 }
 
@@ -123,60 +184,26 @@ export function FaviconSettingsWorkspacePage({ session, onBack }: Props) {
 
       {/* Storefront */}
       <SectionCard eyebrow="storefront" title="استورفرونت" description="فاوایکون صفحه اصلی فروشگاه و صفحات عمومی">
-        <div className="fm-grid">
-          <label className="fm-field">
-            <span>آدرس favicon (.ico)</span>
-            <input dir="ltr" onChange={(e) => updateField('storefront', 'faviconIco', e.target.value)} placeholder="/favicon.ico" type="text" value={form.storefront.faviconIco} />
-          </label>
-          <label className="fm-field">
-            <span>آدرس favicon (.png)</span>
-            <input dir="ltr" onChange={(e) => updateField('storefront', 'faviconPng', e.target.value)} placeholder="/favicon.png" type="text" value={form.storefront.faviconPng} />
-          </label>
-          <label className="fm-field">
-            <span>آدرس Apple Touch Icon</span>
-            <input dir="ltr" onChange={(e) => updateField('storefront', 'appleTouchIcon', e.target.value)} placeholder="/apple-touch-icon.png" type="text" value={form.storefront.appleTouchIcon || ''} />
-          </label>
-        </div>
-        <div className="mt-3 flex flex-wrap gap-4">
-          <div className="flex items-center gap-2"><span className="text-xs text-[#8a7e72]">ico:</span><FaviconPreview label="ico" url={form.storefront.faviconIco} /></div>
-          <div className="flex items-center gap-2"><span className="text-xs text-[#8a7e72]">png:</span><FaviconPreview label="png" url={form.storefront.faviconPng} /></div>
-          <div className="flex items-center gap-2"><span className="text-xs text-[#8a7e72]">apple:</span><FaviconPreview label="apple" url={form.storefront.appleTouchIcon || ''} /></div>
+        <div className="space-y-3">
+          <FaviconField accept=".ico" label="favicon (.ico)" onUrlChange={(url) => updateField('storefront', 'faviconIco', url)} session={session} url={form.storefront.faviconIco} />
+          <FaviconField accept=".png" label="favicon (.png)" onUrlChange={(url) => updateField('storefront', 'faviconPng', url)} session={session} url={form.storefront.faviconPng} />
+          <FaviconField accept=".png" label="Apple Touch Icon (.png)" onUrlChange={(url) => updateField('storefront', 'appleTouchIcon', url)} session={session} url={form.storefront.appleTouchIcon} />
         </div>
       </SectionCard>
 
       {/* Admin Panel */}
       <SectionCard eyebrow="admin panel" title="پنل ادمین" description="فاوایکون پنل مدیریت">
-        <div className="fm-grid">
-          <label className="fm-field">
-            <span>آدرس favicon (.ico)</span>
-            <input dir="ltr" onChange={(e) => updateField('adminPanel', 'faviconIco', e.target.value)} placeholder="/favicon.ico" type="text" value={form.adminPanel.faviconIco} />
-          </label>
-          <label className="fm-field">
-            <span>آدرس favicon (.png)</span>
-            <input dir="ltr" onChange={(e) => updateField('adminPanel', 'faviconPng', e.target.value)} placeholder="/favicon.png" type="text" value={form.adminPanel.faviconPng} />
-          </label>
-        </div>
-        <div className="mt-3 flex flex-wrap gap-4">
-          <div className="flex items-center gap-2"><span className="text-xs text-[#8a7e72]">ico:</span><FaviconPreview label="ico" url={form.adminPanel.faviconIco} /></div>
-          <div className="flex items-center gap-2"><span className="text-xs text-[#8a7e72]">png:</span><FaviconPreview label="png" url={form.adminPanel.faviconPng} /></div>
+        <div className="space-y-3">
+          <FaviconField accept=".ico" label="favicon (.ico)" onUrlChange={(url) => updateField('adminPanel', 'faviconIco', url)} session={session} url={form.adminPanel.faviconIco} />
+          <FaviconField accept=".png" label="favicon (.png)" onUrlChange={(url) => updateField('adminPanel', 'faviconPng', url)} session={session} url={form.adminPanel.faviconPng} />
         </div>
       </SectionCard>
 
       {/* Vendor Panel */}
       <SectionCard eyebrow="vendor panel" title="پنل فروشنده" description="فاوایکون پنل فروشنده">
-        <div className="fm-grid">
-          <label className="fm-field">
-            <span>آدرس favicon (.ico)</span>
-            <input dir="ltr" onChange={(e) => updateField('vendorPanel', 'faviconIco', e.target.value)} placeholder="/favicon.ico" type="text" value={form.vendorPanel.faviconIco} />
-          </label>
-          <label className="fm-field">
-            <span>آدرس favicon (.png)</span>
-            <input dir="ltr" onChange={(e) => updateField('vendorPanel', 'faviconPng', e.target.value)} placeholder="/favicon.png" type="text" value={form.vendorPanel.faviconPng} />
-          </label>
-        </div>
-        <div className="mt-3 flex flex-wrap gap-4">
-          <div className="flex items-center gap-2"><span className="text-xs text-[#8a7e72]">ico:</span><FaviconPreview label="ico" url={form.vendorPanel.faviconIco} /></div>
-          <div className="flex items-center gap-2"><span className="text-xs text-[#8a7e72]">png:</span><FaviconPreview label="png" url={form.vendorPanel.faviconPng} /></div>
+        <div className="space-y-3">
+          <FaviconField accept=".ico" label="favicon (.ico)" onUrlChange={(url) => updateField('vendorPanel', 'faviconIco', url)} session={session} url={form.vendorPanel.faviconIco} />
+          <FaviconField accept=".png" label="favicon (.png)" onUrlChange={(url) => updateField('vendorPanel', 'faviconPng', url)} session={session} url={form.vendorPanel.faviconPng} />
         </div>
       </SectionCard>
 
