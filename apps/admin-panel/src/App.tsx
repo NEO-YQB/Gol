@@ -435,6 +435,19 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    const apiBase = (import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL ?? 'http://localhost:3000/v1').replace(/\/+$/, '')
+    fetch(`${apiBase}/settings/favicon`)
+      .then((r) => r.json())
+      .then((data: { adminPanel?: { faviconIco?: string; faviconPng?: string } }) => {
+        const link = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null
+        if (!link) return
+        if (data?.adminPanel?.faviconIco) { link.href = data.adminPanel.faviconIco; link.type = 'image/x-icon' }
+        else if (data?.adminPanel?.faviconPng) { link.href = data.adminPanel.faviconPng; link.type = 'image/png' }
+      })
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
     if (!session) return
 
     let active = true

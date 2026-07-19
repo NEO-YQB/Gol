@@ -1,17 +1,31 @@
 import type { Metadata } from 'next'
 import Script from 'next/script'
-import { getStorefrontSeoSettings } from '../lib/storefront'
+import { getStorefrontSeoSettings, getFaviconSettings } from '../lib/storefront'
 import "./globals.css";
 import "./info-pages.css";
 
 export async function generateMetadata(): Promise<Metadata> {
   const seo = await getStorefrontSeoSettings()
+  const favicons = await getFaviconSettings()
   const siteUrl = seo?.siteUrl || 'https://golino.shop'
+
+  const icons: Metadata['icons'] = {}
+  if (favicons?.storefront?.faviconIco) {
+    icons.icon = [{ url: favicons.storefront.faviconIco, type: 'image/x-icon' }]
+  }
+  if (favicons?.storefront?.faviconPng) {
+    icons.icon = [...(icons.icon || []), { url: favicons.storefront.faviconPng, type: 'image/png' }]
+  }
+  if (favicons?.storefront?.appleTouchIcon) {
+    icons.apple = favicons.storefront.appleTouchIcon
+  }
+
   return {
     metadataBase: new URL(siteUrl),
     title: seo?.siteName ? `${seo.siteName} | بازار گل و هدیه` : 'گلینو | بازار گل و هدیه',
     description: 'خرید آنلاین گل، باکس هدیه و سفارش از فروشگاه‌های منتخب گلینو',
     verification: seo?.googleSearchConsoleVerification ? { google: seo.googleSearchConsoleVerification } : undefined,
+    icons: Object.keys(icons).length > 0 ? icons : undefined,
   }
 }
 

@@ -1584,4 +1584,22 @@ export async function getStorefrontInfoPagesSettings(): Promise<StorefrontInfoPa
   }
 }
 
+export type FaviconSettings = {
+  storefront: {
+    faviconIco: string
+    faviconPng: string
+    appleTouchIcon: string
+  }
+  adminPanel: { faviconIco: string; faviconPng: string }
+  vendorPanel: { faviconIco: string; faviconPng: string }
+}
+
+export async function getFaviconSettings(): Promise<FaviconSettings | null> {
+  try {
+    return await requestNoStore<FaviconSettings>('/settings/favicon')
+  } catch {
+    return null
+  }
+}
+
 export { resolveAssetUrl }
