@@ -188,9 +188,9 @@ export function StorefrontFooter({ page }: { page: EnrichedStorefrontPage }) {
             {linkColumns.map((column, index) => (
               <div className="min-w-0" key={`footer-column-${index}`}>
                 {column.title ? (
-                  <h3 className="text-sm font-black" style={{ color: footerConfig.textColor || '#f5efe4' }}>
+                  <p className="text-[0.9rem] font-black leading-tight" style={{ color: footerConfig.textColor || '#f5efe4' }}>
                     {column.title}
-                  </h3>
+                  </p>
                 ) : null}
                 <div className={`${column.title ? 'mt-4' : ''} grid gap-2.5`}>
                   {(column.items ?? []).map((item) => (
@@ -207,9 +207,9 @@ export function StorefrontFooter({ page }: { page: EnrichedStorefrontPage }) {
         {footerConfig.trustEnabled !== false ? (
           <section className="min-w-0">
             {footerConfig.trustTitle ? (
-              <h3 className="text-sm font-black" style={{ color: footerConfig.textColor || '#f5efe4' }}>
+              <p className="text-[0.9rem] font-black leading-tight" style={{ color: footerConfig.textColor || '#f5efe4' }}>
                 {footerConfig.trustTitle}
-              </h3>
+              </p>
             ) : null}
             {badges.length ? (
               <div className={`${footerConfig.trustTitle ? 'mt-4' : ''} flex flex-wrap justify-center gap-3 md:justify-start`}>
@@ -254,9 +254,9 @@ export function StorefrontFooter({ page }: { page: EnrichedStorefrontPage }) {
             {footerConfig.appDownload?.enabled !== false && (footerConfig.appDownload?.bazaarUrl || footerConfig.appDownload?.directUrl) ? (
               <div className={`${socials.length ? 'mt-5' : badges.length ? 'mt-5' : footerConfig.trustTitle ? 'mt-4' : ''}`}>
                 {footerConfig.appDownload?.title ? (
-                  <h4 className="mb-3 text-xs font-bold" style={{ color: footerConfig.mutedTextColor || 'rgba(245,239,228,0.72)' }}>
+                  <p className="mb-3 text-xs font-bold" style={{ color: footerConfig.mutedTextColor || 'rgba(245,239,228,0.72)' }}>
                     {footerConfig.appDownload.title}
-                  </h4>
+                  </p>
                 ) : null}
                 <div className="flex flex-wrap justify-center gap-2 md:justify-start">
                   {footerConfig.appDownload?.bazaarUrl ? (
