@@ -894,6 +894,32 @@ export const adminApi = {
       method: 'DELETE',
     }, session.accessToken)
   },
+  getCategoryFaqs(session: AuthSession, categoryId: string) {
+    return request<unknown[]>(`/categories/${categoryId}/faqs`, {}, session.accessToken)
+  },
+  createCategoryFaq(session: AuthSession, categoryId: string, body: Record<string, unknown>) {
+    return request<unknown>(`/categories/${categoryId}/faqs`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  updateCategoryFaq(session: AuthSession, categoryId: string, faqId: string, body: Record<string, unknown>) {
+    return request<unknown>(`/categories/${categoryId}/faqs/${faqId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  deleteCategoryFaq(session: AuthSession, categoryId: string, faqId: string) {
+    return request<unknown>(`/categories/${categoryId}/faqs/${faqId}`, {
+      method: 'DELETE',
+    }, session.accessToken)
+  },
+  reorderCategoryFaqs(session: AuthSession, categoryId: string, faqIds: string[]) {
+    return request<unknown[]>(`/categories/${categoryId}/faqs/reorder`, {
+      method: 'PATCH',
+      body: JSON.stringify({ faqIds: faqIds.map(Number) }),
+    }, session.accessToken)
+  },
   getStores(session: AuthSession) {
     return request<unknown[]>('/stores', {}, session.accessToken)
   },

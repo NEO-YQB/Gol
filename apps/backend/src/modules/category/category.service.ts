@@ -3,9 +3,12 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service'; 
+import { PrismaService } from '../../prisma/prisma.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
+import { CreateCategoryFaqDto } from './dto/create-category-faq.dto';
+import { UpdateCategoryFaqDto } from './dto/update-category-faq.dto';
+import { ReorderCategoryFaqDto } from './dto/reorder-category-faq.dto';
 
 @Injectable()
 export class CategoryService {
@@ -27,13 +30,19 @@ export class CategoryService {
 
   async findAllWithChildren() {
     return this.prisma.category.findMany({
-      where: { parentId: null }, 
+      where: { parentId: null },
       include: {
         children: {
           include: {
-            children: true, 
+            children: {
+              include: {
+                categoryFaqs: { orderBy: { sortOrder: 'asc' } },
+              },
+            },
+            categoryFaqs: { orderBy: { sortOrder: 'asc' } },
           },
         },
+        categoryFaqs: { orderBy: { sortOrder: 'asc' } },
       },
     });
   }
@@ -48,6 +57,7 @@ export class CategoryService {
             children: true,
           },
         },
+        categoryFaqs: { orderBy: { sortOrder: 'asc' } },
         _count: {
           select: {
             products: true,
@@ -179,5 +189,84 @@ export class CategoryService {
 
       currentParentId = parent?.parentId;
     }
+  }
+
+  async createFaq(categoryId: number, dto: CreateCategoryFaqDto) {
+    await this.ensureCategoryExists(categoryId);
+
+    return this.prisma.categoryFaq.create({
+      data: {
+        question: dto.question,
+        answer: dto.answer,
+        sortOrder: dto.sortOrder ?? 0,
+        isActive: dto.isActive ?? true,
+        category: { connect: { id: categoryId } },
+      },
+    });
+  }
+
+  async findFaqs(categoryId: number) {
+    await this.ensureCategoryExists(categoryId);
+
+    return this.prisma.categoryFaq.findMany({
+      where: { categoryId },
+      orderBy: { sortOrder: 'asc' },
+    });
+  }
+
+  async updateFaq(categoryId: number, faqId: number, dto: UpdateCategoryFaqDto) {
+    await this.ensureCategoryExists(categoryId);
+
+    const faq = await this.prisma.categoryFaq.findUnique({
+      where: { id: faqId },
+      select: { id: true, categoryId: true },
+    });
+
+    if (!faq || faq.categoryId !== categoryId) {
+      throw new NotFoundException('سوال متداول یافت نشد');
+    }
+
+    return this.prisma.categoryFaq.update({
+      where: { id: faqId },
+      data: {
+        ...(dto.question !== undefined && { question: dto.question }),
+        ...(dto.answer !== undefined && { answer: dto.answer }),
+        ...(dto.sortOrder !== undefined && { sortOrder: dto.sortOrder }),
+        ...(dto.isActive !== undefined && { isActive: dto.isActive }),
+      },
+    });
+  }
+
+  async removeFaq(categoryId: number, faqId: number) {
+    await this.ensureCategoryExists(categoryId);
+
+    const faq = await this.prisma.categoryFaq.findUnique({
+      where: { id: faqId },
+      select: { id: true, categoryId: true },
+    });
+
+    if (!faq || faq.categoryId !== categoryId) {
+      throw new NotFoundException('سوال متداول یافت نشد');
+    }
+
+    await this.prisma.categoryFaq.delete({ where: { id: faqId } });
+  }
+
+  async reorderFaqs(categoryId: number, dto: ReorderCategoryFaqDto) {
+    await this.ensureCategoryExists(categoryId);
+
+    const updates = dto.faqIds.map((faqId, index) =>
+      this.prisma.categoryFaq.update({
+        where: { id: faqId },
+        data: { sortOrder: index },
+      }),
+    );
+
+    await this.prisma.$transaction(updates);
+
+    return this.prisma.categoryFaq.findMany({
+      where: { categoryId },
+      orderBy: { sortOrder: 'asc' },
+    });
   }
 }

@@ -23,6 +23,11 @@ export class CreateCategoryDto {
   @IsString({ message: 'توضیحات باید رشته باشد' })
   description?: string;
 
+  @ApiPropertyOptional({ description: 'توضیحات HTML دسته‌بندی (اختیاری)' })
+  @IsOptional()
+  @IsString()
+  descriptionHtml?: string;
+
   @ApiPropertyOptional({ description: 'آدرس تصویر دسته‌بندی (اختیاری)', example: 'https://example.com/category-image.jpg' })
   @IsOptional()
   @IsString({ message: 'آدرس تصویر باید رشته باشد' })

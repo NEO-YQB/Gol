@@ -439,9 +439,14 @@
 
 .category-workspace-layout {
   display: grid;
-  grid-template-columns: minmax(300px, 0.9fr) minmax(0, 1.3fr);
-  gap: 18px;
-  align-items: start;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.category-edit-form {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .category-workspace-tree {
@@ -516,12 +521,104 @@
   line-height: 1.8;
 }
 
+.category-faq-section {
+  display: grid;
+  gap: 18px;
+}
+
+.category-faq-form {
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--fm-border-soft);
+}
+
+.category-faq-list {
+  display: grid;
+  gap: 12px;
+}
+
+.category-faq-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 14px;
+  align-items: start;
+  padding: 16px 18px;
+  border: 1px solid var(--fm-border-soft);
+  border-radius: 20px;
+  background: rgba(255, 253, 248, 0.82);
+  box-shadow: var(--fm-shadow-card);
+}
+
+.category-faq-item__content {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.category-faq-item__content strong {
+  color: var(--fm-text-primary);
+  font-size: 0.95rem;
+}
+
+.category-faq-item__content p {
+  color: var(--fm-text-secondary);
+  line-height: 1.8;
+  font-size: 0.9rem;
+}
+
+.category-faq-item__meta {
+  color: var(--fm-text-secondary);
+  font-size: 0.8rem;
+}
+
+.content-workspace-check-item.is-ok strong {
+  color: var(--fm-success, #1f6a52);
+}
+
+.content-preview-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  margin-top: 16px;
+}
+
+.content-preview-card {
+  display: grid;
+  gap: 6px;
+  padding: 16px 18px;
+  border: 1px solid var(--fm-border-soft);
+  border-radius: 18px;
+  background: rgba(255, 253, 248, 0.82);
+}
+
+.content-preview-card span {
+  color: var(--fm-text-secondary);
+  font-size: 0.8rem;
+}
+
+.content-preview-card strong {
+  color: var(--fm-text-primary);
+}
+
+.content-preview-card p {
+  color: var(--fm-text-secondary);
+  line-height: 1.8;
+  font-size: 0.9rem;
+}
+
 @media (max-width: 900px) {
   .page-builder-card__meta {
     grid-template-columns: 1fr;
   }
 
   .category-workspace-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .category-edit-form {
+    grid-template-columns: 1fr;
+  }
+
+  .category-faq-item {
     grid-template-columns: 1fr;
   }
 }
@@ -1576,6 +1673,11 @@
 .content-mini-checklist {
   display: grid;
   gap: 12px;
+}
+
+.content-workspace-checklist-grid {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  margin: 16px 0;
 }
 
 .content-queue-grid {
