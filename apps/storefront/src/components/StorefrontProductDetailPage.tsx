@@ -222,9 +222,17 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_320px]">
         <article className={storefrontCatalog.card}>
-          <h2 className="text-2xl font-black text-[#173126]">توضیحات کامل محصول</h2>
-          <div className="mt-4 text-sm leading-8 text-[#5f564c] whitespace-pre-line">
-            {product.description || product.shortDescription || 'برای این محصول هنوز توضیح تکمیلی ثبت نشده است.'}
+          <h2 className="text-xl font-black text-[#173126]">توضیحات کامل محصول</h2>
+          <div className="mt-4 text-sm leading-8 text-[#5f564c]">
+            {product.description ? (
+              /<[a-z][\s\S]*>/i.test(product.description) ? (
+                <div className="prose-archive" dangerouslySetInnerHTML={{ __html: product.description }} />
+              ) : (
+                <div className="whitespace-pre-line">{product.description}</div>
+              )
+            ) : (
+              product.shortDescription || 'برای این محصول هنوز توضیح تکمیلی ثبت نشده است.'
+            )}
           </div>
         </article>
 

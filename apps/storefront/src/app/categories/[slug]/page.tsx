@@ -60,7 +60,7 @@ export async function generateMetadata({
 
   return buildArchiveMetadata({
     title: category.metaTitle || `${category.name} | گلینو`,
-    description: category.metaDescription || category.description || `آرشیو محصولات ${category.name} در گلینو.`,
+    description: category.metaDescription || category.descriptionHtml?.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() || category.description || `آرشیو محصولات ${category.name} در گلینو.`,
     path: `/categories/${slug}`,
     image: category.image,
     indexable: category.isIndexed,
@@ -149,7 +149,7 @@ export default async function CategoryArchivePage({
         activeCategorySlug={slug}
         activeProductTypeSlug={typeof query.type === 'string' ? query.type : ''}
         activeSort={catalog.activeSort}
-        archiveDescription={matchedLanding?.seoContent || resolvedCategory.description || ''}
+        archiveDescription={matchedLanding?.seoContent || resolvedCategory.descriptionHtml || resolvedCategory.description || ''}
         basePath={`/categories/${slug}`}
         categories={catalog.categories}
         currentPage={catalog.page}

@@ -97,6 +97,7 @@ export type CategorySummary = {
   name: string
   slug: string
   description?: string | null
+  descriptionHtml?: string | null
   image?: string | null
   imageAlt?: string | null
   thumbnailUrl?: string | null

@@ -50,3 +50,93 @@ body {
 .carousel-scroll::-webkit-scrollbar {
   display: none;
 }
+
+.prose-archive h1 {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: #173126;
+  margin: 1.2rem 0 0.6rem;
+  line-height: 1.7;
+}
+.prose-archive h2 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #173126;
+  margin: 1rem 0 0.5rem;
+  line-height: 1.7;
+}
+.prose-archive h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #224638;
+  margin: 0.8rem 0 0.4rem;
+  line-height: 1.7;
+}
+.prose-archive h4 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #224638;
+  margin: 0.6rem 0 0.3rem;
+  line-height: 1.7;
+}
+.prose-archive p {
+  margin: 0 0 0.8rem;
+  line-height: 2;
+}
+.prose-archive ul,
+.prose-archive ol {
+  margin: 0.5rem 0 0.8rem;
+  padding-inline-start: 1.5rem;
+}
+.prose-archive li {
+  margin-bottom: 0.3rem;
+  line-height: 1.9;
+}
+.prose-archive blockquote {
+  border-inline-start: 3px solid rgba(31,106,82,0.25);
+  padding-inline-start: 14px;
+  margin: 0.8rem 0;
+  color: #6e6152;
+  font-style: italic;
+}
+.prose-archive a {
+  color: #1f6a52;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: opacity 0.15s;
+}
+.prose-archive a:hover {
+  opacity: 0.75;
+}
+.prose-archive strong {
+  font-weight: 700;
+  color: #173126;
+}
+.prose-archive img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 18px;
+  margin: 0.8rem 0;
+}
+.prose-archive hr {
+  border: 0;
+  border-top: 1px solid rgba(31,106,82,0.12);
+  margin: 1.2rem 0;
+}
+.prose-archive table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.8rem 0;
+  font-size: 0.85rem;
+}
+.prose-archive th,
+.prose-archive td {
+  border: 1px solid rgba(31,106,82,0.12);
+  padding: 8px 12px;
+  text-align: right;
+}
+.prose-archive th {
+  background: rgba(247,242,235,0.8);
+  font-weight: 700;
+  color: #173126;
+}
