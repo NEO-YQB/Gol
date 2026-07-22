@@ -362,7 +362,7 @@ export function CategoryWorkspacePage({ session, onBack }: CategoryWorkspacePage
   }
 
   return (
-    <div className="fm-stack">
+    <div className="fm-stack category-workspace-page">
       <LoadableState error={error} loading={loading}>
         <input
           ref={imageInputRef}
@@ -615,7 +615,7 @@ export function CategoryWorkspacePage({ session, onBack }: CategoryWorkspacePage
         >
           {openSections.seo ? (
             <>
-              <div className="content-editor-grid">
+              <div className="content-editor-grid category-seo-form">
                 <label className="content-select-field">
                   <span>عنوان متا</span>
                   <input className="fm-input" onChange={(event) => updateForm('metaTitle', event.target.value)} value={form.metaTitle} />

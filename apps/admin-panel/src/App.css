@@ -501,6 +501,44 @@
   gap: 3px;
 }
 
+.category-workspace-page .fm-rich-editor-sidebar {
+  gap: 8px;
+}
+
+.category-workspace-page .fm-rich-editor-panel {
+  padding: 10px 12px;
+  gap: 8px;
+}
+
+.category-workspace-page .fm-rich-editor-panel > strong {
+  font-size: 0.85rem;
+  margin-bottom: 2px;
+}
+
+.category-workspace-page .fm-rich-editor-metrics {
+  gap: 6px;
+}
+
+.category-workspace-page .fm-rich-editor-metric {
+  padding: 6px 10px;
+  min-height: auto;
+}
+
+.category-workspace-page .fm-rich-editor-outline {
+  gap: 5px;
+}
+
+.category-workspace-page .fm-rich-editor-outline-item {
+  padding: 6px 10px;
+  gap: 2px;
+}
+
+.category-workspace-page .fm-rich-editor-note {
+  font-size: 0.82rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
 .category-workspace-tree {
   display: grid;
   gap: 12px;
@@ -3372,7 +3410,14 @@
 .products-toolbar select.fm-input,
 .product-workspace-page .fm-input,
 .product-workspace-page select.fm-input,
-.product-workspace-page textarea.fm-input {
+.product-workspace-page textarea.fm-input,
+.category-edit-form .fm-input,
+.category-edit-form select.fm-input,
+.category-edit-form textarea.fm-input,
+.category-faq-form .fm-input,
+.category-faq-form textarea.fm-input,
+.category-seo-form .fm-input,
+.category-seo-form textarea.fm-input {
   min-height: 42px;
   border-radius: 14px;
   border: 1px solid rgba(189, 169, 140, 0.72);
@@ -3384,14 +3429,20 @@
 }
 
 .products-toolbar textarea.fm-input,
-.product-workspace-page textarea.fm-input {
+.product-workspace-page textarea.fm-input,
+.category-edit-form textarea.fm-input,
+.category-faq-form textarea.fm-input,
+.category-seo-form textarea.fm-input {
   min-height: 120px;
   padding-block: 12px;
   resize: vertical;
 }
 
 .products-toolbar .fm-input::placeholder,
-.product-workspace-page .fm-input::placeholder {
+.product-workspace-page .fm-input::placeholder,
+.category-edit-form .fm-input::placeholder,
+.category-faq-form .fm-input::placeholder,
+.category-seo-form .fm-input::placeholder {
   color: rgba(95, 111, 102, 0.86);
 }
 
@@ -3399,7 +3450,14 @@
 .products-toolbar select.fm-input:focus,
 .product-workspace-page .fm-input:focus,
 .product-workspace-page select.fm-input:focus,
-.product-workspace-page textarea.fm-input:focus {
+.product-workspace-page textarea.fm-input:focus,
+.category-edit-form .fm-input:focus,
+.category-edit-form select.fm-input:focus,
+.category-edit-form textarea.fm-input:focus,
+.category-faq-form .fm-input:focus,
+.category-faq-form textarea.fm-input:focus,
+.category-seo-form .fm-input:focus,
+.category-seo-form textarea.fm-input:focus {
   outline: none;
   border-color: rgba(31, 106, 82, 0.42);
   box-shadow: 0 0 0 4px rgba(31, 106, 82, 0.08), 0 14px 28px rgba(31, 106, 82, 0.08);
