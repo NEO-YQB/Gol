@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { FilterSection } from './FilterSection'
 import { ProductCard } from './storefrontBlocks'
 import { storefrontCatalog } from './storefrontCatalog'
 import { resolveAssetUrl } from '../lib/storefront'
@@ -230,10 +231,9 @@ export function StorefrontVendorPage({
 
       <div className={storefrontCatalog.shell}>
         <aside className={storefrontCatalog.sidebar}>
-          <div className="grid gap-5">
-            <section>
-              <h2 className="text-lg font-black text-[#173126]">جستجو و مرتب‌سازی</h2>
-              <form action={basePath} className="mt-4 grid gap-3">
+          <div className="grid gap-3">
+            <FilterSection title="جستجو و مرتب‌سازی" defaultOpen>
+              <form action={basePath} className="grid gap-2.5">
                 <input className={storefrontCatalog.input} defaultValue={searchValue || ''} name="search" placeholder="جستجو در محصولات این فروشگاه" />
                 <select className={storefrontCatalog.select} defaultValue={activeSort} name="sort">
                   <option value="newest">جدیدترین</option>
@@ -244,22 +244,17 @@ export function StorefrontVendorPage({
                 {activeCategorySlug ? <input name="category" type="hidden" value={activeCategorySlug} /> : null}
                 {activeProductTypeSlug ? <input name="type" type="hidden" value={activeProductTypeSlug} /> : null}
                 {selectedElementIds.length ? <input name="elementIds" type="hidden" value={selectedElementIds.join(',')} /> : null}
-                <button className="rounded-full bg-[#173126] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#29513f]" type="submit">
+                <button className="rounded-full bg-[#173126] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#29513f] active:scale-[0.98]" type="submit">
                   اعمال فیلتر
                 </button>
               </form>
-            </section>
+            </FilterSection>
 
-            <section>
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-lg font-black text-[#173126]">فیلتر قیمت</h2>
-                {typeof selectedMinPrice === 'number' || typeof selectedMaxPrice === 'number' ? (
-                  <Link className={storefrontCatalog.chip} href={buildHref({ minPrice: null, maxPrice: null, page: 1 })}>
-                    حذف
-                  </Link>
-                ) : null}
-              </div>
-              <form action={basePath} className="mt-4 grid gap-3">
+            <FilterSection
+              action={typeof selectedMinPrice === 'number' || typeof selectedMaxPrice === 'number' ? <Link className={storefrontCatalog.chip} href={buildHref({ minPrice: null, maxPrice: null, page: 1 })}>حذف</Link> : undefined}
+              title="فیلتر قیمت"
+            >
+              <form action={basePath} className="grid gap-2.5">
                 <input className={storefrontCatalog.input} defaultValue={typeof selectedMinPrice === 'number' ? String(selectedMinPrice) : ''} max={typeof maxPrice === 'number' ? maxPrice : undefined} min={typeof minPrice === 'number' ? minPrice : undefined} name="minPrice" placeholder={typeof minPrice === 'number' ? `از ${formatMoney(minPrice)}` : 'حداقل قیمت'} type="number" />
                 <input className={storefrontCatalog.input} defaultValue={typeof selectedMaxPrice === 'number' ? String(selectedMaxPrice) : ''} max={typeof maxPrice === 'number' ? maxPrice : undefined} min={typeof minPrice === 'number' ? minPrice : undefined} name="maxPrice" placeholder={typeof maxPrice === 'number' ? `تا ${formatMoney(maxPrice)}` : 'حداکثر قیمت'} type="number" />
                 {activeCategorySlug ? <input name="category" type="hidden" value={activeCategorySlug} /> : null}
@@ -267,62 +262,74 @@ export function StorefrontVendorPage({
                 {searchValue ? <input name="search" type="hidden" value={searchValue} /> : null}
                 {activeSort !== 'newest' ? <input name="sort" type="hidden" value={activeSort} /> : null}
                 {selectedElementIds.length ? <input name="elementIds" type="hidden" value={selectedElementIds.join(',')} /> : null}
-                <button className="rounded-full border border-[#1f6a52]/12 bg-white px-4 py-3 text-sm font-bold text-[#173126] transition hover:bg-[#f8f2ea]" type="submit">
+                <button className="rounded-full border border-[#1f6a52]/12 bg-white px-4 py-2.5 text-sm font-bold text-[#173126] transition hover:bg-[#f8f2ea] active:scale-[0.98]" type="submit">
                   اعمال بازه قیمت
                 </button>
               </form>
-            </section>
+            </FilterSection>
 
-            {groupedElements.map((group) => (
-              <section key={group.type}>
-                <div className="flex items-center justify-between gap-3">
-                  <h2 className="text-lg font-black text-[#173126]">{group.label}</h2>
-                  {selectedElementIds.some((id) => group.items.some((item) => item.id === id)) ? (
-                    <Link
-                      className={storefrontCatalog.chip}
-                      href={buildHref({
-                        elementIds: selectedElementIds.filter((id) => !group.items.some((item) => item.id === id)),
-                        page: 1,
-                      })}
-                    >
-                      حذف
-                    </Link>
-                  ) : null}
-                </div>
-                <div className="mt-4 grid gap-2">
-                  {group.items.map((element) => {
-                    const isActive = selectedElementIds.includes(element.id)
-                    const nextElementIds = isActive
-                      ? selectedElementIds.filter((item) => item !== element.id)
-                      : [...selectedElementIds, element.id]
-
-                    return (
+            {groupedElements.map((group) => {
+              const activeCount = selectedElementIds.filter((id) => group.items.some((item) => item.id === id)).length
+              return (
+                <FilterSection
+                  action={
+                    activeCount > 0 ? (
                       <Link
-                        className={`rounded-[18px] px-4 py-3 text-sm transition ${isActive ? 'bg-[#173126] font-bold text-white' : 'bg-white/72 text-[#173126] hover:bg-white'}`}
-                        href={buildHref({ elementIds: nextElementIds, page: 1 })}
-                        key={element.id}
+                        className={storefrontCatalog.chip}
+                        href={buildHref({
+                          elementIds: selectedElementIds.filter((id) => !group.items.some((item) => item.id === id)),
+                          page: 1,
+                        })}
                       >
-                        {element.name}
+                        حذف
                       </Link>
-                    )
-                  })}
-                </div>
-              </section>
-            ))}
+                    ) : undefined
+                  }
+                  count={group.items.length}
+                  defaultOpen={activeCount > 0}
+                  key={group.type}
+                  title={group.label}
+                >
+                  <div className="grid gap-1.5">
+                    {group.items.map((element) => {
+                      const isActive = selectedElementIds.includes(element.id)
+                      const nextElementIds = isActive
+                        ? selectedElementIds.filter((item) => item !== element.id)
+                        : [...selectedElementIds, element.id]
+                      return (
+                        <Link
+                          className={`rounded-[14px] px-3 py-2 text-xs font-bold transition-all duration-200 ${
+                            isActive
+                              ? 'bg-[#173126] text-white shadow-[0_4px_12px_rgba(23,49,38,0.2)]'
+                              : 'bg-[#f9f5ef] text-[#173126]/80 hover:bg-white hover:text-[#173126] hover:shadow-[0_2px_8px_rgba(52,36,17,0.06)]'
+                          }`}
+                          href={buildHref({ elementIds: nextElementIds, page: 1 })}
+                          key={element.id}
+                        >
+                          {element.name}
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </FilterSection>
+              )
+            })}
 
-            <section>
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-lg font-black text-[#173126]">دسته‌بندی‌ها</h2>
-                <Link className={storefrontCatalog.chip} href={buildHref({ categorySlug: '', page: 1 })}>
-                  همه
-                </Link>
-              </div>
-              <div className="mt-4 grid gap-2">
+            <FilterSection
+              action={<Link className={storefrontCatalog.chip} href={buildHref({ categorySlug: '', page: 1 })}>همه</Link>}
+              count={flatCategories.length}
+              title="دسته‌بندی‌ها"
+            >
+              <div className="grid gap-1.5">
                 {flatCategories.map((category) => {
                   const isActive = activeCategorySlug === category.slug
                   return (
                     <Link
-                      className={`rounded-[18px] px-4 py-3 text-sm transition ${isActive ? 'bg-[#173126] font-bold text-white' : 'bg-white/72 text-[#173126] hover:bg-white'}`}
+                      className={`rounded-[14px] px-3 py-2 text-xs font-bold transition-all duration-200 ${
+                        isActive
+                          ? 'bg-[#173126] text-white shadow-[0_4px_12px_rgba(23,49,38,0.2)]'
+                          : 'bg-[#f9f5ef] text-[#173126]/80 hover:bg-white hover:text-[#173126] hover:shadow-[0_2px_8px_rgba(52,36,17,0.06)]'
+                      }`}
                       href={buildHref({ categorySlug: category.slug, page: 1 })}
                       key={category.id}
                     >
@@ -331,21 +338,23 @@ export function StorefrontVendorPage({
                   )
                 })}
               </div>
-            </section>
+            </FilterSection>
 
-            <section>
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-lg font-black text-[#173126]">نوع محصول</h2>
-                <Link className={storefrontCatalog.chip} href={buildHref({ productTypeSlug: '', page: 1 })}>
-                  همه
-                </Link>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-2">
+            <FilterSection
+              action={<Link className={storefrontCatalog.chip} href={buildHref({ productTypeSlug: '', page: 1 })}>همه</Link>}
+              count={productTypes.length}
+              title="نوع محصول"
+            >
+              <div className="flex flex-wrap gap-1.5">
                 {productTypes.map((productType) => {
                   const isActive = activeProductTypeSlug === productType.slug
                   return (
                     <Link
-                      className={`rounded-full px-4 py-2 text-sm transition ${isActive ? 'bg-[#173126] font-bold text-white' : 'bg-white/80 text-[#173126] hover:bg-white'}`}
+                      className={`rounded-full px-3 py-1.5 text-xs font-bold transition-all duration-200 ${
+                        isActive
+                          ? 'bg-[#173126] text-white shadow-[0_4px_12px_rgba(23,49,38,0.2)]'
+                          : 'bg-[#f9f5ef] text-[#173126]/80 hover:bg-white hover:text-[#173126]'
+                      }`}
                       href={buildHref({ productTypeSlug: productType.slug, page: 1 })}
                       key={productType.id}
                     >
@@ -354,7 +363,7 @@ export function StorefrontVendorPage({
                   )
                 })}
               </div>
-            </section>
+            </FilterSection>
           </div>
         </aside>
 
