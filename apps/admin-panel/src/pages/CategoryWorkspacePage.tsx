@@ -626,7 +626,7 @@ export function CategoryWorkspacePage({ session, onBack }: CategoryWorkspacePage
                 </label>
               </div>
 
-              <div className="content-workspace-checklist-grid">
+              <div className="category-workspace-checklist-grid">
                 {seoChecklist.map((item) => (
                   <article className={`content-workspace-check-item${item.ok ? ' is-ok' : ''}`} key={item.label}>
                     <span>{item.label}</span>
@@ -635,7 +635,7 @@ export function CategoryWorkspacePage({ session, onBack }: CategoryWorkspacePage
                 ))}
               </div>
 
-              <div className="content-preview-grid">
+              <div className="category-workspace-preview-grid">
                 <article className="content-preview-card">
                   <span>پیش‌نمایش جستجو</span>
                   <strong>{previewTitle}</strong>

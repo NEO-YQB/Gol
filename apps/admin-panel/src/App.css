@@ -440,13 +440,65 @@
 .category-workspace-layout {
   display: grid;
   gap: 14px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
 }
 
 .category-edit-form {
   display: grid;
   gap: 14px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.category-edit-form .content-select-field,
+.category-faq-form .content-select-field,
+.content-editor-grid .content-select-field {
+  display: grid;
+  gap: 8px;
+}
+
+.category-edit-form .content-select-field > span,
+.category-faq-form .content-select-field > span,
+.content-editor-grid .content-select-field > span {
+  color: var(--fm-text-primary);
+  font-weight: 700;
+}
+
+.category-faq-form.content-editor-grid {
+  gap: 12px;
+}
+
+.category-faq-form.content-editor-grid .content-select-field {
+  display: grid;
+  gap: 6px;
+}
+
+.category-faq-form .products-header-actions {
+  grid-column: 1 / -1;
+}
+
+.category-workspace-checklist-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  margin: 8px 0;
+}
+
+.category-workspace-checklist-grid .content-workspace-check-item {
+  min-height: auto;
+  padding: 10px 12px;
+  gap: 3px;
+}
+
+.category-workspace-preview-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin: 8px 0 0;
+}
+
+.category-workspace-preview-grid .content-preview-card {
+  padding: 10px 12px;
+  gap: 3px;
 }
 
 .category-workspace-tree {
@@ -619,6 +671,14 @@
   }
 
   .category-faq-item {
+    grid-template-columns: 1fr;
+  }
+
+  .category-workspace-checklist-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .category-workspace-preview-grid {
     grid-template-columns: 1fr;
   }
 }
