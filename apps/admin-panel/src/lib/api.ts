@@ -776,7 +776,7 @@ export const adminApi = {
     return request<unknown>(`/products${search ? `?${search}` : ''}`, {}, session.accessToken)
   },
   getProductDetail(session: AuthSession, slug: string) {
-    return request<unknown>(`/products/${slug}`, {}, session.accessToken)
+    return request<unknown>(`/products/admin/by-slug/${slug}`, {}, session.accessToken)
   },
   createProduct(session: AuthSession, body: Record<string, unknown>) {
     return request<unknown>('/products', {

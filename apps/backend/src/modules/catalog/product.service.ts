@@ -486,6 +486,32 @@ export class ProductService {
     return pricedProduct;
   }
 
+  async findOneForAdmin(slug: string, user: { id: number; roles: string[] }) {
+    const product = await this.prisma.product.findUnique({
+      where: { slug },
+      include: {
+        category: true,
+        store: { select: { id: true, name: true, slug: true, ownerId: true } },
+        productType: true,
+        composition: { include: { element: true } },
+        reviewedByUser: { select: { id: true, fullName: true, phoneNumber: true } },
+        publishedByUser: { select: { id: true, fullName: true, phoneNumber: true } },
+      },
+    });
+
+    if (!product) {
+      throw new NotFoundException(`محصول یافت نشد`);
+    }
+
+    await this.assertCanManageProduct(user, 'update', product);
+
+    const [pricedProduct] = await this.pricingService.projectProductsPricing([
+      product,
+    ]);
+
+    return pricedProduct;
+  }
+
   private calculateDistance(
     originLat: number,
     originLng: number,

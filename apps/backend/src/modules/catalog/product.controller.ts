@@ -138,6 +138,17 @@ export class ProductController {
     return this.productService.remove(id, user, body);
   }
 
+  @Get('admin/by-slug/:slug')
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'دریافت جزئیات محصول برای ادمین/پنل حتی در حالت آرشیو' })
+  async findOneForAdmin(
+    @Param('slug') slug: string,
+    @GetUser() user: { id: number; roles: string[] },
+  ) {
+    return this.productService.findOneForAdmin(slug, user);
+  }
+
   @Get(':slug')
   @ApiOperation({ summary: 'دریافت جزئیات یک محصول' })
   async findOne(@Param('slug') slug: string) {
