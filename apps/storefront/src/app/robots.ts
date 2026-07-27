@@ -1,10 +1,16 @@
 import { MetadataRoute } from 'next'
 import { getStorefrontSeoSettings } from '../lib/storefront'
 
-function parseRobotsTxt(text: string): MetadataRoute.Robots['rules'] {
+type ParsedRobotsTxt = {
+  rules: MetadataRoute.Robots['rules']
+  host?: string
+}
+
+function parseRobotsTxt(text: string): ParsedRobotsTxt {
   const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
   const groups: Array<{ userAgent: string; allow?: string[]; disallow?: string[] }> = []
   let current = { userAgent: '*' } as { userAgent: string; allow?: string[]; disallow?: string[] }
+  let host: string | undefined
 
   for (const line of lines) {
     const [key, ...rest] = line.split(':')
@@ -26,21 +32,31 @@ function parseRobotsTxt(text: string): MetadataRoute.Robots['rules'] {
     if (/^disallow$/i.test(key)) {
       current.disallow ||= []
       current.disallow.push(value)
+      continue
+    }
+
+    if (/^host$/i.test(key)) {
+      host = value
     }
   }
 
   if (current.allow?.length || current.disallow?.length || current.userAgent !== '*') groups.push(current)
-  return groups.length ? groups : { userAgent: '*', allow: '/' }
+
+  return {
+    rules: groups.length ? groups : { userAgent: '*', allow: '/' },
+    host,
+  }
 }
 
 export default async function robots(): Promise<MetadataRoute.Robots> {
   const seo = await getStorefrontSeoSettings()
   const siteUrl = seo?.siteUrl || 'https://golino.shop'
-  const rules = seo?.robotsTxt?.trim()
+  const rulesText = seo?.robotsTxt?.trim()
+  const parsed = rulesText ? parseRobotsTxt(rulesText) : { rules: { userAgent: '*', allow: '/' } }
 
   return {
-    rules: rules ? parseRobotsTxt(rules) : { userAgent: '*', allow: '/' },
+    rules: parsed.rules,
     sitemap: `${siteUrl}/sitemap.xml`,
-    host: siteUrl,
+    ...(parsed.host ? { host: parsed.host } : {}),
   }
 }
