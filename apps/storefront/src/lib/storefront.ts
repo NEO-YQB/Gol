@@ -1375,6 +1375,29 @@ export function buildCollectionPageJsonLd({
   }
 }
 
+export function buildFaqPageJsonLd(
+  faqs: Array<{ question: string; answer: string; isActive?: boolean | null }>,
+) {
+  const visibleFaqs = faqs.filter((item) => item.isActive !== false && item.question?.trim() && item.answer?.trim())
+
+  if (!visibleFaqs.length) {
+    return null
+  }
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: visibleFaqs.map((faq) => ({
+      '@type': 'Question',
+      name: faq.question.trim(),
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: faq.answer.trim(),
+      },
+    })),
+  }
+}
+
 export function buildOrganizationJsonLd() {
   return {
     '@context': 'https://schema.org',

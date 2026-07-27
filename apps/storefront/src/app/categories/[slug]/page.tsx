@@ -5,6 +5,7 @@ import {
   buildArchiveMetadata,
   buildBreadcrumbJsonLd,
   buildCollectionPageJsonLd,
+  buildFaqPageJsonLd,
   getStorefrontCatalogData,
   getStorefrontCategoryBySlug,
   getStorefrontProductTypeBySlug,
@@ -134,6 +135,7 @@ export default async function CategoryArchivePage({
     description: pageDescription,
     path: categoryPath,
   })
+  const faqJsonLd = buildFaqPageJsonLd(resolvedCategory.categoryFaqs ?? [])
 
   return (
     <StorefrontShell>
@@ -145,6 +147,12 @@ export default async function CategoryArchivePage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionJsonLd) }}
         type="application/ld+json"
       />
+      {faqJsonLd ? (
+        <script
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+          type="application/ld+json"
+        />
+      ) : null}
       <StorefrontCatalogPage
         activeCategorySlug={slug}
         activeProductTypeSlug={typeof query.type === 'string' ? query.type : ''}
