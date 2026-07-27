@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { StorefrontProductDetailPage } from '../../../components/StorefrontProductDetailPage'
 import { StorefrontShell } from '../../../components/StorefrontShell'
 import {
@@ -17,6 +17,14 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       title: 'محصول پیدا نشد | گلینو',
       description: 'این محصول در دسترس نیست.',
       path: `/products/${slug}`,
+    })
+  }
+
+  if ('redirectToUrl' in product) {
+    return buildArchiveMetadata({
+      title: 'انتقال محصول | گلینو',
+      description: 'این محصول به آدرس جدید منتقل شده است.',
+      path: product.redirectToUrl,
     })
   }
 
@@ -48,6 +56,10 @@ export default async function ProductDetailPage({
 
   if (!product) {
     notFound()
+  }
+
+  if ('redirectToUrl' in product) {
+    redirect(product.redirectToUrl)
   }
   const breadcrumbJsonLd = buildBreadcrumbJsonLd([
     { name: 'خانه', path: '/' },

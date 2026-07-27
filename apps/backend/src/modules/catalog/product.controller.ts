@@ -19,6 +19,7 @@ import { GetProductsQueryDto } from './dto/get-products-query.dto';
 import { ReviewProductDto } from './dto/review-product.dto';
 import { PublishProductDto } from './dto/publish-product.dto';
 import { ToggleProductPurchasableDto } from './dto/toggle-product-purchasable.dto';
+import { DeleteProductDto } from './dto/delete-product.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CreateElementDto } from './dto/create-element.dto';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
@@ -131,9 +132,10 @@ export class ProductController {
   @ApiOperation({ summary: 'حذف محصول' })
   async remove(
     @Param('id', ParseIntPipe) id: number,
+    @Body() body: DeleteProductDto,
     @GetUser() user: { id: number; roles: string[] },
   ) {
-    return this.productService.remove(id, user);
+    return this.productService.remove(id, user, body);
   }
 
   @Get(':slug')

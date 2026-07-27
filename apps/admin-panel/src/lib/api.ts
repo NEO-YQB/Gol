@@ -790,6 +790,12 @@ export const adminApi = {
       body: JSON.stringify(body),
     }, session.accessToken)
   },
+  deleteProduct(session: AuthSession, productId: string, body?: { redirectTargetUrl?: string }) {
+    return request<unknown>(`/products/${productId}`, {
+      method: 'DELETE',
+      body: JSON.stringify(body ?? {}),
+    }, session.accessToken)
+  },
   reviewProduct(session: AuthSession, productId: string, body: { approved?: boolean; requestChanges?: boolean; reviewNote?: string }) {
     return request<unknown>(`/products/${productId}/review`, {
       method: 'PATCH',

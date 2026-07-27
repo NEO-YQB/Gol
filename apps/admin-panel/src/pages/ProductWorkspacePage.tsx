@@ -47,6 +47,7 @@ type ProductFormState = {
   productTypeId: string
   metaTitle: string
   metaDescription: string
+  redirectTargetUrl: string
   publicationStatus: string
   isPurchasable: boolean
   isArchived: boolean
@@ -127,6 +128,7 @@ function createEmptyProductForm(): ProductFormState {
     productTypeId: '',
     metaTitle: '',
     metaDescription: '',
+    redirectTargetUrl: '',
     publicationStatus: 'DRAFT',
     isPurchasable: false,
     isArchived: false,
@@ -205,6 +207,7 @@ function mapProductToForm(product: ProductRecord): ProductFormState {
     productTypeId: readText(product, ['productTypeId'], ''),
     metaTitle: readText(product, ['metaTitle'], ''),
     metaDescription: readText(product, ['metaDescription'], ''),
+    redirectTargetUrl: '',
     publicationStatus: readText(product, ['publicationStatus'], 'DRAFT'),
     isPurchasable: Boolean(product.isPurchasable),
     isArchived: Boolean(product.isArchived),
@@ -451,6 +454,32 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
       }
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'ذخیره محصول ناموفق بود')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleDeleteProduct() {
+    if (!productDetail) {
+      setError('برای حذف، ابتدا محصول را انتخاب کن.')
+      return
+    }
+
+    const confirmation = window.confirm('محصول حذف شود؟ این عملیات محصول را از دسترس خارج می‌کند و در صورت ثبت، ریدایرکت سئو را هم ذخیره می‌کند.')
+    if (!confirmation) return
+
+    setSubmitting(true)
+    setError(null)
+    setSubmitMessage(null)
+
+    try {
+      await adminApi.deleteProduct(session, readText(productDetail, ['id'], ''), {
+        redirectTargetUrl: toOptionalText(productForm.redirectTargetUrl),
+      })
+      setSubmitMessage('محصول حذف شد و از دسترس storefront خارج شد.')
+      onBack()
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'حذف محصول ناموفق بود')
     } finally {
       setSubmitting(false)
     }
@@ -903,6 +932,11 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
           <button className="content-primary-action" disabled={submitting} onClick={handleSubmit} type="button">
             {workspaceMode === 'create' ? 'ثبت محصول' : 'ذخیره تغییرات'}
           </button>
+          {productDetail ? (
+            <button className="content-secondary-action" disabled={submitting} onClick={() => void handleDeleteProduct()} type="button">
+              حذف محصول
+            </button>
+          ) : null}
         </div>
 
         <div className="content-workspace-meta-grid product-workspace-meta-grid">
@@ -966,6 +1000,25 @@ export function ProductWorkspacePage({ session, mode, productSlug, onBack }: Pro
             ) : null}
           </div>
         </SectionCard>
+
+        {productDetail ? (
+          <SectionCard eyebrow="seo redirect" title="ریدایرکت بعد از حذف">
+            <div className="content-editor-grid">
+              <label className="content-select-field">
+                <span>آدرس مقصد ریدایرکت</span>
+                <input
+                  className="fm-input"
+                  onChange={(event) => setProductForm((current) => ({ ...current, redirectTargetUrl: event.target.value }))}
+                  placeholder="/categories/flowers یا https://example.com/path"
+                  value={productForm.redirectTargetUrl}
+                />
+              </label>
+            </div>
+            <p className="products-muted-note">
+              اگر این فیلد را پر کنی، بعد از حذف محصول، لینک قبلی محصول به این آدرس ریدایرکت می‌شود.
+            </p>
+          </SectionCard>
+        ) : null}
 
         <div className="content-workspace-stack product-workspace-stack">
           <SectionCard eyebrow="اطلاعات پایه" title="هسته محصول">

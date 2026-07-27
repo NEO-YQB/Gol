@@ -14,6 +14,7 @@ import { CreateElementDto } from './dto/create-element.dto';
 import { ReviewProductDto } from './dto/review-product.dto';
 import { PublishProductDto } from './dto/publish-product.dto';
 import { ToggleProductPurchasableDto } from './dto/toggle-product-purchasable.dto';
+import { DeleteProductDto } from './dto/delete-product.dto';
 import slugify from 'slugify';
 import { Prisma, Product, ProductPublicationStatus, Store } from '@prisma/client';
 import { AbilityFactory } from '../auth/ability.factory';
@@ -465,7 +466,20 @@ export class ProductService {
         publishedByUser: { select: { id: true, fullName: true, phoneNumber: true } },
       },
     });
-    if (!product) throw new NotFoundException(`محصول یافت نشد`);
+    if (!product || product.isArchived || product.publicationStatus !== ProductPublicationStatus.PUBLISHED) {
+      const redirect = await this.prisma.productSlugRedirect.findUnique({
+        where: { fromSlug: slug },
+      });
+
+      if (redirect) {
+        return {
+          redirectToUrl: redirect.targetUrl,
+          redirectFromSlug: redirect.fromSlug,
+        };
+      }
+
+      throw new NotFoundException(`محصول یافت نشد`);
+    }
     const [pricedProduct] = await this.pricingService.projectProductsPricing([
       product,
     ]);
@@ -496,23 +510,48 @@ export class ProductService {
     return 2 * earthRadiusKm * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
   }
 
-  async remove(id: number, user: { id: number; roles: string[] }) {
+  async remove(id: number, user: { id: number; roles: string[] }, dto: DeleteProductDto) {
     const product = await this.prisma.product.findUnique({
       where: { id },
       include: { store: { select: { ownerId: true } } },
     });
     if (!product) throw new NotFoundException(`محصول یافت نشد`);
     await this.assertCanManageProduct(user, 'delete', product);
-    return this.prisma.product.update({
-      where: { id },
-      data: {
-        isArchived: true,
-        isPurchasable: false,
-        publicationStatus:
-          product.publicationStatus === ProductPublicationStatus.PUBLISHED
-            ? ProductPublicationStatus.ARCHIVED
-            : product.publicationStatus,
-      },
+    const redirectTargetUrl = this.normalizeRedirectTargetUrl(dto.redirectTargetUrl);
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.product.update({
+        where: { id },
+        data: {
+          isArchived: true,
+          isPurchasable: false,
+          publicationStatus:
+            product.publicationStatus === ProductPublicationStatus.PUBLISHED
+              ? ProductPublicationStatus.ARCHIVED
+              : product.publicationStatus,
+        },
+      });
+
+      await tx.productSlugRedirect.deleteMany({
+        where: { productId: id },
+      });
+
+      if (redirectTargetUrl) {
+        await tx.productSlugRedirect.upsert({
+          where: { fromSlug: product.slug },
+          update: {
+            targetUrl: redirectTargetUrl,
+            productId: id,
+          },
+          create: {
+            fromSlug: product.slug,
+            targetUrl: redirectTargetUrl,
+            productId: id,
+          },
+        });
+      }
+
+      return updated;
     });
   }
 
@@ -677,5 +716,22 @@ export class ProductService {
     }
 
     return current;
+  }
+
+  private normalizeRedirectTargetUrl(value?: string) {
+    if (typeof value !== 'string') {
+      return null;
+    }
+
+    const normalized = value.trim();
+    if (!normalized) {
+      return null;
+    }
+
+    if (normalized.startsWith('/') || /^https?:\/\//i.test(normalized)) {
+      return normalized;
+    }
+
+    throw new BadRequestException('آدرس ریدایرکت باید با / شروع شود یا یک URL کامل http/https باشد');
   }
 }

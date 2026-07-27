@@ -232,6 +232,13 @@ export type StoreSummary = {
   }
 }
 
+export type StorefrontProductLookupResult =
+  | StorefrontProductDetail
+  | {
+      redirectToUrl: string
+      redirectFromSlug: string
+    }
+
 type MetadataInput = {
   title: string
   description: string
@@ -776,9 +783,9 @@ export async function getAllStorefrontProductsForSitemap(limit = 100): Promise<P
   })
 }
 
-export async function getStorefrontProductBySlug(slug: string): Promise<StorefrontProductDetail | null> {
+export async function getStorefrontProductBySlug(slug: string): Promise<StorefrontProductLookupResult | null> {
   try {
-    return await requestNoStore<StorefrontProductDetail>(`/products/${slug}`)
+    return await requestNoStore<StorefrontProductLookupResult>(`/products/${slug}`)
   } catch {
     return null
   }
