@@ -104,6 +104,13 @@ export type CategorySummary = {
   metaTitle?: string | null
   metaDescription?: string | null
   isIndexed?: boolean | null
+  categoryFaqs?: Array<{
+    id: number
+    question: string
+    answer: string
+    sortOrder?: number | null
+    isActive?: boolean | null
+  }>
   children?: CategorySummary[]
 }
 

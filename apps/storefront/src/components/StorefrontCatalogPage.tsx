@@ -229,6 +229,7 @@ export function StorefrontCatalogPage({
   activeCategorySlug,
   activeProductTypeSlug,
   archiveDescription,
+  categoryFaqs,
   userLat,
   userLng,
   minPrice,
@@ -252,6 +253,7 @@ export function StorefrontCatalogPage({
   activeCategorySlug?: string
   activeProductTypeSlug?: string
   archiveDescription?: string
+  categoryFaqs?: Array<{ id: number; question: string; answer: string; isActive?: boolean | null }>
   userLat?: number
   userLng?: number
   minPrice?: number | null
@@ -264,6 +266,7 @@ export function StorefrontCatalogPage({
   const flatCategories = flattenCategories(categories)
   const activeCategory = flatCategories.find((category) => category.slug === activeCategorySlug)
   const activeProductType = productTypes.find((type) => type.slug === activeProductTypeSlug)
+  const visibleFaqs = (categoryFaqs ?? []).filter((item) => item.isActive !== false)
   const selectedElementIds = activeElementIds ?? []
   const activeElements = productElements.filter((item) => selectedElementIds.includes(item.id))
   const hasActiveFilters =
@@ -451,6 +454,21 @@ export function StorefrontCatalogPage({
           ) : null}
 
           {archiveDescription ? <ExpandableTextBlock text={archiveDescription} title={`درباره ${title}`} /> : null}
+          {visibleFaqs.length ? (
+            <section className="rounded-[24px] border border-[#eadfce] bg-white px-5 py-5 shadow-[0_12px_30px_rgba(52,36,17,0.06)]">
+              <div className="mb-4">
+                <h2 className="text-lg font-black text-[#173126]">سوالات متداول</h2>
+              </div>
+              <div className="grid gap-3">
+                {visibleFaqs.map((faq) => (
+                  <article className="rounded-[18px] border border-[#efe3d3] bg-[#fcfaf7] px-4 py-4" key={faq.id}>
+                    <h3 className="text-sm font-bold text-[#173126]">{faq.question}</h3>
+                    <p className="mt-2 text-sm leading-7 text-[#4a3d31]">{faq.answer}</p>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ) : null}
         </section>
       </div>
     </div>

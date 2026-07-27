@@ -152,6 +152,7 @@ export default async function CategoryArchivePage({
         archiveDescription={matchedLanding?.seoContent || resolvedCategory.descriptionHtml || resolvedCategory.description || ''}
         basePath={`/categories/${slug}`}
         categories={catalog.categories}
+        categoryFaqs={resolvedCategory.categoryFaqs}
         currentPage={catalog.page}
         description={pageDescription}
         lastPage={catalog.lastPage}
