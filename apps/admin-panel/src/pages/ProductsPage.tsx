@@ -104,7 +104,7 @@ export function ProductsPage({ session, onCreateProduct, onEditProduct, onOpenCa
       setError(null)
       try {
         const [productsPayload, storesPayload, categoriesPayload, elementsPayload] = await Promise.all([
-          adminApi.getProducts(session, { page: 1, limit: 100, isArchived: false }),
+          adminApi.getProducts(session, { page: 1, limit: 100 }),
           adminApi.getStores(session),
           adminApi.getCategories(session),
           adminApi.getProductElements(session),

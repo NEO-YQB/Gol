@@ -334,6 +334,7 @@ export class ProductService {
       ...(storeId && { storeId }),
       ...(productTypeId && { productTypeId }),
       ...(productIds.length > 0 ? { id: { in: productIds } } : {}),
+      deletedAt: null,
       ...(publicationStatus && { publicationStatus }),
       ...(typeof isPurchasable === 'boolean' ? { isPurchasable } : {}),
       ...(typeof isArchived === 'boolean' ? { isArchived } : {}),
@@ -466,7 +467,7 @@ export class ProductService {
         publishedByUser: { select: { id: true, fullName: true, phoneNumber: true } },
       },
     });
-    if (!product || product.isArchived || product.publicationStatus !== ProductPublicationStatus.PUBLISHED) {
+    if (!product || product.deletedAt || product.publicationStatus !== ProductPublicationStatus.PUBLISHED) {
       const redirect = await this.prisma.productSlugRedirect.findUnique({
         where: { fromSlug: slug },
       });
@@ -549,7 +550,7 @@ export class ProductService {
       const updated = await tx.product.update({
         where: { id },
         data: {
-          isArchived: true,
+          deletedAt: new Date(),
           isPurchasable: false,
           publicationStatus:
             product.publicationStatus === ProductPublicationStatus.PUBLISHED
