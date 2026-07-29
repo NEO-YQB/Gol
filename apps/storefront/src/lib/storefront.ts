@@ -301,6 +301,13 @@ export type PublicArticleDetail = {
     focusKeyword?: string | null
     readingTimeMinutes?: number | null
     tableOfContents?: Array<{ level: number; text: string }> | null
+    faqs?: Array<{
+      id: number
+      question: string
+      answer: string
+      sortOrder: number
+      isActive: boolean
+    }> | null
     publishedAt?: string | null
     updatedAt?: string | null
     metaTitle?: string | null

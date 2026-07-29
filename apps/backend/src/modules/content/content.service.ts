@@ -7,6 +7,7 @@ import { ArticleStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateArticleCategoryDto } from './dto/create-article-category.dto';
 import { CreateArticleDto } from './dto/create-article.dto';
+import { CreateArticleFaqDto } from './dto/create-article-faq.dto';
 import { CreateArticleTagDto } from './dto/create-article-tag.dto';
 import { CreateAuthorDto } from './dto/create-author.dto';
 import { ContentAuditType } from './dto/get-content-audit-query.dto';
@@ -20,8 +21,10 @@ import {
   GetPublicArticleListingQueryDto,
 } from './dto/get-public-article-listing-query.dto';
 import { StructuredDataPageType } from './dto/get-structured-data-query.dto';
+import { ReorderArticleFaqDto } from './dto/reorder-article-faq.dto';
 import { UpdateArticleCategoryDto } from './dto/update-article-category.dto';
 import { UpdateArticleDto } from './dto/update-article.dto';
+import { UpdateArticleFaqDto } from './dto/update-article-faq.dto';
 import { UpdateArticleTagDto } from './dto/update-article-tag.dto';
 import { UpdateAuthorDto } from './dto/update-author.dto';
 
@@ -815,6 +818,7 @@ export class ContentService {
   ) {
     if (type === StructuredDataPageType.ARTICLE) {
       const article = await this.resolvePublishedArticleBySlug(slug);
+      const faqs = article.faqs ?? [];
       return {
         type: 'BlogPosting',
         canonicalUrl: article.canonicalUrl ?? null,
@@ -832,6 +836,19 @@ export class ContentService {
             slug: article.author.slug,
           },
         },
+        faq: faqs.length
+          ? {
+              type: 'FAQPage',
+              mainEntity: faqs.map((item) => ({
+                type: 'Question',
+                name: item.question,
+                acceptedAnswer: {
+                  type: 'Answer',
+                  text: item.answer,
+                },
+              })),
+            }
+          : null,
       };
     }
 
@@ -969,10 +986,92 @@ export class ContentService {
     await this.prisma.article.delete({ where: { id } });
   }
 
+  async createArticleFaq(articleId: number, dto: CreateArticleFaqDto) {
+    await this.ensureArticleExists(articleId);
+
+    return this.prisma.articleFaq.create({
+      data: {
+        question: dto.question,
+        answer: dto.answer,
+        sortOrder: dto.sortOrder ?? 0,
+        isActive: dto.isActive ?? true,
+        article: { connect: { id: articleId } },
+      },
+    });
+  }
+
+  async findArticleFaqs(articleId: number) {
+    await this.ensureArticleExists(articleId);
+
+    return this.prisma.articleFaq.findMany({
+      where: { articleId },
+      orderBy: { sortOrder: 'asc' },
+    });
+  }
+
+  async updateArticleFaq(articleId: number, faqId: number, dto: UpdateArticleFaqDto) {
+    await this.ensureArticleExists(articleId);
+
+    const faq = await this.prisma.articleFaq.findUnique({
+      where: { id: faqId },
+      select: { id: true, articleId: true },
+    });
+
+    if (!faq || faq.articleId !== articleId) {
+      throw new NotFoundException('سوال متداول یافت نشد');
+    }
+
+    return this.prisma.articleFaq.update({
+      where: { id: faqId },
+      data: {
+        ...(dto.question !== undefined && { question: dto.question }),
+        ...(dto.answer !== undefined && { answer: dto.answer }),
+        ...(dto.sortOrder !== undefined && { sortOrder: dto.sortOrder }),
+        ...(dto.isActive !== undefined && { isActive: dto.isActive }),
+      },
+    });
+  }
+
+  async removeArticleFaq(articleId: number, faqId: number) {
+    await this.ensureArticleExists(articleId);
+
+    const faq = await this.prisma.articleFaq.findUnique({
+      where: { id: faqId },
+      select: { id: true, articleId: true },
+    });
+
+    if (!faq || faq.articleId !== articleId) {
+      throw new NotFoundException('سوال متداول یافت نشد');
+    }
+
+    await this.prisma.articleFaq.delete({ where: { id: faqId } });
+  }
+
+  async reorderArticleFaqs(articleId: number, dto: ReorderArticleFaqDto) {
+    await this.ensureArticleExists(articleId);
+
+    const updates = dto.faqIds.map((faqId, index) =>
+      this.prisma.articleFaq.update({
+        where: { id: faqId },
+        data: { sortOrder: index },
+      }),
+    );
+
+    await this.prisma.$transaction(updates);
+
+    return this.prisma.articleFaq.findMany({
+      where: { articleId },
+      orderBy: { sortOrder: 'asc' },
+    });
+  }
+
   private get articleInclude() {
     return {
       author: true,
       category: true,
+      faqs: {
+        orderBy: { sortOrder: 'asc' },
+      },
       tags: {
         include: {
           tag: true,
@@ -992,6 +1091,10 @@ export class ContentService {
     return {
       author: true,
       category: true,
+      faqs: {
+        where: { isActive: true },
+        orderBy: { sortOrder: 'asc' },
+      },
       tags: {
         include: {
           tag: true,

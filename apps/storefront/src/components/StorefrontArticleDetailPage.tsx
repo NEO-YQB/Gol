@@ -39,6 +39,7 @@ export function StorefrontArticleDetailPage({ detail }: Props) {
   const html = contentWithAnchors(article.content)
   const breadcrumbItems = detail.breadcrumbs?.items || []
   const categoryPath = breadcrumbItems.slice(1, -1).map((item) => item.slug).join('/') || article.category.slug
+  const faqs = (article.faqs ?? []).filter((item) => item.isActive !== false && item.question?.trim() && item.answer?.trim())
 
   return (
     <div className="space-y-8">
@@ -98,6 +99,25 @@ export function StorefrontArticleDetailPage({ detail }: Props) {
                   <span className="rounded-full border border-[#1f6a52]/12 bg-[#f8f2e8] px-4 py-2 text-sm font-bold text-[#173126]" key={item.tag.id}>
                     {item.tag.title}
                   </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {faqs.length ? (
+            <div className="mt-8 border-t border-[#efe4d6] pt-6">
+              <h2 className="text-lg font-black text-[#173126]">سوالات متداول</h2>
+              <div className="mt-4 space-y-3">
+                {faqs.map((faq) => (
+                  <details
+                    className="group rounded-[18px] border border-[#1f6a52]/10 bg-[#fbf7f1] px-4 py-3"
+                    key={faq.id}
+                  >
+                    <summary className="cursor-pointer list-none text-sm font-black text-[#173126] transition group-open:text-[#1f6a52]">
+                      {faq.question}
+                    </summary>
+                    <p className="mt-3 text-sm leading-8 text-[#5f564c]">{faq.answer}</p>
+                  </details>
                 ))}
               </div>
             </div>

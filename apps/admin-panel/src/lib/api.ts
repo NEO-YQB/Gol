@@ -989,6 +989,32 @@ export const adminApi = {
       body: JSON.stringify(body),
     }, session.accessToken)
   },
+  getArticleFaqs(session: AuthSession, articleId: string) {
+    return request<unknown[]>(`/content/articles/${articleId}/faqs`, {}, session.accessToken)
+  },
+  createArticleFaq(session: AuthSession, articleId: string, body: Record<string, unknown>) {
+    return request<unknown>(`/content/articles/${articleId}/faqs`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  updateArticleFaq(session: AuthSession, articleId: string, faqId: string, body: Record<string, unknown>) {
+    return request<unknown>(`/content/articles/${articleId}/faqs/${faqId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  deleteArticleFaq(session: AuthSession, articleId: string, faqId: string) {
+    return request<unknown>(`/content/articles/${articleId}/faqs/${faqId}`, {
+      method: 'DELETE',
+    }, session.accessToken)
+  },
+  reorderArticleFaqs(session: AuthSession, articleId: string, faqIds: string[]) {
+    return request<unknown[]>(`/content/articles/${articleId}/faqs/reorder`, {
+      method: 'PATCH',
+      body: JSON.stringify({ faqIds: faqIds.map(Number) }),
+    }, session.accessToken)
+  },
   getArticleCategories(session: AuthSession) {
     return request<unknown[]>('/content/article-categories', {}, session.accessToken)
   },

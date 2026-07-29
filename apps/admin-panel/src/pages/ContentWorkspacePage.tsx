@@ -29,6 +29,23 @@ type ContentWorkspacePageProps = {
 }
 
 type ContentRecord = Record<string, unknown>
+type ArticleFaqRecord = Record<string, unknown>
+
+type ArticleFaqFormState = {
+  question: string
+  answer: string
+  sortOrder: string
+  isActive: boolean
+}
+
+function createEmptyArticleFaqForm(): ArticleFaqFormState {
+  return {
+    question: '',
+    answer: '',
+    sortOrder: '0',
+    isActive: true,
+  }
+}
 
 type ArticleFormState = {
   title: string
@@ -99,6 +116,7 @@ type ContentAccordionKey =
   | 'seo'
   | 'preview'
   | 'signals'
+  | 'faq'
   | 'manager'
   | 'author'
   | 'audits'
@@ -304,6 +322,10 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
   const [authors, setAuthors] = useState<ContentRecord[]>([])
   const [audits, setAudits] = useState<ContentRecord[]>([])
   const [articleForm, setArticleForm] = useState<ArticleFormState>(() => createEmptyArticleForm())
+  const [articleFaqs, setArticleFaqs] = useState<ArticleFaqRecord[]>([])
+  const [faqForm, setFaqForm] = useState<ArticleFaqFormState>(() => createEmptyArticleFaqForm())
+  const [editingFaqId, setEditingFaqId] = useState<string | null>(null)
+  const [faqSubmitting, setFaqSubmitting] = useState(false)
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('new')
   const [categoryForm, setCategoryForm] = useState<CategoryFormState>(() => createEmptyCategoryForm())
   const [selectedTagId, setSelectedTagId] = useState<string>('new')
@@ -317,6 +339,7 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
     seo: false,
     preview: false,
     signals: false,
+    faq: false,
     manager: false,
     author: false,
     audits: false,
@@ -360,8 +383,10 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
           const articleRecord = toContentRecord(articlePayload)
           setArticleDetail(articleRecord)
           setArticleForm(mapArticleToForm(articleRecord))
+          setArticleFaqs(toArray(articleRecord.faqs))
         } else {
           setArticleDetail(null)
+          setArticleFaqs([])
           setArticleForm((previous) => {
             const empty = createEmptyArticleForm()
             return {
@@ -717,6 +742,78 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
     }
   }
 
+  async function handleFaqSubmit() {
+    if (!currentArticleId) return
+    if (!faqForm.question.trim() || !faqForm.answer.trim()) {
+      setError('سوال و پاسخ الزامی هستند.')
+      return
+    }
+
+    setFaqSubmitting(true)
+    setError(null)
+
+    const body = {
+      question: faqForm.question.trim(),
+      answer: faqForm.answer.trim(),
+      sortOrder: Number(faqForm.sortOrder) || 0,
+      isActive: faqForm.isActive,
+    }
+
+    try {
+      if (editingFaqId) {
+        await adminApi.updateArticleFaq(session, currentArticleId, editingFaqId, body)
+      } else {
+        await adminApi.createArticleFaq(session, currentArticleId, body)
+      }
+      const updatedFaqs = await adminApi.getArticleFaqs(session, currentArticleId)
+      setArticleFaqs(toArray(updatedFaqs))
+      setFaqForm(createEmptyArticleFaqForm())
+      setEditingFaqId(null)
+      setSubmitMessage(editingFaqId ? 'سوال متداول به‌روزرسانی شد.' : 'سوال متداول جدید اضافه شد.')
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'ذخیره سوال متداول ناموفق بود')
+    } finally {
+      setFaqSubmitting(false)
+    }
+  }
+
+  async function handleFaqDelete(faqId: string) {
+    if (!currentArticleId) return
+
+    setFaqSubmitting(true)
+    setError(null)
+
+    try {
+      await adminApi.deleteArticleFaq(session, currentArticleId, faqId)
+      const updatedFaqs = await adminApi.getArticleFaqs(session, currentArticleId)
+      setArticleFaqs(toArray(updatedFaqs))
+      if (editingFaqId === faqId) {
+        setFaqForm(createEmptyArticleFaqForm())
+        setEditingFaqId(null)
+      }
+      setSubmitMessage('سوال متداول حذف شد.')
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'حذف سوال متداول ناموفق بود')
+    } finally {
+      setFaqSubmitting(false)
+    }
+  }
+
+  function handleFaqEdit(faq: ArticleFaqRecord) {
+    setEditingFaqId(readText(faq, ['id'], ''))
+    setFaqForm({
+      question: readText(faq, ['question'], ''),
+      answer: readText(faq, ['answer'], ''),
+      sortOrder: readText(faq, ['sortOrder'], '0'),
+      isActive: faq.isActive !== false,
+    })
+  }
+
+  function handleFaqCancelEdit() {
+    setEditingFaqId(null)
+    setFaqForm(createEmptyArticleFaqForm())
+  }
+
   async function handleCategorySubmit() {
     if (!categoryForm.title.trim() || !categoryForm.slug.trim()) {
       setError('عنوان و اسلاگ دسته‌بندی الزامی هستند.')
@@ -996,6 +1093,109 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                   placeholder="محتوای کامل مقاله را اینجا بنویس..."
                   value={articleForm.content}
                 />
+              </SectionCard>
+
+              <SectionCard
+                eyebrow="سوالات متداول"
+                title="FAQ مقاله"
+                actions={
+                  <div className="content-accordion-actions">
+                    <button
+                      aria-expanded={openSections.faq}
+                      className={`content-accordion-trigger${openSections.faq ? ' is-open' : ''}`}
+                      onClick={() => toggleSection('faq')}
+                      type="button"
+                    >
+                      {openSections.faq ? 'بستن' : 'باز کردن'}
+                    </button>
+                  </div>
+                }
+              >
+                {openSections.faq ? (
+                  <div className="category-faq-section">
+                    {!currentArticleId ? (
+                      <p className="content-collapsed-note">ابتدا مقاله را ذخیره کنید تا بتوانید سوالات متداول اضافه کنید.</p>
+                    ) : (
+                      <>
+                        <div className="category-faq-form content-editor-grid">
+                          <label className="content-select-field page-builder-field--wide">
+                            <span>سوال</span>
+                            <input
+                              className="fm-input"
+                              onChange={(event) => setFaqForm((current) => ({ ...current, question: event.target.value }))}
+                              placeholder="مثلاً: چطور عمر گل شاخه بریده را بیشتر کنم؟"
+                              value={faqForm.question}
+                            />
+                          </label>
+                          <label className="content-select-field page-builder-field--wide">
+                            <span>پاسخ</span>
+                            <textarea
+                              className="fm-input"
+                              onChange={(event) => setFaqForm((current) => ({ ...current, answer: event.target.value }))}
+                              placeholder="پاسخ سوال را اینجا بنویسید..."
+                              rows={3}
+                              value={faqForm.answer}
+                            />
+                          </label>
+                          <label className="content-select-field">
+                            <span>ترتیب نمایش</span>
+                            <input
+                              className="fm-input"
+                              inputMode="numeric"
+                              onChange={(event) => setFaqForm((current) => ({ ...current, sortOrder: event.target.value }))}
+                              value={faqForm.sortOrder}
+                            />
+                          </label>
+                          <label className="fm-field page-builder-checkbox">
+                            <span>فعال</span>
+                            <input checked={faqForm.isActive} onChange={(event) => setFaqForm((current) => ({ ...current, isActive: event.target.checked }))} type="checkbox" />
+                          </label>
+                          <div className="products-header-actions">
+                            <button className="content-primary-action" disabled={faqSubmitting} onClick={() => void handleFaqSubmit()} type="button">
+                              {faqSubmitting ? 'در حال ذخیره...' : editingFaqId ? 'به‌روزرسانی' : 'افزودن سوال'}
+                            </button>
+                            {editingFaqId ? (
+                              <button className="content-secondary-action" disabled={faqSubmitting} onClick={handleFaqCancelEdit} type="button">
+                                لغو
+                              </button>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        <div className="category-faq-list">
+                          {articleFaqs.length ? (
+                            articleFaqs.map((faq) => {
+                              const faqId = readText(faq, ['id'], '')
+                              return (
+                                <article className="category-faq-item" key={faqId}>
+                                  <div className="category-faq-item__content">
+                                    <strong>{readText(faq, ['question'], 'بدون سوال')}</strong>
+                                    <p>{readText(faq, ['answer'], 'بدون پاسخ')}</p>
+                                    <span className="category-faq-item__meta">
+                                      ترتیب: {readText(faq, ['sortOrder'], '0')} · {faq.isActive !== false ? 'فعال' : 'غیرفعال'}
+                                    </span>
+                                  </div>
+                                  <div className="products-header-actions">
+                                    <button className="content-secondary-action" disabled={faqSubmitting} onClick={() => handleFaqEdit(faq)} type="button">
+                                      ویرایش
+                                    </button>
+                                    <button className="content-secondary-action" disabled={faqSubmitting} onClick={() => void handleFaqDelete(faqId)} type="button">
+                                      حذف
+                                    </button>
+                                  </div>
+                                </article>
+                              )
+                            })
+                          ) : (
+                            <p className="content-collapsed-note">هنوز سوالی تعریف نشده است.</p>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <p className="content-collapsed-note">بخش سوالات متداول بسته است.</p>
+                )}
               </SectionCard>
 
               <SectionCard

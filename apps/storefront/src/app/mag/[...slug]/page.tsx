@@ -7,6 +7,7 @@ import {
   buildArticleJsonLd,
   buildBreadcrumbJsonLd,
   buildCollectionPageJsonLd,
+  buildFaqPageJsonLd,
   getStorefrontArticleBySlug,
   getStorefrontArticleCategories,
   getStorefrontArticleCategoryArchive,
@@ -124,6 +125,7 @@ export default async function MagDynamicPage({
         buildArticleBreadcrumbItems(detail.breadcrumbs?.items, detail.article.slug),
       )
       const articleJsonLd = buildArticleJsonLd(detail.article)
+      const faqJsonLd = buildFaqPageJsonLd(detail.article.faqs ?? [])
 
       return (
         <StorefrontShell>
@@ -135,6 +137,12 @@ export default async function MagDynamicPage({
             dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
             type="application/ld+json"
           />
+          {faqJsonLd ? (
+            <script
+              dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+              type="application/ld+json"
+            />
+          ) : null}
           <StorefrontArticleDetailPage detail={detail} />
         </StorefrontShell>
       )
