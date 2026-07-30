@@ -87,7 +87,7 @@ export function StorefrontArticleDetailPage({ detail }: Props) {
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <article className="rounded-[34px] bg-white/84 px-6 py-6 shadow-[0_14px_34px_rgba(52,36,17,0.06)]">
           <div
-            className="prose prose-lg max-w-none prose-headings:text-[#173126] prose-p:text-[#5f564c] prose-p:leading-8 prose-li:text-[#5f564c] prose-strong:text-[#173126] prose-a:text-[#1f6a52]"
+            className="article-content"
             dangerouslySetInnerHTML={{ __html: html }}
           />
 
