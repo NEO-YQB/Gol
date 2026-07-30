@@ -39,6 +39,20 @@ type CarouselDialogState = {
   title: string
 }
 
+type ContentImageDialogState = {
+  url: string
+  alt: string
+  uploading: boolean
+}
+
+function createEmptyContentImageDialog(): ContentImageDialogState {
+  return {
+    url: '',
+    alt: '',
+    uploading: false,
+  }
+}
+
 function createEmptyCarouselDialog(): CarouselDialogState {
   return {
     source: 'category',
@@ -83,6 +97,7 @@ type ArticleFormState = {
   slug: string
   excerpt: string
   coverImage: string
+  coverImageAlt: string
   focusKeyword: string
   seoNotes: string
   content: string
@@ -160,6 +175,7 @@ function createEmptyArticleForm(): ArticleFormState {
     slug: '',
     excerpt: '',
     coverImage: '',
+    coverImageAlt: '',
     focusKeyword: '',
     seoNotes: '',
     content: '<p></p>',
@@ -272,6 +288,7 @@ function mapArticleToForm(article: ContentRecord): ArticleFormState {
     slug: readText(article, ['slug'], ''),
     excerpt: readText(article, ['excerpt'], ''),
     coverImage: readText(article, ['coverImage'], ''),
+    coverImageAlt: readText(article, ['coverImageAlt'], ''),
     focusKeyword: readText(article, ['focusKeyword'], ''),
     seoNotes: readText(article, ['seoNotes'], ''),
     content: readText(article, ['content'], '<p></p>'),
@@ -358,6 +375,10 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
   const [carouselDialog, setCarouselDialog] = useState<CarouselDialogState>(() => createEmptyCarouselDialog())
   const [isCarouselDialogOpen, setIsCarouselDialogOpen] = useState(false)
   const carouselInsertRef = useRef<((content: string) => void) | null>(null)
+  const [contentImageDialog, setContentImageDialog] = useState<ContentImageDialogState>(() => createEmptyContentImageDialog())
+  const [isContentImageDialogOpen, setIsContentImageDialogOpen] = useState(false)
+  const contentImageInsertRef = useRef<((content: string) => void) | null>(null)
+  const contentImageInputRef = useRef<HTMLInputElement | null>(null)
   const [articleForm, setArticleForm] = useState<ArticleFormState>(() => createEmptyArticleForm())
   const [articleFaqs, setArticleFaqs] = useState<ArticleFaqRecord[]>([])
   const [faqForm, setFaqForm] = useState<ArticleFaqFormState>(() => createEmptyArticleFaqForm())
@@ -746,6 +767,7 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
       slug: articleForm.slug.trim(),
       excerpt: toOptionalText(articleForm.excerpt),
       coverImage: toOptionalText(articleForm.coverImage),
+      coverImageAlt: toOptionalText(articleForm.coverImageAlt),
       focusKeyword: toOptionalText(articleForm.focusKeyword),
       seoNotes: toOptionalText(articleForm.seoNotes),
       content: articleForm.content,
@@ -788,6 +810,47 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
   function openCarouselDialog() {
     setCarouselDialog(createEmptyCarouselDialog())
     setIsCarouselDialogOpen(true)
+  }
+
+  function openContentImageDialog() {
+    setContentImageDialog(createEmptyContentImageDialog())
+    setIsContentImageDialogOpen(true)
+  }
+
+  async function handleContentImageUpload(fileList: FileList | null) {
+    const file = fileList?.[0]
+    if (!file) return
+
+    setContentImageDialog((current) => ({ ...current, uploading: true }))
+    setError(null)
+
+    try {
+      const uploaded = await adminApi.uploadProductImage(session, file)
+      setContentImageDialog((current) => ({ ...current, url: uploaded.url, uploading: false }))
+    } catch (uploadError) {
+      setContentImageDialog((current) => ({ ...current, uploading: false }))
+      setError(uploadError instanceof Error ? uploadError.message : 'آپلود تصویر ناموفق بود')
+    }
+  }
+
+  function handleContentImageInsert() {
+    if (!contentImageDialog.url.trim()) {
+      setError('تصویر را آپلود کن یا آدرس آن را وارد کن.')
+      return
+    }
+
+    const altAttr = contentImageDialog.alt.trim() ? ` alt="${contentImageDialog.alt.trim()}"` : ''
+    const html = `<p><img src="${contentImageDialog.url.trim()}"${altAttr}></p>`
+
+    if (contentImageInsertRef.current) {
+      contentImageInsertRef.current(html)
+    } else {
+      updateArticleForm('content', `${articleForm.content}\n${html}`)
+    }
+
+    setIsContentImageDialogOpen(false)
+    setError(null)
+    setSubmitMessage('تصویر به متن مقاله اضافه شد.')
   }
 
   function handleCarouselInsert() {
@@ -1145,6 +1208,14 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                       value={articleForm.coverImage}
                     />
                   </label>
+                  <label className="fm-field content-editor-field--wide">
+                    <span>متن جایگزین تصویر کاور (Alt)</span>
+                    <input
+                      onChange={(event) => updateArticleForm('coverImageAlt', event.target.value)}
+                      placeholder="مثلاً: دسته گل رز قرمز روی میز چوبی"
+                      value={articleForm.coverImageAlt}
+                    />
+                  </label>
                   <div className="admin-products-upload-card content-editor-field--wide">
                     <div className="admin-products-upload-actions">
                       <button className="content-secondary-action" disabled={uploadingImageTarget === 'article:coverImage'} onClick={() => openImagePicker('article:coverImage')} type="button">
@@ -1180,10 +1251,16 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                   placeholder="محتوای کامل مقاله را اینجا بنویس..."
                   toolbarActions={(editorApi) => {
                     carouselInsertRef.current = editorApi.insertContentAtCursor
+                    contentImageInsertRef.current = editorApi.insertContentAtCursor
                     return (
-                      <button className="fm-rich-editor-chip" onClick={openCarouselDialog} type="button">
-                        کاروسل محصول
-                      </button>
+                      <>
+                        <button className="fm-rich-editor-chip" onClick={openContentImageDialog} type="button">
+                          آپلود تصویر
+                        </button>
+                        <button className="fm-rich-editor-chip" onClick={openCarouselDialog} type="button">
+                          کاروسل محصول
+                        </button>
+                      </>
                     )
                   }}
                   value={articleForm.content}
@@ -1934,6 +2011,75 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
           </div>
         </SectionCard>
       </LoadableState>
+
+      <input
+        accept="image/*"
+        hidden
+        onChange={(event) => {
+          void handleContentImageUpload(event.target.files)
+          event.target.value = ''
+        }}
+        ref={contentImageInputRef}
+        type="file"
+      />
+
+      {isContentImageDialogOpen ? (
+        <div className="carousel-dialog" role="dialog" aria-modal="true" aria-label="درج تصویر در متن مقاله">
+          <button className="carousel-dialog__backdrop" onClick={() => setIsContentImageDialogOpen(false)} type="button" aria-label="بستن" />
+          <div className="carousel-dialog__panel">
+            <div className="carousel-dialog__header">
+              <h3>درج تصویر در متن</h3>
+              <button className="content-secondary-action" onClick={() => setIsContentImageDialogOpen(false)} type="button">
+                بستن
+              </button>
+            </div>
+            <div className="carousel-dialog__body">
+              <div className="products-header-actions">
+                <button
+                  className="content-primary-action"
+                  disabled={contentImageDialog.uploading}
+                  onClick={() => contentImageInputRef.current?.click()}
+                  type="button"
+                >
+                  {contentImageDialog.uploading ? 'در حال آپلود...' : 'آپلود تصویر از دستگاه'}
+                </button>
+              </div>
+
+              <label className="fm-field">
+                <span>آدرس تصویر (URL)</span>
+                <input
+                  onChange={(event) => setContentImageDialog((current) => ({ ...current, url: event.target.value }))}
+                  placeholder="https://..."
+                  value={contentImageDialog.url}
+                />
+              </label>
+
+              <label className="fm-field">
+                <span>متن جایگزین (Alt)</span>
+                <input
+                  onChange={(event) => setContentImageDialog((current) => ({ ...current, alt: event.target.value }))}
+                  placeholder="توضیح تصویر برای سئو و دسترس‌پذیری"
+                  value={contentImageDialog.alt}
+                />
+              </label>
+
+              {contentImageDialog.url.trim() ? (
+                <div className="admin-products-image-preview">
+                  <img alt={contentImageDialog.alt || 'پیش‌نمایش تصویر'} src={contentImageDialog.url} />
+                </div>
+              ) : null}
+            </div>
+            <div className="carousel-dialog__footer">
+              <button className="content-primary-action" onClick={handleContentImageInsert} type="button">
+                درج در متن مقاله
+              </button>
+              <button className="content-secondary-action" onClick={() => setIsContentImageDialogOpen(false)} type="button">
+                لغو
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {isCarouselDialogOpen ? (
         <div className="carousel-dialog" role="dialog" aria-modal="true" aria-label="درج کاروسل محصول">

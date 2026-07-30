@@ -24,6 +24,11 @@ export class CreateArticleDto {
   @IsString()
   coverImage?: string;
 
+  @ApiPropertyOptional({ example: 'دسته گل رز قرمز در گلدان سفید' })
+  @IsOptional()
+  @IsString()
+  coverImageAlt?: string;
+
   @ApiPropertyOptional({ example: 'مراقبت از گل رز' })
   @IsOptional()
   @IsString()

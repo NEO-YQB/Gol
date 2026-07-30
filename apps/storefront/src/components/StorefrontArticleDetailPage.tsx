@@ -91,7 +91,7 @@ export function StorefrontArticleDetailPage({ detail, carouselProducts = {} }: P
             </div>
           </div>
           <div className="min-h-[280px] bg-[#e7dccf]">
-            {article.coverImage ? <img alt={article.title} className="h-full w-full object-cover" src={article.coverImage} /> : null}
+            {article.coverImage ? <img alt={article.coverImageAlt || article.title} className="h-full w-full object-cover" src={article.coverImage} /> : null}
           </div>
         </div>
       </section>

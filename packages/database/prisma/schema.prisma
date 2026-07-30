@@ -440,6 +440,7 @@ model Article {
   slug            String          @unique
   excerpt         String?         @db.Text
   coverImage      String?
+  coverImageAlt   String?
   content         String          @db.Text
   focusKeyword    String?
   seoNotes        String?         @db.Text

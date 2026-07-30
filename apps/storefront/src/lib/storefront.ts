@@ -297,6 +297,7 @@ export type PublicArticleDetail = {
     slug: string
     excerpt?: string | null
     coverImage?: string | null
+    coverImageAlt?: string | null
     content: string
     focusKeyword?: string | null
     readingTimeMinutes?: number | null
