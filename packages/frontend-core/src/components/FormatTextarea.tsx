@@ -5,7 +5,7 @@ import Image from '@tiptap/extension-image'
 import Placeholder from '@tiptap/extension-placeholder'
 import TextAlign from '@tiptap/extension-text-align'
 import Underline from '@tiptap/extension-underline'
-import { useEffect, useMemo, useState } from 'react'
+import { type ReactNode, useEffect, useMemo, useState } from 'react'
 import { cx } from '../cx'
 
 type RichTextEditorProps = {
@@ -15,6 +15,9 @@ type RichTextEditorProps = {
   placeholder?: string
   rows?: number
   className?: string
+  toolbarActions?: (editor: {
+    insertContentAtCursor: (content: string) => void
+  }) => ReactNode
 }
 
 type SeoInsight = {
@@ -88,6 +91,7 @@ export function RichTextEditor({
   placeholder = 'متن را اینجا بنویسید...',
   rows = 10,
   className,
+  toolbarActions,
 }: RichTextEditorProps) {
   const [mode, setMode] = useState<'visual' | 'preview' | 'html'>('visual')
 
@@ -230,6 +234,12 @@ export function RichTextEditor({
             <button className={toolbarButtonClass()} onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()} type="button">
               پاک‌سازی
             </button>
+            {toolbarActions
+              ? toolbarActions({
+                  insertContentAtCursor: (content: string) =>
+                    editor.chain().focus().insertContent(content).run(),
+                })
+              : null}
           </div>
         ) : null}
       </div>

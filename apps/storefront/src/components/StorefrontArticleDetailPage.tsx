@@ -1,9 +1,16 @@
 import Link from 'next/link'
-import { type PublicArticleDetail } from '../lib/storefront'
+import {
+  splitContentByCarouselTokens,
+  type ParsedProductCarouselToken,
+  type ProductSummary,
+  type PublicArticleDetail,
+} from '../lib/storefront'
+import { ArticleProductCarousel } from './ArticleProductCarousel'
 import { buildMagCategoryHref, formatArticleDate } from './storefrontArticleShared'
 
 type Props = {
   detail: PublicArticleDetail
+  carouselProducts?: Record<string, ProductSummary[]>
 }
 
 function contentWithAnchors(html: string) {
@@ -33,10 +40,15 @@ function resolveHeadingIds(content: string, toc: Array<{ level: number; text: st
   })
 }
 
-export function StorefrontArticleDetailPage({ detail }: Props) {
+function carouselTokenKey(token: ParsedProductCarouselToken) {
+  return `${token.source}:${token.key}:${token.limit}`
+}
+
+export function StorefrontArticleDetailPage({ detail, carouselProducts = {} }: Props) {
   const article = detail.article
   const toc = resolveHeadingIds(article.content, article.tableOfContents || [])
   const html = contentWithAnchors(article.content)
+  const contentSegments = splitContentByCarouselTokens(html)
   const breadcrumbItems = detail.breadcrumbs?.items || []
   const categoryPath = breadcrumbItems.slice(1, -1).map((item) => item.slug).join('/') || article.category.slug
   const faqs = (article.faqs ?? []).filter((item) => item.isActive !== false && item.question?.trim() && item.answer?.trim())
@@ -86,10 +98,21 @@ export function StorefrontArticleDetailPage({ detail }: Props) {
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <article className="rounded-[34px] bg-white/84 px-6 py-6 shadow-[0_14px_34px_rgba(52,36,17,0.06)]">
-          <div
-            className="article-content"
-            dangerouslySetInnerHTML={{ __html: html }}
-          />
+          {contentSegments.map((segment, index) =>
+            segment.kind === 'html' ? (
+              <div
+                className="article-content"
+                dangerouslySetInnerHTML={{ __html: segment.html }}
+                key={`html-${index}`}
+              />
+            ) : (
+              <ArticleProductCarousel
+                key={`carousel-${index}`}
+                products={carouselProducts[carouselTokenKey(segment.token)] ?? []}
+                title={segment.token.title}
+              />
+            ),
+          )}
 
           {article.tags.length ? (
             <div className="mt-8 border-t border-[#efe4d6] pt-6">

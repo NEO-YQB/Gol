@@ -505,6 +505,126 @@ export async function getStorefrontProductTypes(): Promise<ProductTypeSummary[]>
   return getProductTypes()
 }
 
+export type ProductCarouselSource = 'category' | 'productType' | 'element'
+
+export function resolveCarouselSourceId(
+  source: ProductCarouselSource,
+  key: string,
+  lists: {
+    categories: CategorySummary[]
+    productTypes: ProductTypeSummary[]
+    elements: StorefrontProductElement[]
+  },
+): number | null {
+  const trimmedKey = key.trim()
+  if (!trimmedKey) return null
+
+  const numeric = Number(trimmedKey)
+  const matchByIdOrSlug = <T extends { id: number }>(items: T[], getSlug: (item: T) => string | undefined) =>
+    items.find((item) => getSlug(item) === trimmedKey) ?? (Number.isInteger(numeric) ? items.find((item) => item.id === numeric) : undefined)
+
+  if (source === 'category') {
+    return matchByIdOrSlug(lists.categories, (item) => item.slug)?.id ?? null
+  }
+
+  if (source === 'productType') {
+    return matchByIdOrSlug(lists.productTypes, (item) => item.slug)?.id ?? null
+  }
+
+  return matchByIdOrSlug(lists.elements, (item) => item.name)?.id ?? null
+}
+
+export type ParsedProductCarouselToken = {
+  source: ProductCarouselSource
+  key: string
+  limit: number
+  title?: string
+}
+
+const CAROUSEL_TOKEN_PATTERN = /\[products(?:\s+[a-zA-Z]+="[^"]*")+\s*\]/
+
+export function parseProductCarouselToken(token: string): ParsedProductCarouselToken | null {
+  const typeMatch = token.match(/\btype="([^"]*)"/)
+  const source = typeMatch?.[1]
+  if (source !== 'category' && source !== 'productType' && source !== 'element') {
+    return null
+  }
+
+  const key =
+    (source === 'category'
+      ? token.match(/\bcategory="([^"]*)"/)?.[1]
+      : source === 'productType'
+        ? token.match(/\bproductType="([^"]*)"/)?.[1]
+        : token.match(/\belement="([^"]*)"/)?.[1])?.trim() ?? ''
+
+  if (!key) {
+    return null
+  }
+
+  const rawLimit = Number(token.match(/\blimit="([^"]*)"/)?.[1] ?? 8)
+  const limit = Number.isInteger(rawLimit) ? Math.min(Math.max(rawLimit, 1), 24) : 8
+  const title = token.match(/\btitle="([^"]*)"/)?.[1]?.trim() || undefined
+
+  return { source, key, limit, title }
+}
+
+export function splitContentByCarouselTokens(html: string): Array<{ kind: 'html'; html: string } | { kind: 'carousel'; token: ParsedProductCarouselToken }> {
+  const segments: Array<{ kind: 'html'; html: string } | { kind: 'carousel'; token: ParsedProductCarouselToken }> = []
+  const pattern = new RegExp(CAROUSEL_TOKEN_PATTERN.source, 'g')
+  let lastIndex = 0
+  let match: RegExpExecArray | null
+
+  while ((match = pattern.exec(html)) !== null) {
+    const token = parseProductCarouselToken(match[0])
+    if (!token) {
+      continue
+    }
+
+    const before = html.slice(lastIndex, match.index)
+    if (before) {
+      segments.push({ kind: 'html', html: before })
+    }
+
+    segments.push({ kind: 'carousel', token })
+    lastIndex = match.index + match[0].length
+  }
+
+  if (!segments.length) {
+    return [{ kind: 'html', html }]
+  }
+
+  const after = html.slice(lastIndex)
+  if (after) {
+    segments.push({ kind: 'html', html: after })
+  }
+
+  return segments
+}
+
+export async function getCarouselProducts(token: ParsedProductCarouselToken): Promise<ProductSummary[]> {
+  const [categories, productTypes, elements] = await Promise.all([
+    getCategories(),
+    getProductTypes(),
+    getProductElements(),
+  ])
+
+  const id = resolveCarouselSourceId(token.source, token.key, { categories, productTypes, elements })
+  if (!id) {
+    return []
+  }
+
+  const query: ProductQuery = { limit: token.limit }
+  if (token.source === 'category') {
+    query.categoryId = String(id)
+  } else if (token.source === 'productType') {
+    query.productTypeId = String(id)
+  } else {
+    query.elementIds = [id]
+  }
+
+  return getProducts(`carousel:${token.source}:${id}:${token.limit}`, query)
+}
+
 const getArticles = cache(async (limit: number): Promise<ArticleSummary[]> => {
   const params = new URLSearchParams()
   params.set('limit', String(limit))

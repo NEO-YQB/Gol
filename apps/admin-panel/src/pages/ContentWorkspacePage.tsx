@@ -29,6 +29,37 @@ type ContentWorkspacePageProps = {
 }
 
 type ContentRecord = Record<string, unknown>
+
+type CarouselSource = 'category' | 'productType' | 'element'
+
+type CarouselDialogState = {
+  source: CarouselSource
+  key: string
+  limit: string
+  title: string
+}
+
+function createEmptyCarouselDialog(): CarouselDialogState {
+  return {
+    source: 'category',
+    key: '',
+    limit: '8',
+    title: '',
+  }
+}
+
+function buildCarouselToken(form: CarouselDialogState) {
+  const keyAttr =
+    form.source === 'category'
+      ? `category="${form.key.trim()}"`
+      : form.source === 'productType'
+        ? `productType="${form.key.trim()}"`
+        : `element="${form.key.trim()}"`
+  const limitAttr = `limit="${Number(form.limit) > 0 ? Number(form.limit) : 8}"`
+  const titleAttr = form.title.trim() ? ` title="${form.title.trim()}"` : ''
+  return `<p>[products type="${form.source}" ${keyAttr} ${limitAttr}${titleAttr}]</p>`
+}
+
 type ArticleFaqRecord = Record<string, unknown>
 
 type ArticleFaqFormState = {
@@ -321,6 +352,12 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
   const [tags, setTags] = useState<ContentRecord[]>([])
   const [authors, setAuthors] = useState<ContentRecord[]>([])
   const [audits, setAudits] = useState<ContentRecord[]>([])
+  const [productCategories, setProductCategories] = useState<ContentRecord[]>([])
+  const [productTypes, setProductTypes] = useState<ContentRecord[]>([])
+  const [productElements, setProductElements] = useState<ContentRecord[]>([])
+  const [carouselDialog, setCarouselDialog] = useState<CarouselDialogState>(() => createEmptyCarouselDialog())
+  const [isCarouselDialogOpen, setIsCarouselDialogOpen] = useState(false)
+  const carouselInsertRef = useRef<((content: string) => void) | null>(null)
   const [articleForm, setArticleForm] = useState<ArticleFormState>(() => createEmptyArticleForm())
   const [articleFaqs, setArticleFaqs] = useState<ArticleFaqRecord[]>([])
   const [faqForm, setFaqForm] = useState<ArticleFaqFormState>(() => createEmptyArticleFaqForm())
@@ -360,12 +397,15 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
       setError(null)
 
       try {
-        const [categoriesPayload, tagsPayload, authorsPayload, auditsPayload, articlePayload] = await Promise.all([
+        const [categoriesPayload, tagsPayload, authorsPayload, auditsPayload, articlePayload, productCategoriesPayload, productTypesPayload, productElementsPayload] = await Promise.all([
           adminApi.getArticleCategories(session),
           adminApi.getArticleTags(session),
           adminApi.getAuthors(session),
           adminApi.getContentAudits(session),
           currentArticleId ? adminApi.getArticleDetail(session, currentArticleId) : Promise.resolve(null),
+          adminApi.getCategories(session),
+          adminApi.getProductTypes(session),
+          adminApi.getProductElements(session),
         ])
 
         if (!active) return
@@ -378,6 +418,9 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
         setTags(nextTags)
         setAuthors(nextAuthors)
         setAudits(toArray(auditsPayload))
+        setProductCategories(toArray(productCategoriesPayload))
+        setProductTypes(toArray(productTypesPayload))
+        setProductElements(toArray(productElementsPayload))
 
         if (currentArticleId && articlePayload) {
           const articleRecord = toContentRecord(articlePayload)
@@ -742,6 +785,50 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
     }
   }
 
+  function openCarouselDialog() {
+    setCarouselDialog(createEmptyCarouselDialog())
+    setIsCarouselDialogOpen(true)
+  }
+
+  function handleCarouselInsert() {
+    if (!carouselDialog.key.trim()) {
+      setError('انتخاب منبع کاروسل الزامی است.')
+      return
+    }
+
+    const token = buildCarouselToken(carouselDialog)
+    if (carouselInsertRef.current) {
+      carouselInsertRef.current(token)
+    } else {
+      updateArticleForm('content', `${articleForm.content}\n${token}`)
+    }
+
+    setIsCarouselDialogOpen(false)
+    setError(null)
+    setSubmitMessage('بلوک کاروسل محصول به متن مقاله اضافه شد.')
+  }
+
+  const carouselOptions = useMemo(() => {
+    if (carouselDialog.source === 'category') {
+      return productCategories.map((item) => ({
+        value: readText(item, ['id'], ''),
+        label: readText(item, ['name'], '—'),
+      }))
+    }
+
+    if (carouselDialog.source === 'productType') {
+      return productTypes.map((item) => ({
+        value: readText(item, ['id'], ''),
+        label: readText(item, ['name'], '—'),
+      }))
+    }
+
+    return productElements.map((item) => ({
+      value: readText(item, ['id'], ''),
+      label: readText(item, ['name'], '—'),
+    }))
+  }, [carouselDialog.source, productCategories, productTypes, productElements])
+
   async function handleFaqSubmit() {
     if (!currentArticleId) return
     if (!faqForm.question.trim() || !faqForm.answer.trim()) {
@@ -1091,6 +1178,14 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
                   id="article-content"
                   onChange={(value) => updateArticleForm('content', value)}
                   placeholder="محتوای کامل مقاله را اینجا بنویس..."
+                  toolbarActions={(editorApi) => {
+                    carouselInsertRef.current = editorApi.insertContentAtCursor
+                    return (
+                      <button className="fm-rich-editor-chip" onClick={openCarouselDialog} type="button">
+                        کاروسل محصول
+                      </button>
+                    )
+                  }}
                   value={articleForm.content}
                 />
               </SectionCard>
@@ -1839,6 +1934,80 @@ export function ContentWorkspacePage({ session, mode, articleId, onBack }: Conte
           </div>
         </SectionCard>
       </LoadableState>
+
+      {isCarouselDialogOpen ? (
+        <div className="carousel-dialog" role="dialog" aria-modal="true" aria-label="درج کاروسل محصول">
+          <button className="carousel-dialog__backdrop" onClick={() => setIsCarouselDialogOpen(false)} type="button" aria-label="بستن" />
+          <div className="carousel-dialog__panel">
+            <div className="carousel-dialog__header">
+              <h3>درج کاروسل محصول</h3>
+              <button className="content-secondary-action" onClick={() => setIsCarouselDialogOpen(false)} type="button">
+                بستن
+              </button>
+            </div>
+            <div className="carousel-dialog__body">
+              <label className="fm-field">
+                <span>منبع محصولات</span>
+                <select
+                  onChange={(event) =>
+                    setCarouselDialog((current) => ({
+                      ...current,
+                      source: event.target.value as CarouselSource,
+                      key: '',
+                    }))
+                  }
+                  value={carouselDialog.source}
+                >
+                  <option value="category">دسته‌بندی محصول</option>
+                  <option value="productType">نوع محصول</option>
+                  <option value="element">جزء تشکیل‌دهنده</option>
+                </select>
+              </label>
+
+              <label className="fm-field">
+                <span>آیتم</span>
+                <select
+                  onChange={(event) => setCarouselDialog((current) => ({ ...current, key: event.target.value }))}
+                  value={carouselDialog.key}
+                >
+                  <option value="">انتخاب کنید</option>
+                  {carouselOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="fm-field">
+                <span>تعداد محصول</span>
+                <input
+                  inputMode="numeric"
+                  onChange={(event) => setCarouselDialog((current) => ({ ...current, limit: event.target.value }))}
+                  value={carouselDialog.limit}
+                />
+              </label>
+
+              <label className="fm-field">
+                <span>عنوان بخش (اختیاری)</span>
+                <input
+                  onChange={(event) => setCarouselDialog((current) => ({ ...current, title: event.target.value }))}
+                  placeholder="مثلاً: محصولات پیشنهادی"
+                  value={carouselDialog.title}
+                />
+              </label>
+            </div>
+            <div className="carousel-dialog__footer">
+              <button className="content-primary-action" onClick={handleCarouselInsert} type="button">
+                درج در متن مقاله
+              </button>
+              <button className="content-secondary-action" onClick={() => setIsCarouselDialogOpen(false)} type="button">
+                لغو
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

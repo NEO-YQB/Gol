@@ -8,11 +8,13 @@ import {
   buildBreadcrumbJsonLd,
   buildCollectionPageJsonLd,
   buildFaqPageJsonLd,
+  getCarouselProducts,
   getStorefrontArticleBySlug,
   getStorefrontArticleCategories,
   getStorefrontArticleCategoryArchive,
   getStorefrontLatestArticles,
   resolveArticleCategoryPath,
+  splitContentByCarouselTokens,
 } from '../../../lib/storefront'
 
 async function resolveCategoryArchive(slugSegments: string[], page = 1) {
@@ -127,6 +129,20 @@ export default async function MagDynamicPage({
       const articleJsonLd = buildArticleJsonLd(detail.article)
       const faqJsonLd = buildFaqPageJsonLd(detail.article.faqs ?? [])
 
+      const carouselTokens = splitContentByCarouselTokens(detail.article.content)
+        .filter((segment) => segment.kind === 'carousel')
+        .map((segment) => (segment as { kind: 'carousel'; token: Parameters<typeof getCarouselProducts>[0] }).token)
+      const uniqueTokens = Array.from(
+        new Map(carouselTokens.map((token) => [`${token.source}:${token.key}:${token.limit}`, token])).values(),
+      )
+      const carouselEntries = await Promise.all(
+        uniqueTokens.map(async (token) => [
+          `${token.source}:${token.key}:${token.limit}`,
+          await getCarouselProducts(token),
+        ] as const),
+      )
+      const carouselProducts = Object.fromEntries(carouselEntries)
+
       return (
         <StorefrontShell>
           <script
@@ -143,7 +159,7 @@ export default async function MagDynamicPage({
               type="application/ld+json"
             />
           ) : null}
-          <StorefrontArticleDetailPage detail={detail} />
+          <StorefrontArticleDetailPage detail={detail} carouselProducts={carouselProducts} />
         </StorefrontShell>
       )
     }

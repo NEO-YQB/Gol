@@ -616,6 +616,57 @@
   gap: 18px;
 }
 
+.carousel-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+}
+
+.carousel-dialog__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.68);
+  border: none;
+  cursor: default;
+}
+
+.carousel-dialog__panel {
+  position: relative;
+  z-index: 1;
+  width: min(90vw, 480px);
+  padding: 18px;
+  border-radius: 28px;
+  background: rgba(255, 253, 248, 0.98);
+  box-shadow: var(--fm-shadow-lifted);
+  display: grid;
+  gap: 16px;
+  border: 1px solid rgba(214, 196, 171, 0.5);
+  backdrop-filter: blur(18px);
+}
+
+.carousel-dialog__header,
+.carousel-dialog__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.carousel-dialog__header h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--fm-text-primary);
+}
+
+.carousel-dialog__body {
+  display: grid;
+  gap: 12px;
+}
+
 .category-faq-form {
   padding-bottom: 16px;
   border-bottom: 1px solid var(--fm-border-soft);
