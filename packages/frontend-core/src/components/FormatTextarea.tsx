@@ -186,9 +186,25 @@ export function RichTextEditor({
             کد HTML
           </button>
         </div>
+      </div>
+
+      <div className="fm-rich-editor-layout">
+        <div className="fm-rich-editor-stage">
+          {mode === 'visual' ? <EditorContent editor={editor} /> : null}
+          {mode === 'preview' ? <article className="fm-rich-editor-preview" dangerouslySetInnerHTML={{ __html: value || '<p>هنوز محتوایی ثبت نشده است.</p>' }} /> : null}
+          {mode === 'html' ? (
+            <textarea
+              className="fm-rich-editor-html"
+              id={id}
+              onChange={(event) => onChange(event.target.value)}
+              rows={rows}
+              value={value}
+            />
+          ) : null}
+        </div>
 
         {mode === 'visual' ? (
-          <div className="fm-rich-editor-actions">
+          <div className="fm-rich-editor-tools">
             <button className={toolbarButtonClass(editor.isActive('bold'))} onClick={() => editor.chain().focus().toggleBold().run()} type="button">
               ضخیم
             </button>
@@ -242,22 +258,6 @@ export function RichTextEditor({
               : null}
           </div>
         ) : null}
-      </div>
-
-      <div className="fm-rich-editor-layout">
-        <div className="fm-rich-editor-stage">
-          {mode === 'visual' ? <EditorContent editor={editor} /> : null}
-          {mode === 'preview' ? <article className="fm-rich-editor-preview" dangerouslySetInnerHTML={{ __html: value || '<p>هنوز محتوایی ثبت نشده است.</p>' }} /> : null}
-          {mode === 'html' ? (
-            <textarea
-              className="fm-rich-editor-html"
-              id={id}
-              onChange={(event) => onChange(event.target.value)}
-              rows={rows}
-              value={value}
-            />
-          ) : null}
-        </div>
 
         <aside className="fm-rich-editor-sidebar">
           <section className="fm-rich-editor-panel">
