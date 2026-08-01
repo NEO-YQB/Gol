@@ -13,9 +13,23 @@ type Props = {
   carouselProducts?: Record<string, ProductSummary[]>
 }
 
+function sanitizeInternalLinkAttributes(html: string) {
+  return html.replace(/<a\b([^>]*)>/gi, (match, attrs: string) => {
+    const href = attrs.match(/\bhref="([^"]*)"/i)?.[1] ?? ''
+    const isExternal = /^https?:\/\//i.test(href)
+    let next = attrs.replace(/\srel="[^"]*"/gi, '')
+
+    if (!isExternal) {
+      next = next.replace(/\starget="[^"]*"/gi, '')
+    }
+
+    return `<a${next}>`
+  })
+}
+
 function contentWithAnchors(html: string) {
   let index = 0
-  return html.replace(/<h([1-6])([^>]*)>(.*?)<\/h\1>/gi, (_match, level, attrs, inner) => {
+  const anchored = html.replace(/<h([1-6])([^>]*)>(.*?)<\/h\1>/gi, (_match, level, attrs, inner) => {
     index += 1
     const plainText = String(inner).replace(/<[^>]*>/g, ' ').trim()
     const slug = `section-${index}-${plainText
@@ -25,6 +39,8 @@ function contentWithAnchors(html: string) {
       .replace(/\s+/g, '-')}`
     return `<h${level}${attrs} id="${slug}" class="scroll-mt-28">${inner}</h${level}>`
   })
+
+  return sanitizeInternalLinkAttributes(anchored)
 }
 
 function resolveHeadingIds(content: string, toc: Array<{ level: number; text: string }> = []) {

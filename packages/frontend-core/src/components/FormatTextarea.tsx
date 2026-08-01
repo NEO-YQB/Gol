@@ -107,6 +107,10 @@ export function RichTextEditor({
         openOnClick: false,
         autolink: true,
         protocols: ['http', 'https', 'mailto', 'tel'],
+        HTMLAttributes: {
+          rel: null,
+          target: null,
+        },
       }),
       Image,
       Underline,
