@@ -390,6 +390,12 @@ button {
   display: grid;
   gap: 12px;
   align-self: start;
+  grid-auto-rows: min-content;
+  position: sticky;
+  top: 16px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 .fm-rich-editor-tools {
