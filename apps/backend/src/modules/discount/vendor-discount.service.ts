@@ -21,7 +21,7 @@ type AuthenticatedUser = {
 
 type VendorDiscountWithRelations = VendorDiscount & {
   product: Pick<Product, 'id' | 'name' | 'price' | 'storeId'>;
-  store: Pick<Store, 'id' | 'name' | 'ownerId' | 'slug'> & {
+  store: Pick<Store, 'id' | 'name' | 'ownerId' | 'slug' | 'isActive'> & {
     vendorHealthSnapshot?: Prisma.JsonValue | null;
   };
 };
@@ -39,6 +39,7 @@ export class VendorDiscountService {
 
     const product = await this.getOwnedProductOrThrow(dto.productId);
     await this.assertCanManageDiscount(user, 'create', product.store.ownerId);
+    this.assertStoreAllowsDiscountManagement(user, product.store.isActive);
     this.assertStoreRiskPolicyAllowsDiscount(product.store.vendorHealthSnapshot);
 
     this.validateDiscountPayload({
@@ -144,6 +145,7 @@ export class VendorDiscountService {
 
     const discount = await this.getDiscountOrThrow(id);
     await this.assertCanManageDiscount(user, 'update', discount.store.ownerId);
+    this.assertStoreAllowsDiscountManagement(user, discount.store.isActive);
     this.assertStoreRiskPolicyAllowsDiscount(discount.store.vendorHealthSnapshot);
 
     if (dto.productId && dto.productId !== discount.productId) {
@@ -207,6 +209,7 @@ export class VendorDiscountService {
 
     const discount = await this.getDiscountOrThrow(id);
     await this.assertCanManageDiscount(user, 'delete', discount.store.ownerId);
+    this.assertStoreAllowsDiscountManagement(user, discount.store.isActive);
 
     await this.prisma.vendorDiscount.delete({
       where: { id },
@@ -223,6 +226,7 @@ export class VendorDiscountService {
             ownerId: true,
             name: true,
             slug: true,
+            isActive: true,
             vendorHealthSnapshot: true,
           },
         },
@@ -249,6 +253,7 @@ export class VendorDiscountService {
             name: true,
             ownerId: true,
             slug: true,
+            isActive: true,
             vendorHealthSnapshot: true,
           },
         },
@@ -281,6 +286,17 @@ export class VendorDiscountService {
     const policy = this.vendorHealthService.getEffectiveRiskPolicyFromSnapshot(snapshot ?? null);
     if (policy.blockNewDiscounts) {
       throw new ConflictException('براي اين فروشنده به دليل policy ريسک، ثبت يا ويرايش discount موقتا مسدود است');
+    }
+  }
+
+  private assertStoreAllowsDiscountManagement(
+    user: AuthenticatedUser,
+    isActive: boolean,
+  ) {
+    if (!isActive && !user.roles.includes('ADMIN')) {
+      throw new ForbiddenException(
+        'فروشگاه غیرفعال است و امکان مدیریت تخفیف وجود ندارد',
+      );
     }
   }
 

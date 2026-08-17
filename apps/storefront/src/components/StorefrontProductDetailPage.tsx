@@ -89,7 +89,7 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
             <div className="mt-5 flex flex-wrap gap-3">
               <button
                 className="rounded-full bg-white px-5 py-2.5 text-sm font-bold text-[#173126] disabled:opacity-60"
-                disabled={isAdding}
+                disabled={isAdding || !product.isPurchasable}
                 onClick={async () => {
                   const token = readStoredToken()
                   if (!token) {

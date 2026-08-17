@@ -5,6 +5,7 @@ import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
 import { AbilityFactory } from '../auth/ability.factory';
 import { subject } from '@casl/ability';
+import { UpdateStoreStatusDto } from './dto/update-store-status.dto';
 
 @Injectable()
 export class StoreService {
@@ -44,16 +45,60 @@ export class StoreService {
 
   async findAll() {
     return this.prisma.store.findMany({
+      where: {
+        isActive: true,
+        isVerified: true,
+      },
       include: { owner: { select: { id: true, email: true } } },
     });
   }
 
+  async findAllForManagement(user: { id: number; roles: string[] }) {
+    const ability = await this.abilityFactory.createForUser(user);
+    if (
+      !ability.can('manage', 'all') &&
+      !ability.can('read', 'Store') &&
+      !ability.can('updateStatus', 'Store')
+    ) {
+      throw new ForbiddenException(
+        'شما اجازه مشاهده فهرست مدیریتی فروشگاه‌ها را ندارید',
+      );
+    }
+
+    return this.prisma.store.findMany({
+      include: { owner: { select: { id: true, email: true } } },
+      orderBy: [{ isActive: 'asc' }, { id: 'desc' }],
+    });
+  }
+
   async findBySlug(slug: string) {
-    const store = await this.prisma.store.findUnique({
-      where: { slug },
+    const store = await this.prisma.store.findFirst({
+      where: {
+        slug,
+        isActive: true,
+        isVerified: true,
+      },
       include: {
-        products: true,
-        _count: { select: { products: true } },
+        products: {
+          where: {
+            deletedAt: null,
+            publicationStatus: 'PUBLISHED',
+            isPurchasable: true,
+            isArchived: false,
+          },
+        },
+        _count: {
+          select: {
+            products: {
+              where: {
+                deletedAt: null,
+                publicationStatus: 'PUBLISHED',
+                isPurchasable: true,
+                isArchived: false,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -71,6 +116,12 @@ export class StoreService {
     if (!store) throw new NotFoundException('فروشگاه یافت نشد');
 
     await this.assertCanManageStore(user, 'update', store.ownerId);
+
+    if (user.id === store.ownerId && !store.isActive) {
+      throw new ForbiddenException(
+        'فروشگاه غیرفعال است و فقط سفارش‌های جاری و امور مالی قابل رسیدگی هستند',
+      );
+    }
 
     if (
       user.id === store.ownerId &&
@@ -100,6 +151,99 @@ export class StoreService {
     return this.prisma.store.update({
       where: { id },
       data: this.toUpdateStorePersistenceInput(updateStoreDto),
+    });
+  }
+
+  async updateStatus(
+    id: number,
+    dto: UpdateStoreStatusDto,
+    user: { id: number; roles: string[] },
+  ) {
+    const ability = await this.abilityFactory.createForUser(user);
+    if (
+      !ability.can('manage', 'all') &&
+      !ability.can('updateStatus', 'Store')
+    ) {
+      throw new ForbiddenException(
+        'شما اجازه تغییر وضعیت فعالیت فروشگاه را ندارید',
+      );
+    }
+
+    const store = await this.prisma.store.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        isActive: true,
+        isVerified: true,
+      },
+    });
+
+    if (!store) {
+      throw new NotFoundException('فروشگاه یافت نشد');
+    }
+
+    const nextIsVerified = dto.isVerified ?? store.isVerified;
+
+    if (dto.isActive && !nextIsVerified) {
+      throw new ConflictException(
+        'فروشگاه تأییدنشده را نمی‌توان برای فروش فعال کرد',
+      );
+    }
+
+    const reason = dto.reason?.trim() || null;
+
+    return this.prisma.$transaction(async (tx) => {
+      const updatedStore = await tx.store.update({
+        where: { id },
+        data: dto.isActive
+          ? {
+              isActive: true,
+              isVerified: nextIsVerified,
+              suspendedAt: null,
+              suspendedByUserId: null,
+              suspensionReason: null,
+            }
+          : {
+              isActive: false,
+              isVerified: nextIsVerified,
+              suspendedAt: new Date(),
+              suspendedByUserId: user.id,
+              suspensionReason: reason,
+            },
+      });
+
+      if (!dto.isActive) {
+        await tx.product.updateMany({
+          where: {
+            storeId: id,
+            deletedAt: null,
+          },
+          data: {
+            isPurchasable: false,
+          },
+        });
+
+        await tx.vendorDiscount.updateMany({
+          where: {
+            storeId: id,
+            isActive: true,
+          },
+          data: {
+            isActive: false,
+          },
+        });
+
+        await tx.cartItem.deleteMany({
+          where: {
+            product: {
+              storeId: id,
+            },
+          },
+        });
+      }
+
+      return updatedStore;
     });
   }
 
@@ -211,11 +355,10 @@ export class StoreService {
   }
 
   private toUpdateStorePersistenceInput(dto: UpdateStoreDto) {
-    const { deliveryWindows, isVerified, ...rest } = dto;
+    const { deliveryWindows, isVerified: _isVerified, ...rest } = dto;
 
     return {
       ...rest,
-      ...(typeof isVerified === 'boolean' ? { isVerified } : {}),
       ...(deliveryWindows !== undefined
         ? {
             deliveryWindows:

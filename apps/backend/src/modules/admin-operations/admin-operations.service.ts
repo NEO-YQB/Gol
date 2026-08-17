@@ -12,6 +12,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AdminAlertAction, UpdateAlertStatusDto } from './dto/update-alert-status.dto';
+import { AbilityFactory } from '../auth/ability.factory';
 
 type AuthenticatedUser = {
   id: number;
@@ -54,7 +55,10 @@ type AdminAlertItem = {
 
 @Injectable()
 export class AdminOperationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly abilityFactory: AbilityFactory,
+  ) {}
 
   async getOrderExceptions(user: AuthenticatedUser) {
     this.assertAdmin(user);
@@ -285,7 +289,7 @@ export class AdminOperationsService {
   }
 
   async getVendorPolicyTimeline(user: AuthenticatedUser, storeId: number) {
-    this.assertAdmin(user);
+    await this.assertCanReadStores(user);
 
     const store = await this.prisma.store.findUnique({
       where: { id: storeId },
@@ -295,6 +299,9 @@ export class AdminOperationsService {
         slug: true,
         ownerId: true,
         isVerified: true,
+        isActive: true,
+        suspendedAt: true,
+        suspensionReason: true,
         vendorHealthScore: true,
         vendorHealthStatus: true,
         vendorHealthSnapshot: true,
@@ -331,6 +338,9 @@ export class AdminOperationsService {
         slug: store.slug,
         ownerId: store.ownerId,
         isVerified: store.isVerified,
+        isActive: store.isActive,
+        suspendedAt: store.suspendedAt,
+        suspensionReason: store.suspensionReason,
         vendorHealthScore: store.vendorHealthScore,
         vendorHealthStatus: store.vendorHealthStatus,
       },
@@ -640,6 +650,17 @@ export class AdminOperationsService {
   private assertAdmin(user: AuthenticatedUser) {
     if (!user.roles.includes('ADMIN')) {
       throw new ForbiddenException('این endpoint فقط برای ادمین مجاز است');
+    }
+  }
+
+  private async assertCanReadStores(user: AuthenticatedUser) {
+    const ability = await this.abilityFactory.createForUser(user);
+    if (
+      !ability.can('manage', 'all') &&
+      !ability.can('read', 'Store') &&
+      !ability.can('updateStatus', 'Store')
+    ) {
+      throw new ForbiddenException('شما اجازه مشاهده فروشنده‌ها را ندارید');
     }
   }
 }

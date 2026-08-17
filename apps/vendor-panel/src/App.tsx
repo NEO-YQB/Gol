@@ -17,11 +17,26 @@ import { SupportPage } from './pages/SupportPage'
 import { WalletPage } from './pages/WalletPage'
 import { VendorOnboardingPage } from './pages/VendorOnboardingPage'
 
-type VendorAccessState = 'pending' | 'active'
+type VendorAccessState = 'pending' | 'active' | 'suspended'
 
 const defaultRoute: VendorRoute = 'overview'
 
-function buildNav(currentRoute: VendorRoute): NavSection[] {
+function buildNav(currentRoute: VendorRoute, accessState: VendorAccessState): NavSection[] {
+  if (accessState === 'suspended') {
+    return [
+      {
+        title: 'رسیدگی مجاز',
+        items: [
+          { key: 'overview', label: 'نمای کلی', hint: 'وضعیت تعلیق و خلاصه عملیاتی', active: currentRoute === 'overview' },
+          { key: 'orders', label: 'سفارش‌های جاری', hint: 'رسیدگی به سفارش‌هایی که قبلاً ثبت شده‌اند', active: currentRoute === 'orders' || currentRoute === 'order-workspace' },
+          { key: 'wallet', label: 'کیف پول و تسویه', hint: 'مشاهده امور مالی و تسویه‌ها', active: currentRoute === 'wallet' },
+          { key: 'support', label: 'پشتیبانی', hint: 'پیگیری مسائل سفارش‌های جاری', active: currentRoute === 'support' },
+          { key: 'notifications', label: 'اعلان‌ها', hint: 'پیام‌ها و تصمیم‌های مدیریتی', active: currentRoute === 'notifications' },
+        ],
+      },
+    ]
+  }
+
   return [
     {
       title: 'فروشگاه',
@@ -97,6 +112,7 @@ function renderRoute(
 }
 
 function resolveAccessState(session: AuthSession): VendorAccessState {
+  if (session.bootstrap?.store?.isActive === false) return 'suspended'
   const isStoreVerified = session.bootstrap?.store?.isVerified === true
   const onboardingApproved = session.bootstrap?.vendorOnboarding?.applicationStatus === 'APPROVED'
   const productApproved = session.bootstrap?.vendorOnboarding?.productStatus === 'APPROVED'
@@ -164,6 +180,15 @@ export default function App() {
       setRoute(defaultRoute)
     }
   }, [accessState])
+
+  useEffect(() => {
+    if (
+      accessState === 'suspended' &&
+      !['overview', 'orders', 'order-workspace', 'wallet', 'support', 'notifications'].includes(route)
+    ) {
+      setRoute('overview')
+    }
+  }, [accessState, route])
 
   useEffect(() => {
     if (!otpExpiresAt) {
@@ -313,6 +338,8 @@ export default function App() {
   const storeName = session.bootstrap?.store?.name ?? 'فروشگاه شما'
   const accountName = session.user.fullName || session.user.phoneNumber
   const accountRole = session.user.roles.join(' / ') || 'کاربر فروشنده'
+  const isSuspended = accessState === 'suspended'
+  const suspendedReason = session.bootstrap?.store?.suspensionReason?.trim()
 
   return (
     <AppShell
@@ -325,8 +352,17 @@ export default function App() {
       pageEyebrow={pageMeta.eyebrow}
       pageTitle={pageMeta.title}
       pageDescription=""
-      navSections={buildNav(route)}
-      onNavigate={(next) => setRoute(next as VendorRoute)}
+      navSections={buildNav(route, accessState)}
+      onNavigate={(next) => {
+        const target = next as VendorRoute
+        if (
+          isSuspended &&
+          !['overview', 'orders', 'order-workspace', 'wallet', 'support', 'notifications'].includes(target)
+        ) {
+          return
+        }
+        setRoute(target)
+      }}
       actions={[
         { label: vendorRouteLabels[route], tone: 'ghost' },
         { label: 'نشست فعال', tone: 'ghost' },
@@ -335,22 +371,36 @@ export default function App() {
         profileLabel: storeName,
         storeName,
         phoneNumber: session.user.phoneNumber,
-        statusLabel: session.bootstrap?.store?.isVerified ? 'فروشگاه تایید شده و آماده فروش' : 'نشست فعال فروشنده',
+        statusLabel: isSuspended
+          ? 'فروشگاه توسط مدیریت غیرفعال شده است'
+          : session.bootstrap?.store?.isVerified
+            ? 'فروشگاه تایید شده و آماده فروش'
+            : 'نشست فعال فروشنده',
         quickStats: [
-          { label: 'وضعیت', value: session.bootstrap?.store?.isVerified ? 'تایید شده' : 'در حال تکمیل' },
+          { label: 'وضعیت', value: isSuspended ? 'غیرفعال' : session.bootstrap?.store?.isVerified ? 'تایید شده' : 'در حال تکمیل' },
           { label: 'بخش فعلی', value: vendorRouteLabels[route] },
         ],
         actions: [
-          { label: 'مشاهده پروفایل فروشگاه', onClick: () => setRoute('store') },
+          ...(!isSuspended ? [{ label: 'مشاهده پروفایل فروشگاه', onClick: () => setRoute('store') }] : []),
           { label: 'اعلان‌ها و پیام‌ها', onClick: () => setRoute('notifications') },
           { label: 'خروج از پنل', onClick: handleLogout, tone: 'danger' },
         ],
       }}
     >
       <div className="vendor-toolbar-note">
-        <Pill tone="success">نشست فعال</Pill>
+        <Pill tone={isSuspended ? 'danger' : 'success'}>{isSuspended ? 'فروشگاه غیرفعال' : 'نشست فعال'}</Pill>
         <Pill>{storeName}</Pill>
       </div>
+      {isSuspended ? (
+        <div className="vendor-suspension-notice" role="status">
+          <strong>دسترسی فروش این فروشگاه متوقف شده است.</strong>
+          <span>
+            محصولات و صفحه فروشگاه در سایت نمایش داده نمی‌شوند و امکان مدیریت محصول، تخفیف یا پروفایل فروشگاه وجود ندارد.
+            شما همچنان می‌توانید سفارش‌های جاری و امور مالی را رسیدگی کنید.
+          </span>
+          {suspendedReason ? <small>{`دلیل مدیریت: ${suspendedReason}`}</small> : null}
+        </div>
+      ) : null}
       {renderRoute(route, session, setRoute, selectedOrder, setSelectedOrder)}
     </AppShell>
   )

@@ -23,6 +23,7 @@ import { CheckAbilities } from '../../common/decorators/check-abilities.decorato
 import { VendorHealthService } from './vendor-health.service';
 import { AdminListVendorHealthQueryDto } from './dto/admin-list-vendor-health-query.dto';
 import { AdminUpsertVendorRiskPolicyDto } from './dto/admin-upsert-vendor-risk-policy.dto';
+import { UpdateStoreStatusDto } from './dto/update-store-status.dto';
 
 @ApiTags('Stores')
 @Controller('stores')
@@ -68,6 +69,39 @@ export class StoreController {
   })
   findAll() {
     return this.storeService.findAll();
+  }
+
+  @Get('admin/list')
+  @UseGuards(JwtAuthGuard, AbilitiesGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'دریافت همه فروشگاه‌ها برای فضاهای مدیریتی' })
+  @CheckAbilities(
+    (ability) =>
+      ability.can('manage', 'all') ||
+      ability.can('read', 'Store') ||
+      ability.can('updateStatus', 'Store'),
+  )
+  findAllForManagement(
+    @GetUser() user: { id: number; roles: string[] },
+  ) {
+    return this.storeService.findAllForManagement(user);
+  }
+
+  @Patch('admin/:id/status')
+  @UseGuards(JwtAuthGuard, AbilitiesGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'تعلیق یا فعال‌سازی عملیاتی فروشگاه توسط مدیر مجاز' })
+  @ApiParam({ name: 'id', type: Number, description: 'شناسه فروشگاه' })
+  @CheckAbilities(
+    (ability) =>
+      ability.can('manage', 'all') || ability.can('updateStatus', 'Store'),
+  )
+  updateStatus(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateStoreStatusDto,
+    @GetUser() user: { id: number; roles: string[] },
+  ) {
+    return this.storeService.updateStatus(id, dto, user);
   }
 
   @Patch(':id')

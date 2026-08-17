@@ -158,7 +158,8 @@ class ProductsApiService {
     String? publicationStatus,
   }) async {
     try {
-      final uri = Uri.parse('${AppConfig.apiBaseUrl}/products').replace(
+      final uri =
+          Uri.parse('${AppConfig.apiBaseUrl}/products/manage/list').replace(
         queryParameters: {
           'storeId': '$storeId',
           'limit': '40',
@@ -201,7 +202,9 @@ class ProductsApiService {
     try {
       final response = await http
           .get(
-            Uri.parse('${AppConfig.apiBaseUrl}/products/$slug'),
+            Uri.parse(
+              '${AppConfig.apiBaseUrl}/products/manage/by-slug/$slug',
+            ),
             headers: {
               'Content-Type': 'application/json',
               'Authorization': 'Bearer $accessToken',

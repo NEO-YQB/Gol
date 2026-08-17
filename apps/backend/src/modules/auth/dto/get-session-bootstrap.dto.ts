@@ -26,6 +26,15 @@ class SessionBootstrapStoreDto {
   @ApiProperty({ example: true })
   isVerified!: boolean;
 
+  @ApiProperty({ example: true })
+  isActive!: boolean;
+
+  @ApiProperty({ example: null, nullable: true })
+  suspendedAt!: string | null;
+
+  @ApiProperty({ example: null, nullable: true })
+  suspensionReason!: string | null;
+
   @ApiProperty({ example: 'گلخانه بهار' })
   name!: string;
 

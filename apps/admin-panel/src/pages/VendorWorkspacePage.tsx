@@ -187,6 +187,11 @@ export function VendorWorkspacePage({
 
   const storeId = readText(store ?? {}, ['storeId'], '')
   const canUpdateStoreLocation = hasPermission(session, 'manage', 'all') || hasPermission(session, 'update', 'Store')
+  const canUpdateStoreStatus = hasPermission(session, 'manage', 'all') || hasPermission(session, 'updateStatus', 'Store')
+  const canReadWallet =
+    hasPermission(session, 'manage', 'all') ||
+    hasPermission(session, 'read', 'StoreWallet') ||
+    hasPermission(session, 'read', 'WalletTransaction')
 
   const loadWorkspaceData = useCallback(async (options?: { silent?: boolean }) => {
     if (!storeId) {
@@ -207,7 +212,9 @@ export function VendorWorkspacePage({
       const [timelinePayload, healthPayload, walletPayload] = await Promise.all([
         adminApi.getVendorPolicyTimeline(session, storeId),
         adminApi.getVendorHealthDetail(session, storeId),
-        adminApi.getWalletByStore(session, storeId),
+        canReadWallet
+          ? adminApi.getWalletByStore(session, storeId)
+          : Promise.resolve(null),
       ])
 
       setDetail(toObject(timelinePayload))
@@ -220,7 +227,7 @@ export function VendorWorkspacePage({
         setLoading(false)
       }
     }
-  }, [session, storeId])
+  }, [canReadWallet, session, storeId])
 
   useEffect(() => {
     void loadWorkspaceData()
@@ -239,6 +246,8 @@ export function VendorWorkspacePage({
   const customerAverage = formatPersianNumber(readText(healthDetail ?? store ?? {}, ['customerRatingAverage'], '—'))
   const effectivePolicyFlags = collectActiveFlags(currentPolicy.effective)
   const riskPolicyView = toObject(healthDetail?.riskPolicy)
+  const isStoreActive = detailStore.isActive !== false
+  const isStoreVerified = detailStore.isVerified === true
 
   useEffect(() => {
     const manualOverride = toObject(currentPolicy.manualOverride)
@@ -332,21 +341,36 @@ export function VendorWorkspacePage({
       tone: 'warning' as const,
     },
     {
-      label: 'فعال‌سازی فروشگاه',
-      value: readText(detailStore, ['isVerified'], 'false') === 'true' ? 'فعال' : 'غیرفعال',
+      label: 'وضعیت فروش',
+      value: !isStoreVerified ? 'در انتظار تأیید' : isStoreActive ? 'فعال' : 'غیرفعال',
       delta: detailStore.name ? String(detailStore.name) : 'وضعیت دسترسی فروشگاه',
       detail: '',
-      tone: readText(detailStore, ['isVerified'], 'false') === 'true' ? 'success' as const : 'warning' as const,
+      tone: !isStoreVerified ? 'warning' as const : isStoreActive ? 'success' as const : 'danger' as const,
     },
   ]
 
-  async function handleToggleStoreActivation(nextIsVerified: boolean) {
+  async function handleToggleStoreActivation(nextIsActive: boolean) {
     if (!storeId) return
+    if (!nextIsActive) {
+      const confirmed = window.confirm(
+        'با غیرفعال‌سازی، فروشگاه و محصولات آن فوراً از سایت مخفی می‌شوند و فروشنده دیگر امکان مدیریت محصول، تخفیف یا پروفایل فروشگاه را ندارد. سفارش‌های جاری و امور مالی باقی می‌مانند. ادامه می‌دهید؟',
+      )
+      if (!confirmed) return
+    }
+
     setStoreActiveBusy(true)
     setActionError(null)
     try {
-      await adminApi.updateStore(session, storeId, { isVerified: nextIsVerified })
-      setActionMessage(nextIsVerified ? 'فروشگاه فعال شد.' : 'فروشگاه غیرفعال شد.')
+      await adminApi.updateStoreStatus(session, storeId, {
+        isActive: nextIsActive,
+        isVerified: nextIsActive && !isStoreVerified ? true : undefined,
+        reason: nextIsActive ? undefined : 'غیرفعال‌سازی از میزکار مدیریت فروشنده',
+      })
+      setActionMessage(
+        nextIsActive
+          ? 'فروشگاه فعال شد. محصولات قبلی برای جلوگیری از فعال‌شدن ناخواسته همچنان غیرقابل‌خرید هستند.'
+          : 'فروشگاه و محصولات آن از دسترس فروش خارج شدند.',
+      )
       await loadWorkspaceData({ silent: true })
     } catch (toggleError) {
       setActionError(toggleError instanceof Error ? toggleError.message : 'تغییر وضعیت فروشگاه ناموفق بود')
@@ -734,17 +758,32 @@ export function VendorWorkspacePage({
             actions={<Pill tone="success">اقدام زنده</Pill>}
           >
           <div className="vendors-workspace-surface-grid">
-            <article className="vendors-workspace-surface-card">
-              <strong>فعال‌سازی فروشگاه</strong>
-              <button
-                className={`fm-button ${readText(detailStore, ['isVerified'], 'false') === 'true' ? 'fm-button--ghost' : 'fm-button--primary'}`}
-                disabled={storeActiveBusy}
-                onClick={() => void handleToggleStoreActivation(!(readText(detailStore, ['isVerified'], 'false') === 'true'))}
-                type="button"
-              >
-                {storeActiveBusy ? 'در حال بروزرسانی...' : readText(detailStore, ['isVerified'], 'false') === 'true' ? 'غیرفعال کردن فروشگاه' : 'فعال کردن فروشگاه'}
-              </button>
-            </article>
+            {canUpdateStoreStatus ? (
+              <article className="vendors-workspace-surface-card">
+                <strong>وضعیت فعالیت فروشگاه</strong>
+                <small>
+                  {!isStoreVerified
+                    ? 'این عملیات فروشگاه را تأیید و برای فروش فعال می‌کند.'
+                    : isStoreActive
+                    ? 'غیرفعال‌سازی، فروشگاه و محصولات را از storefront حذف می‌کند.'
+                    : 'فعال‌سازی مجدد، محصولات را خودکار قابل‌خرید نمی‌کند.'}
+                </small>
+                <button
+                  className={`fm-button ${isStoreActive ? 'fm-button--danger' : 'fm-button--primary'}`}
+                  disabled={storeActiveBusy}
+                  onClick={() => void handleToggleStoreActivation(!isStoreVerified || !isStoreActive)}
+                  type="button"
+                >
+                  {storeActiveBusy
+                    ? 'در حال بروزرسانی...'
+                    : !isStoreVerified
+                      ? 'تأیید و فعال کردن فروشگاه'
+                      : isStoreActive
+                        ? 'غیرفعال کردن فروشگاه'
+                        : 'فعال کردن فروشگاه'}
+                </button>
+              </article>
+            ) : null}
             <article className="vendors-workspace-surface-card">
               <strong>محاسبه دوباره سلامت</strong>
               <button

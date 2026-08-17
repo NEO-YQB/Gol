@@ -46,7 +46,10 @@ class _VendorAppShellState extends State<VendorAppShell> {
   VendorShellTab _currentTab = VendorShellTab.dashboard;
   StreamSubscription<PushNavigationIntent>? _pushNavigationSubscription;
 
-  List<_NavItemData> get _items => const [
+  bool get _isSuspended =>
+      widget.session.bootstrap?.store?.isActive == false;
+
+  List<_NavItemData> get _items => [
         _NavItemData(
           tab: VendorShellTab.dashboard,
           label: 'داشبورد',
@@ -57,16 +60,18 @@ class _VendorAppShellState extends State<VendorAppShell> {
           label: 'سفارش‌ها',
           icon: Icons.receipt_long_rounded,
         ),
-        _NavItemData(
-          tab: VendorShellTab.products,
-          label: 'محصولات',
-          icon: Icons.inventory_2_rounded,
-        ),
-        _NavItemData(
-          tab: VendorShellTab.discounts,
-          label: 'تخفیف‌ها',
-          icon: Icons.local_offer_rounded,
-        ),
+        if (!_isSuspended)
+          const _NavItemData(
+            tab: VendorShellTab.products,
+            label: 'محصولات',
+            icon: Icons.inventory_2_rounded,
+          ),
+        if (!_isSuspended)
+          const _NavItemData(
+            tab: VendorShellTab.discounts,
+            label: 'تخفیف‌ها',
+            icon: Icons.local_offer_rounded,
+          ),
         _NavItemData(
           tab: VendorShellTab.wallet,
           label: 'کیف پول',
@@ -82,11 +87,12 @@ class _VendorAppShellState extends State<VendorAppShell> {
           label: 'پشتیبانی',
           icon: Icons.support_agent_rounded,
         ),
-        _NavItemData(
-          tab: VendorShellTab.profile,
-          label: 'پروفایل',
-          icon: Icons.storefront_rounded,
-        ),
+        if (!_isSuspended)
+          const _NavItemData(
+            tab: VendorShellTab.profile,
+            label: 'پروفایل',
+            icon: Icons.storefront_rounded,
+          ),
       ];
 
   @override
@@ -120,7 +126,12 @@ class _VendorAppShellState extends State<VendorAppShell> {
 
   @override
   Widget build(BuildContext context) {
-    final body = switch (_currentTab) {
+    final visibleItems = _items;
+    final effectiveTab = visibleItems.any((item) => item.tab == _currentTab)
+        ? _currentTab
+        : VendorShellTab.dashboard;
+
+    final body = switch (effectiveTab) {
       VendorShellTab.dashboard => DashboardScreen(
           accessToken: widget.session.accessToken,
           phoneNumber: widget.session.phoneNumber,
@@ -173,12 +184,45 @@ class _VendorAppShellState extends State<VendorAppShell> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         extendBody: true,
-        body: body,
+        body: Column(
+          children: [
+            if (_isSuspended)
+              SafeArea(
+                bottom: false,
+                child: Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF1F2),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: const Color(0xFFFDA4AF)),
+                  ),
+                  child: Text(
+                    [
+                      'فروشگاه توسط مدیریت غیرفعال شده است.',
+                      'محصولات و صفحه فروشگاه نمایش داده نمی‌شوند؛ فقط سفارش‌های جاری و امور مالی قابل رسیدگی هستند.',
+                      if ((widget.session.bootstrap?.store?.suspensionReason ?? '')
+                          .trim()
+                          .isNotEmpty)
+                        'دلیل: ${widget.session.bootstrap!.store!.suspensionReason}',
+                    ].join('\n'),
+                    style: const TextStyle(
+                      color: Color(0xFF881337),
+                      height: 1.7,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            Expanded(child: body),
+          ],
+        ),
         bottomNavigationBar: SafeArea(
           minimum: const EdgeInsets.fromLTRB(18, 0, 18, 14),
           child: _FloatingNavigationBar(
-            items: _items,
-            currentTab: _currentTab,
+            items: visibleItems,
+            currentTab: effectiveTab,
             onSelect: (tab) => setState(() {
               _currentTab = tab;
             }),

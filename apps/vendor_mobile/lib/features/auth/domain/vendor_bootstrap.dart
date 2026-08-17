@@ -77,21 +77,30 @@ class BootstrapStore {
   const BootstrapStore({
     required this.id,
     required this.isVerified,
+    required this.isActive,
     required this.name,
     required this.slug,
+    this.suspendedAt,
+    this.suspensionReason,
   });
 
   final int id;
   final bool isVerified;
+  final bool isActive;
   final String name;
   final String slug;
+  final String? suspendedAt;
+  final String? suspensionReason;
 
   factory BootstrapStore.fromJson(Map<String, dynamic> json) {
     return BootstrapStore(
       id: json['id'] as int? ?? 0,
       isVerified: json['isVerified'] as bool? ?? false,
+      isActive: json['isActive'] as bool? ?? true,
       name: json['name'] as String? ?? '',
       slug: json['slug'] as String? ?? '',
+      suspendedAt: json['suspendedAt'] as String?,
+      suspensionReason: json['suspensionReason'] as String?,
     );
   }
 
@@ -99,8 +108,11 @@ class BootstrapStore {
     return {
       'id': id,
       'isVerified': isVerified,
+      'isActive': isActive,
       'name': name,
       'slug': slug,
+      'suspendedAt': suspendedAt,
+      'suspensionReason': suspensionReason,
     };
   }
 }

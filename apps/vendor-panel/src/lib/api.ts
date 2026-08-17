@@ -35,6 +35,9 @@ export type VendorSessionBootstrapResponse = {
   store?: {
     id: number
     isVerified: boolean
+    isActive: boolean
+    suspendedAt?: string | null
+    suspensionReason?: string | null
     name: string
     slug: string
   } | null
@@ -259,7 +262,7 @@ export const vendorApi = {
       params.set('search', query.search.trim())
     }
 
-    return request<unknown>(`/products?${params.toString()}`, {}, session.accessToken)
+    return request<unknown>(`/products/manage/list?${params.toString()}`, {}, session.accessToken)
   },
   getStoreBySlug(slug: string) {
     return request<unknown>(`/stores/${slug}`)

@@ -46,7 +46,7 @@ export class ProductService {
     } = dto;
     const store = await this.prisma.store.findUnique({
       where: { id: storeId },
-      select: { id: true, ownerId: true },
+      select: { id: true, ownerId: true, isActive: true },
     });
 
     if (!store) {
@@ -54,6 +54,8 @@ export class ProductService {
     }
 
     await this.assertCanManageProduct(user, 'create', store);
+    this.assertStoreAllowsCatalogManagement(user, store.isActive);
+    this.assertStoreAllowsProductActivation(store.isActive, isPurchasable);
 
     const productType = await this.prisma.productType.findUnique({
       where: { id: productTypeId },
@@ -149,11 +151,16 @@ export class ProductService {
       where: { id },
       include: {
         productType: true,
-        store: { select: { ownerId: true } },
+        store: { select: { ownerId: true, isActive: true } },
       },
     });
     if (!existingProduct) throw new NotFoundException('محصول یافت نشد');
     await this.assertCanManageProduct(user, 'update', existingProduct);
+    this.assertStoreAllowsCatalogManagement(
+      user,
+      existingProduct.store.isActive,
+    );
+    let effectiveStoreIsActive = existingProduct.store.isActive;
 
     if (productTypeId || compositions) {
       const typeId = productTypeId || existingProduct.productTypeId;
@@ -175,15 +182,21 @@ export class ProductService {
     if (storeId) {
       const targetStore = await this.prisma.store.findUnique({
         where: { id: storeId },
-        select: { id: true, ownerId: true },
+        select: { id: true, ownerId: true, isActive: true },
       });
       if (!targetStore) {
         throw new NotFoundException('فروشگاه مورد نظر یافت نشد');
       }
       await this.assertCanManageProduct(user, 'update', targetStore);
+      this.assertStoreAllowsCatalogManagement(user, targetStore.isActive);
+      effectiveStoreIsActive = targetStore.isActive;
     }
 
     const isAdmin = user.roles.includes('ADMIN');
+    this.assertStoreAllowsProductActivation(
+      effectiveStoreIsActive,
+      isPurchasable,
+    );
 
     return this.prisma.$transaction(async (tx) => {
       if (compositions) {
@@ -283,7 +296,7 @@ export class ProductService {
       .filter((item): item is number => typeof item === 'number' && Number.isInteger(item) && item > 0);
   }
 
-  async findAll(query: GetProductsQueryDto) {
+  async findAll(query: GetProductsQueryDto, publicOnly = true) {
     const {
       page = 1,
       limit = 10,
@@ -335,9 +348,24 @@ export class ProductService {
       ...(productTypeId && { productTypeId }),
       ...(productIds.length > 0 ? { id: { in: productIds } } : {}),
       deletedAt: null,
-      ...(publicationStatus && { publicationStatus }),
-      ...(typeof isPurchasable === 'boolean' ? { isPurchasable } : {}),
-      ...(typeof isArchived === 'boolean' ? { isArchived } : {}),
+      ...(publicOnly
+        ? {
+            store: {
+              isActive: true,
+              isVerified: true,
+            },
+            publicationStatus: ProductPublicationStatus.PUBLISHED,
+            isPurchasable: true,
+            isArchived: false,
+          }
+        : {}),
+      ...(!publicOnly && publicationStatus ? { publicationStatus } : {}),
+      ...(!publicOnly && typeof isPurchasable === 'boolean'
+        ? { isPurchasable }
+        : {}),
+      ...(!publicOnly && typeof isArchived === 'boolean'
+        ? { isArchived }
+        : {}),
       ...((minPrice || maxPrice) && {
         price: {
           ...(typeof minPrice === 'number' ? { gte: minPrice } : {}),
@@ -456,8 +484,18 @@ export class ProductService {
   }
 
   async findOne(slug: string) {
-    const product = await this.prisma.product.findUnique({
-      where: { slug },
+    const product = await this.prisma.product.findFirst({
+      where: {
+        slug,
+        deletedAt: null,
+        publicationStatus: ProductPublicationStatus.PUBLISHED,
+        isPurchasable: true,
+        isArchived: false,
+        store: {
+          isActive: true,
+          isVerified: true,
+        },
+      },
       include: {
         category: true,
         store: true,
@@ -467,7 +505,7 @@ export class ProductService {
         publishedByUser: { select: { id: true, fullName: true, phoneNumber: true } },
       },
     });
-    if (!product || product.deletedAt || product.publicationStatus !== ProductPublicationStatus.PUBLISHED) {
+    if (!product) {
       const redirect = await this.prisma.productSlugRedirect.findUnique({
         where: { fromSlug: slug },
       });
@@ -540,10 +578,11 @@ export class ProductService {
   async remove(id: number, user: { id: number; roles: string[] }, dto: DeleteProductDto) {
     const product = await this.prisma.product.findUnique({
       where: { id },
-      include: { store: { select: { ownerId: true } } },
+      include: { store: { select: { ownerId: true, isActive: true } } },
     });
     if (!product) throw new NotFoundException(`محصول یافت نشد`);
     await this.assertCanManageProduct(user, 'delete', product);
+    this.assertStoreAllowsCatalogManagement(user, product.store.isActive);
     const redirectTargetUrl = this.normalizeRedirectTargetUrl(dto.redirectTargetUrl);
 
     return this.prisma.$transaction(async (tx) => {
@@ -616,12 +655,27 @@ export class ProductService {
   }
 
   async publish(id: number, dto: PublishProductDto, user: { id: number; roles: string[] }) {
-    const product = await this.prisma.product.findUnique({ where: { id } });
+    const product = await this.prisma.product.findUnique({
+      where: { id },
+      include: {
+        store: {
+          select: {
+            isActive: true,
+            isVerified: true,
+          },
+        },
+      },
+    });
     if (!product) throw new NotFoundException('محصول یافت نشد');
 
     const shouldPublish = dto.publish ?? true;
     if (shouldPublish && product.publicationStatus !== ProductPublicationStatus.APPROVED && product.publicationStatus !== ProductPublicationStatus.PUBLISHED) {
       throw new BadRequestException('فقط محصول تاییدشده می‌تواند منتشر شود');
+    }
+    if (shouldPublish && (!product.store.isActive || !product.store.isVerified)) {
+      throw new ConflictException(
+        'محصول فروشگاه غیرفعال یا تأییدنشده قابل انتشار نیست',
+      );
     }
 
     return this.prisma.product.update({
@@ -641,10 +695,15 @@ export class ProductService {
   async togglePurchasable(id: number, dto: ToggleProductPurchasableDto, user: { id: number; roles: string[] }) {
     const product = await this.prisma.product.findUnique({
       where: { id },
-      include: { store: { select: { ownerId: true } } },
+      include: { store: { select: { ownerId: true, isActive: true } } },
     });
     if (!product) throw new NotFoundException('محصول یافت نشد');
     await this.assertCanManageProduct(user, 'update', product);
+    this.assertStoreAllowsCatalogManagement(user, product.store.isActive);
+    this.assertStoreAllowsProductActivation(
+      product.store.isActive,
+      dto.isPurchasable,
+    );
 
     return this.prisma.product.update({
       where: { id },
@@ -700,6 +759,60 @@ export class ProductService {
 
     if (!canManage) {
       throw new ForbiddenException('شما اجازه مدیریت این محصول را ندارید');
+    }
+  }
+
+  async findAllForManagement(
+    query: GetProductsQueryDto,
+    user: { id: number; roles: string[] },
+  ) {
+    const ability = await this.abilityFactory.createForUser(user);
+    if (
+      !ability.can('manage', 'all') &&
+      !ability.can('read', 'Product')
+    ) {
+      throw new ForbiddenException('شما اجازه مشاهده فهرست مدیریتی محصولات را ندارید');
+    }
+
+    if (!user.roles.includes('ADMIN')) {
+      const store = await this.prisma.store.findFirst({
+        where: { ownerId: user.id },
+        select: { id: true },
+      });
+
+      if (!store) {
+        throw new NotFoundException('فروشگاه متعلق به فروشنده یافت نشد');
+      }
+
+      if (query.storeId && query.storeId !== store.id) {
+        throw new ForbiddenException('شما فقط به محصولات فروشگاه خود دسترسی دارید');
+      }
+
+      query.storeId = store.id;
+    }
+
+    return this.findAll(query, false);
+  }
+
+  private assertStoreAllowsCatalogManagement(
+    user: { id: number; roles: string[] },
+    isActive: boolean,
+  ) {
+    if (!isActive && !user.roles.includes('ADMIN')) {
+      throw new ForbiddenException(
+        'فروشگاه غیرفعال است و امکان افزودن یا ویرایش محصول وجود ندارد',
+      );
+    }
+  }
+
+  private assertStoreAllowsProductActivation(
+    storeIsActive: boolean,
+    requestedIsPurchasable?: boolean,
+  ) {
+    if (!storeIsActive && requestedIsPurchasable === true) {
+      throw new ConflictException(
+        'تا زمان فعال‌سازی مجدد فروشگاه، محصول قابل خرید نمی‌شود',
+      );
     }
   }
 

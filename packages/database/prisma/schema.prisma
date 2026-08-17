@@ -115,6 +115,10 @@ model Store {
   lng           Float?
   address       String?
   isVerified    Boolean  @default(false)
+  isActive      Boolean  @default(true)
+  suspendedAt   DateTime?
+  suspendedByUserId Int?
+  suspensionReason String? @db.Text
   sameDayDelivery Boolean @default(false)
   hasExpressDelivery Boolean @default(false)
   minDeliveryHours Int?
@@ -145,6 +149,8 @@ model Store {
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  @@index([isActive, isVerified])
 }
 
 model UserAddress {

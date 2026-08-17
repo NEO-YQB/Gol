@@ -52,6 +52,7 @@ const permissionCatalog: PermissionSeed[] = [
   { action: 'create', subject: 'Store', conditions: null },
   { action: 'update', subject: 'Store', conditions: { ownerId: '{{user.id}}' } },
   { action: 'delete', subject: 'Store', conditions: { ownerId: '{{user.id}}' } },
+  { action: 'updateStatus', subject: 'Store', conditions: null },
   { action: 'create', subject: 'File', conditions: null },
   { action: 'create', subject: 'Order', conditions: { userId: '{{user.id}}' } },
   { action: 'read', subject: 'Order', conditions: { userId: '{{user.id}}' } },

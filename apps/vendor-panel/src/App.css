@@ -1748,3 +1748,18 @@
     grid-column: 1 / -1;
   }
 }
+.vendor-suspension-notice {
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 1rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(190, 24, 93, 0.28);
+  border-radius: 18px;
+  background: rgba(255, 241, 242, 0.94);
+  color: #881337;
+}
+
+.vendor-suspension-notice span,
+.vendor-suspension-notice small {
+  line-height: 1.8;
+}

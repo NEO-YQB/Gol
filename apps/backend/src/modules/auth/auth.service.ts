@@ -265,6 +265,9 @@ export class AuthService {
           select: {
             id: true,
             isVerified: true,
+            isActive: true,
+            suspendedAt: true,
+            suspensionReason: true,
             name: true,
             slug: true,
           },
@@ -310,6 +313,9 @@ export class AuthService {
         ? {
             id: dbUser.store.id,
             isVerified: dbUser.store.isVerified,
+            isActive: dbUser.store.isActive,
+            suspendedAt: dbUser.store.suspendedAt,
+            suspensionReason: dbUser.store.suspensionReason,
             name: dbUser.store.name,
             slug: dbUser.store.slug,
           }

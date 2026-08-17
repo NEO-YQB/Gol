@@ -49,6 +49,7 @@ const subjectLabels: Record<string, string> = {
   StoreWallet: 'کیف پول فروشگاه',
   WalletTransaction: 'تراکنش کیف پول',
   CommissionRule: 'قواعد کمیسیون',
+  Store: 'فروشگاه',
 }
 
 function translateAction(action: string) {

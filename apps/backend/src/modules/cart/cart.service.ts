@@ -37,6 +37,12 @@ export class CartService {
         isPurchasable: true,
         isArchived: true,
         publicationStatus: true,
+        store: {
+          select: {
+            isActive: true,
+            isVerified: true,
+          },
+        },
       },
     });
 
@@ -44,7 +50,13 @@ export class CartService {
       throw new NotFoundException('محصول مورد نظر برای افزودن به سبد یافت نشد');
     }
 
-    if (!product.isPurchasable || product.isArchived || product.publicationStatus !== 'PUBLISHED') {
+    if (
+      !product.isPurchasable ||
+      product.isArchived ||
+      product.publicationStatus !== 'PUBLISHED' ||
+      !product.store.isActive ||
+      !product.store.isVerified
+    ) {
       throw new BadRequestException('این محصول فعلاً قابل خرید نیست');
     }
 
@@ -107,14 +119,32 @@ export class CartService {
 
     const product = await this.prisma.product.findUnique({
       where: { id: cartItem.productId },
-      select: { id: true, quantity: true, isPurchasable: true, isArchived: true, publicationStatus: true },
+      select: {
+        id: true,
+        quantity: true,
+        isPurchasable: true,
+        isArchived: true,
+        publicationStatus: true,
+        store: {
+          select: {
+            isActive: true,
+            isVerified: true,
+          },
+        },
+      },
     });
 
     if (!product) {
       throw new NotFoundException('محصول این آیتم دیگر وجود ندارد');
     }
 
-    if (!product.isPurchasable || product.isArchived || product.publicationStatus !== 'PUBLISHED') {
+    if (
+      !product.isPurchasable ||
+      product.isArchived ||
+      product.publicationStatus !== 'PUBLISHED' ||
+      !product.store.isActive ||
+      !product.store.isVerified
+    ) {
       throw new BadRequestException('این محصول فعلاً قابل خرید نیست');
     }
 

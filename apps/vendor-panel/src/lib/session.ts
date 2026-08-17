@@ -14,6 +14,9 @@ export type VendorBootstrap = {
   store?: {
     id: number
     isVerified: boolean
+    isActive: boolean
+    suspendedAt?: string | null
+    suspensionReason?: string | null
     name: string
     slug: string
   } | null

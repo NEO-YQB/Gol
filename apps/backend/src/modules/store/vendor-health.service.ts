@@ -6,6 +6,7 @@ import {
   VendorHealthStatus,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AbilityFactory } from '../auth/ability.factory';
 import { AdminListVendorHealthQueryDto } from './dto/admin-list-vendor-health-query.dto';
 import { AdminUpsertVendorRiskPolicyDto } from './dto/admin-upsert-vendor-risk-policy.dto';
 
@@ -25,7 +26,10 @@ type DerivedRiskPolicy = {
 
 @Injectable()
 export class VendorHealthService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly abilityFactory: AbilityFactory,
+  ) {}
 
   async recalculateStoreHealth(storeId: number) {
     const store = await this.prisma.store.findUnique({
@@ -146,7 +150,7 @@ export class VendorHealthService {
   }
 
   async adminListVendorHealth(user: AuthenticatedUser, query: AdminListVendorHealthQueryDto) {
-    this.assertAdmin(user);
+    await this.assertCanReadStores(user);
     const { page = 1, limit = 10, status } = query;
     const skip = (page - 1) * limit;
 
@@ -175,7 +179,7 @@ export class VendorHealthService {
   }
 
   async adminGetVendorHealth(user: AuthenticatedUser, storeId: number) {
-    this.assertAdmin(user);
+    await this.assertCanReadStores(user);
 
     const store = await this.prisma.store.findUnique({
       where: { id: storeId },
@@ -193,7 +197,7 @@ export class VendorHealthService {
   }
 
   async adminRecalculateVendorHealth(user: AuthenticatedUser, storeId: number) {
-    this.assertAdmin(user);
+    await this.assertCanManageStoreStatus(user);
     return this.recalculateStoreHealth(storeId);
   }
 
@@ -202,7 +206,7 @@ export class VendorHealthService {
     storeId: number,
     dto: AdminUpsertVendorRiskPolicyDto,
   ) {
-    this.assertAdmin(user);
+    await this.assertCanManageStoreStatus(user);
 
     const store = await this.prisma.store.findUnique({
       where: { id: storeId },
@@ -378,6 +382,10 @@ export class VendorHealthService {
       name: true,
       slug: true,
       ownerId: true,
+      isVerified: true,
+      isActive: true,
+      suspendedAt: true,
+      suspensionReason: true,
       address: true,
       lat: true,
       lng: true,
@@ -396,6 +404,10 @@ export class VendorHealthService {
       name: true,
       slug: true,
       ownerId: true,
+      isVerified: true,
+      isActive: true,
+      suspendedAt: true,
+      suspensionReason: true,
       address: true,
       lat: true,
       lng: true,
@@ -416,9 +428,24 @@ export class VendorHealthService {
     return value as Record<string, any>;
   }
 
-  private assertAdmin(user: AuthenticatedUser) {
-    if (!user.roles.includes('ADMIN')) {
-      throw new ForbiddenException('این endpoint فقط برای ادمین مجاز است');
+  private async assertCanReadStores(user: AuthenticatedUser) {
+    const ability = await this.abilityFactory.createForUser(user);
+    if (
+      !ability.can('manage', 'all') &&
+      !ability.can('read', 'Store') &&
+      !ability.can('updateStatus', 'Store')
+    ) {
+      throw new ForbiddenException('شما اجازه مشاهده فروشنده‌ها را ندارید');
+    }
+  }
+
+  private async assertCanManageStoreStatus(user: AuthenticatedUser) {
+    const ability = await this.abilityFactory.createForUser(user);
+    if (
+      !ability.can('manage', 'all') &&
+      !ability.can('updateStatus', 'Store')
+    ) {
+      throw new ForbiddenException('شما اجازه مدیریت وضعیت فروشنده را ندارید');
     }
   }
 

@@ -74,14 +74,15 @@ const routeRequirements: Partial<Record<AdminRoute, AccessRequirement>> = {
   vendors: {
     anyOf: [
       { action: 'manage', subject: 'all' },
-      { action: 'read', subject: 'VendorOnboardingRequest' },
+      { action: 'read', subject: 'Store' },
+      { action: 'updateStatus', subject: 'Store' },
     ],
   },
   vendorWorkspace: {
     anyOf: [
       { action: 'manage', subject: 'all' },
-      { action: 'read', subject: 'VendorOnboardingRequest' },
-      { action: 'review', subject: 'VendorOnboardingRequest' },
+      { action: 'read', subject: 'Store' },
+      { action: 'updateStatus', subject: 'Store' },
     ],
   },
   vendorOnboarding: {

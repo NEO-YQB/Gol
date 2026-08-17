@@ -98,6 +98,7 @@ class AuthApiService {
         store: BootstrapStore(
           id: 0,
           isVerified: true,
+          isActive: true,
           name: 'پیش‌نمایش فروشگاه',
           slug: 'preview-store',
         ),

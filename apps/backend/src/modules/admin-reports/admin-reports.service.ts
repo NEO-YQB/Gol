@@ -15,6 +15,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { AdminReportDateRangeQueryDto } from './dto/admin-report-date-range-query.dto';
 import { AdminRiskSummaryQueryDto } from './dto/admin-risk-summary-query.dto';
+import { AbilityFactory } from '../auth/ability.factory';
 
 type AuthenticatedUser = {
   id: number;
@@ -40,7 +41,10 @@ const RISK_STATUS_PRIORITY: Record<VendorHealthStatus, number> = {
 
 @Injectable()
 export class AdminReportsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly abilityFactory: AbilityFactory,
+  ) {}
 
   async getSupportTicketsSummary(user: AuthenticatedUser, query: AdminReportDateRangeQueryDto) {
     this.assertAdmin(user);
@@ -289,7 +293,7 @@ export class AdminReportsService {
   }
 
   async getVendorRiskSummary(user: AuthenticatedUser, query: AdminRiskSummaryQueryDto) {
-    this.assertAdmin(user);
+    await this.assertCanReadStores(user);
     const range = resolveJalaliDateRange(query);
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
@@ -303,6 +307,9 @@ export class AdminReportsService {
         name: true,
         slug: true,
         ownerId: true,
+        isVerified: true,
+        isActive: true,
+        suspendedAt: true,
         customerRatingAverage: true,
         customerRatingCount: true,
         vendorHealthScore: true,
@@ -426,6 +433,9 @@ export class AdminReportsService {
         storeName: store.name,
         storeSlug: store.slug,
         ownerId: store.ownerId,
+        isVerified: store.isVerified,
+        isActive: store.isActive,
+        suspendedAt: store.suspendedAt,
         vendorHealthScore: store.vendorHealthScore,
         vendorHealthStatus: store.vendorHealthStatus,
         customerRatingAverage: store.customerRatingAverage,
@@ -520,6 +530,17 @@ export class AdminReportsService {
   private assertAdmin(user: AuthenticatedUser) {
     if (!user.roles.includes('ADMIN')) {
       throw new ForbiddenException('این endpoint فقط برای ادمین مجاز است');
+    }
+  }
+
+  private async assertCanReadStores(user: AuthenticatedUser) {
+    const ability = await this.abilityFactory.createForUser(user);
+    if (
+      !ability.can('manage', 'all') &&
+      !ability.can('read', 'Store') &&
+      !ability.can('updateStatus', 'Store')
+    ) {
+      throw new ForbiddenException('شما اجازه مشاهده گزارش فروشنده‌ها را ندارید');
     }
   }
 }

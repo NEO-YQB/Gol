@@ -487,7 +487,7 @@ export const getCategories = cache(async (): Promise<CategorySummary[]> => {
 })
 
 export const getStores = cache(async (): Promise<StoreSummary[]> => {
-  return requestCached<StoreSummary[]>('/stores')
+  return requestNoStore<StoreSummary[]>('/stores')
 })
 
 export const getProductTypes = cache(async (): Promise<ProductTypeSummary[]> => {
@@ -777,7 +777,7 @@ const getProducts = cache(async (_queryKey: string, query: ProductQuery): Promis
   if (typeof query.userLat === 'number') params.set('userLat', String(query.userLat))
   if (typeof query.userLng === 'number') params.set('userLng', String(query.userLng))
 
-  const payload = await requestCached<{ data?: ProductSummary[] } | ProductSummary[]>(`/products?${params.toString()}`)
+  const payload = await requestNoStore<{ data?: ProductSummary[] } | ProductSummary[]>(`/products?${params.toString()}`)
   const products = filterEligibleProducts(toArray<ProductSummary>(payload))
 
   const ids = query.ids ?? []

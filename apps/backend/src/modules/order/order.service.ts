@@ -65,6 +65,8 @@ type ProductSnapshot = {
     maxDeliveryHours: number | null;
     expressDeliveryHours: number | null;
     deliveryWindows: Prisma.JsonValue | null;
+    isActive: boolean;
+    isVerified: boolean;
   };
 };
 
@@ -107,6 +109,9 @@ export class OrderService {
     if (cart.items.length === 0) {
       throw new BadRequestException('سبد خرید خالی است و امکان checkout وجود ندارد');
     }
+    this.assertProductsAvailableForNewOrder(
+      cart.items.map((item) => item.product),
+    );
 
     const pricing = await this.pricingService.resolveCartPricing({
       userId: user.id,
@@ -199,11 +204,25 @@ export class OrderService {
   async findVendorOrders(user: AuthenticatedUser) {
     await this.assertVendorRole(user);
 
+    const store = await this.prisma.store.findFirst({
+      where: { ownerId: user.id },
+      select: { isActive: true },
+    });
+    const currentOrderStatuses: OrderStatus[] = [
+      OrderStatus.PENDING,
+      OrderStatus.PAID,
+      OrderStatus.ACCEPTED,
+      OrderStatus.PROCESSING,
+      OrderStatus.SHIPPED,
+    ];
     const orders = await this.prisma.order.findMany({
       where: {
         store: {
           ownerId: user.id,
         },
+        ...(store?.isActive === false
+          ? { status: { in: currentOrderStatuses } }
+          : {}),
       },
       include: this.getOrderListInclude(),
       orderBy: { createdAt: 'desc' },
@@ -215,6 +234,9 @@ export class OrderService {
         store: {
           ownerId: user.id,
         },
+        ...(store?.isActive === false
+          ? { status: { in: currentOrderStatuses } }
+          : {}),
       },
       include: this.getOrderListInclude(),
       orderBy: { createdAt: 'desc' },
@@ -241,6 +263,7 @@ export class OrderService {
   async findOne(user: AuthenticatedUser, id: number) {
     const order = await this.getOrderOrThrow(id);
     await this.assertCanViewOrder(user, order);
+    this.assertSuspendedVendorCanViewOrder(user, order);
     return this.attachOperationalView(order);
   }
 
@@ -885,6 +908,8 @@ export class OrderService {
             maxDeliveryHours: true,
             expressDeliveryHours: true,
             deliveryWindows: true,
+            isActive: true,
+            isVerified: true,
           },
         },
       },
@@ -894,11 +919,34 @@ export class OrderService {
       throw new NotFoundException('یک یا چند محصول سفارش وجود ندارند');
     }
 
-    if (products.some((product) => !product.isPurchasable || product.isArchived || product.publicationStatus !== 'PUBLISHED')) {
-      throw new BadRequestException('یک یا چند محصول انتخاب‌شده فعلاً قابل خرید نیستند');
-    }
+    this.assertProductsAvailableForNewOrder(products);
 
     return products;
+  }
+
+  private assertProductsAvailableForNewOrder(
+    products: Array<{
+      isPurchasable: boolean;
+      isArchived: boolean;
+      publicationStatus: string;
+      store: {
+        isActive: boolean;
+        isVerified: boolean;
+      };
+    }>,
+  ) {
+    if (
+      products.some(
+        (product) =>
+          !product.isPurchasable ||
+          product.isArchived ||
+          product.publicationStatus !== 'PUBLISHED' ||
+          !product.store.isActive ||
+          !product.store.isVerified,
+      )
+    ) {
+      throw new BadRequestException('یک یا چند محصول انتخاب‌شده فعلاً قابل خرید نیستند');
+    }
   }
 
   private async getOwnedAddress(userId: number, addressId: number) {
@@ -944,6 +992,8 @@ export class OrderService {
                     maxDeliveryHours: true,
                     expressDeliveryHours: true,
                     deliveryWindows: true,
+                    isActive: true,
+                    isVerified: true,
                   },
                 },
               },
@@ -1043,6 +1093,26 @@ export class OrderService {
     return terminalStatuses.includes(status);
   }
 
+  private assertSuspendedVendorCanViewOrder(
+    user: AuthenticatedUser,
+    order: {
+      status: OrderStatus;
+      store: { ownerId: number; isActive: boolean } | null;
+    },
+  ) {
+    if (
+      this.isVendor(user) &&
+      !this.isAdmin(user) &&
+      order.store?.ownerId === user.id &&
+      order.store.isActive === false &&
+      this.isTerminalStatus(order.status)
+    ) {
+      throw new ForbiddenException(
+        'در زمان غیرفعال بودن فروشگاه فقط سفارش‌های جاری قابل دسترسی هستند',
+      );
+    }
+  }
+
   private getOrderInclude() {
     return {
       payment: true,
@@ -1060,6 +1130,7 @@ export class OrderService {
           name: true,
           slug: true,
           ownerId: true,
+          isActive: true,
         },
       },
       orderItems: {
@@ -1114,6 +1185,7 @@ export class OrderService {
           name: true,
           slug: true,
           ownerId: true,
+          isActive: true,
         },
       },
       orderItems: {

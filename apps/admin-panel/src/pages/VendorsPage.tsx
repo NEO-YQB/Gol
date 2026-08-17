@@ -4,6 +4,7 @@ import { LoadableState } from '../components/LoadableState'
 import { useNoticeEffect } from '../components/NoticeCenter'
 import { adminApi } from '../lib/api'
 import { readText, toArray } from '../lib/normalize'
+import { hasPermission } from '../lib/permissions'
 import type { AuthSession } from '../lib/session'
 
 type VendorRecord = Record<string, unknown>
@@ -164,6 +165,10 @@ export function VendorsPage({
   const [timelineError, setTimelineError] = useState<string | null>(null)
   const [selectedStoreDetail, setSelectedStoreDetail] = useState<VendorRecord | null>(null)
   useNoticeEffect(timelineError, 'error')
+  const canReadFinance =
+    hasPermission(session, 'manage', 'all') ||
+    hasPermission(session, 'read', 'StoreWallet') ||
+    hasPermission(session, 'read', 'WalletTransaction')
 
   useEffect(() => {
     let active = true
@@ -179,7 +184,9 @@ export function VendorsPage({
             limit: 10,
             status: statusFilter === 'ALL' ? undefined : statusFilter,
           }),
-          adminApi.getFinanceSummary(session),
+          canReadFinance
+            ? adminApi.getFinanceSummary(session)
+            : Promise.resolve({}),
         ])
 
         if (!active) return
@@ -222,7 +229,7 @@ export function VendorsPage({
     return () => {
       active = false
     }
-  }, [page, session, statusFilter])
+  }, [canReadFinance, page, session, statusFilter])
 
   useEffect(() => {
     const storeId = selectedStoreId
@@ -356,6 +363,7 @@ export function VendorsPage({
   const selectedSummary = selectedSummaryRecord
     ? [
         { label: 'فروشگاه', value: readText(selectedSummaryRecord, ['storeName'], '—') },
+        { label: 'وضعیت فروش', value: selectedSummaryRecord.isActive === false ? 'غیرفعال' : 'فعال' },
         { label: 'وضعیت سلامت', value: getStatusLabel(readText(selectedSummaryRecord, ['vendorHealthStatus'], '—')) },
         { label: 'امتیاز سلامت', value: formatPersianNumber(readText(selectedSummaryRecord, ['vendorHealthScore'], '—')) },
         { label: 'امتیاز مشتری', value: formatPersianNumber(readText(selectedSummaryRecord, ['customerRatingAverage'], '—')) },
@@ -488,7 +496,7 @@ export function VendorsPage({
                     type="button"
                   >
                     <strong>{readText(item, ['storeName'], '—')}</strong>
-                    <span>{`${getStatusLabel(status)} / امتیاز ${formatPersianNumber(readText(item, ['vendorHealthScore'], '—'))}`}</span>
+                    <span>{`${item.isActive === false ? 'غیرفعال' : 'فعال'} / ${getStatusLabel(status)} / امتیاز ${formatPersianNumber(readText(item, ['vendorHealthScore'], '—'))}`}</span>
                     <small>{`${formatPersianNumber(toDisplayValue(getMetric(item, 'ticketCount')))} تیکت / ${formatPersianNumber(toDisplayValue(getMetric(item, 'escalatedCount')))} ارجاع مالی`}</small>
                   </button>
                 )

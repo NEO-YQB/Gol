@@ -72,7 +72,20 @@ export class ProductController {
   @Get()  
   @ApiOperation({ summary: 'دریافت لیست محصولات با فیلتر و صفحه‌بندی' })
   async findAll(@Query() query: GetProductsQueryDto) {
-    return this.productService.findAll(query);
+    return this.productService.findAll(query, true);
+  }
+
+  @Get('manage/list')
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: 'دریافت فهرست مدیریتی محصولات، شامل فروشگاه غیرفعال',
+  })
+  async findAllForManagement(
+    @Query() query: GetProductsQueryDto,
+    @GetUser() user: { id: number; roles: string[] },
+  ) {
+    return this.productService.findAllForManagement(query, user);
   }
 
   @Patch(':id')
@@ -138,10 +151,10 @@ export class ProductController {
     return this.productService.remove(id, user, body);
   }
 
-  @Get('admin/by-slug/:slug')
+  @Get(['manage/by-slug/:slug', 'admin/by-slug/:slug'])
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'دریافت جزئیات محصول برای ادمین/پنل حتی در حالت آرشیو' })
+  @ApiOperation({ summary: 'دریافت جزئیات مدیریتی محصول حتی در حالت پیش‌نویس یا آرشیو' })
   async findOneForAdmin(
     @Param('slug') slug: string,
     @GetUser() user: { id: number; roles: string[] },

@@ -593,8 +593,18 @@ export const adminApi = {
   getVendorHealthDetail(session: AuthSession, storeId: string) {
     return request<unknown>(`/stores/admin/${storeId}/vendor-health`, {}, session.accessToken)
   },
-  updateStore(session: AuthSession, storeId: string, body: { isVerified?: boolean; address?: string; lat?: number; lng?: number }) {
+  updateStore(session: AuthSession, storeId: string, body: { address?: string; lat?: number; lng?: number }) {
     return request<unknown>(`/stores/${storeId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  updateStoreStatus(
+    session: AuthSession,
+    storeId: string,
+    body: { isActive: boolean; isVerified?: boolean; reason?: string },
+  ) {
+    return request<unknown>(`/stores/admin/${storeId}/status`, {
       method: 'PATCH',
       body: JSON.stringify(body),
     }, session.accessToken)
@@ -773,7 +783,7 @@ export const adminApi = {
     if (typeof query?.maxPrice === 'number') params.set('maxPrice', String(query.maxPrice))
 
     const search = params.toString()
-    return request<unknown>(`/products${search ? `?${search}` : ''}`, {}, session.accessToken)
+    return request<unknown>(`/products/manage/list${search ? `?${search}` : ''}`, {}, session.accessToken)
   },
   getProductDetail(session: AuthSession, slug: string) {
     return request<unknown>(`/products/admin/by-slug/${slug}`, {}, session.accessToken)
@@ -927,7 +937,7 @@ export const adminApi = {
     }, session.accessToken)
   },
   getStores(session: AuthSession) {
-    return request<unknown[]>('/stores', {}, session.accessToken)
+    return request<unknown[]>('/stores/admin/list', {}, session.accessToken)
   },
   getProductElements(session: AuthSession) {
     return request<unknown[]>('/products/elements', {}, session.accessToken)
