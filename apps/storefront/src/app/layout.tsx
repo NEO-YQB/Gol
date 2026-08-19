@@ -23,6 +23,9 @@ export async function generateMetadata(): Promise<Metadata> {
     description: 'خرید آنلاین گل، باکس هدیه و سفارش از فروشگاه‌های منتخب گلینو',
     verification: seo?.googleSearchConsoleVerification ? { google: seo.googleSearchConsoleVerification } : undefined,
     icons: iconList.length > 0 ? { icon: iconList } : undefined,
+    other: {
+      enamad: '58646212',
+    },
   }
 }
 
