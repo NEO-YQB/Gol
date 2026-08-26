@@ -670,6 +670,41 @@ export function VendorWorkspacePage({
         <Pill tone={getStatusTone(status)}>{getStatusLabel(status)}</Pill>
       </div>
 
+      {canUpdateStoreStatus ? (
+        <SectionCard
+          eyebrow="وضعیت فروشگاه"
+          title="فعال یا غیرفعال کردن فروشگاه"
+          actions={<Pill tone={isStoreActive ? 'success' : 'danger'}>{isStoreActive ? 'فعال' : 'غیرفعال'}</Pill>}
+        >
+          <div className="vendors-workspace-surface-grid">
+            <article className="vendors-workspace-surface-card">
+              <strong>وضعیت فعالیت فروشگاه</strong>
+              <small>
+                {!isStoreVerified
+                  ? 'این عملیات فروشگاه را تأیید و برای فروش فعال می‌کند.'
+                  : isStoreActive
+                    ? 'غیرفعال‌سازی، فروشگاه و محصولات را از storefront حذف می‌کند.'
+                    : 'فعال‌سازی مجدد، محصولات را خودکار قابل‌خرید نمی‌کند.'}
+              </small>
+              <button
+                className={`fm-button ${isStoreActive ? 'fm-button--danger' : 'fm-button--primary'}`}
+                disabled={storeActiveBusy}
+                onClick={() => void handleToggleStoreActivation(!isStoreVerified || !isStoreActive)}
+                type="button"
+              >
+                {storeActiveBusy
+                  ? 'در حال بروزرسانی...'
+                  : !isStoreVerified
+                    ? 'تأیید و فعال کردن فروشگاه'
+                    : isStoreActive
+                      ? 'غیرفعال کردن فروشگاه'
+                      : 'فعال کردن فروشگاه'}
+              </button>
+            </article>
+          </div>
+        </SectionCard>
+      ) : null}
+
       <LoadableState error={error} loading={loading}>
         <div className="fm-grid">
           {stats.map((item) => (
