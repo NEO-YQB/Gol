@@ -174,6 +174,13 @@ export type ProductTypeSummary = {
   metaTitle?: string | null
   metaDescription?: string | null
   isIndexed?: boolean | null
+  productTypeFaqs?: Array<{
+    id: number
+    question: string
+    answer: string
+    sortOrder?: number | null
+    isActive?: boolean | null
+  }>
 }
 
 type PaginatedResponse<T> = {

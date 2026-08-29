@@ -19,7 +19,7 @@ export function ExpandableTextBlock({
   title,
   text,
 }: {
-  title: string
+  title?: string
   text: string
 }) {
   const [expanded, setExpanded] = useState(false)
@@ -32,7 +32,7 @@ export function ExpandableTextBlock({
 
   return (
     <section className="rounded-[28px] bg-white/82 px-5 py-5 shadow-[0_14px_34px_rgba(52,36,17,0.06)] md:px-6">
-      <h2 className="text-xl font-black text-[#173126]">{title}</h2>
+      {title ? <h2 className="text-xl font-black text-[#173126]">{title}</h2> : null}
       <div
         className={`mt-4 overflow-hidden text-sm leading-8 text-[#5f564c] transition-all duration-300 ${expanded ? 'max-h-[2400px]' : 'max-h-[120px]'}`}
       >
