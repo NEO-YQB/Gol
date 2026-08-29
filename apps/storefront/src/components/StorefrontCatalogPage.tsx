@@ -457,16 +457,19 @@ export function StorefrontCatalogPage({
 
           {archiveDescription ? <ExpandableTextBlock text={archiveDescription} /> : null}
           {visibleFaqs.length ? (
-            <section className="rounded-[24px] border border-[#eadfce] bg-white px-5 py-5 shadow-[0_12px_30px_rgba(52,36,17,0.06)]">
-              <div className="mb-4">
-                <h2 className="text-lg font-black text-[#173126]">سوالات متداول</h2>
-              </div>
-              <div className="grid gap-3">
+            <section className="mt-8 border-t border-[#efe4d6] pt-6">
+              <h2 className="text-lg font-black text-[#173126]">سوالات متداول</h2>
+              <div className="mt-4 space-y-3">
                 {visibleFaqs.map((faq) => (
-                  <article className="rounded-[18px] border border-[#efe3d3] bg-[#fcfaf7] px-4 py-4" key={faq.id}>
-                    <h3 className="text-sm font-bold text-[#173126]">{faq.question}</h3>
-                    <p className="mt-2 text-sm leading-7 text-[#4a3d31]">{faq.answer}</p>
-                  </article>
+                  <details
+                    className="group rounded-[18px] border border-[#1f6a52]/10 bg-[#fbf7f1] px-4 py-3"
+                    key={faq.id}
+                  >
+                    <summary className="cursor-pointer list-none text-sm font-black text-[#173126] transition group-open:text-[#1f6a52]">
+                      {faq.question}
+                    </summary>
+                    <p className="mt-3 text-sm leading-8 text-[#5f564c]">{faq.answer}</p>
+                  </details>
                 ))}
               </div>
             </section>
