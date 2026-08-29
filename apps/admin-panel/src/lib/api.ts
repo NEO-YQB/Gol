@@ -936,6 +936,32 @@ export const adminApi = {
       body: JSON.stringify({ faqIds: faqIds.map(Number) }),
     }, session.accessToken)
   },
+  getProductTypeFaqs(session: AuthSession, productTypeId: string) {
+    return request<unknown[]>(`/product-types/${productTypeId}/faqs`, {}, session.accessToken)
+  },
+  createProductTypeFaq(session: AuthSession, productTypeId: string, body: Record<string, unknown>) {
+    return request<unknown>(`/product-types/${productTypeId}/faqs`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  updateProductTypeFaq(session: AuthSession, productTypeId: string, faqId: string, body: Record<string, unknown>) {
+    return request<unknown>(`/product-types/${productTypeId}/faqs/${faqId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  deleteProductTypeFaq(session: AuthSession, productTypeId: string, faqId: string) {
+    return request<unknown>(`/product-types/${productTypeId}/faqs/${faqId}`, {
+      method: 'DELETE',
+    }, session.accessToken)
+  },
+  reorderProductTypeFaqs(session: AuthSession, productTypeId: string, faqIds: string[]) {
+    return request<unknown[]>(`/product-types/${productTypeId}/faqs/reorder`, {
+      method: 'PATCH',
+      body: JSON.stringify({ faqIds: faqIds.map(Number) }),
+    }, session.accessToken)
+  },
   getStores(session: AuthSession) {
     return request<unknown[]>('/stores/admin/list', {}, session.accessToken)
   },

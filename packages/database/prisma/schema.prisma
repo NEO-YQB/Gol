@@ -280,7 +280,22 @@ model ProductType {
   isIndexed       Boolean  @default(true)
   allowedElements Json?
   products        Product[]
+  productTypeFaqs ProductTypeFaq[]
   createdAt       DateTime @default(now())
+}
+
+model ProductTypeFaq {
+  id             Int         @id @default(autoincrement())
+  question       String
+  answer         String      @db.Text
+  sortOrder      Int         @default(0)
+  isActive       Boolean     @default(true)
+  productTypeId   Int
+  productType     ProductType @relation(fields: [productTypeId], references: [id], onDelete: Cascade)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([productTypeId, sortOrder])
 }
 
 model Category {

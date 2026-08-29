@@ -5,7 +5,10 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateProductTypeDto } from './dto/create-product-type.dto';
+import { CreateProductTypeFaqDto } from './dto/create-product-type-faq.dto';
+import { ReorderProductTypeFaqDto } from './dto/reorder-product-type-faq.dto';
 import { UpdateProductTypeDto } from './dto/update-product-type.dto';
+import { UpdateProductTypeFaqDto } from './dto/update-product-type-faq.dto';
 
 @Injectable()
 export class ProductTypeService {
@@ -40,6 +43,11 @@ export class ProductTypeService {
             products: true,
           },
         },
+        productTypeFaqs: {
+          orderBy: {
+            sortOrder: 'asc',
+          },
+        },
       },
       orderBy: {
         createdAt: 'desc',
@@ -54,6 +62,11 @@ export class ProductTypeService {
         _count: {
           select: {
             products: true,
+          },
+        },
+        productTypeFaqs: {
+          orderBy: {
+            sortOrder: 'asc',
           },
         },
       },
@@ -118,6 +131,85 @@ export class ProductTypeService {
 
     await this.prisma.productType.delete({
       where: { id },
+    });
+  }
+
+  async createFaq(productTypeId: number, dto: CreateProductTypeFaqDto) {
+    await this.ensureProductTypeExists(productTypeId);
+
+    return this.prisma.productTypeFaq.create({
+      data: {
+        question: dto.question,
+        answer: dto.answer,
+        sortOrder: dto.sortOrder ?? 0,
+        isActive: dto.isActive ?? true,
+        productType: { connect: { id: productTypeId } },
+      },
+    });
+  }
+
+  async findFaqs(productTypeId: number) {
+    await this.ensureProductTypeExists(productTypeId);
+
+    return this.prisma.productTypeFaq.findMany({
+      where: { productTypeId },
+      orderBy: { sortOrder: 'asc' },
+    });
+  }
+
+  async updateFaq(productTypeId: number, faqId: number, dto: UpdateProductTypeFaqDto) {
+    await this.ensureProductTypeExists(productTypeId);
+
+    const faq = await this.prisma.productTypeFaq.findUnique({
+      where: { id: faqId },
+      select: { id: true, productTypeId: true },
+    });
+
+    if (!faq || faq.productTypeId !== productTypeId) {
+      throw new NotFoundException('سوال متداول یافت نشد');
+    }
+
+    return this.prisma.productTypeFaq.update({
+      where: { id: faqId },
+      data: {
+        ...(dto.question !== undefined && { question: dto.question }),
+        ...(dto.answer !== undefined && { answer: dto.answer }),
+        ...(dto.sortOrder !== undefined && { sortOrder: dto.sortOrder }),
+        ...(dto.isActive !== undefined && { isActive: dto.isActive }),
+      },
+    });
+  }
+
+  async removeFaq(productTypeId: number, faqId: number) {
+    await this.ensureProductTypeExists(productTypeId);
+
+    const faq = await this.prisma.productTypeFaq.findUnique({
+      where: { id: faqId },
+      select: { id: true, productTypeId: true },
+    });
+
+    if (!faq || faq.productTypeId !== productTypeId) {
+      throw new NotFoundException('سوال متداول یافت نشد');
+    }
+
+    await this.prisma.productTypeFaq.delete({ where: { id: faqId } });
+  }
+
+  async reorderFaqs(productTypeId: number, dto: ReorderProductTypeFaqDto) {
+    await this.ensureProductTypeExists(productTypeId);
+
+    const updates = dto.faqIds.map((faqId, index) =>
+      this.prisma.productTypeFaq.update({
+        where: { id: faqId },
+        data: { sortOrder: index },
+      }),
+    );
+
+    await this.prisma.$transaction(updates);
+
+    return this.prisma.productTypeFaq.findMany({
+      where: { productTypeId },
+      orderBy: { sortOrder: 'asc' },
     });
   }
 

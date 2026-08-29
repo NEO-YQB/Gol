@@ -13,6 +13,14 @@ type ProductTypeWorkspacePageProps = {
 
 type ProductTypeRecord = Record<string, unknown>
 type ProductElementRecord = Record<string, unknown>
+type ProductTypeFaqRecord = Record<string, unknown>
+
+type ProductTypeFaqFormState = {
+  question: string
+  answer: string
+  sortOrder: string
+  isActive: boolean
+}
 
 type ProductTypeFormState = {
   name: string
@@ -39,6 +47,15 @@ function createEmptyProductTypeForm(): ProductTypeFormState {
     metaDescription: '',
     isIndexed: true,
     allowedElementIds: [],
+  }
+}
+
+function createEmptyProductTypeFaqForm(): ProductTypeFaqFormState {
+  return {
+    question: '',
+    answer: '',
+    sortOrder: '0',
+    isActive: true,
   }
 }
 
@@ -85,11 +102,17 @@ export function ProductTypeWorkspacePage({ session, onBack }: ProductTypeWorkspa
   const [submitting, setSubmitting] = useState(false)
   const [productTypes, setProductTypes] = useState<ProductTypeRecord[]>([])
   const [elements, setElements] = useState<ProductElementRecord[]>([])
+  const [productTypeFaqs, setProductTypeFaqs] = useState<ProductTypeFaqRecord[]>([])
   const [selectedProductTypeId, setSelectedProductTypeId] = useState<string>('new')
   const [form, setForm] = useState<ProductTypeFormState>(() => createEmptyProductTypeForm())
+  const [faqForm, setFaqForm] = useState<ProductTypeFaqFormState>(() => createEmptyProductTypeFaqForm())
+  const [editingFaqId, setEditingFaqId] = useState<string | null>(null)
+  const [faqSubmitting, setFaqSubmitting] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [uploadingDescriptionImage, setUploadingDescriptionImage] = useState(false)
   const descriptionInsertRef = useRef<((content: string) => void) | null>(null)
   const imageInputRef = useRef<HTMLInputElement | null>(null)
+  const descriptionImageInputRef = useRef<HTMLInputElement | null>(null)
 
   useNoticeEffect(error, 'error')
   useNoticeEffect(message, 'success')
@@ -126,14 +149,25 @@ export function ProductTypeWorkspacePage({ session, onBack }: ProductTypeWorkspa
   useEffect(() => {
     if (selectedProductTypeId === 'new') {
       setForm(createEmptyProductTypeForm())
+      setProductTypeFaqs([])
+      setFaqForm(createEmptyProductTypeFaqForm())
+      setEditingFaqId(null)
       return
     }
 
     const productType = productTypes.find((item) => readText(item, ['id'], '') === selectedProductTypeId)
     if (productType) {
       setForm(mapProductTypeToForm(productType))
+      void (async () => {
+        try {
+          const payload = await adminApi.getProductTypeFaqs(session, selectedProductTypeId)
+          setProductTypeFaqs(toArray(payload))
+        } catch {
+          setProductTypeFaqs([])
+        }
+      })()
     }
-  }, [productTypes, selectedProductTypeId])
+  }, [productTypes, selectedProductTypeId, session])
 
   const selectedElementNames = useMemo(() => {
     const elementMap = new Map(elements.map((item) => [readText(item, ['id'], ''), readText(item, ['name'], 'بدون نام')]))
@@ -149,6 +183,11 @@ export function ProductTypeWorkspacePage({ session, onBack }: ProductTypeWorkspa
       const productType = nextProductTypes.find((item) => readText(item, ['id'], '') === nextSelectedId)
       setForm(productType ? mapProductTypeToForm(productType) : createEmptyProductTypeForm())
     }
+  }
+
+  async function reloadProductTypeFaqs(productTypeId: string) {
+    const payload = await adminApi.getProductTypeFaqs(session, productTypeId)
+    setProductTypeFaqs(toArray(payload))
   }
 
   function updateForm<K extends keyof ProductTypeFormState>(key: K, value: ProductTypeFormState[K]) {
@@ -167,10 +206,6 @@ export function ProductTypeWorkspacePage({ session, onBack }: ProductTypeWorkspa
       if (uploaded.variants?.thumbnail?.url) {
         updateForm('thumbnailUrl', uploaded.variants.thumbnail.url)
       }
-      if (descriptionInsertRef.current) {
-        const altAttr = form.imageAlt.trim() ? ` alt="${form.imageAlt.trim()}"` : ''
-        descriptionInsertRef.current(`<p><img src="${uploaded.url}"${altAttr}></p>`)
-      }
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : 'آپلود تصویر نوع محصول ناموفق بود')
     } finally {
@@ -181,8 +216,30 @@ export function ProductTypeWorkspacePage({ session, onBack }: ProductTypeWorkspa
     }
   }
 
+  async function handleDescriptionImageChoose(fileList: FileList | null) {
+    const file = fileList?.[0]
+    if (!file) return
+
+    setUploadingDescriptionImage(true)
+    setError(null)
+    try {
+      const uploaded = await adminApi.uploadProductImage(session, file)
+      if (descriptionInsertRef.current) {
+        const altAttr = form.imageAlt.trim() ? ` alt="${form.imageAlt.trim()}"` : ''
+        descriptionInsertRef.current(`<p><img src="${uploaded.url}"${altAttr}></p>`)
+      }
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : 'آپلود تصویر نوع محصول ناموفق بود')
+    } finally {
+      setUploadingDescriptionImage(false)
+      if (descriptionImageInputRef.current) {
+        descriptionImageInputRef.current.value = ''
+      }
+    }
+  }
+
   function openDescriptionImageUpload() {
-    imageInputRef.current?.click()
+    descriptionImageInputRef.current?.click()
   }
 
   async function handleSubmit() {
@@ -244,6 +301,71 @@ export function ProductTypeWorkspacePage({ session, onBack }: ProductTypeWorkspa
     }
   }
 
+  async function handleFaqSubmit() {
+    if (selectedProductTypeId === 'new') return
+    if (!faqForm.question.trim() || !faqForm.answer.trim()) {
+      setError('سوال و پاسخ الزامی هستند.')
+      return
+    }
+
+    setFaqSubmitting(true)
+    setError(null)
+
+    const body = {
+      question: faqForm.question.trim(),
+      answer: faqForm.answer.trim(),
+      sortOrder: Number(faqForm.sortOrder) || 0,
+      isActive: faqForm.isActive,
+    }
+
+    try {
+      if (editingFaqId) {
+        await adminApi.updateProductTypeFaq(session, selectedProductTypeId, editingFaqId, body)
+      } else {
+        await adminApi.createProductTypeFaq(session, selectedProductTypeId, body)
+      }
+      await reloadProductTypeFaqs(selectedProductTypeId)
+      setFaqForm(createEmptyProductTypeFaqForm())
+      setEditingFaqId(null)
+      setMessage(editingFaqId ? 'سوال متداول به‌روزرسانی شد.' : 'سوال متداول جدید اضافه شد.')
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'ذخیره سوال متداول ناموفق بود')
+    } finally {
+      setFaqSubmitting(false)
+    }
+  }
+
+  async function handleFaqDelete(faqId: string) {
+    if (selectedProductTypeId === 'new') return
+
+    setFaqSubmitting(true)
+    setError(null)
+
+    try {
+      await adminApi.deleteProductTypeFaq(session, selectedProductTypeId, faqId)
+      await reloadProductTypeFaqs(selectedProductTypeId)
+      if (editingFaqId === faqId) {
+        setFaqForm(createEmptyProductTypeFaqForm())
+        setEditingFaqId(null)
+      }
+      setMessage('سوال متداول حذف شد.')
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'حذف سوال متداول ناموفق بود')
+    } finally {
+      setFaqSubmitting(false)
+    }
+  }
+
+  function handleFaqEdit(faq: ProductTypeFaqRecord) {
+    setEditingFaqId(readText(faq, ['id'], ''))
+    setFaqForm({
+      question: readText(faq, ['question'], ''),
+      answer: readText(faq, ['answer'], ''),
+      sortOrder: readText(faq, ['sortOrder'], '0'),
+      isActive: faq.isActive !== false,
+    })
+  }
+
   return (
     <div className="fm-stack">
       <LoadableState error={error} loading={loading}>
@@ -252,6 +374,13 @@ export function ProductTypeWorkspacePage({ session, onBack }: ProductTypeWorkspa
           accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
           className="admin-products-file-input"
           onChange={(event) => void handleImageChoose(event.target.files)}
+          type="file"
+        />
+        <input
+          ref={descriptionImageInputRef}
+          accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+          className="admin-products-file-input"
+          onChange={(event) => void handleDescriptionImageChoose(event.target.files)}
           type="file"
         />
 
@@ -322,8 +451,8 @@ export function ProductTypeWorkspacePage({ session, onBack }: ProductTypeWorkspa
                 toolbarActions={(editorApi) => {
                   descriptionInsertRef.current = editorApi.insertContentAtCursor
                   return (
-                    <button className="fm-rich-editor-chip" onClick={openDescriptionImageUpload} type="button">
-                      آپلود تصویر
+                    <button className="fm-rich-editor-chip" disabled={uploadingDescriptionImage} onClick={openDescriptionImageUpload} type="button">
+                      {uploadingDescriptionImage ? 'در حال آپلود...' : 'آپلود تصویر'}
                     </button>
                   )
                 }}
@@ -414,6 +543,90 @@ export function ProductTypeWorkspacePage({ session, onBack }: ProductTypeWorkspa
               </div>
             ) : null}
           </div>
+        </SectionCard>
+
+        <SectionCard eyebrow="سوالات متداول" title="FAQ نوع محصول">
+          {selectedProductTypeId === 'new' ? (
+            <p className="content-collapsed-note">ابتدا نوع محصول را ذخیره کنید تا بتوانید سوالات متداول اضافه کنید.</p>
+          ) : (
+            <div className="category-faq-section">
+              <div className="category-faq-form content-editor-grid">
+                <label className="content-select-field page-builder-field--wide">
+                  <span>سوال</span>
+                  <input
+                    className="fm-input"
+                    onChange={(event) => setFaqForm((current) => ({ ...current, question: event.target.value }))}
+                    value={faqForm.question}
+                  />
+                </label>
+                <label className="content-select-field page-builder-field--wide">
+                  <span>پاسخ</span>
+                  <textarea
+                    className="fm-input"
+                    onChange={(event) => setFaqForm((current) => ({ ...current, answer: event.target.value }))}
+                    rows={3}
+                    value={faqForm.answer}
+                  />
+                </label>
+                <label className="content-select-field">
+                  <span>ترتیب نمایش</span>
+                  <input
+                    className="fm-input"
+                    inputMode="numeric"
+                    onChange={(event) => setFaqForm((current) => ({ ...current, sortOrder: event.target.value }))}
+                    value={faqForm.sortOrder}
+                  />
+                </label>
+                <label className="fm-field page-builder-checkbox">
+                  <span>فعال</span>
+                  <input
+                    checked={faqForm.isActive}
+                    onChange={(event) => setFaqForm((current) => ({ ...current, isActive: event.target.checked }))}
+                    type="checkbox"
+                  />
+                </label>
+                <div className="products-header-actions">
+                  <button className="content-primary-action" disabled={faqSubmitting} onClick={() => void handleFaqSubmit()} type="button">
+                    {faqSubmitting ? 'در حال ذخیره...' : editingFaqId ? 'به‌روزرسانی' : 'افزودن سوال'}
+                  </button>
+                  {editingFaqId ? (
+                    <button className="content-secondary-action" disabled={faqSubmitting} onClick={() => { setFaqForm(createEmptyProductTypeFaqForm()); setEditingFaqId(null) }} type="button">
+                      لغو
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="category-faq-list">
+                {productTypeFaqs.length ? (
+                  productTypeFaqs.map((faq) => {
+                    const faqId = readText(faq, ['id'], '')
+                    return (
+                      <article className="category-faq-item" key={faqId}>
+                        <div className="category-faq-item__content">
+                          <strong>{readText(faq, ['question'], 'بدون سوال')}</strong>
+                          <p>{readText(faq, ['answer'], 'بدون پاسخ')}</p>
+                          <span className="category-faq-item__meta">
+                            ترتیب: {readText(faq, ['sortOrder'], '0')} · {faq.isActive !== false ? 'فعال' : 'غیرفعال'}
+                          </span>
+                        </div>
+                        <div className="products-header-actions">
+                          <button className="content-secondary-action" disabled={faqSubmitting} onClick={() => handleFaqEdit(faq)} type="button">
+                            ویرایش
+                          </button>
+                          <button className="content-secondary-action" disabled={faqSubmitting} onClick={() => void handleFaqDelete(faqId)} type="button">
+                            حذف
+                          </button>
+                        </div>
+                      </article>
+                    )
+                  })
+                ) : (
+                  <p className="content-collapsed-note">هنوز سوالی تعریف نشده است.</p>
+                )}
+              </div>
+            </div>
+          )}
         </SectionCard>
       </LoadableState>
     </div>
