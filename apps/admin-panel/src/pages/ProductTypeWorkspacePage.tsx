@@ -1,4 +1,4 @@
-import { Pill, SectionCard } from '@flower-marketplace/frontend-core'
+import { FormatTextarea, Pill, SectionCard } from '@flower-marketplace/frontend-core'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { useNoticeEffect } from '../components/NoticeCenter'
@@ -88,6 +88,7 @@ export function ProductTypeWorkspacePage({ session, onBack }: ProductTypeWorkspa
   const [selectedProductTypeId, setSelectedProductTypeId] = useState<string>('new')
   const [form, setForm] = useState<ProductTypeFormState>(() => createEmptyProductTypeForm())
   const [uploadingImage, setUploadingImage] = useState(false)
+  const descriptionInsertRef = useRef<((content: string) => void) | null>(null)
   const imageInputRef = useRef<HTMLInputElement | null>(null)
 
   useNoticeEffect(error, 'error')
@@ -166,6 +167,10 @@ export function ProductTypeWorkspacePage({ session, onBack }: ProductTypeWorkspa
       if (uploaded.variants?.thumbnail?.url) {
         updateForm('thumbnailUrl', uploaded.variants.thumbnail.url)
       }
+      if (descriptionInsertRef.current) {
+        const altAttr = form.imageAlt.trim() ? ` alt="${form.imageAlt.trim()}"` : ''
+        descriptionInsertRef.current(`<p><img src="${uploaded.url}"${altAttr}></p>`)
+      }
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : 'آپلود تصویر نوع محصول ناموفق بود')
     } finally {
@@ -174,6 +179,10 @@ export function ProductTypeWorkspacePage({ session, onBack }: ProductTypeWorkspa
         imageInputRef.current.value = ''
       }
     }
+  }
+
+  function openDescriptionImageUpload() {
+    imageInputRef.current?.click()
   }
 
   async function handleSubmit() {
@@ -306,7 +315,20 @@ export function ProductTypeWorkspacePage({ session, onBack }: ProductTypeWorkspa
             </label>
             <label className="fm-field page-builder-field--wide">
               <span>توضیحات</span>
-              <textarea onChange={(event) => updateForm('description', event.target.value)} rows={4} value={form.description} />
+              <FormatTextarea
+                id="product-type-description"
+                onChange={(value) => updateForm('description', value)}
+                placeholder="توضیحات کامل نوع محصول را اینجا بنویس..."
+                toolbarActions={(editorApi) => {
+                  descriptionInsertRef.current = editorApi.insertContentAtCursor
+                  return (
+                    <button className="fm-rich-editor-chip" onClick={openDescriptionImageUpload} type="button">
+                      آپلود تصویر
+                    </button>
+                  )
+                }}
+                value={form.description}
+              />
             </label>
 
             <label className="fm-field page-builder-field--wide">
@@ -342,7 +364,11 @@ export function ProductTypeWorkspacePage({ session, onBack }: ProductTypeWorkspa
             </label>
             <label className="fm-field">
               <span>Meta description</span>
-              <textarea onChange={(event) => updateForm('metaDescription', event.target.value)} rows={3} value={form.metaDescription} />
+              <textarea
+                onChange={(event) => updateForm('metaDescription', event.target.value)}
+                rows={3}
+                value={form.metaDescription}
+              />
             </label>
 
             <label className="fm-field page-builder-checkbox">
