@@ -103,6 +103,136 @@
   color: var(--fm-brand-primary);
 }
 
+.vendor-auth-legal {
+  margin: 0;
+  color: var(--fm-text-secondary);
+  line-height: 1.9;
+  text-align: center;
+}
+
+.vendor-auth-legal__link {
+  color: var(--fm-brand-primary);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  margin-inline-start: 0.45rem;
+}
+
+.vendor-auth-legal__separator {
+  margin-inline: 0.55rem;
+  color: rgba(92, 76, 60, 0.45);
+}
+
+.vendor-public-screen {
+  min-height: 100vh;
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.vendor-public-shell {
+  position: relative;
+  z-index: 1;
+  width: min(920px, 100%);
+  margin: 0 auto;
+}
+
+.vendor-public-card {
+  border: 1px solid rgba(181, 160, 132, 0.24);
+  border-radius: 32px;
+  background: linear-gradient(180deg, rgba(255, 253, 248, 0.95), rgba(255, 248, 241, 0.92));
+  backdrop-filter: blur(14px);
+  box-shadow: var(--fm-shadow-lifted);
+  padding: clamp(22px, 4vw, 40px);
+  display: grid;
+  gap: 28px;
+}
+
+.vendor-public-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.vendor-public-switch {
+  color: var(--fm-brand-primary);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  font-weight: 700;
+}
+
+.vendor-public-header h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.25rem);
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+}
+
+.vendor-public-header p {
+  margin: 12px 0 0;
+  color: var(--fm-text-secondary);
+  line-height: 1.85;
+}
+
+.vendor-public-header strong {
+  display: inline-block;
+  margin-top: 14px;
+  color: var(--fm-brand-primary);
+}
+
+.vendor-policy-sections {
+  display: grid;
+  gap: 24px;
+}
+
+.vendor-policy-section {
+  padding: 20px;
+  border-radius: 22px;
+  border: 1px solid var(--fm-border-soft);
+  background: rgba(255, 253, 248, 0.72);
+}
+
+.vendor-policy-section h2 {
+  margin: 0 0 12px;
+  color: var(--fm-brand-primary);
+  font-size: 1.08rem;
+}
+
+.vendor-policy-section p {
+  margin: 0;
+  color: var(--fm-text-primary);
+  line-height: 1.95;
+  white-space: pre-line;
+}
+
+.vendor-policy-section p + p {
+  margin-top: 8px;
+}
+
+.vendor-policy-section a {
+  color: var(--fm-brand-primary);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.vendor-public-footer {
+  padding-top: 4px;
+  border-top: 1px solid rgba(181, 160, 132, 0.2);
+}
+
+.vendor-public-footer p {
+  margin: 0;
+  color: var(--fm-text-secondary);
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .vendor-public-topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
 .vendor-toolbar-note {
   display: flex;
   flex-wrap: wrap;

@@ -13,6 +13,11 @@ type LoginPageProps = {
   onVerifyOtp: () => void
 }
 
+function resolvePrivacyHref(locale: 'fa' | 'en') {
+  const { origin } = window.location
+  return `${origin}/${locale}/privacy`
+}
+
 export function LoginPage({
   phoneNumber,
   code,
@@ -68,6 +73,17 @@ export function LoginPage({
             {message ? <div className="fm-message fm-message--success">{message}</div> : null}
             {error ? <div className="fm-message fm-message--danger">{error}</div> : null}
           </div>
+
+          <p className="vendor-auth-legal">
+            ثبت نام به منزله قبول مقررات گلینو است.
+            <a className="vendor-auth-legal__link" href={resolvePrivacyHref('fa')}>
+              سیاست حفظ حریم خصوصی فارسی
+            </a>
+            <span className="vendor-auth-legal__separator">|</span>
+            <a className="vendor-auth-legal__link" dir="ltr" href={resolvePrivacyHref('en')} lang="en">
+              English Privacy Policy
+            </a>
+          </p>
         </div>
       </div>
     </div>

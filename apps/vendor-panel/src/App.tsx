@@ -16,10 +16,19 @@ import { StoreProfilePage } from './pages/StoreProfilePage'
 import { SupportPage } from './pages/SupportPage'
 import { WalletPage } from './pages/WalletPage'
 import { VendorOnboardingPage } from './pages/VendorOnboardingPage'
+import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage'
 
 type VendorAccessState = 'pending' | 'active' | 'suspended'
+type PublicRoute = 'login' | 'privacy-fa' | 'privacy-en'
 
 const defaultRoute: VendorRoute = 'overview'
+
+function resolvePublicRoute(pathname: string): PublicRoute {
+  const normalizedPath = pathname.replace(/\/+$/, '') || '/'
+  if (normalizedPath === '/fa/privacy') return 'privacy-fa'
+  if (normalizedPath === '/en/privacy') return 'privacy-en'
+  return 'login'
+}
 
 function buildNav(currentRoute: VendorRoute, accessState: VendorAccessState): NavSection[] {
   if (accessState === 'suspended') {
@@ -121,6 +130,7 @@ function resolveAccessState(session: AuthSession): VendorAccessState {
 }
 
 export default function App() {
+  const [publicRoute, setPublicRoute] = useState<PublicRoute>(() => resolvePublicRoute(window.location.pathname))
   const [session, setSession] = useState<AuthSession | null>(null)
   const [route, setRoute] = useState<VendorRoute>(defaultRoute)
   const [selectedOrder, setSelectedOrder] = useState<Record<string, unknown> | null>(null)
@@ -155,6 +165,16 @@ export default function App() {
 
   useEffect(() => {
     setSession(loadSession())
+  }, [])
+
+  useEffect(() => {
+    const syncRoute = () => {
+      setPublicRoute(resolvePublicRoute(window.location.pathname))
+    }
+
+    syncRoute()
+    window.addEventListener('popstate', syncRoute)
+    return () => window.removeEventListener('popstate', syncRoute)
   }, [])
 
   useEffect(() => {
@@ -315,6 +335,14 @@ export default function App() {
   }, [session?.accessToken])
 
   if (!session) {
+    if (publicRoute === 'privacy-fa') {
+      return <PrivacyPolicyPage locale="fa" />
+    }
+
+    if (publicRoute === 'privacy-en') {
+      return <PrivacyPolicyPage locale="en" />
+    }
+
     return (
       <LoginPage
         phoneNumber={phoneNumber}
@@ -329,6 +357,14 @@ export default function App() {
         onVerifyOtp={handleVerifyOtp}
       />
     )
+  }
+
+  if (publicRoute === 'privacy-fa') {
+    return <PrivacyPolicyPage locale="fa" />
+  }
+
+  if (publicRoute === 'privacy-en') {
+    return <PrivacyPolicyPage locale="en" />
   }
 
   if (accessState === 'pending') {
