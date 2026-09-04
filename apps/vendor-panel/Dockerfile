@@ -16,6 +16,7 @@ RUN npm run build --workspace=vendor-panel
 # Stage 2: Serve
 FROM nginx:alpine
 
+COPY apps/vendor-panel/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/apps/vendor-panel/dist /usr/share/nginx/html
 
 EXPOSE 80
