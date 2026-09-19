@@ -20,11 +20,7 @@ class VendorOrderSummary {
   factory VendorOrderSummary.fromJson(Map<String, dynamic> json) {
     return VendorOrderSummary(
       id: _asInt(json['id']),
-      customerName: _readText(json, const [
-        'customerName',
-        'customer',
-        'recipientName',
-      ]),
+      customerName: _readCustomerName(json),
       status: _readText(json, const ['status'], fallback: 'UNKNOWN'),
       paymentStatus:
           _readText(json, const ['paymentStatus'], fallback: 'UNKNOWN'),
@@ -66,4 +62,20 @@ String _readText(
     if (text.isNotEmpty) return text;
   }
   return fallback;
+}
+
+Map<String, dynamic> _readMap(Object? value) {
+  return value is Map<String, dynamic> ? value : const <String, dynamic>{};
+}
+
+String _readCustomerName(Map<String, dynamic> json) {
+  final directName = _readText(json, const ['customerName', 'recipientName']);
+  if (directName.isNotEmpty) return directName;
+
+  final customer = _readMap(json['customer']);
+  return _readText(
+    customer,
+    const ['fullName', 'name', 'phoneNumber'],
+    fallback: '—',
+  );
 }

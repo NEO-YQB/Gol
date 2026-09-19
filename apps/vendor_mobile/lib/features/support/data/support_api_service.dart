@@ -107,8 +107,8 @@ class SupportApiService {
       }
 
       final payload = jsonDecode(response.body) as Map<String, dynamic>;
-      final customer = (payload['customer'] as Map<String, dynamic>?) ?? const {};
-      final store = (payload['store'] as Map<String, dynamic>?) ?? const {};
+      final customer = _readMap(payload['customer']);
+      final store = _readMap(payload['store']);
       final notes = (payload['timeline'] as List<dynamic>?) ?? const [];
 
       return VendorSupportTicketDetail(
@@ -210,6 +210,10 @@ class SupportApiService {
     if (value is int) return value;
     if (value is num) return value.toInt();
     return int.tryParse('$value') ?? 0;
+  }
+
+  Map<String, dynamic> _readMap(Object? value) {
+    return value is Map<String, dynamic> ? value : const <String, dynamic>{};
   }
 
   DateTime? _asDateTime(Object? value) {

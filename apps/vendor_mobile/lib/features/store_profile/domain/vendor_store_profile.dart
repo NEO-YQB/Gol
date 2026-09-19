@@ -32,7 +32,7 @@ class VendorStoreProfile {
   final List<StoreDeliveryWindow> deliveryWindows;
 
   factory VendorStoreProfile.fromJson(Map<String, dynamic> json) {
-    final countRecord = json['_count'] as Map<String, dynamic>?;
+    final countRecord = _readMap(json['_count']);
 
     return VendorStoreProfile(
       id: _asInt(json['id']),
@@ -48,7 +48,7 @@ class VendorStoreProfile {
       expressDeliveryHours: _asNullableInt(json['expressDeliveryHours']),
       isVerified: json['isVerified'] == true,
       productCount: _asInt(
-        countRecord != null ? countRecord['products'] : json['productsCount'],
+        countRecord.isNotEmpty ? countRecord['products'] : json['productsCount'],
       ),
       deliveryWindows: _readDeliveryWindows(json['deliveryWindows']),
     );
@@ -154,6 +154,10 @@ String _readText(
     if (text.isNotEmpty) return text;
   }
   return fallback;
+}
+
+Map<String, dynamic> _readMap(Object? value) {
+  return value is Map<String, dynamic> ? value : const <String, dynamic>{};
 }
 
 List<StoreDeliveryWindow> _readDeliveryWindows(Object? value) {

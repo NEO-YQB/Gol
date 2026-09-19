@@ -47,11 +47,7 @@ class VendorOrderDetail {
           _readText(json, const ['paymentStatus'], fallback: 'UNKNOWN'),
       settlementStatus:
           _readText(json, const ['settlementStatus'], fallback: 'UNKNOWN'),
-      customerName: _readText(json, const [
-        'customerName',
-        'customer',
-        'recipientName',
-      ], fallback: '—'),
+      customerName: _readCustomerName(json),
       phoneNumber: _readText(
         json,
         const ['customerPhoneNumber', 'recipientPhoneNumber', 'phoneNumber'],
@@ -83,8 +79,7 @@ class VendorOrderDetail {
         const ['shippingAddressText', 'shippingAddress', 'address'],
         fallback: '—',
       ),
-      availableActions:
-          (json['availableActions'] as Map<String, dynamic>?) ?? const {},
+      availableActions: _readMap(json['availableActions']),
       timeline: ((json['timeline'] as List<dynamic>?) ?? const [])
           .whereType<Map<String, dynamic>>()
           .map(VendorOrderTimelineEvent.fromJson)
@@ -220,4 +215,20 @@ String _readText(
     if (text.isNotEmpty) return text;
   }
   return fallback;
+}
+
+Map<String, dynamic> _readMap(Object? value) {
+  return value is Map<String, dynamic> ? value : const <String, dynamic>{};
+}
+
+String _readCustomerName(Map<String, dynamic> json) {
+  final directName = _readText(json, const ['customerName', 'recipientName']);
+  if (directName.isNotEmpty) return directName;
+
+  final customer = _readMap(json['customer']);
+  return _readText(
+    customer,
+    const ['fullName', 'name', 'phoneNumber'],
+    fallback: '—',
+  );
 }

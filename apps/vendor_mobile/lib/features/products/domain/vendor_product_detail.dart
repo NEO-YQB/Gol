@@ -181,14 +181,21 @@ List<VendorProductComposition> _readCompositions(Object? value) {
   return value
       .whereType<Map<String, dynamic>>()
       .map(
-        (item) => VendorProductComposition(
-          elementId: _asInt(item['elementId'] ?? (item['element'] as Map<String, dynamic>?)?['id']),
-          elementName: _readNestedText(item['element'], const ['name']),
-          elementType: _readText(item, const ['elementType']),
-          unit: _readNestedText(item['element'], const ['unit']),
-          quantity: _asNum(item['quantity']),
-        ),
+        (item) {
+          final element = _readMap(item['element']);
+          return VendorProductComposition(
+            elementId: _asInt(item['elementId'] ?? element['id']),
+            elementName: _readText(element, const ['name']),
+            elementType: _readText(item, const ['elementType']),
+            unit: _readText(element, const ['unit']),
+            quantity: _asNum(item['quantity']),
+          );
+        },
       )
       .where((item) => item.elementId > 0)
       .toList();
+}
+
+Map<String, dynamic> _readMap(Object? value) {
+  return value is Map<String, dynamic> ? value : const <String, dynamic>{};
 }

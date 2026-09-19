@@ -106,14 +106,12 @@ class DashboardApiService {
       final policyRecord = jsonDecode(responses[4].body) as Map<String, dynamic>;
       final timelineRecord = jsonDecode(responses[5].body) as Map<String, dynamic>;
 
-      final store = (healthRecord['store'] as Map<String, dynamic>?) ?? const {};
-      final wallet = (walletRecord['wallet'] as Map<String, dynamic>?) ?? const {};
-      final counts = (settlementsRecord['counts'] as Map<String, dynamic>?) ?? const {};
-      final totals = (ticketsRecord['totals'] as Map<String, dynamic>?) ?? const {};
-      final restrictions =
-          (policyRecord['restrictions'] as Map<String, dynamic>?) ?? const {};
-      final explanation =
-          (policyRecord['explanation'] as Map<String, dynamic>?) ?? const {};
+      final store = _readMap(healthRecord['store']);
+      final wallet = _readMap(walletRecord['wallet']);
+      final counts = _readMap(settlementsRecord['counts']);
+      final totals = _readMap(ticketsRecord['totals']);
+      final restrictions = _readMap(policyRecord['restrictions']);
+      final explanation = _readMap(policyRecord['explanation']);
       final timelineItems =
           (timelineRecord['timeline'] as List<dynamic>?) ?? const [];
 
@@ -166,6 +164,10 @@ class DashboardApiService {
   num _asNum(Object? value) {
     if (value is num) return value;
     return num.tryParse('$value') ?? 0;
+  }
+
+  Map<String, dynamic> _readMap(Object? value) {
+    return value is Map<String, dynamic> ? value : const <String, dynamic>{};
   }
 
   DashboardPolicyEvent? _mapPolicyEvent(Object? value) {

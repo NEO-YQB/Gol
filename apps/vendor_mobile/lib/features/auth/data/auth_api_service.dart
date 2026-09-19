@@ -74,7 +74,7 @@ class AuthApiService {
       }
 
       final payload = jsonDecode(response.body) as Map<String, dynamic>;
-      final user = payload['user'] as Map<String, dynamic>? ?? <String, dynamic>{};
+      final user = _readMap(payload['user']);
 
       return AuthSession(
         accessToken: payload['access_token'] as String? ?? '',
@@ -164,5 +164,9 @@ class AuthApiService {
     }
 
     return fallback;
+  }
+
+  Map<String, dynamic> _readMap(Object? value) {
+    return value is Map<String, dynamic> ? value : <String, dynamic>{};
   }
 }

@@ -55,14 +55,11 @@ class WalletApiService {
       final settlementsRecord =
           jsonDecode(responses[1].body) as Map<String, dynamic>;
 
-      final range = (walletRecord['range'] as Map<String, dynamic>?) ?? const {};
-      final wallet = (walletRecord['wallet'] as Map<String, dynamic>?) ?? const {};
-      final activity =
-          (walletRecord['activity'] as Map<String, dynamic>?) ?? const {};
-      final counts =
-          (settlementsRecord['counts'] as Map<String, dynamic>?) ?? const {};
-      final amounts =
-          (settlementsRecord['amounts'] as Map<String, dynamic>?) ?? const {};
+      final range = _readMap(walletRecord['range']);
+      final wallet = _readMap(walletRecord['wallet']);
+      final activity = _readMap(walletRecord['activity']);
+      final counts = _readMap(settlementsRecord['counts']);
+      final amounts = _readMap(settlementsRecord['amounts']);
 
       final transactions =
           (walletRecord['recentTransactions'] as List<dynamic>?) ?? const [];
@@ -217,6 +214,10 @@ class WalletApiService {
   num _asNum(Object? value) {
     if (value is num) return value;
     return num.tryParse('$value') ?? 0;
+  }
+
+  Map<String, dynamic> _readMap(Object? value) {
+    return value is Map<String, dynamic> ? value : const <String, dynamic>{};
   }
 
   DateTime? _asDateTime(Object? value) {

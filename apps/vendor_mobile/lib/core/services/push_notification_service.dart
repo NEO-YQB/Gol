@@ -37,6 +37,7 @@ class PushNavigationIntent {
   }
 }
 
+@pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
@@ -58,6 +59,7 @@ class PushNotificationService {
       StreamController<PushNavigationIntent>.broadcast();
   final PushDeviceApiService _pushDeviceApiService = const PushDeviceApiService();
   bool _initialized = false;
+  Future<void>? _initialization;
 
   Stream<PushNavigationIntent> get navigationStream =>
       _navigationController.stream;
@@ -65,12 +67,23 @@ class PushNotificationService {
   void _consoleLog(String message) {
     developer.log(message, name: 'PushNotificationService');
     debugPrint(message);
-    print(message);
   }
 
   Future<void> initialize() async {
     if (_initialized) return;
 
+    final initialization = _initialization;
+    if (initialization != null) {
+      await initialization;
+      return;
+    }
+
+    final pendingInitialization = _initialize();
+    _initialization = pendingInitialization;
+    await pendingInitialization;
+  }
+
+  Future<void> _initialize() async {
     try {
       _consoleLog('PUSH init start');
       await Firebase.initializeApp(
@@ -97,6 +110,8 @@ class PushNotificationService {
         name: 'PushNotificationService',
         stackTrace: stackTrace,
       );
+    } finally {
+      _initialization = null;
     }
   }
 
@@ -162,6 +177,13 @@ class PushNotificationService {
     required String accessToken,
   }) async {
     try {
+      await initialize();
+
+      if (!_initialized) {
+        _consoleLog('PUSH register device skipped: initialization failed');
+        return;
+      }
+
       final token = await logToken(
         forceRefresh: true,
         reason: 'register-device',
