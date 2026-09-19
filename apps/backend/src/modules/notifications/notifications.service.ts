@@ -251,6 +251,21 @@ export class NotificationsService {
     return dto.channels?.length ? { results: items } : items[0];
   }
 
+  dispatchQueued(
+    notificationId: number,
+    options?: {
+      channel?: NotificationChannel;
+      channels?: NotificationChannel[];
+      forceRetry?: boolean;
+    },
+  ) {
+    return this.dispatchService.simulateDispatch(notificationId, {
+      overrideChannel: options?.channel,
+      overrideChannels: options?.channels,
+      forceRetry: options?.forceRetry,
+    });
+  }
+
   async adminCreatePush(user: AuthenticatedUser, dto: AdminCreatePushNotificationDto) {
     this.assertAdmin(user);
 

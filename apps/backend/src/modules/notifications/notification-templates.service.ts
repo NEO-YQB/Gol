@@ -13,6 +13,13 @@ type TemplateRenderer = (data: TemplateData) => RenderedTemplate;
 export class NotificationTemplatesService {
   private readonly templates = new Map<string, TemplateRenderer>([
     [
+      'vendor.order.created',
+      (data) => ({
+        title: 'سفارش جدید ثبت شد',
+        body: `سفارش #${this.value(data.orderId)} برای فروشگاه شما ثبت شد`,
+      }),
+    ],
+    [
       'review.created',
       (data) => ({
         title: 'نظر شما ثبت شد',

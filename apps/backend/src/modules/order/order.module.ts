@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
 import { DiscountModule } from '../discount/discount.module';
 import { FinanceModule } from '../finance/finance.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { OrderController } from './order.controller';
 import { OrderService } from './order.service';
 
 @Module({
-  imports: [DiscountModule, FinanceModule],
+  imports: [DiscountModule, FinanceModule, NotificationsModule],
   controllers: [OrderController],
   providers: [OrderService],
   exports: [OrderService],

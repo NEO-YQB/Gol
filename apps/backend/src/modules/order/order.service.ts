@@ -2,11 +2,13 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import {
   DomainEventType,
   DeliveryType,
+  NotificationChannel,
   OrderActorType,
   OrderStatus,
   PaymentMethod,
@@ -21,6 +23,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { AbilityFactory } from '../auth/ability.factory';
 import { PricingService } from '../discount/pricing.service';
 import { FinanceService } from '../finance/finance.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CheckoutPreviewDto } from './dto/checkout-preview.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { CreateOrderFromCartDto } from './dto/create-order-from-cart.dto';
@@ -91,12 +94,15 @@ const INTERACTIVE_TX_OPTIONS = {
 
 @Injectable()
 export class OrderService {
+  private readonly logger = new Logger(OrderService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly domainEvents: DomainEventsService,
     private readonly abilityFactory: AbilityFactory,
     private readonly pricingService: PricingService,
     private readonly financeService: FinanceService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async previewFromCart(user: AuthenticatedUser, dto: CheckoutPreviewDto) {
@@ -626,7 +632,7 @@ export class OrderService {
       },
     };
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       if (options.nationalId?.trim()) {
         await tx.user.update({
           where: { id: user.id },
@@ -672,6 +678,27 @@ export class OrderService {
         },
       });
 
+      const vendorNotification = await this.notificationsService.enqueue(tx, {
+        userId: store.ownerId,
+        storeId: order.storeId,
+        orderId: order.id,
+        topic: 'vendor.order.created',
+        templateKey: 'vendor.order.created',
+        templateData: {
+          orderId: order.id,
+          storeName: store.name,
+          totalAmount: Number(order.totalAmount),
+          itemCount: normalizedItems.length,
+        },
+        payload: {
+          orderId: order.id,
+          storeId: order.storeId,
+          type: 'vendor.order.created',
+        },
+        channels: [NotificationChannel.IN_APP, NotificationChannel.PUSH],
+        dedupeKey: `vendor.order.created:${order.id}`,
+      });
+
       for (const item of normalizedItems) {
         await tx.product.update({
           where: { id: item.productId },
@@ -689,8 +716,29 @@ export class OrderService {
         });
       }
 
-      return order;
+      return {
+        order,
+        vendorNotificationId: vendorNotification.id,
+      };
     }, INTERACTIVE_TX_OPTIONS);
+
+    await this.dispatchVendorOrderCreatedPush(result.vendorNotificationId);
+
+    return result.order;
+  }
+
+  private async dispatchVendorOrderCreatedPush(notificationId: number) {
+    try {
+      await this.notificationsService.dispatchQueued(notificationId, {
+        channels: [NotificationChannel.PUSH],
+        forceRetry: true,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `Failed to dispatch vendor order notification=${notificationId}: ${message}`,
+      );
+    }
   }
 
   private async cancelWithInventoryRestore(
