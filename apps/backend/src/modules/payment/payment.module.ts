@@ -8,8 +8,10 @@ import { ZarinpalPaymentGatewayAdapter } from './adapters/zarinpal-payment-gatew
 import { PaymentGatewayRegistryService } from './payment-gateway-registry.service';
 import { PaymentCallbackController } from './payment-callback.controller';
 import { PaymentExpirySweeperService } from './payment-expiry-sweeper.service';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
+  imports: [NotificationsModule],
   controllers: [PaymentController, PaymentGatewayController, PaymentCallbackController],
   providers: [
     PaymentService,

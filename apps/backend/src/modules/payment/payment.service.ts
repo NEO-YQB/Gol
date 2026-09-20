@@ -3,14 +3,16 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import type { Response } from 'express';
-import { DomainEventType, OrderActorType, OrderStatus, PaymentMethod, PaymentReviewStatus, PaymentStatus, Prisma } from '@prisma/client';
+import { DomainEventType, NotificationChannel, OrderActorType, OrderStatus, PaymentMethod, PaymentReviewStatus, PaymentStatus, Prisma } from '@prisma/client';
 import { subject } from '@casl/ability';
 import { DomainEventsService } from '../../common/services/domain-events.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AbilityFactory } from '../auth/ability.factory';
+import { NotificationsService } from '../notifications/notifications.service';
 import { AdminManualRefundDto } from './dto/admin-manual-refund.dto';
 import { AdminListPaymentsQueryDto } from './dto/admin-list-payments-query.dto';
 import { AdminUpdatePaymentReviewDto } from './dto/admin-update-payment-review.dto';
@@ -26,12 +28,15 @@ type AuthenticatedUser = {
 
 @Injectable()
 export class PaymentService {
+  private readonly logger = new Logger(PaymentService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly domainEvents: DomainEventsService,
     private readonly abilityFactory: AbilityFactory,
     private readonly paymentGatewayService: PaymentGatewayService,
     private readonly paymentGatewayRegistry: PaymentGatewayRegistryService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async initiate(user: AuthenticatedUser, dto: InitiatePaymentDto) {
@@ -253,8 +258,8 @@ export class PaymentService {
       adapterResponse: verificationResult.rawData ?? null,
     });
 
-    await this.prisma.$transaction([
-      this.prisma.payment.update({
+    const vendorNotificationId = await this.prisma.$transaction(async (tx) => {
+      await tx.payment.update({
         where: { id: payment.id },
         data: {
           status: nextOrderPaymentStatus,
@@ -263,29 +268,30 @@ export class PaymentService {
           verifiedAt,
           rawVerifyData,
         },
-      }),
-      this.prisma.order.update({
+      });
+
+      await tx.order.update({
         where: { id: payment.orderId },
         data: {
           paymentStatus: nextOrderPaymentStatus,
           status: nextOrderStatus,
         },
-      }),
-      ...(verificationResult.success && payment.order.status === OrderStatus.PENDING
-        ? [
-            this.prisma.orderStatusHistory.create({
-              data: {
-                orderId: payment.orderId,
-                fromStatus: payment.order.status,
-                toStatus: OrderStatus.PAID,
-                actorType: this.isAdmin(user) ? OrderActorType.ADMIN : OrderActorType.CUSTOMER,
-                actorUserId: user.id,
-                note: `پرداخت آنلاین با gateway ${gatewayConfig.displayName} با موفقیت تایید شد`,
-              },
-            }),
-          ]
-        : []),
-      this.prisma.domainEvent.create({
+      });
+
+      if (verificationResult.success && payment.order.status === OrderStatus.PENDING) {
+        await tx.orderStatusHistory.create({
+          data: {
+            orderId: payment.orderId,
+            fromStatus: payment.order.status,
+            toStatus: OrderStatus.PAID,
+            actorType: this.isAdmin(user) ? OrderActorType.ADMIN : OrderActorType.CUSTOMER,
+            actorUserId: user.id,
+            note: `پرداخت آنلاین با gateway ${gatewayConfig.displayName} با موفقیت تایید شد`,
+          },
+        });
+      }
+
+      await tx.domainEvent.create({
         data: {
           eventType: verificationResult.success
             ? DomainEventType.PAYMENT_SUCCEEDED
@@ -307,8 +313,20 @@ export class PaymentService {
             failureReason: verificationResult.failureReason ?? null,
           }),
         },
-      }),
-    ]);
+      });
+
+      if (!this.shouldNotifyVendorOrderAfterPayment(payment, verificationResult.success)) {
+        return null;
+      }
+
+      return this.enqueueVendorOrderCreatedNotification(tx, payment).then(
+        (notification) => notification?.id ?? null,
+      );
+    });
+
+    if (vendorNotificationId != null) {
+      await this.dispatchVendorOrderCreatedPush(vendorNotificationId);
+    }
 
     const updatedPayment = await this.getPaymentOrThrow(payment.id);
 
@@ -689,8 +707,8 @@ export class PaymentService {
             : refreshedPayment.order.status
           : OrderStatus.PENDING;
 
-        await this.prisma.$transaction([
-          this.prisma.payment.update({
+        const vendorNotificationId = await this.prisma.$transaction(async (tx) => {
+          await tx.payment.update({
             where: { id: refreshedPayment.id },
             data: {
               status: nextOrderPaymentStatus,
@@ -705,29 +723,30 @@ export class PaymentService {
                 verification: verificationResult.rawData ?? null,
               }),
             },
-          }),
-          this.prisma.order.update({
+          });
+
+          await tx.order.update({
             where: { id: refreshedPayment.orderId },
             data: {
               paymentStatus: nextOrderPaymentStatus,
               status: nextOrderStatus,
             },
-          }),
-          ...(verificationResult.success && refreshedPayment.order.status === OrderStatus.PENDING
-            ? [
-                this.prisma.orderStatusHistory.create({
-                  data: {
-                    orderId: refreshedPayment.orderId,
-                    fromStatus: refreshedPayment.order.status,
-                    toStatus: OrderStatus.PAID,
-                    actorType: OrderActorType.CUSTOMER,
-                    actorUserId: refreshedPayment.userId,
-                    note: `پرداخت آنلاین با ${gatewayConfig.displayName} تایید شد`,
-                  },
-                }),
-              ]
-            : []),
-          this.prisma.domainEvent.create({
+          });
+
+          if (verificationResult.success && refreshedPayment.order.status === OrderStatus.PENDING) {
+            await tx.orderStatusHistory.create({
+              data: {
+                orderId: refreshedPayment.orderId,
+                fromStatus: refreshedPayment.order.status,
+                toStatus: OrderStatus.PAID,
+                actorType: OrderActorType.CUSTOMER,
+                actorUserId: refreshedPayment.userId,
+                note: `پرداخت آنلاین با ${gatewayConfig.displayName} تایید شد`,
+              },
+            });
+          }
+
+          await tx.domainEvent.create({
             data: {
               eventType: verificationResult.success
                 ? DomainEventType.PAYMENT_SUCCEEDED
@@ -746,8 +765,20 @@ export class PaymentService {
                 failureReason: verificationResult.failureReason ?? null,
               }),
             },
-          }),
-        ]);
+          });
+
+          if (!this.shouldNotifyVendorOrderAfterPayment(refreshedPayment, verificationResult.success)) {
+            return null;
+          }
+
+          return this.enqueueVendorOrderCreatedNotification(tx, refreshedPayment).then(
+            (notification) => notification?.id ?? null,
+          );
+        });
+
+        if (vendorNotificationId != null) {
+          await this.dispatchVendorOrderCreatedPush(vendorNotificationId);
+        }
 
         if (response && gatewayConfig.returnUrl) {
           const target = this.buildPaymentReturnUrl(gatewayConfig.returnUrl);
@@ -821,6 +852,65 @@ export class PaymentService {
       return target;
     } catch {
       return fallback;
+    }
+  }
+
+  private async enqueueVendorOrderCreatedNotification(
+    tx: Prisma.TransactionClient,
+    payment: Awaited<ReturnType<PaymentService['getPaymentOrThrow']>>,
+  ) {
+    const ownerId = payment.order.store?.ownerId;
+    if (ownerId == null) {
+      return null;
+    }
+
+    return this.notificationsService.enqueue(tx, {
+      userId: ownerId,
+      storeId: payment.order.storeId,
+      orderId: payment.orderId,
+      topic: 'vendor.order.created',
+      templateKey: 'vendor.order.created',
+      templateData: {
+        orderId: payment.orderId,
+        storeName: payment.order.storeName,
+        totalAmount: Number(payment.order.totalAmount),
+      },
+      payload: {
+        orderId: payment.orderId,
+        storeId: payment.order.storeId,
+        type: 'vendor.order.created',
+      },
+      channels: [NotificationChannel.IN_APP, NotificationChannel.PUSH],
+      dedupeKey: `vendor.order.created:${payment.orderId}`,
+    });
+  }
+
+  private shouldNotifyVendorOrderAfterPayment(
+    payment: Awaited<ReturnType<PaymentService['getPaymentOrThrow']>>,
+    paymentSucceeded: boolean,
+  ) {
+    if (!paymentSucceeded || payment.order.paymentMethod !== PaymentMethod.ONLINE) {
+      return false;
+    }
+
+    return ![
+      PaymentStatus.PAID,
+      PaymentStatus.REFUNDED,
+      PaymentStatus.PARTIALLY_REFUNDED,
+    ].includes(payment.order.paymentStatus);
+  }
+
+  private async dispatchVendorOrderCreatedPush(notificationId: number) {
+    try {
+      await this.notificationsService.dispatchQueued(notificationId, {
+        channels: [NotificationChannel.PUSH],
+        forceRetry: true,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `Failed to dispatch vendor order notification=${notificationId}: ${message}`,
+      );
     }
   }
 

@@ -226,6 +226,7 @@ export class OrderService {
         store: {
           ownerId: user.id,
         },
+        ...this.vendorVisiblePaymentWhere(),
         ...(store?.isActive === false
           ? { status: { in: currentOrderStatuses } }
           : {}),
@@ -240,6 +241,7 @@ export class OrderService {
         store: {
           ownerId: user.id,
         },
+        ...this.vendorVisiblePaymentWhere(),
         ...(store?.isActive === false
           ? { status: { in: currentOrderStatuses } }
           : {}),
@@ -678,26 +680,17 @@ export class OrderService {
         },
       });
 
-      const vendorNotification = await this.notificationsService.enqueue(tx, {
-        userId: store.ownerId,
-        storeId: order.storeId,
-        orderId: order.id,
-        topic: 'vendor.order.created',
-        templateKey: 'vendor.order.created',
-        templateData: {
-          orderId: order.id,
-          storeName: store.name,
-          totalAmount: Number(order.totalAmount),
-          itemCount: normalizedItems.length,
-        },
-        payload: {
-          orderId: order.id,
-          storeId: order.storeId,
-          type: 'vendor.order.created',
-        },
-        channels: [NotificationChannel.IN_APP, NotificationChannel.PUSH],
-        dedupeKey: `vendor.order.created:${order.id}`,
-      });
+      const vendorNotification =
+        order.paymentMethod === PaymentMethod.COD
+          ? await this.enqueueVendorOrderCreatedNotification(tx, {
+              id: order.id,
+              storeId: order.storeId,
+              storeName: store.name,
+              ownerId: store.ownerId,
+              totalAmount: Number(order.totalAmount),
+              itemCount: normalizedItems.length,
+            })
+          : null;
 
       for (const item of normalizedItems) {
         await tx.product.update({
@@ -718,13 +711,48 @@ export class OrderService {
 
       return {
         order,
-        vendorNotificationId: vendorNotification.id,
+        vendorNotificationId: vendorNotification?.id ?? null,
       };
     }, INTERACTIVE_TX_OPTIONS);
 
-    await this.dispatchVendorOrderCreatedPush(result.vendorNotificationId);
+    if (result.vendorNotificationId != null) {
+      await this.dispatchVendorOrderCreatedPush(result.vendorNotificationId);
+    }
 
     return result.order;
+  }
+
+  private async enqueueVendorOrderCreatedNotification(
+    tx: Prisma.TransactionClient,
+    order: {
+      id: number;
+      storeId: number | null;
+      storeName: string;
+      ownerId: number;
+      totalAmount: number;
+      itemCount: number;
+    },
+  ) {
+    return this.notificationsService.enqueue(tx, {
+      userId: order.ownerId,
+      storeId: order.storeId,
+      orderId: order.id,
+      topic: 'vendor.order.created',
+      templateKey: 'vendor.order.created',
+      templateData: {
+        orderId: order.id,
+        storeName: order.storeName,
+        totalAmount: order.totalAmount,
+        itemCount: order.itemCount,
+      },
+      payload: {
+        orderId: order.id,
+        storeId: order.storeId,
+        type: 'vendor.order.created',
+      },
+      channels: [NotificationChannel.IN_APP, NotificationChannel.PUSH],
+      dedupeKey: `vendor.order.created:${order.id}`,
+    });
   }
 
   private async dispatchVendorOrderCreatedPush(notificationId: number) {
@@ -1161,6 +1189,58 @@ export class OrderService {
     }
   }
 
+  private assertVendorCanSeePaymentState(
+    user: AuthenticatedUser,
+    order: {
+      paymentMethod: PaymentMethod;
+      paymentStatus: PaymentStatus;
+      store: { ownerId: number } | null;
+    },
+  ) {
+    if (
+      this.isVendor(user) &&
+      !this.isAdmin(user) &&
+      order.store?.ownerId === user.id &&
+      !this.isVendorVisiblePaymentState(order)
+    ) {
+      throw new ForbiddenException(
+        'سفارش آنلاین قبل از پرداخت موفق برای فروشنده قابل مشاهده نیست',
+      );
+    }
+  }
+
+  private isVendorVisiblePaymentState(order: {
+    paymentMethod: PaymentMethod;
+    paymentStatus: PaymentStatus;
+  }) {
+    if (order.paymentMethod !== PaymentMethod.ONLINE) {
+      return true;
+    }
+
+    return [
+      PaymentStatus.PAID,
+      PaymentStatus.REFUNDED,
+      PaymentStatus.PARTIALLY_REFUNDED,
+    ].includes(order.paymentStatus);
+  }
+
+  private vendorVisiblePaymentWhere(): Prisma.OrderWhereInput {
+    return {
+      OR: [
+        { paymentMethod: { not: PaymentMethod.ONLINE } },
+        {
+          paymentStatus: {
+            in: [
+              PaymentStatus.PAID,
+              PaymentStatus.REFUNDED,
+              PaymentStatus.PARTIALLY_REFUNDED,
+            ],
+          },
+        },
+      ],
+    };
+  }
+
   private getOrderInclude() {
     return {
       payment: true,
@@ -1456,6 +1536,7 @@ export class OrderService {
     }
 
     if (this.isVendor(user) && order.store?.ownerId === user.id) {
+      this.assertVendorCanSeePaymentState(user, order);
       return;
     }
 
@@ -1471,6 +1552,7 @@ export class OrderService {
     }
 
     if (this.isVendor(user) && order.store?.ownerId === user.id) {
+      this.assertVendorCanSeePaymentState(user, order);
       return;
     }
 
