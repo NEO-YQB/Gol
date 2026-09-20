@@ -893,11 +893,13 @@ export class PaymentService {
       return false;
     }
 
-    return ![
+    const alreadyVisiblePaymentStatuses: PaymentStatus[] = [
       PaymentStatus.PAID,
       PaymentStatus.REFUNDED,
       PaymentStatus.PARTIALLY_REFUNDED,
-    ].includes(payment.order.paymentStatus);
+    ];
+
+    return !alreadyVisiblePaymentStatuses.includes(payment.order.paymentStatus);
   }
 
   private async dispatchVendorOrderCreatedPush(notificationId: number) {

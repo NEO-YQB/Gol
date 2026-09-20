@@ -1217,11 +1217,13 @@ export class OrderService {
       return true;
     }
 
-    return [
+    const visiblePaymentStatuses: PaymentStatus[] = [
       PaymentStatus.PAID,
       PaymentStatus.REFUNDED,
       PaymentStatus.PARTIALLY_REFUNDED,
-    ].includes(order.paymentStatus);
+    ];
+
+    return visiblePaymentStatuses.includes(order.paymentStatus);
   }
 
   private vendorVisiblePaymentWhere(): Prisma.OrderWhereInput {
