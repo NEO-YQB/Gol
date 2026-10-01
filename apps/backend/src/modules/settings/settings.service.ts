@@ -581,7 +581,12 @@ export class SettingsService {
   }
 
   private cleanLicenseHtml(value: unknown, fallback = '') {
-    return this.cleanRichHtml(value, fallback).slice(0, 12000);
+    if (typeof value !== 'string') return fallback;
+    return value
+      .replace(/\son[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+      .replace(/\sjavascript:/gi, '')
+      .trim()
+      .slice(0, 12000);
   }
 
   private cleanMapEmbedHtml(value: unknown, fallback = '') {

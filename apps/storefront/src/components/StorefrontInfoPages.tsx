@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect, useRef } from 'react'
 import { resolveAssetUrl, type EnrichedStorefrontPage, type StorefrontInfoPagesSettings } from '../lib/storefront'
 import { getStorefrontSocialOption, isStorefrontSocialIconKey, type StorefrontSocialIconKey } from './storefrontSocialIcons'
 
@@ -127,6 +128,33 @@ function RichSection({ title, html, tone = 'light' }: { title?: string; html?: s
   )
 }
 
+function LicenseBadgeEmbed({ html }: { html: string }) {
+  const containerRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    container.innerHTML = html
+    const scripts = Array.from(container.querySelectorAll('script'))
+
+    for (const script of scripts) {
+      const executableScript = document.createElement('script')
+      for (const attribute of Array.from(script.attributes)) {
+        executableScript.setAttribute(attribute.name, attribute.value)
+      }
+      executableScript.text = script.textContent || ''
+      script.replaceWith(executableScript)
+    }
+
+    return () => {
+      container.innerHTML = ''
+    }
+  }, [html])
+
+  return <div className="license-badge-card__logo" ref={containerRef} />
+}
+
 export function StorefrontAboutPage({ settings }: { settings: StorefrontInfoPagesSettings['about'] }) {
   return (
     <div className="info-page">
@@ -168,7 +196,7 @@ export function StorefrontTermsPage({ settings }: { settings: StorefrontInfoPage
 
 export function StorefrontLicensePage({ settings }: { settings: StorefrontInfoPagesSettings['license'] }) {
   const badges = [...(settings.badges || [])]
-    .filter((badge) => badge.enabled !== false && hasHtml(badge.codeHtml))
+    .filter((badge) => badge.enabled !== false && badge.codeHtml?.trim())
     .sort((first, second) => first.sortOrder - second.sortOrder)
 
   return (
@@ -193,7 +221,7 @@ export function StorefrontLicensePage({ settings }: { settings: StorefrontInfoPa
           <div className="license-badges-grid">
             {badges.map((badge) => (
               <article className="license-badge-card" key={badge.id}>
-                <div className="license-badge-card__logo" dangerouslySetInnerHTML={{ __html: badge.codeHtml }} />
+                <LicenseBadgeEmbed html={badge.codeHtml} />
                 <div>
                   {badge.title ? <h3>{badge.title}</h3> : null}
                   {badge.description ? <p>{badge.description}</p> : null}
