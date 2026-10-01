@@ -16,4 +16,9 @@ export class UpdateStorefrontInfoPagesSettingsDto {
   @IsOptional()
   @IsObject()
   terms?: Record<string, unknown>;
+
+  @ApiPropertyOptional({ type: Object })
+  @IsOptional()
+  @IsObject()
+  license?: Record<string, unknown>;
 }

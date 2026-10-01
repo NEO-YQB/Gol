@@ -81,6 +81,25 @@ export type StorefrontInfoPagesSettingsResponse = {
     bodyHtml: string
     updatedAtLabel: string
   }
+  license: {
+    enabled: boolean
+    heroTitle: string
+    heroSubtitle: string
+    desktopHeroImageUrl: string
+    mobileHeroImageUrl: string
+    introTitle: string
+    introHtml: string
+    trustTitle: string
+    trustHtml: string
+    badges: Array<{
+      id: string
+      title: string
+      description: string
+      codeHtml: string
+      enabled: boolean
+      sortOrder: number
+    }>
+  }
 }
 
 export type SeoSettingsResponse = {

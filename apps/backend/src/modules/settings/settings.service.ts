@@ -8,6 +8,15 @@ const STOREFRONT_INFO_PAGES_SETTING_KEY = 'storefront_info_pages_config';
 const SEO_SETTINGS_KEY = 'seo_settings_config';
 const FAVICON_SETTINGS_KEY = 'favicon_settings_config';
 
+type LicenseBadgeSettings = {
+  id: string;
+  title: string;
+  description: string;
+  codeHtml: string;
+  enabled: boolean;
+  sortOrder: number;
+};
+
 type AuthenticatedUser = {
   id: number;
   roles: string[];
@@ -79,6 +88,18 @@ type StorefrontInfoPagesSettings = {
     bodyHtml: string;
     updatedAtLabel: string;
   };
+  license: {
+    enabled: boolean;
+    heroTitle: string;
+    heroSubtitle: string;
+    desktopHeroImageUrl: string;
+    mobileHeroImageUrl: string;
+    introTitle: string;
+    introHtml: string;
+    trustTitle: string;
+    trustHtml: string;
+    badges: LicenseBadgeSettings[];
+  };
 };
 
 type FaviconSettings = {
@@ -148,6 +169,18 @@ const DEFAULT_INFO_PAGES_SETTINGS: StorefrontInfoPagesSettings = {
     mobileHeroImageUrl: '',
     bodyHtml: '',
     updatedAtLabel: '',
+  },
+  license: {
+    enabled: true,
+    heroTitle: 'مجوزها و نمادهای اعتماد گلینو',
+    heroSubtitle: 'اطلاعات اعتبار، نمادهای قانونی و کدهای تأیید رسمی گلینو را در این صفحه ببینید.',
+    desktopHeroImageUrl: '',
+    mobileHeroImageUrl: '',
+    introTitle: 'اعتماد شفاف، خرید مطمئن',
+    introHtml: '<p>گلینو برای تجربه خرید امن گل و هدیه، اطلاعات مجوزها، نمادهای اعتماد و کدهای اعتبارسنجی خود را در یک صفحه شفاف منتشر می‌کند. هر نماد مستقیماً از کد رسمی همان مرجع نمایش داده می‌شود تا کاربران بتوانند اعتبار آن را بررسی کنند.</p>',
+    trustTitle: 'معماری قابل اتکا برای فروشگاه‌ها و مشتریان',
+    trustHtml: '<p>در معماری گلینو، مدیریت محتوا، سفارش، پرداخت، فروشندگان و storefront به‌صورت ماژولار طراحی شده‌اند. کدهای مجوز از پنل ادمین ثبت می‌شوند، در دیتابیس ذخیره می‌گردند و در storefront بدون نیاز به تغییر کد منتشر می‌شوند.</p>',
+    badges: [],
   },
 };
 
@@ -323,12 +356,12 @@ export class SettingsService {
       where: { key: STOREFRONT_INFO_PAGES_SETTING_KEY },
       update: {
         value: nextValue as unknown as Prisma.JsonObject,
-        description: 'Storefront about/contact/terms content and media settings',
+        description: 'Storefront about/contact/terms/license content and media settings',
       },
       create: {
         key: STOREFRONT_INFO_PAGES_SETTING_KEY,
         value: nextValue as unknown as Prisma.JsonObject,
-        description: 'Storefront about/contact/terms content and media settings',
+        description: 'Storefront about/contact/terms/license content and media settings',
       },
     });
 
@@ -443,6 +476,7 @@ export class SettingsService {
     const about = this.toRecord(input.about);
     const contact = this.toRecord(input.contact);
     const terms = this.toRecord(input.terms);
+    const license = this.toRecord(input.license);
 
     return {
       about: {
@@ -480,7 +514,41 @@ export class SettingsService {
         bodyHtml: this.cleanRichHtml(terms.bodyHtml, fallback.terms.bodyHtml),
         updatedAtLabel: this.cleanPlainText(terms.updatedAtLabel, fallback.terms.updatedAtLabel),
       },
+      license: {
+        enabled: this.readBoolean(license.enabled, fallback.license.enabled),
+        heroTitle: this.cleanPlainText(license.heroTitle, fallback.license.heroTitle),
+        heroSubtitle: this.cleanPlainText(license.heroSubtitle, fallback.license.heroSubtitle),
+        desktopHeroImageUrl: this.cleanPlainText(license.desktopHeroImageUrl, fallback.license.desktopHeroImageUrl),
+        mobileHeroImageUrl: this.cleanPlainText(license.mobileHeroImageUrl, fallback.license.mobileHeroImageUrl),
+        introTitle: this.cleanPlainText(license.introTitle, fallback.license.introTitle),
+        introHtml: this.cleanRichHtml(license.introHtml, fallback.license.introHtml),
+        trustTitle: this.cleanPlainText(license.trustTitle, fallback.license.trustTitle),
+        trustHtml: this.cleanRichHtml(license.trustHtml, fallback.license.trustHtml),
+        badges: this.normalizeLicenseBadges(license.badges, fallback.license.badges),
+      },
     };
+  }
+
+  private normalizeLicenseBadges(value: unknown, fallback: LicenseBadgeSettings[]): LicenseBadgeSettings[] {
+    const source = Array.isArray(value) ? value : fallback;
+
+    return source
+      .map((item, index) => {
+        const record = this.toRecord(item);
+        const id = this.cleanPlainText(record.id, '') || `license-${index + 1}`;
+
+        return {
+          id: id.slice(0, 80),
+          title: this.cleanPlainText(record.title, ''),
+          description: this.cleanPlainText(record.description, ''),
+          codeHtml: this.cleanLicenseHtml(record.codeHtml, ''),
+          enabled: this.readBoolean(record.enabled, true),
+          sortOrder: this.readInteger(record.sortOrder, index),
+        };
+      })
+      .filter((item) => item.title || item.codeHtml)
+      .sort((first, second) => first.sortOrder - second.sortOrder)
+      .slice(0, 24);
   }
 
   private toRecord(value: unknown): Record<string, unknown> {
@@ -489,6 +557,12 @@ export class SettingsService {
 
   private readBoolean(value: unknown, fallback: boolean) {
     return typeof value === 'boolean' ? value : fallback;
+  }
+
+  private readInteger(value: unknown, fallback: number) {
+    if (typeof value === 'number' && Number.isFinite(value)) return Math.trunc(value);
+    if (typeof value === 'string' && value.trim() && Number.isFinite(Number(value))) return Math.trunc(Number(value));
+    return fallback;
   }
 
   private cleanPlainText(value: unknown, fallback = '') {
@@ -500,10 +574,14 @@ export class SettingsService {
     if (typeof value !== 'string') return fallback;
     return value
       .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
-      .replace(/\son[a-z]+\s*=\s*(['"]).*?\1/gi, '')
+      .replace(/\son[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
       .replace(/\sjavascript:/gi, '')
       .trim()
       .slice(0, 60000);
+  }
+
+  private cleanLicenseHtml(value: unknown, fallback = '') {
+    return this.cleanRichHtml(value, fallback).slice(0, 12000);
   }
 
   private cleanMapEmbedHtml(value: unknown, fallback = '') {

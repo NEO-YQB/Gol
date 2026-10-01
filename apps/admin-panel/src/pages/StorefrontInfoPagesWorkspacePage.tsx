@@ -47,13 +47,28 @@ const DEFAULT_FORM: StorefrontInfoPagesSettingsResponse = {
     bodyHtml: '',
     updatedAtLabel: '',
   },
+  license: {
+    enabled: true,
+    heroTitle: 'مجوزها و نمادهای اعتماد گلینو',
+    heroSubtitle: 'اطلاعات اعتبار، نمادهای قانونی و کدهای تأیید رسمی گلینو را در این صفحه ببینید.',
+    desktopHeroImageUrl: '',
+    mobileHeroImageUrl: '',
+    introTitle: 'اعتماد شفاف، خرید مطمئن',
+    introHtml: '<p>گلینو برای تجربه خرید امن گل و هدیه، اطلاعات مجوزها، نمادهای اعتماد و کدهای اعتبارسنجی خود را در یک صفحه شفاف منتشر می‌کند.</p>',
+    trustTitle: 'معماری قابل اتکا برای فروشگاه‌ها و مشتریان',
+    trustHtml: '<p>کدهای مجوز از پنل ادمین ثبت می‌شوند، در دیتابیس ذخیره می‌گردند و در storefront بدون نیاز به تغییر کد منتشر می‌شوند.</p>',
+    badges: [],
+  },
 }
 
 const pageLabels: Record<PageKey, string> = {
   about: 'درباره ما',
   contact: 'تماس با ما',
   terms: 'قوانین',
+  license: 'مجوزها',
 }
+
+type LicenseBadge = StorefrontInfoPagesSettingsResponse['license']['badges'][number]
 
 function setNestedValue(
   current: StorefrontInfoPagesSettingsResponse,
@@ -68,6 +83,17 @@ function setNestedValue(
       [field]: value,
     },
   } as StorefrontInfoPagesSettingsResponse
+}
+
+function createLicenseBadge(sortOrder: number): LicenseBadge {
+  return {
+    id: `license-${Date.now()}-${sortOrder}`,
+    title: '',
+    description: '',
+    codeHtml: '',
+    enabled: true,
+    sortOrder,
+  }
 }
 
 function RichTextEditor({
@@ -170,6 +196,38 @@ export function StorefrontInfoPagesWorkspacePage({ session, onBack }: Props) {
     setForm((current) => setNestedValue(current, path, value))
   }
 
+  function addLicenseBadge() {
+    setForm((current) => ({
+      ...current,
+      license: {
+        ...current.license,
+        badges: [...current.license.badges, createLicenseBadge(current.license.badges.length)],
+      },
+    }))
+  }
+
+  function removeLicenseBadge(id: string) {
+    setForm((current) => ({
+      ...current,
+      license: {
+        ...current.license,
+        badges: current.license.badges.filter((badge) => badge.id !== id),
+      },
+    }))
+  }
+
+  function updateLicenseBadge(id: string, field: keyof LicenseBadge, value: string | boolean | number) {
+    setForm((current) => ({
+      ...current,
+      license: {
+        ...current.license,
+        badges: current.license.badges.map((badge) => (
+          badge.id === id ? { ...badge, [field]: value } : badge
+        )),
+      },
+    }))
+  }
+
   function openImagePicker(path: string) {
     setUploadingTarget(path)
     fileInputRef.current?.click()
@@ -216,7 +274,7 @@ export function StorefrontInfoPagesWorkspacePage({ session, onBack }: Props) {
       <SectionCard
         eyebrow="site pages"
         title="تنظیمات صفحات اطلاعاتی سایت"
-        description="متن، تصویر هدر و اطلاعات تماس صفحه‌های درباره ما، تماس با ما و قوانین را از این workspace مدیریت کن."
+        description="متن، تصویر هدر، اطلاعات تماس، قوانین و مجوزهای storefront را از این workspace مدیریت کن."
         actions={<button className="fm-button fm-button--secondary" onClick={onBack} type="button">بازگشت</button>}
       >
         <div className="flex flex-wrap gap-2">
@@ -304,6 +362,57 @@ export function StorefrontInfoPagesWorkspacePage({ session, onBack }: Props) {
               <input onChange={(event) => updateField('terms.updatedAtLabel', event.target.value)} placeholder="مثلاً: آخرین به‌روزرسانی: خرداد ۱۴۰۵" value={form.terms.updatedAtLabel} />
             </label>
             <RichTextEditor helper="متن کامل قوانین و مقررات" label="متن قوانین" onChange={(value) => updateField('terms.bodyHtml', value)} rows={14} value={form.terms.bodyHtml} />
+          </div>
+        ) : null}
+
+        {activePage === 'license' ? (
+          <div className="site-settings-stack">
+            <label className="fm-field">
+              <span>عنوان متن معرفی</span>
+              <input onChange={(event) => updateField('license.introTitle', event.target.value)} value={form.license.introTitle} />
+            </label>
+            <RichTextEditor helper="متن بالای صفحه مجوزها" label="متن معرفی صفحه مجوزها" onChange={(value) => updateField('license.introHtml', value)} value={form.license.introHtml} />
+            <label className="fm-field">
+              <span>عنوان بخش اعتماد</span>
+              <input onChange={(event) => updateField('license.trustTitle', event.target.value)} value={form.license.trustTitle} />
+            </label>
+            <RichTextEditor helper="توضیح معماری، شفافیت و روند اعتبارسنجی" label="متن بخش اعتماد" onChange={(value) => updateField('license.trustHtml', value)} value={form.license.trustHtml} />
+
+            <div className="license-badges-admin">
+              <div className="license-badges-admin__header">
+                <div>
+                  <strong>کدهای نماد و مجوز</strong>
+                  <span>کد HTML هر مرجع مثل اینماد را اینجا وارد کن تا در صفحه /license نمایش داده شود.</span>
+                </div>
+                <button className="fm-button fm-button--secondary" onClick={addLicenseBadge} type="button">افزودن مجوز</button>
+              </div>
+              {form.license.badges.length ? form.license.badges.map((badge, index) => (
+                <div className="license-badge-admin-card" key={badge.id}>
+                  <div className="fm-grid page-builder-form-grid">
+                    <label className="fm-field page-builder-checkbox">
+                      <input checked={badge.enabled} onChange={(event) => updateLicenseBadge(badge.id, 'enabled', event.target.checked)} type="checkbox" />
+                      <span>نمایش این مجوز فعال باشد</span>
+                    </label>
+                    <label className="fm-field">
+                      <span>عنوان مجوز</span>
+                      <input onChange={(event) => updateLicenseBadge(badge.id, 'title', event.target.value)} placeholder="مثلاً نماد اعتماد الکترونیکی" value={badge.title} />
+                    </label>
+                    <label className="fm-field">
+                      <span>ترتیب نمایش</span>
+                      <input onChange={(event) => updateLicenseBadge(badge.id, 'sortOrder', Number(event.target.value))} type="number" value={badge.sortOrder} />
+                    </label>
+                    <label className="fm-field page-builder-field--wide">
+                      <span>توضیح کوتاه</span>
+                      <input onChange={(event) => updateLicenseBadge(badge.id, 'description', event.target.value)} placeholder="توضیحی که کنار نماد نمایش داده می‌شود" value={badge.description} />
+                    </label>
+                  </div>
+                  <RichTextEditor helper="کد رسمی HTML نماد. اسکریپت‌ها و event handlerهای ناامن در بک‌اند حذف می‌شوند." label={`کد HTML مجوز ${index + 1}`} onChange={(value) => updateLicenseBadge(badge.id, 'codeHtml', value)} rows={6} value={badge.codeHtml} />
+                  <div className="license-badge-admin-card__actions">
+                    <button className="content-secondary-action" onClick={() => removeLicenseBadge(badge.id)} type="button">حذف این مجوز</button>
+                  </div>
+                </div>
+              )) : <p className="text-sm text-[#8a7e72]">هنوز کدی ثبت نشده است. با «افزودن مجوز» شروع کن.</p>}
+            </div>
           </div>
         ) : null}
 

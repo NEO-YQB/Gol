@@ -166,6 +166,49 @@ export function StorefrontTermsPage({ settings }: { settings: StorefrontInfoPage
   )
 }
 
+export function StorefrontLicensePage({ settings }: { settings: StorefrontInfoPagesSettings['license'] }) {
+  const badges = [...(settings.badges || [])]
+    .filter((badge) => badge.enabled !== false && hasHtml(badge.codeHtml))
+    .sort((first, second) => first.sortOrder - second.sortOrder)
+
+  return (
+    <div className="info-page license-page">
+      <InfoHero
+        desktopImage={settings.desktopHeroImageUrl}
+        mobileImage={settings.mobileHeroImageUrl}
+        subtitle={settings.heroSubtitle}
+        title={settings.heroTitle || 'مجوزها و نمادهای اعتماد گلینو'}
+      />
+      <div className="info-page__layout license-page__layout">
+        <RichSection html={settings.introHtml} title={settings.introTitle} />
+        <RichSection html={settings.trustHtml} title={settings.trustTitle} tone="green" />
+      </div>
+      <section className="license-badges-section">
+        <div className="license-badges-section__header">
+          <span>verified licenses</span>
+          <h2>نمادها و کدهای اعتبارسنجی</h2>
+          <p>هر کارت با همان کد رسمی ثبت‌شده در پنل ادمین ساخته می‌شود و برای بررسی اعتبار می‌توانید روی نمادها کلیک کنید.</p>
+        </div>
+        {badges.length ? (
+          <div className="license-badges-grid">
+            {badges.map((badge) => (
+              <article className="license-badge-card" key={badge.id}>
+                <div className="license-badge-card__logo" dangerouslySetInnerHTML={{ __html: badge.codeHtml }} />
+                <div>
+                  {badge.title ? <h3>{badge.title}</h3> : null}
+                  {badge.description ? <p>{badge.description}</p> : null}
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="license-badges-empty">هنوز مجوزی برای نمایش ثبت نشده است.</p>
+        )}
+      </section>
+    </div>
+  )
+}
+
 export function StorefrontContactPage({
   settings,
   shellPage,

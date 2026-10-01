@@ -8,6 +8,7 @@ import {
   getStorefrontSeoSettings,
   getStores,
   getSeoLandingsForSitemap,
+  getStorefrontInfoPagesSettings,
 } from '../lib/storefront'
 
 function buildUrl(siteUrl: string, path: string) {
@@ -24,7 +25,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const seo = await getStorefrontSeoSettings()
   const siteUrl = seo?.siteUrl || 'https://golino.shop'
 
-  const [products, categories, stores, productTypes, articles, articleCategories, seoLandings] = await Promise.all([
+  const [products, categories, stores, productTypes, articles, articleCategories, seoLandings, infoPages] = await Promise.all([
     getAllStorefrontProductsForSitemap(100),
     getCategories(),
     getStores(),
@@ -32,6 +33,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     getStorefrontLatestArticles(200),
     getStorefrontArticleCategories(),
     getSeoLandingsForSitemap(),
+    getStorefrontInfoPagesSettings(),
   ])
 
   const urls: MetadataRoute.Sitemap = [
@@ -39,6 +41,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: buildUrl(siteUrl, '/shop'), changeFrequency: 'daily', priority: 0.9 },
     { url: buildUrl(siteUrl, '/mag'), changeFrequency: 'daily', priority: 0.8 },
   ]
+
+  const staticInfoPages = [
+    { path: '/about-us', enabled: infoPages?.about?.enabled, priority: 0.5 },
+    { path: '/contact-us', enabled: infoPages?.contact?.enabled, priority: 0.5 },
+    { path: '/terms', enabled: infoPages?.terms?.enabled, priority: 0.4 },
+    { path: '/license', enabled: infoPages?.license?.enabled, priority: 0.4 },
+  ]
+
+  for (const page of staticInfoPages) {
+    if (page.enabled === false) continue
+    urls.push({
+      url: buildUrl(siteUrl, page.path),
+      changeFrequency: 'monthly',
+      priority: page.priority,
+    })
+  }
 
   for (const product of products) {
     urls.push({
