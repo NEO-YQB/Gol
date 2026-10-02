@@ -17,6 +17,9 @@ class SessionBootstrapVendorOnboardingDto {
 
   @ApiProperty({ example: null, nullable: true })
   storeActivatedAt!: string | null;
+
+  @ApiProperty({ example: 'PENDING' })
+  membershipStatus!: string;
 }
 
 class SessionBootstrapStoreDto {

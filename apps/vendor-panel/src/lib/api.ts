@@ -45,6 +45,7 @@ export type VendorSessionBootstrapResponse = {
     applicationStatus: string
     productStatus: string
     storeActivatedAt?: string | null
+    membershipStatus?: string
   } | null
 }
 
@@ -403,6 +404,12 @@ export const vendorApi = {
   },
   submitVendorProduct(session: AuthSession, payload: VendorOnboardingProductPayload) {
     return request<unknown>('/vendor-onboarding/me/product', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }, session.accessToken)
+  },
+  initiateVendorMembership(session: AuthSession, payload: { gatewayConfigId?: number; gatewayKey?: string } = {}) {
+    return request<unknown>('/vendor-onboarding/me/membership/initiate', {
       method: 'POST',
       body: JSON.stringify(payload),
     }, session.accessToken)

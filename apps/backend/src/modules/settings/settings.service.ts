@@ -22,6 +22,14 @@ type AuthenticatedUser = {
   roles: string[];
 };
 
+export type VendorMembershipSettings = {
+  isEnabled: boolean;
+  feeAmount: number;
+  freeUntil: string | null;
+  title: string;
+  description: string;
+};
+
 export type SmsIrSettings = {
   apiKey: string;
   templateId: string;
@@ -344,6 +352,44 @@ export class SettingsService {
     );
   }
 
+  async getVendorMembershipSettings(user: AuthenticatedUser): Promise<VendorMembershipSettings> {
+    this.assertAdmin(user);
+    return this.readVendorMembershipSettings();
+  }
+
+  async updateVendorMembershipSettings(user: AuthenticatedUser, input: Record<string, unknown>) {
+    this.assertAdmin(user);
+    const current = await this.readVendorMembershipSettings();
+    const feeAmount = this.readNonNegativeNumber(input.feeAmount, current.feeAmount);
+    const freeUntil = this.readDateString(input.freeUntil, current.freeUntil);
+    const persisted = await this.prisma.vendorMembershipSetting.upsert({
+      where: { id: 1 },
+      update: {
+        isEnabled: this.readBoolean(input.isEnabled, current.isEnabled),
+        feeAmount: new Prisma.Decimal(feeAmount),
+        freeUntil,
+        title: this.cleanPlainText(input.title, current.title).slice(0, 200),
+        description: this.cleanPlainText(input.description, current.description).slice(0, 2000),
+        updatedByUserId: user.id,
+      },
+      create: {
+        id: 1,
+        isEnabled: this.readBoolean(input.isEnabled, current.isEnabled),
+        feeAmount: new Prisma.Decimal(feeAmount),
+        freeUntil,
+        title: this.cleanPlainText(input.title, current.title).slice(0, 200),
+        description: this.cleanPlainText(input.description, current.description).slice(0, 2000),
+        updatedByUserId: user.id,
+      },
+    });
+
+    return this.toVendorMembershipSettings(persisted);
+  }
+
+  async getVendorMembershipSettingsForRuntime() {
+    return this.readVendorMembershipSettings();
+  }
+
   async updateStorefrontInfoPagesSettings(
     user: AuthenticatedUser,
     input: Record<string, unknown>,
@@ -402,6 +448,36 @@ export class SettingsService {
     }
 
     return this.normalizeSeoSettings(setting.value as Record<string, unknown>, DEFAULT_SEO_SETTINGS);
+  }
+
+  private async readVendorMembershipSettings(): Promise<VendorMembershipSettings> {
+    const setting = await this.prisma.vendorMembershipSetting.findUnique({ where: { id: 1 } });
+    if (!setting) {
+      return {
+        isEnabled: false,
+        feeAmount: 0,
+        freeUntil: null,
+        title: 'حق عضویت فروشندگی',
+        description: 'پس از تایید مدارک، برای فعال‌سازی پنل فروشنده پرداخت کنید.',
+      };
+    }
+    return this.toVendorMembershipSettings(setting);
+  }
+
+  private toVendorMembershipSettings(setting: {
+    isEnabled: boolean;
+    feeAmount: Prisma.Decimal | number;
+    freeUntil: Date | null;
+    title: string;
+    description: string | null;
+  }): VendorMembershipSettings {
+    return {
+      isEnabled: setting.isEnabled,
+      feeAmount: Number(setting.feeAmount),
+      freeUntil: setting.freeUntil?.toISOString() ?? null,
+      title: setting.title,
+      description: setting.description ?? '',
+    };
   }
 
   private normalizeSeoSettings(input: Record<string, unknown>, fallback: SeoSettings): SeoSettings {
@@ -557,6 +633,18 @@ export class SettingsService {
 
   private readBoolean(value: unknown, fallback: boolean) {
     return typeof value === 'boolean' ? value : fallback;
+  }
+
+  private readNonNegativeNumber(value: unknown, fallback: number) {
+    const numeric = typeof value === 'number' ? value : Number(value);
+    return Number.isFinite(numeric) && numeric >= 0 ? numeric : fallback;
+  }
+
+  private readDateString(value: unknown, fallback: string | null): Date | null {
+    if (value === null || value === '') return null;
+    if (typeof value !== 'string') return fallback ? new Date(fallback) : null;
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? (fallback ? new Date(fallback) : null) : parsed;
   }
 
   private readInteger(value: unknown, fallback: number) {

@@ -141,6 +141,9 @@ const routeRequirements: Partial<Record<AdminRoute, AccessRequirement>> = {
   storefrontInfoPagesWorkspace: {
     roles: ['ADMIN'],
   },
+  vendorMembershipSettingsWorkspace: {
+    roles: ['ADMIN'],
+  },
   content: {
     anyOf: [
       { action: 'manage', subject: 'all' },

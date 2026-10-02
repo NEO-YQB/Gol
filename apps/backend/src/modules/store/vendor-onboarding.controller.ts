@@ -162,6 +162,17 @@ export class VendorOnboardingController {
     return this.vendorOnboardingService.submitProduct(user, body)
   }
 
+  @Post('me/membership/initiate')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'شروع پرداخت حق عضویت فروشندگی' })
+  initiateMembership(
+    @GetUser() user: { id: number; roles: string[] },
+    @Body() body: { gatewayConfigId?: number; gatewayKey?: string },
+  ) {
+    return this.vendorOnboardingService.initiateMembership(user, body)
+  }
+
   @Get('admin/requests')
   @UseGuards(JwtAuthGuard, AbilitiesGuard)
   @ApiBearerAuth('JWT-auth')

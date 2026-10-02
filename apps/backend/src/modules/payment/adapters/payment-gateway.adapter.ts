@@ -1,17 +1,24 @@
-import { Payment, PaymentGatewayConfig } from '@prisma/client';
+import { PaymentGatewayConfig } from '@prisma/client';
 import { PaymentGatewayInitiationResult, PaymentGatewayVerificationResult } from '../types/payment-gateway.types';
 
 export type GatewayInitiationContext = {
   amount: number;
-  orderId: number;
+  orderId?: number;
   paymentId?: number;
   callbackUrl?: string | null;
   returnUrl?: string | null;
   config: PaymentGatewayConfig;
 };
 
+export type GatewayVerificationPayment = {
+  id: number;
+  amount: unknown;
+  authority: string;
+  gatewayConfig: PaymentGatewayConfig | null;
+};
+
 export type GatewayVerificationContext = {
-  payment: Payment & { gatewayConfig: PaymentGatewayConfig | null };
+  payment: GatewayVerificationPayment;
   refId?: string;
   success?: boolean;
   failureReason?: string;

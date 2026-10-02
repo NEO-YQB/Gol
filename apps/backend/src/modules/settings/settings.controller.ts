@@ -7,6 +7,7 @@ import { UpdateSeoSettingsDto } from './dto/update-seo-settings.dto';
 import { UpdateStorefrontInfoPagesSettingsDto } from './dto/update-storefront-info-pages-settings.dto';
 import { UpdateSmsSettingsDto } from './dto/update-sms-settings.dto';
 import { UpdateFaviconSettingsDto } from './dto/update-favicon-settings.dto';
+import { UpdateVendorMembershipSettingsDto } from './dto/update-vendor-membership-settings.dto';
 import { SettingsService } from './settings.service';
 
 @ApiTags('Settings')
@@ -93,5 +94,20 @@ export class SettingsController {
     @Body() dto: UpdateFaviconSettingsDto,
   ) {
     return this.settingsService.updateFaviconSettings(user, { ...dto });
+  }
+
+  @Get('vendor-membership')
+  @ApiOperation({ summary: 'دریافت تنظیمات حق عضویت فروشندگان' })
+  getVendorMembershipSettings(@GetUser() user: { id: number; roles: string[] }) {
+    return this.settingsService.getVendorMembershipSettings(user);
+  }
+
+  @Patch('vendor-membership')
+  @ApiOperation({ summary: 'ذخیره تنظیمات حق عضویت فروشندگان' })
+  updateVendorMembershipSettings(
+    @GetUser() user: { id: number; roles: string[] },
+    @Body() dto: UpdateVendorMembershipSettingsDto,
+  ) {
+    return this.settingsService.updateVendorMembershipSettings(user, dto);
   }
 }

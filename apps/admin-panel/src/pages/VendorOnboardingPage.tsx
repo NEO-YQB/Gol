@@ -39,6 +39,18 @@ function statusTone(status: string) {
   return 'primary' as const
 }
 
+function translateMembershipStatus(status: string) {
+  if (status === 'PAID') return 'پرداخت شده'
+  if (status === 'EXEMPT') return 'رایگان / معاف'
+  if (status === 'PENDING') return 'منتظر پرداخت'
+  return 'نامشخص'
+}
+
+function membershipStatusTone(status: string) {
+  if (status === 'PAID' || status === 'EXEMPT') return 'success' as const
+  return 'warning' as const
+}
+
 function resolveApplicantName(item: RequestRecord) {
   return (
     readText(item, ['personalFullName'], '') ||
@@ -172,6 +184,7 @@ export function VendorOnboardingPage({
                       <div className="vendor-onboarding-mini-pills">
                         <Pill tone={statusTone(readText(item, ['applicationStatus'], ''))}>{translateStatus(readText(item, ['applicationStatus'], ''))}</Pill>
                         <Pill tone={statusTone(readText(item, ['productStatus'], ''))}>{translateStatus(readText(item, ['productStatus'], ''))}</Pill>
+                        <Pill tone={membershipStatusTone(readText(item, ['membershipStatus'], ''))}>{translateMembershipStatus(readText(item, ['membershipStatus'], ''))}</Pill>
                       </div>
                     </button>
                   )
@@ -196,6 +209,7 @@ export function VendorOnboardingPage({
                 <div><strong>کسب‌وکار</strong><span>{resolveBusinessName(selected)}</span></div>
                 <div><strong>درخواست</strong><span><Pill tone={statusTone(readText(selected, ['applicationStatus'], ''))}>{translateStatus(readText(selected, ['applicationStatus'], ''))}</Pill></span></div>
                 <div><strong>محصول</strong><span><Pill tone={statusTone(readText(selected, ['productStatus'], ''))}>{translateStatus(readText(selected, ['productStatus'], ''))}</Pill></span></div>
+                <div><strong>عضویت</strong><span><Pill tone={membershipStatusTone(readText(selected, ['membershipStatus'], ''))}>{translateMembershipStatus(readText(selected, ['membershipStatus'], ''))}</Pill></span></div>
                 <div><strong>بروزرسانی</strong><span>{formatJalaliDate(selected.updatedAt)}</span></div>
                 <div className="vendors-inline-actions">
                   <button className="fm-button fm-button--primary" onClick={() => onOpenWorkspace(selected)} type="button">باز کردن میزکار</button>

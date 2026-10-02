@@ -33,6 +33,7 @@ model User {
   createdPages Page[] @relation("PageCreatedBy")
   updatedPages Page[] @relation("PageUpdatedBy")
   vendorOnboardingRequest VendorOnboardingRequest? @relation("VendorOnboardingOwner")
+  vendorMembershipPayments VendorMembershipPayment[]
   vendorOnboardingReviewedRequests VendorOnboardingRequest[] @relation("VendorOnboardingReviewedBy")
   vendorOnboardingProductReviewedRequests VendorOnboardingRequest[] @relation("VendorOnboardingProductReviewedBy")
   reviewedProducts Product[] @relation("ProductReviewedBy")
@@ -864,6 +865,7 @@ model PaymentGatewayConfig {
   notes            String?   @db.Text
   metadata         Json?
   payments         Payment[]
+  vendorMembershipPayments VendorMembershipPayment[]
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -878,6 +880,26 @@ model AppSetting {
   description String?  @db.Text
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+enum VendorMembershipStatus {
+  PENDING
+  PAID
+  EXEMPT
+}
+
+model VendorMembershipSetting {
+  id            Int      @id @default(1)
+  isEnabled     Boolean  @default(false)
+  feeAmount     Decimal  @default(0) @db.Decimal(12, 2)
+  freeUntil     DateTime?
+  title         String   @default("حق عضویت فروشندگی")
+  description   String?  @db.Text
+  updatedByUserId Int?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([isEnabled, freeUntil])
 }
 
 enum OrderStatus {
@@ -1018,6 +1040,9 @@ model VendorOnboardingRequest {
   user                   User                  @relation("VendorOnboardingOwner", fields: [userId], references: [id], onDelete: Cascade)
   applicationStatus      VendorOnboardingStatus @default(DRAFT)
   productStatus          VendorOnboardingStatus @default(DRAFT)
+  membershipStatus       VendorMembershipStatus @default(PENDING)
+  membershipAmount       Decimal?              @db.Decimal(12, 2)
+  membershipPaidAt       DateTime?
   personalFullName       String?
   personalNationalId     String?
   businessName           String?
@@ -1045,6 +1070,7 @@ model VendorOnboardingRequest {
   productReviewedByUserId Int?
   productReviewNote      String?               @db.Text
   storeActivatedAt       DateTime?
+  membershipPayments     VendorMembershipPayment[]
   reviewedByUser         User?                 @relation("VendorOnboardingReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
   productReviewedByUser  User?                 @relation("VendorOnboardingProductReviewedBy", fields: [productReviewedByUserId], references: [id], onDelete: SetNull)
   createdAt              DateTime              @default(now())
@@ -1052,6 +1078,38 @@ model VendorOnboardingRequest {
 
   @@index([applicationStatus, updatedAt])
   @@index([productStatus, updatedAt])
+}
+
+model VendorMembershipPayment {
+  id                  Int           @id @default(autoincrement())
+  onboardingRequestId Int
+  onboardingRequest   VendorOnboardingRequest @relation(fields: [onboardingRequestId], references: [id], onDelete: Cascade)
+  userId              Int
+  user                User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gatewayConfigId     Int?
+  gatewayConfig       PaymentGatewayConfig? @relation(fields: [gatewayConfigId], references: [id], onDelete: SetNull)
+  gateway             String
+  gatewayKey          String?
+  authority           String        @unique
+  refId               String?
+  amount              Decimal       @db.Decimal(12, 2)
+  status              PaymentStatus @default(PENDING)
+  paymentUrl          String?
+  failureReason       String?       @db.Text
+  initiatedAt         DateTime?
+  expiresAt           DateTime?
+  verifiedAt          DateTime?
+  attemptCount        Int           @default(0)
+  gatewaySnapshot     Json?
+  rawInitiateData     Json?
+  rawVerifyData       Json?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  @@index([onboardingRequestId, createdAt])
+  @@index([userId, status])
+  @@index([gatewayConfigId])
+  @@index([status, expiresAt])
 }
 
 enum DomainEventType {

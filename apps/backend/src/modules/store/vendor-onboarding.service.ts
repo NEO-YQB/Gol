@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common'
-import { Prisma, VendorOnboardingStatus } from '@prisma/client'
+import { Prisma, VendorMembershipStatus, VendorOnboardingStatus } from '@prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
+import { PaymentService } from '../payment/payment.service'
 
 type AuthenticatedUser = {
   id: number
@@ -44,10 +45,13 @@ type ReviewVendorProductDto = {
 
 @Injectable()
 export class VendorOnboardingService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly paymentService: PaymentService,
+  ) {}
 
   async getMyRequest(user: AuthenticatedUser) {
-    return this.prisma.vendorOnboardingRequest.upsert({
+    const request = await this.prisma.vendorOnboardingRequest.upsert({
       where: { userId: user.id },
       create: { userId: user.id },
       update: {},
@@ -61,6 +65,12 @@ export class VendorOnboardingService {
         },
       },
     })
+    const membership = await this.paymentService.getVendorMembershipAccess(request.id)
+    return { ...request, membership }
+  }
+
+  async initiateMembership(user: AuthenticatedUser, input: { gatewayConfigId?: number; gatewayKey?: string }) {
+    return this.paymentService.initiateVendorMembership(user, input)
   }
 
   async submitApplication(user: AuthenticatedUser, dto: SubmitVendorOnboardingDto) {
@@ -162,9 +172,13 @@ export class VendorOnboardingService {
   }
 
   async adminGetRequest(user: AuthenticatedUser, requestId: number) {
+    await this.paymentService.getVendorMembershipAccess(requestId)
     const request = await this.prisma.vendorOnboardingRequest.findUnique({
       where: { id: requestId },
-      include: { user: { select: { id: true, phoneNumber: true, fullName: true, roles: true } } },
+      include: {
+        user: { select: { id: true, phoneNumber: true, fullName: true, roles: true } },
+        membershipPayments: { orderBy: { createdAt: 'desc' }, take: 1, select: { id: true, status: true, amount: true, paymentUrl: true, refId: true, initiatedAt: true, expiresAt: true, verifiedAt: true, failureReason: true } },
+      },
     })
 
     if (!request) {
@@ -223,7 +237,8 @@ export class VendorOnboardingService {
       return next
     })
 
-    return updated
+    await this.paymentService.getVendorMembershipAccess(requestId)
+    return this.prisma.vendorOnboardingRequest.findUnique({ where: { id: updated.id } })
   }
 
   async adminReviewProduct(user: AuthenticatedUser, requestId: number, approved: boolean, dto: ReviewVendorProductDto) {
@@ -242,11 +257,11 @@ export class VendorOnboardingService {
           productReviewedAt: new Date(),
           productReviewedByUserId: user.id,
           productReviewNote: dto.reviewNote ?? null,
-          storeActivatedAt: approved ? new Date() : request.storeActivatedAt,
+          storeActivatedAt: approved && this.canActivateWithMembership(request.membershipStatus) ? new Date() : request.storeActivatedAt,
         },
       })
 
-      if (approved) {
+      if (approved && this.canActivateWithMembership(request.membershipStatus)) {
         const vendorRole = await tx.role.findUnique({
           where: { name: 'VENDOR' },
           select: { id: true },
@@ -298,6 +313,10 @@ export class VendorOnboardingService {
       create: { userId },
       update: {},
     })
+  }
+
+  private canActivateWithMembership(status: VendorMembershipStatus) {
+    return status === VendorMembershipStatus.PAID || status === VendorMembershipStatus.EXEMPT
   }
 
   private async ensureSlugAvailable(slug: string, requestId?: number) {

@@ -24,6 +24,7 @@ export type VendorBootstrap = {
     applicationStatus: string
     productStatus: string
     storeActivatedAt?: string | null
+    membershipStatus?: string
   } | null
 }
 

@@ -40,6 +40,18 @@ function statusTone(status: string) {
   return 'primary' as const
 }
 
+function translateMembershipStatus(status: string) {
+  if (status === 'PAID') return 'پرداخت شده'
+  if (status === 'EXEMPT') return 'رایگان / معاف'
+  if (status === 'PENDING') return 'منتظر پرداخت'
+  return 'نامشخص'
+}
+
+function membershipStatusTone(status: string) {
+  if (status === 'PAID' || status === 'EXEMPT') return 'success' as const
+  return 'warning' as const
+}
+
 function getImageUrl(url: string) {
   if (!url) return ''
   if (/^https?:\/\//i.test(url)) return url
@@ -115,6 +127,7 @@ export function VendorOnboardingWorkspacePage({
   const stats = useMemo(() => [
     { label: 'درخواست', value: translateStatus(readText(detail ?? {}, ['applicationStatus'], '')), delta: '', detail: '', tone: statusTone(readText(detail ?? {}, ['applicationStatus'], '')) },
     { label: 'محصول', value: translateStatus(readText(detail ?? {}, ['productStatus'], '')), delta: '', detail: '', tone: statusTone(readText(detail ?? {}, ['productStatus'], '')) },
+    { label: 'عضویت', value: translateMembershipStatus(readText(detail ?? {}, ['membershipStatus'], '')), delta: formatCompactMoney(detail?.membershipAmount), detail: '', tone: membershipStatusTone(readText(detail ?? {}, ['membershipStatus'], '')) },
     { label: 'مدارک', value: new Intl.NumberFormat('fa-IR').format(documents.length), delta: '', detail: '', tone: 'primary' as const },
     { label: 'بروزرسانی', value: formatJalaliDate(detail?.updatedAt), delta: readText(detail ?? {}, ['user', 'phoneNumber'], '—'), detail: '', tone: 'warning' as const },
   ], [detail, documents.length])
@@ -256,6 +269,7 @@ export function VendorOnboardingWorkspacePage({
         <div className="vendor-onboarding-status-pills">
           <Pill tone={statusTone(readText(detail ?? {}, ['applicationStatus'], ''))}>{translateStatus(readText(detail ?? {}, ['applicationStatus'], ''))}</Pill>
           <Pill tone={statusTone(readText(detail ?? {}, ['productStatus'], ''))}>{translateStatus(readText(detail ?? {}, ['productStatus'], ''))}</Pill>
+          <Pill tone={membershipStatusTone(readText(detail ?? {}, ['membershipStatus'], ''))}>{translateMembershipStatus(readText(detail ?? {}, ['membershipStatus'], ''))}</Pill>
         </div>
       </SectionCard>
 

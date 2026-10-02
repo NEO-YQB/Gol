@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus, VendorMembershipStatus } from '@prisma/client';
 import { SettingsService } from '../settings/settings.service';
 
 @Injectable()
@@ -325,6 +325,7 @@ export class AuthService {
             applicationStatus: dbUser.vendorOnboardingRequest.applicationStatus,
             productStatus: dbUser.vendorOnboardingRequest.productStatus,
             storeActivatedAt: dbUser.vendorOnboardingRequest.storeActivatedAt,
+            membershipStatus: dbUser.vendorOnboardingRequest.membershipStatus,
           }
         : null,
     };
@@ -349,7 +350,19 @@ export class AuthService {
     if (!user?.vendorOnboardingRequest) return;
 
     const request = user.vendorOnboardingRequest;
+    if (request.membershipStatus === 'PENDING') {
+      const membershipSetting = await this.prisma.vendorMembershipSetting.findUnique({ where: { id: 1 } });
+      const isFree = !membershipSetting?.isEnabled || !membershipSetting.feeAmount || Boolean(membershipSetting.freeUntil && membershipSetting.freeUntil >= new Date());
+      if (isFree && request.applicationStatus === 'APPROVED') {
+        await this.prisma.vendorOnboardingRequest.update({
+          where: { id: request.id },
+          data: { membershipStatus: VendorMembershipStatus.EXEMPT, membershipAmount: 0 },
+        });
+        request.membershipStatus = VendorMembershipStatus.EXEMPT;
+      }
+    }
     if (request.productStatus !== 'APPROVED') return;
+    if (request.membershipStatus !== 'PAID' && request.membershipStatus !== 'EXEMPT') return;
 
     const hasVendorRole = user.roles.some((item) => item.role.name == 'VENDOR');
     const hasStore = Boolean(user.store);

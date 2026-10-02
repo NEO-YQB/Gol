@@ -6,7 +6,7 @@ import type { AuthSession } from '../lib/session'
 import { VendorMapPicker } from '../components/VendorMapPicker'
 
 type VendorApplicationState = 'draft' | 'submitted' | 'under_review' | 'approved' | 'rejected'
-type OnboardingStep = 'profile' | 'business' | 'license' | 'product' | 'status'
+type OnboardingStep = 'profile' | 'business' | 'license' | 'membership' | 'product' | 'status'
 
 type DraftDocument = { title: string; url: string }
 type UploadKey = 'license' | 'idFront' | 'idBack' | 'productMain' | 'gallery'
@@ -93,13 +93,14 @@ const defaultDraft: OnboardingDraft = {
   productGalleryImages: [],
 }
 
-const stepOrder: OnboardingStep[] = ['profile', 'business', 'license', 'product', 'status']
+const stepOrder: OnboardingStep[] = ['profile', 'business', 'license', 'product', 'membership', 'status']
 
 function stepLabel(step: OnboardingStep) {
   switch (step) {
     case 'profile': return 'اطلاعات فردی'
     case 'business': return 'کسب‌وکار'
     case 'license': return 'جواز و مدارک'
+    case 'membership': return 'حق عضویت'
     case 'product': return 'محصول نمونه'
     case 'status': return 'وضعیت درخواست'
   }
@@ -138,6 +139,7 @@ export function VendorOnboardingPage({
   const [draft, setDraft] = useState<OnboardingDraft>(defaultDraft)
   const [storeName, setStoreName] = useState('فروشگاه شما')
   const [hasApprovedProduct, setHasApprovedProduct] = useState(false)
+  const [membership, setMembership] = useState<Record<string, unknown> | null>(null)
   const [documents, setDocuments] = useState<DraftDocument[]>([])
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -203,9 +205,12 @@ export function VendorOnboardingPage({
         setApplicationState(appState)
         setProductState(prodState)
         setHasApprovedProduct(prodState === 'approved')
+        setMembership(typeof record.membership === 'object' && record.membership !== null ? record.membership as Record<string, unknown> : null)
         setStoreName(String(record.businessName ?? userRecord?.fullName ?? session.user.fullName ?? session.user.phoneNumber))
         if (appState === 'approved') {
-          setActiveStep(prodState === 'approved' ? 'status' : 'product')
+          const membershipStatus = String((record.membership as Record<string, unknown> | null)?.status ?? record.membershipStatus ?? 'PENDING')
+          const membershipReady = membershipStatus === 'PAID' || membershipStatus === 'EXEMPT'
+          setActiveStep(prodState === 'approved' ? (membershipReady ? 'status' : 'membership') : 'product')
         } else if (appState === 'submitted' || appState === 'under_review') {
           setActiveStep('status')
         } else {
@@ -617,6 +622,33 @@ export function VendorOnboardingPage({
     }
   }
 
+  async function handleInitiateMembership() {
+    setSaving(true)
+    setError(null)
+    setMessage(null)
+    try {
+      const response = await vendorApi.initiateVendorMembership(session)
+      const record = response as Record<string, unknown>
+      const payment = typeof record.payment === 'object' && record.payment !== null ? record.payment as Record<string, unknown> : null
+      const paymentUrl = String(payment?.paymentUrl ?? '')
+      if (paymentUrl) {
+        window.location.href = paymentUrl
+        return
+      }
+      const nextMembership = typeof record.membership === 'object' && record.membership !== null ? record.membership as Record<string, unknown> : null
+      setMembership(nextMembership)
+      if (String(nextMembership?.status ?? '') === 'PAID' || String(nextMembership?.status ?? '') === 'EXEMPT') {
+        setActiveStep('status')
+      }
+      setMessage(String(record.message ?? 'وضعیت حق عضویت به‌روزرسانی شد.'))
+      await onRefreshSession(session)
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'شروع پرداخت حق عضویت ناموفق بود')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   useEffect(() => {
     if (applicationState !== 'approved' || productState !== 'approved') {
       return
@@ -727,6 +759,21 @@ export function VendorOnboardingPage({
           </SectionCard>
         ) : null}
 
+        {activeStep === 'membership' ? (
+          <section className="vendor-onboarding-form-card">
+            <span className="vendor-onboarding-kicker">فعال‌سازی پنل فروشنده</span>
+            <h2>{String(membership?.title ?? 'حق عضویت فروشندگی')}</h2>
+            <p>{String(membership?.description ?? 'پس از تایید مدارک، برای فعال‌سازی پنل فروشنده پرداخت کنید.')}</p>
+            <div className="vendor-onboarding-summary-card">
+              <strong>{new Intl.NumberFormat('fa-IR').format(Number(membership?.feeAmount ?? 0))} تومان</strong>
+              {membership?.freeUntil ? <span>رایگان تا {new Intl.DateTimeFormat('fa-IR').format(new Date(String(membership.freeUntil)))}</span> : null}
+            </div>
+            <button className="fm-button fm-button--primary" disabled={saving} onClick={() => void handleInitiateMembership()} type="button">
+              {saving ? 'در حال انتقال به درگاه...' : 'پرداخت و فعال‌سازی پنل'}
+            </button>
+          </section>
+        ) : null}
+
         {activeStep === 'product' ? (
           <SectionCard eyebrow="مرحله ۴" title="محصول نمونه" description="فقط یک محصول نمونه با تصویر اصلی و گالری ثبت کن." hint="این مرحله برای بررسی محتوا و آماده‌سازی فروشنده کافی است.">
             <div className="vendor-onboarding-form-grid">
@@ -762,7 +809,7 @@ export function VendorOnboardingPage({
         ) : null}
 
         {activeStep === 'status' ? (
-          <SectionCard eyebrow="مرحله ۵" title="وضعیت درخواست" description="فقط این بخش را می‌بینی تا وضعیت بررسی را دنبال کنی." hint="اگر نقصی باشد، بعدا فقط همین مرحله و همان بخش‌های لازم بازمی‌گردند.">
+          <SectionCard eyebrow="مرحله ۶" title="وضعیت درخواست" description="فقط این بخش را می‌بینی تا وضعیت بررسی را دنبال کنی." hint="اگر نقصی باشد، بعدا فقط همین مرحله و همان بخش‌های لازم بازمی‌گردند.">
             <div className="vendor-onboarding-summary">
               <div><strong>وضعیت فعلی:</strong><span>{applicationState === 'approved' ? 'تایید شده' : applicationState === 'submitted' ? 'ارسال شده' : 'در انتظار بررسی'}</span></div>
               <div><strong>مدارک ثبت‌شده:</strong><span>{documents.length ? documents.map((item) => item.title).join('، ') : 'هنوز مدرکی ثبت نشده'}</span></div>

@@ -41,9 +41,9 @@ export class ZarinpalPaymentGatewayAdapter implements PaymentGatewayAdapter {
         merchant_id: merchantId,
         amount: Math.round(context.amount),
         callback_url: callbackUrl,
-        description: `پرداخت سفارش #${context.orderId}`,
+        description: context.orderId ? `پرداخت سفارش #${context.orderId}` : 'پرداخت حق عضویت فروشندگی',
         metadata: {
-          orderId: context.orderId,
+          orderId: context.orderId ?? null,
           paymentId: context.paymentId ?? null,
           mobile: this.readStringConfig(context.config.merchantConfig, 'mobile') ?? undefined,
           email: this.readStringConfig(context.config.merchantConfig, 'email') ?? undefined,

@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { Response } from 'express';
-import { DomainEventType, NotificationChannel, OrderActorType, OrderStatus, PaymentMethod, PaymentReviewStatus, PaymentStatus, Prisma } from '@prisma/client';
+import { DomainEventType, NotificationChannel, OrderActorType, OrderStatus, PaymentGatewayConfig, PaymentMethod, PaymentReviewStatus, PaymentStatus, Prisma, VendorMembershipPayment, VendorMembershipStatus } from '@prisma/client';
 import { subject } from '@casl/ability';
 import { DomainEventsService } from '../../common/services/domain-events.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -206,6 +206,116 @@ export class PaymentService {
         paymentUrl: gatewayResult.paymentUrl,
       },
     };
+  }
+
+  async getVendorMembershipAccess(requestId: number) {
+    const request = await this.prisma.vendorOnboardingRequest.findUnique({
+      where: { id: requestId },
+      include: {
+        membershipPayments: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          include: { gatewayConfig: true },
+        },
+      },
+    });
+    if (!request) throw new NotFoundException('درخواست فروشندگی یافت نشد');
+
+    const setting = await this.prisma.vendorMembershipSetting.findUnique({ where: { id: 1 } });
+    const now = new Date();
+    const isFree = !setting?.isEnabled || !setting.feeAmount || Boolean(setting.freeUntil && setting.freeUntil >= now);
+    let status = request.membershipStatus;
+
+    if (request.applicationStatus === 'APPROVED' && isFree && status === VendorMembershipStatus.PENDING) {
+      await this.prisma.vendorOnboardingRequest.update({
+        where: { id: request.id },
+        data: { membershipStatus: VendorMembershipStatus.EXEMPT, membershipAmount: 0 },
+      });
+      status = VendorMembershipStatus.EXEMPT;
+    }
+
+    return {
+      required: !isFree && status !== VendorMembershipStatus.PAID,
+      canContinue: status === VendorMembershipStatus.PAID || status === VendorMembershipStatus.EXEMPT,
+      status,
+      feeAmount: Number(setting?.feeAmount ?? 0),
+      freeUntil: setting?.freeUntil?.toISOString() ?? null,
+      title: setting?.title ?? 'حق عضویت فروشندگی',
+      description: setting?.description ?? 'پس از تایید مدارک، برای فعال‌سازی پنل فروشنده پرداخت کنید.',
+      payment: request.membershipPayments[0]
+        ? {
+            id: request.membershipPayments[0].id,
+            status: request.membershipPayments[0].status,
+            amount: request.membershipPayments[0].amount,
+            paymentUrl: request.membershipPayments[0].paymentUrl,
+            authority: request.membershipPayments[0].authority,
+            refId: request.membershipPayments[0].refId,
+            failureReason: request.membershipPayments[0].failureReason,
+            initiatedAt: request.membershipPayments[0].initiatedAt,
+            expiresAt: request.membershipPayments[0].expiresAt,
+            verifiedAt: request.membershipPayments[0].verifiedAt,
+            attemptCount: request.membershipPayments[0].attemptCount,
+          }
+        : null,
+    };
+  }
+
+  async initiateVendorMembership(user: AuthenticatedUser, input: { gatewayConfigId?: number; gatewayKey?: string }) {
+    const request = await this.prisma.vendorOnboardingRequest.findUnique({ where: { userId: user.id } });
+    if (!request) throw new NotFoundException('درخواست فروشندگی یافت نشد');
+    if (request.applicationStatus !== 'APPROVED') {
+      throw new BadRequestException('پس از تایید مدارک امکان پرداخت حق عضویت وجود دارد');
+    }
+    if (request.productStatus !== 'APPROVED') {
+      throw new BadRequestException('پس از تایید محصول نمونه امکان پرداخت حق عضویت وجود دارد');
+    }
+
+    const access = await this.getVendorMembershipAccess(request.id);
+    if (!access.required) return { message: 'حق عضویت برای این درخواست لازم نیست', membership: access };
+
+    const latestPayment = access.payment;
+    if (latestPayment?.status === PaymentStatus.PENDING && !this.isExpired(latestPayment.expiresAt)) {
+      return { message: 'یک پرداخت حق عضویت فعال وجود دارد', membership: access, payment: latestPayment };
+    }
+
+    const gatewayConfig = await this.paymentGatewayService.resolveGatewaySelection(input);
+    const adapter = this.paymentGatewayRegistry.getAdapter(gatewayConfig.driver);
+    const amount = access.feeAmount;
+    const nextAttemptCount = (latestPayment?.attemptCount ?? 0) + 1;
+    const gatewayResult = await adapter.initiate({
+      amount,
+      callbackUrl: gatewayConfig.callbackUrl,
+      returnUrl: gatewayConfig.returnUrl,
+      config: gatewayConfig,
+    });
+    const initiatedAt = new Date();
+    const expiresAt = new Date(initiatedAt.getTime() + this.readPositiveIntConfig(gatewayConfig.technicalConfig, 'paymentWindowMinutes', 15) * 60 * 1000);
+    const payment = await this.prisma.vendorMembershipPayment.create({
+      data: {
+        onboardingRequestId: request.id,
+        userId: user.id,
+        gatewayConfigId: gatewayConfig.id,
+        gateway: gatewayConfig.driver,
+        gatewayKey: gatewayConfig.key,
+        authority: gatewayResult.authority,
+        amount: new Prisma.Decimal(amount),
+        status: PaymentStatus.PENDING,
+        paymentUrl: gatewayResult.paymentUrl,
+        initiatedAt,
+        expiresAt,
+        attemptCount: nextAttemptCount,
+        gatewaySnapshot: this.toInputJson(this.buildGatewaySnapshot(gatewayConfig)),
+        rawInitiateData: this.toInputJson({ userId: user.id, onboardingRequestId: request.id, amount, adapterResponse: gatewayResult.rawData ?? null }),
+      },
+      include: { gatewayConfig: true },
+    });
+
+    await this.prisma.vendorOnboardingRequest.update({
+      where: { id: request.id },
+      data: { membershipAmount: new Prisma.Decimal(amount) },
+    });
+
+    return { message: 'پرداخت حق عضویت ایجاد شد', membership: await this.getVendorMembershipAccess(request.id), payment: this.toPublicVendorMembershipPayment(payment) };
   }
 
   async mockVerify(user: AuthenticatedUser, dto: MockVerifyPaymentDto) {
@@ -667,7 +777,18 @@ export class PaymentService {
     } as Record<string, unknown>;
 
     const authority = this.extractStringValue(callbackPayload, ['authority', 'Authority']);
-    const paymentId = this.extractNumericValue(payload, ['paymentId', 'PaymentId']);
+    const paymentId = this.extractNumericValue(callbackPayload, ['paymentId', 'PaymentId']);
+    const membershipPaymentId = this.extractNumericValue(callbackPayload, ['membershipPaymentId', 'MembershipPaymentId']);
+
+    const membershipPayment = membershipPaymentId
+      ? await this.prisma.vendorMembershipPayment.findUnique({ where: { id: membershipPaymentId }, include: { gatewayConfig: true } })
+      : authority
+        ? await this.prisma.vendorMembershipPayment.findUnique({ where: { authority }, include: { gatewayConfig: true } })
+        : null;
+
+    if (membershipPayment) {
+      return this.handleVendorMembershipCallback(gatewayKey, gatewayConfig, membershipPayment, callbackPayload, response);
+    }
 
     let payment: Awaited<ReturnType<PaymentService['getPaymentOrThrow']>> | null = null;
     if (paymentId) {
@@ -830,6 +951,89 @@ export class PaymentService {
       message: payment
         ? 'callback دریافت و به payment متناظر متصل شد'
         : 'callback دریافت شد اما payment متناظر به صورت خودکار پیدا نشد',
+    };
+  }
+
+  private async handleVendorMembershipCallback(
+    gatewayKey: string,
+    gatewayConfig: Awaited<ReturnType<PaymentGatewayService['resolveGatewaySelection']>>,
+    payment: VendorMembershipPayment & { gatewayConfig: PaymentGatewayConfig | null },
+    callbackPayload: Record<string, unknown>,
+    response?: Response,
+  ) {
+    if (!payment) return null;
+    const authority = this.extractStringValue(callbackPayload, ['authority', 'Authority']);
+    const status = this.extractStringValue(callbackPayload, ['Status', 'status']);
+    const isSuccess = status?.toUpperCase() === 'OK';
+    const refId = this.extractStringValue(callbackPayload, ['RefID', 'ref_id', 'refId']);
+    const adapter = this.paymentGatewayRegistry.getAdapter(gatewayConfig.driver);
+    const verificationResult = gatewayConfig.driver === 'zarinpal'
+      ? await adapter.verify({ payment, refId: refId ?? undefined, success: isSuccess })
+      : { success: isSuccess, refId, failureReason: isSuccess ? null : 'پرداخت حق عضویت ناموفق بود', rawData: undefined };
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const nextStatus = verificationResult.success ? PaymentStatus.PAID : PaymentStatus.FAILED;
+      const updatedPayment = await tx.vendorMembershipPayment.update({
+        where: { id: payment.id },
+        data: {
+          status: nextStatus,
+          refId: verificationResult.refId ?? null,
+          failureReason: verificationResult.failureReason ?? null,
+          verifiedAt: verificationResult.success ? new Date() : null,
+          rawVerifyData: this.toInputJson({ callbackReceivedAt: new Date().toISOString(), gatewayKey, authority, payload: callbackPayload, verification: verificationResult.rawData ?? null }),
+        },
+      });
+
+      if (verificationResult.success) {
+        await tx.vendorOnboardingRequest.update({
+          where: { id: payment.onboardingRequestId },
+          data: { membershipStatus: VendorMembershipStatus.PAID, membershipAmount: payment.amount, membershipPaidAt: new Date() },
+        });
+      }
+      return updatedPayment;
+    });
+
+    if (response && gatewayConfig.returnUrl) {
+      const target = this.buildPaymentReturnUrl(gatewayConfig.returnUrl);
+      target.searchParams.set('status', verificationResult.success ? 'PAID' : 'FAILED');
+      target.searchParams.set('membershipPaymentId', String(updated.id));
+      if (verificationResult.refId) target.searchParams.set('refId', verificationResult.refId);
+      if (verificationResult.failureReason) target.searchParams.set('message', verificationResult.failureReason);
+      return response.redirect(target.toString());
+    }
+
+    return {
+      received: true,
+      gatewayKey: gatewayConfig.key,
+      matchedMembershipPaymentId: updated.id,
+      verified: verificationResult.success,
+      message: verificationResult.success ? 'پرداخت حق عضویت تایید شد' : 'پرداخت حق عضویت تایید نشد',
+    };
+  }
+
+  private toPublicVendorMembershipPayment(payment: {
+    id: number;
+    status: PaymentStatus;
+    amount: unknown;
+    paymentUrl: string | null;
+    authority: string;
+    refId: string | null;
+    failureReason: string | null;
+    initiatedAt: Date | null;
+    expiresAt: Date | null;
+    verifiedAt: Date | null;
+  }) {
+    return {
+      id: payment.id,
+      status: payment.status,
+      amount: payment.amount,
+      paymentUrl: payment.paymentUrl,
+      authority: payment.authority,
+      refId: payment.refId,
+      failureReason: payment.failureReason,
+      initiatedAt: payment.initiatedAt,
+      expiresAt: payment.expiresAt,
+      verifiedAt: payment.verifiedAt,
     };
   }
 

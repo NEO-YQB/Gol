@@ -130,6 +130,14 @@ export type FaviconSettingsResponse = {
   }
 }
 
+export type VendorMembershipSettingsResponse = {
+  isEnabled: boolean
+  feeAmount: number
+  freeUntil: string | null
+  title: string
+  description: string
+}
+
 export type PaymentGatewayConfigResponse = {
   id: number
   key: string
@@ -1161,6 +1169,15 @@ export const adminApi = {
   },
   updateFaviconSettings(session: AuthSession, body: Partial<FaviconSettingsResponse>) {
     return request<FaviconSettingsResponse>('/admin/settings/favicon', {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  getVendorMembershipSettings(session: AuthSession) {
+    return request<VendorMembershipSettingsResponse>('/admin/settings/vendor-membership', {}, session.accessToken)
+  },
+  updateVendorMembershipSettings(session: AuthSession, body: Partial<VendorMembershipSettingsResponse>) {
+    return request<VendorMembershipSettingsResponse>('/admin/settings/vendor-membership', {
       method: 'PATCH',
       body: JSON.stringify(body),
     }, session.accessToken)
