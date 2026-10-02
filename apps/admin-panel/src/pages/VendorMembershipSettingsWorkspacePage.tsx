@@ -53,7 +53,7 @@ export function VendorMembershipSettingsWorkspacePage({ session, onBack }: Props
         {loading ? <p>در حال بارگذاری تنظیمات...</p> : null}
         <div className="mb-5 flex flex-wrap gap-2">
           <Pill tone={form.isEnabled ? 'warning' : 'success'}>{form.isEnabled ? 'پرداخت فعال' : 'عضویت رایگان'}</Pill>
-          {form.freeUntil ? <Pill>رایگان تا {new Intl.DateTimeFormat('fa-IR').format(new Date(form.freeUntil))}</Pill> : null}
+          {form.freeUntil ? <Pill>{`رایگان تا ${new Intl.DateTimeFormat('fa-IR').format(new Date(form.freeUntil))}`}</Pill> : null}
         </div>
         <div className="fm-grid page-builder-form-grid">
           <label className="fm-field page-builder-checkbox">
