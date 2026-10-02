@@ -108,6 +108,6 @@ export class SettingsController {
     @GetUser() user: { id: number; roles: string[] },
     @Body() dto: UpdateVendorMembershipSettingsDto,
   ) {
-    return this.settingsService.updateVendorMembershipSettings(user, dto);
+    return this.settingsService.updateVendorMembershipSettings(user, { ...dto });
   }
 }
