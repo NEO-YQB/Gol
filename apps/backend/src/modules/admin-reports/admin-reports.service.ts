@@ -16,6 +16,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { AdminReportDateRangeQueryDto } from './dto/admin-report-date-range-query.dto';
 import { AdminRiskSummaryQueryDto } from './dto/admin-risk-summary-query.dto';
 import { AbilityFactory } from '../auth/ability.factory';
+import { VendorProvisioningService } from '../../common/services/vendor-provisioning.service';
 
 type AuthenticatedUser = {
   id: number;
@@ -44,6 +45,7 @@ export class AdminReportsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly abilityFactory: AbilityFactory,
+    private readonly vendorProvisioning: VendorProvisioningService,
   ) {}
 
   async getSupportTicketsSummary(user: AuthenticatedUser, query: AdminReportDateRangeQueryDto) {
@@ -297,6 +299,8 @@ export class AdminReportsService {
     const range = resolveJalaliDateRange(query);
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
+
+    await this.vendorProvisioning.repairApprovedVendorsWithoutStores();
 
     const stores = await this.prisma.store.findMany({
       where: {

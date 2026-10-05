@@ -6,7 +6,8 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
-import { OrderStatus, VendorMembershipStatus } from '@prisma/client';
+import { OrderStatus } from '@prisma/client';
+import { VendorProvisioningService } from '../../common/services/vendor-provisioning.service';
 import { SettingsService } from '../settings/settings.service';
 
 @Injectable()
@@ -15,6 +16,7 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private settingsService: SettingsService,
+    private vendorProvisioning: VendorProvisioningService,
   ) {}
 
   async verifyOtp(phoneNumber: string, code: string) {
@@ -332,92 +334,7 @@ export class AuthService {
   }
 
   private async ensureVendorProvisionedFromApprovedOnboarding(userId: number) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        roles: {
-          include: {
-            role: true,
-          },
-        },
-        store: {
-          select: { id: true },
-        },
-        vendorOnboardingRequest: true,
-      },
-    });
-
-    if (!user?.vendorOnboardingRequest) return;
-
-    const request = user.vendorOnboardingRequest;
-    if (request.membershipStatus === 'PENDING') {
-      const membershipSetting = await this.prisma.vendorMembershipSetting.findUnique({ where: { id: 1 } });
-      const isFree = !membershipSetting?.isEnabled || !membershipSetting.feeAmount || Boolean(membershipSetting.freeUntil && membershipSetting.freeUntil >= new Date());
-      if (isFree && request.applicationStatus === 'APPROVED') {
-        await this.prisma.vendorOnboardingRequest.update({
-          where: { id: request.id },
-          data: { membershipStatus: VendorMembershipStatus.EXEMPT, membershipAmount: 0 },
-        });
-        request.membershipStatus = VendorMembershipStatus.EXEMPT;
-      }
-    }
-    if (request.productStatus !== 'APPROVED') return;
-    if (request.membershipStatus !== 'PAID' && request.membershipStatus !== 'EXEMPT') return;
-
-    const hasVendorRole = user.roles.some((item) => item.role.name == 'VENDOR');
-    const hasStore = Boolean(user.store);
-    const hasActivatedAt = Boolean(request.storeActivatedAt);
-
-    if (hasVendorRole && hasStore && hasActivatedAt) return;
-
-    await this.prisma.$transaction(async (tx) => {
-      if (!hasVendorRole) {
-        const vendorRole = await tx.role.findUnique({
-          where: { name: 'VENDOR' },
-          select: { id: true },
-        });
-
-        if (vendorRole) {
-          await tx.usersOnRoles.upsert({
-            where: {
-              userId_roleId: {
-                userId,
-                roleId: vendorRole.id,
-              },
-            },
-            update: {},
-            create: {
-              userId,
-              roleId: vendorRole.id,
-            },
-          });
-        }
-      }
-
-      if (!hasStore && request.businessName && request.businessSlug) {
-        await tx.store.create({
-          data: {
-            name: request.businessName,
-            slug: request.businessSlug,
-            description: request.businessDescription ?? null,
-            address: request.businessAddress ?? null,
-            lat: request.businessLat ?? null,
-            lng: request.businessLng ?? null,
-            ownerId: userId,
-            isVerified: false,
-          },
-        });
-      }
-
-      if (!hasActivatedAt) {
-        await tx.vendorOnboardingRequest.update({
-          where: { id: request.id },
-          data: {
-            storeActivatedAt: new Date(),
-          },
-        });
-      }
-    });
+    await this.vendorProvisioning.provisionUserIfEligible(userId);
   }
 
   async sendOtp(phoneNumber: string, options?: { forceRealProvider?: boolean; requestedByAdmin?: number }) {

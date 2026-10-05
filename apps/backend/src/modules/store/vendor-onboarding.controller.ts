@@ -225,4 +225,13 @@ export class VendorOnboardingController {
   ) {
     return this.vendorOnboardingService.adminReviewProduct(user, id, Boolean(body.approved), { reviewNote: body.reviewNote })
   }
+
+  @Post('admin/requests/:id/repair')
+  @UseGuards(JwtAuthGuard, AbilitiesGuard)
+  @ApiBearerAuth('JWT-auth')
+  @CheckAbilities((ability) => ability.can('manage', 'all') || ability.can('review', 'VendorOnboardingRequest'))
+  @ApiOperation({ summary: 'تعمیر و همگام‌سازی فروشگاه و دسترسی‌های فروشنده تاییدشده' })
+  adminRepairVendor(@Param('id', ParseIntPipe) id: number) {
+    return this.vendorOnboardingService.adminRepairVendor(id)
+  }
 }

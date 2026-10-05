@@ -20,6 +20,7 @@ import { Prisma, Product, ProductPublicationStatus, Store } from '@prisma/client
 import { AbilityFactory } from '../auth/ability.factory';
 import { subject } from '@casl/ability';
 import { PricingService } from '../discount/pricing.service';
+import { VendorProvisioningService } from '../../common/services/vendor-provisioning.service';
 
 @Injectable()
 export class ProductService {
@@ -27,6 +28,7 @@ export class ProductService {
     private prisma: PrismaService,
     private abilityFactory: AbilityFactory,
     private pricingService: PricingService,
+    private vendorProvisioning: VendorProvisioningService,
   ) {}
 
   async create(dto: CreateProductDto, user: { id: number; roles: string[] }) {
@@ -775,10 +777,18 @@ export class ProductService {
     }
 
     if (!user.roles.includes('ADMIN')) {
-      const store = await this.prisma.store.findFirst({
+      let store = await this.prisma.store.findFirst({
         where: { ownerId: user.id },
         select: { id: true },
       });
+
+      if (!store) {
+        await this.vendorProvisioning.provisionUserIfEligible(user.id);
+        store = await this.prisma.store.findFirst({
+          where: { ownerId: user.id },
+          select: { id: true },
+        });
+      }
 
       if (!store) {
         throw new NotFoundException('فروشگاه متعلق به فروشنده یافت نشد');

@@ -13,6 +13,7 @@ import {
   ResolvedJalaliDateRange,
   resolveJalaliDateRange,
 } from '../../common/date/jalali-date-range.util';
+import { VendorProvisioningService } from '../../common/services/vendor-provisioning.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { VendorDashboardDateRangeQueryDto } from './dto/vendor-dashboard-date-range-query.dto';
 
@@ -23,7 +24,10 @@ type AuthenticatedUser = {
 
 @Injectable()
 export class VendorDashboardService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly vendorProvisioning: VendorProvisioningService,
+  ) {}
 
   async getWalletSummary(user: AuthenticatedUser, query: VendorDashboardDateRangeQueryDto) {
     const store = await this.getVendorStoreOrThrow(user);
@@ -369,9 +373,20 @@ export class VendorDashboardService {
   }
 
   private async getVendorStoreOrThrow(user: AuthenticatedUser) {
+    if (!user.roles.includes('VENDOR')) {
+      await this.vendorProvisioning.provisionUserIfEligible(user.id);
+      const userRoles = await this.prisma.usersOnRoles.findMany({
+        where: { userId: user.id },
+        include: { role: true },
+      });
+      if (userRoles.some((item) => item.role.name === 'VENDOR')) {
+        user.roles.push('VENDOR');
+      }
+    }
+
     this.assertVendor(user);
 
-    const store = await this.prisma.store.findFirst({
+    let store = await this.prisma.store.findFirst({
       where: { ownerId: user.id },
       select: {
         id: true,
@@ -386,6 +401,25 @@ export class VendorDashboardService {
         vendorHealthSnapshot: true,
       },
     });
+
+    if (!store) {
+      await this.vendorProvisioning.provisionUserIfEligible(user.id);
+      store = await this.prisma.store.findFirst({
+        where: { ownerId: user.id },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          ownerId: true,
+          customerRatingAverage: true,
+          customerRatingCount: true,
+          vendorHealthScore: true,
+          vendorHealthStatus: true,
+          vendorHealthCalculatedAt: true,
+          vendorHealthSnapshot: true,
+        },
+      });
+    }
 
     if (!store) {
       throw new NotFoundException('فروشگاهی برای این فروشنده یافت نشد');

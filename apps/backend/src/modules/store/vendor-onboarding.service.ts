@@ -2,6 +2,7 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { Prisma, VendorMembershipStatus, VendorOnboardingStatus } from '@prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
 import { PaymentService } from '../payment/payment.service'
+import { VendorProvisioningService } from '../../common/services/vendor-provisioning.service'
 
 type AuthenticatedUser = {
   id: number
@@ -48,6 +49,7 @@ export class VendorOnboardingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly paymentService: PaymentService,
+    private readonly vendorProvisioning: VendorProvisioningService,
   ) {}
 
   async getMyRequest(user: AuthenticatedUser) {
@@ -185,6 +187,10 @@ export class VendorOnboardingService {
       throw new NotFoundException('درخواست مورد نظر یافت نشد')
     }
 
+    if (request.applicationStatus === 'APPROVED' && request.productStatus === 'APPROVED') {
+      await this.vendorProvisioning.provisionUserIfEligible(request.userId)
+    }
+
     return request
   }
 
@@ -238,6 +244,9 @@ export class VendorOnboardingService {
     })
 
     await this.paymentService.getVendorMembershipAccess(requestId)
+    if (approved) {
+      await this.vendorProvisioning.provisionUserIfEligible(request.userId)
+    }
     return this.prisma.vendorOnboardingRequest.findUnique({ where: { id: updated.id } })
   }
 
@@ -303,8 +312,24 @@ export class VendorOnboardingService {
         }
       }
 
+      if (approved) {
+        await this.vendorProvisioning.provisionUserIfEligible(request.userId)
+      }
       return updated
     })
+  }
+
+  async adminRepairVendor(requestId: number) {
+    const request = await this.prisma.vendorOnboardingRequest.findUnique({ where: { id: requestId } })
+    if (!request) {
+      throw new NotFoundException('درخواست مورد نظر یافت نشد')
+    }
+    const store = await this.vendorProvisioning.provisionUserIfEligible(request.userId)
+    return {
+      success: Boolean(store),
+      storeId: store?.id ?? null,
+      message: store ? 'فروشگاه، دسترسی‌ها و محصول فروشنده با موفقیت همگام‌سازی شد' : 'شرایط فعال‌سازی هنوز کامل نشده است (نیاز به تایید مدارک و وضعیت عضویت)',
+    }
   }
 
   private async getOrCreateRequest(userId: number) {

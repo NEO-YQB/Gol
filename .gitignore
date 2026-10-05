@@ -30,3 +30,8 @@ MOBILE_VENDOR_APP_ROADMAP_FA.md
 MOBILE_VENDOR_API_MAPPING_FA.md
 MOBILE_VENDOR_SCREEN_LIST_FA.md
 skills-lock.json
+
+# Graphify
+graphify-out/
+.graphify*
+.agents

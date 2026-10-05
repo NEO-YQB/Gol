@@ -10,6 +10,7 @@ import type { Response } from 'express';
 import { DomainEventType, NotificationChannel, OrderActorType, OrderStatus, PaymentGatewayConfig, PaymentMethod, PaymentReviewStatus, PaymentStatus, Prisma, VendorMembershipPayment, VendorMembershipStatus } from '@prisma/client';
 import { subject } from '@casl/ability';
 import { DomainEventsService } from '../../common/services/domain-events.service';
+import { VendorProvisioningService } from '../../common/services/vendor-provisioning.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AbilityFactory } from '../auth/ability.factory';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -37,6 +38,7 @@ export class PaymentService {
     private readonly paymentGatewayService: PaymentGatewayService,
     private readonly paymentGatewayRegistry: PaymentGatewayRegistryService,
     private readonly notificationsService: NotificationsService,
+    private readonly vendorProvisioning: VendorProvisioningService,
   ) {}
 
   async initiate(user: AuthenticatedUser, dto: InitiatePaymentDto) {
@@ -992,6 +994,10 @@ export class PaymentService {
       }
       return updatedPayment;
     });
+
+    if (verificationResult.success) {
+      await this.vendorProvisioning.provisionUserIfEligible(payment.userId);
+    }
 
     if (response && gatewayConfig.returnUrl) {
       const target = this.buildPaymentReturnUrl(gatewayConfig.returnUrl);
