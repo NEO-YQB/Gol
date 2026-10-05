@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ProductPublicationStatus, VendorMembershipStatus } from '@prisma/client';
+import { Prisma, ProductPublicationStatus, VendorMembershipStatus } from '@prisma/client';
 import slugify from 'slugify';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -110,8 +110,9 @@ export class VendorProvisioningService {
         update: {},
         create: {
           storeId: store.id,
-          balance: 0,
-          frozenBalance: 0,
+          currentBalance: 0,
+          availableBalance: 0,
+          heldBalance: 0,
         },
       });
 
@@ -171,7 +172,7 @@ export class VendorProvisioningService {
               price: Number(request.productPrice ?? 0),
               quantity: request.productQuantity ?? 10,
               mainImage: request.productMainImage || '/images/placeholder-flower.jpg',
-              images: request.documents ?? undefined,
+              images: (request.documents as Prisma.InputJsonValue) ?? undefined,
               publicationStatus: ProductPublicationStatus.APPROVED,
               isPurchasable: true,
               isArchived: false,
