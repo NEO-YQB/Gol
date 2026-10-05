@@ -760,6 +760,7 @@ export const adminApi = {
       page?: number
       limit?: number
       status?: string
+      search?: string
     },
   ) {
     const params = new URLSearchParams()
@@ -767,6 +768,7 @@ export const adminApi = {
     if (query?.page) params.set('page', String(query.page))
     if (query?.limit) params.set('limit', String(query.limit))
     if (query?.status) params.set('status', query.status)
+    if (query?.search?.trim()) params.set('search', query.search.trim())
 
     const search = params.toString()
     return request<unknown>(

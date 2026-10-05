@@ -1,7 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { VendorHealthStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, Min } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
 import { AdminReportDateRangeQueryDto } from './admin-report-date-range-query.dto';
 
 export class AdminRiskSummaryQueryDto extends AdminReportDateRangeQueryDto {
@@ -9,6 +9,11 @@ export class AdminRiskSummaryQueryDto extends AdminReportDateRangeQueryDto {
   @IsOptional()
   @IsEnum(VendorHealthStatus)
   status?: VendorHealthStatus;
+
+  @ApiPropertyOptional({ example: 'گل سرخ' })
+  @IsOptional()
+  @IsString()
+  search?: string;
 
   @ApiPropertyOptional({ example: 1, default: 1 })
   @IsOptional()

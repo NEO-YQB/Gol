@@ -17,34 +17,44 @@ export class VendorProvisioningService {
       },
     });
 
-    if (!request) return null;
-    if (request.applicationStatus !== 'APPROVED' || request.productStatus !== 'APPROVED') {
-      return null;
-    }
-
-    let membershipStatus = request.membershipStatus;
-    if (membershipStatus === VendorMembershipStatus.PENDING) {
-      const setting = await this.prisma.vendorMembershipSetting.findUnique({ where: { id: 1 } });
-      const isFree =
-        !setting?.isEnabled ||
-        !setting.feeAmount ||
-        Boolean(setting.freeUntil && setting.freeUntil >= new Date());
-      if (isFree) {
-        await this.prisma.vendorOnboardingRequest.update({
-          where: { id: request.id },
-          data: { membershipStatus: VendorMembershipStatus.EXEMPT, membershipAmount: 0 },
-        });
-        membershipStatus = VendorMembershipStatus.EXEMPT;
-      } else {
+    // If request exists, the application itself must be approved
+    if (request) {
+      if (request.applicationStatus !== 'APPROVED') {
         return null;
       }
-    }
 
-    if (
-      membershipStatus !== VendorMembershipStatus.PAID &&
-      membershipStatus !== VendorMembershipStatus.EXEMPT
-    ) {
-      return null;
+      let membershipStatus = request.membershipStatus;
+      if (membershipStatus === VendorMembershipStatus.PENDING) {
+        const setting = await this.prisma.vendorMembershipSetting.findUnique({ where: { id: 1 } });
+        const isFree =
+          !setting?.isEnabled ||
+          !setting.feeAmount ||
+          Boolean(setting.freeUntil && setting.freeUntil >= new Date());
+        if (isFree) {
+          await this.prisma.vendorOnboardingRequest.update({
+            where: { id: request.id },
+            data: { membershipStatus: VendorMembershipStatus.EXEMPT, membershipAmount: 0 },
+          });
+          membershipStatus = VendorMembershipStatus.EXEMPT;
+        } else {
+          return null;
+        }
+      }
+
+      if (
+        membershipStatus !== VendorMembershipStatus.PAID &&
+        membershipStatus !== VendorMembershipStatus.EXEMPT
+      ) {
+        return null;
+      }
+    } else {
+      // If no onboarding request, check if user has role VENDOR
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        include: { roles: { include: { role: true } } },
+      });
+      const hasVendorRole = user?.roles.some((r) => r.role.name === 'VENDOR');
+      if (!hasVendorRole) return null;
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -64,9 +74,16 @@ export class VendorProvisioningService {
       // 2. Ensure Store exists
       let store = await tx.store.findFirst({ where: { ownerId: userId } });
       if (!store) {
-        let storeSlug = request.businessSlug?.trim();
+        const ownerUser = await tx.user.findUnique({
+          where: { id: userId },
+          select: { fullName: true, phoneNumber: true },
+        });
+        const fallbackName = ownerUser?.fullName || `فروشگاه کاربر ${userId}`;
+        const storeName = request?.businessName?.trim() || fallbackName;
+
+        let storeSlug = request?.businessSlug?.trim();
         if (!storeSlug) {
-          storeSlug = slugify(request.businessName || `store-${userId}`, {
+          storeSlug = slugify(storeName, {
             lower: true,
             strict: true,
             locale: 'fa',
@@ -86,12 +103,12 @@ export class VendorProvisioningService {
 
         store = await tx.store.create({
           data: {
-            name: request.businessName || `فروشگاه ${request.personalFullName || userId}`,
+            name: storeName,
             slug: storeSlug,
-            description: request.businessDescription ?? null,
-            address: request.businessAddress ?? null,
-            lat: request.businessLat ?? null,
-            lng: request.businessLng ?? null,
+            description: request?.businessDescription ?? null,
+            address: request?.businessAddress ?? null,
+            lat: request?.businessLat ?? null,
+            lng: request?.businessLng ?? null,
             ownerId: userId,
             isVerified: false,
             isActive: true,
@@ -116,8 +133,8 @@ export class VendorProvisioningService {
         },
       });
 
-      // 4. Ensure initial approved product exists in Product table
-      if (request.productName?.trim()) {
+      // 4. Ensure initial product exists in Product table if approved and has name
+      if (request?.productStatus === 'APPROVED' && request?.productName?.trim()) {
         const existingProduct = await tx.product.findFirst({
           where: { storeId: store.id },
           select: { id: true },
@@ -187,7 +204,7 @@ export class VendorProvisioningService {
       }
 
       // 5. Update onboarding request storeActivatedAt
-      if (!request.storeActivatedAt) {
+      if (request && !request.storeActivatedAt) {
         await tx.vendorOnboardingRequest.update({
           where: { id: request.id },
           data: { storeActivatedAt: new Date() },
@@ -199,22 +216,29 @@ export class VendorProvisioningService {
   }
 
   async repairApprovedVendorsWithoutStores() {
-    const candidates = await this.prisma.vendorOnboardingRequest.findMany({
-      where: {
-        applicationStatus: 'APPROVED',
-        productStatus: 'APPROVED',
-      },
-      select: { userId: true },
-    });
+    const [approvedRequests, vendorUsers] = await Promise.all([
+      this.prisma.vendorOnboardingRequest.findMany({
+        where: { applicationStatus: 'APPROVED' },
+        select: { userId: true },
+      }),
+      this.prisma.user.findMany({
+        where: { roles: { some: { role: { name: 'VENDOR' } } } },
+        select: { id: true },
+      }),
+    ]);
+
+    const userIds = Array.from(
+      new Set([...approvedRequests.map((r) => r.userId), ...vendorUsers.map((u) => u.id)]),
+    );
 
     const results: Array<{ userId: number; success: boolean }> = [];
-    for (const item of candidates) {
+    for (const userId of userIds) {
       try {
-        const store = await this.provisionUserIfEligible(item.userId);
-        results.push({ userId: item.userId, success: Boolean(store) });
+        const store = await this.provisionUserIfEligible(userId);
+        results.push({ userId, success: Boolean(store) });
       } catch (err: any) {
-        this.logger.error(`Failed to repair vendor ${item.userId}: ${err.message}`);
-        results.push({ userId: item.userId, success: false });
+        this.logger.error(`Failed to repair vendor ${userId}: ${err.message}`);
+        results.push({ userId, success: false });
       }
     }
     return results;

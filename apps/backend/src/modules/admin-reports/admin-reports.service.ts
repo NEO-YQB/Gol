@@ -302,25 +302,56 @@ export class AdminReportsService {
 
     await this.vendorProvisioning.repairApprovedVendorsWithoutStores();
 
-    const stores = await this.prisma.store.findMany({
-      where: {
-        ...(query.status ? { vendorHealthStatus: query.status } : {}),
-      },
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        ownerId: true,
-        isVerified: true,
-        isActive: true,
-        suspendedAt: true,
-        customerRatingAverage: true,
-        customerRatingCount: true,
-        vendorHealthScore: true,
-        vendorHealthStatus: true,
-        vendorHealthCalculatedAt: true,
-      },
-    });
+    const where: Prisma.StoreWhereInput = {
+      ...(query.status ? { vendorHealthStatus: query.status } : {}),
+    };
+
+    if (query.search?.trim()) {
+      const s = query.search.trim();
+      where.OR = [
+        { name: { contains: s, mode: 'insensitive' } },
+        { slug: { contains: s, mode: 'insensitive' } },
+        { owner: { fullName: { contains: s, mode: 'insensitive' } } },
+        { owner: { phoneNumber: { contains: s, mode: 'insensitive' } } },
+      ];
+    }
+
+    const [stores, pendingOnboardingCount] = await Promise.all([
+      this.prisma.store.findMany({
+        where,
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          ownerId: true,
+          isVerified: true,
+          isActive: true,
+          suspendedAt: true,
+          customerRatingAverage: true,
+          customerRatingCount: true,
+          vendorHealthScore: true,
+          vendorHealthStatus: true,
+          vendorHealthCalculatedAt: true,
+          owner: {
+            select: {
+              id: true,
+              fullName: true,
+              phoneNumber: true,
+              email: true,
+            },
+          },
+          _count: {
+            select: {
+              products: true,
+              orders: true,
+            },
+          },
+        },
+      }),
+      this.prisma.vendorOnboardingRequest.count({
+        where: { applicationStatus: 'SUBMITTED' },
+      }),
+    ]);
 
     const storeIds = stores.map((store) => store.id);
     const metricMap = new Map<
@@ -437,6 +468,9 @@ export class AdminReportsService {
         storeName: store.name,
         storeSlug: store.slug,
         ownerId: store.ownerId,
+        owner: store.owner,
+        productCount: store._count?.products ?? 0,
+        orderCount: store._count?.orders ?? 0,
         isVerified: store.isVerified,
         isActive: store.isActive,
         suspendedAt: store.suspendedAt,
@@ -451,6 +485,7 @@ export class AdminReportsService {
         total,
         page,
         lastPage: Math.ceil(total / limit),
+        pendingOnboardingCount,
       },
     };
   }

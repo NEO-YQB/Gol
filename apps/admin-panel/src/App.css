@@ -1543,44 +1543,304 @@
   }
 }
 
+.vendors-pending-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.12), rgba(245, 158, 11, 0.08));
+  border: 1px solid rgba(234, 179, 8, 0.35);
+  border-radius: 16px;
+  color: var(--fm-text-primary);
+  font-size: 0.95rem;
+}
+
+.vendors-pending-banner-text {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 500;
+}
+
+.vendors-pending-banner-text strong {
+  color: #b45309;
+}
+
 .vendors-toolbar {
   display: grid;
-  gap: 10px;
+  gap: 14px;
+}
+
+.vendors-search-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.vendors-search-input-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 280px;
+}
+
+.vendors-search-input {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 40px 0 14px;
+  border-radius: 12px;
+  border: 1px solid var(--fm-border-soft);
+  background: rgba(255, 253, 248, 0.95);
+  font-size: 0.92rem;
+  color: var(--fm-text-primary);
+  transition: all 0.2s ease;
+}
+
+.vendors-search-input:focus {
+  outline: none;
+  border-color: var(--fm-brand-primary);
+  box-shadow: 0 0 0 3px rgba(31, 106, 82, 0.12);
+}
+
+.vendors-search-icon {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--fm-text-secondary);
+  pointer-events: none;
+  font-size: 1rem;
+}
+
+.vendors-search-clear {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--fm-text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  font-size: 0.9rem;
 }
 
 .vendors-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.vendors-filter-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
 .vendors-filter-chip,
-.vendors-page-button {
-  min-height: 34px;
-  padding: 0 12px;
+.vendors-page-button,
+.vendors-refresh-button {
+  min-height: 36px;
+  padding: 0 14px;
   border-radius: 999px;
   border: 1px solid var(--fm-border-soft);
-  background: rgba(255, 253, 248, 0.82);
+  background: rgba(255, 253, 248, 0.88);
   color: var(--fm-text-secondary);
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vendors-filter-chip:hover,
+.vendors-page-button:hover:not(:disabled),
+.vendors-refresh-button:hover {
+  background: rgba(255, 255, 255, 1);
+  border-color: rgba(31, 106, 82, 0.35);
+  color: var(--fm-text-primary);
 }
 
 .vendors-filter-chip.is-active {
   background: var(--fm-brand-primary);
   color: var(--fm-text-inverse);
   border-color: var(--fm-brand-primary);
+  font-weight: 600;
 }
 
 .vendors-pagination {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
-  justify-content: space-between;
   color: var(--fm-text-secondary);
+  font-size: 0.88rem;
 }
 
 .vendors-page-button:disabled {
   opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.vendors-page-select {
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid var(--fm-border-soft);
+  background: rgba(255, 253, 248, 0.9);
+  color: var(--fm-text-secondary);
+  font-size: 0.85rem;
+}
+
+/* Master-Detail Layout */
+.vendors-layout {
+  display: grid;
+  grid-template-columns: minmax(340px, 420px) 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .vendors-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.vendors-master-list {
+  display: grid;
+  gap: 10px;
+  max-height: 820px;
+  overflow-y: auto;
+  padding-left: 4px;
+}
+
+.vendors-master-list::-webkit-scrollbar {
+  width: 6px;
+}
+.vendors-master-list::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 999px;
+}
+
+.vendors-vendor-card {
+  border: 1px solid var(--fm-border-soft);
+  background: rgba(255, 253, 248, 0.92);
+  border-radius: 18px;
+  padding: 14px 16px;
+  text-align: right;
+  display: grid;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.vendors-vendor-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(31, 106, 82, 0.25);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+}
+
+.vendors-vendor-card.is-active {
+  border-color: var(--fm-brand-primary);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 0 0 3px rgba(31, 106, 82, 0.12), 0 6px 18px rgba(0, 0, 0, 0.05);
+}
+
+.vendors-vendor-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.vendors-vendor-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--fm-text-primary);
+}
+
+.vendors-vendor-card-owner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.84rem;
+  color: var(--fm-text-secondary);
+}
+
+.vendors-vendor-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(0, 0, 0, 0.08);
+  font-size: 0.8rem;
+  color: var(--fm-text-secondary);
+}
+
+.vendors-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.04);
+  font-size: 0.78rem;
+}
+
+/* Detail Pane */
+.vendors-detail-pane {
+  display: grid;
+  gap: 14px;
+}
+
+.vendors-detail-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  background: rgba(255, 253, 248, 0.95);
+  border: 1px solid var(--fm-border-soft);
+  border-radius: 18px;
+}
+
+.vendors-detail-hero-info {
+  display: grid;
+  gap: 4px;
+}
+
+.vendors-detail-hero-info h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--fm-text-primary);
+}
+
+.vendors-detail-hero-info span {
+  font-size: 0.85rem;
+  color: var(--fm-text-secondary);
+}
+
+.vendors-empty-state {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--fm-text-secondary);
+  border: 2px dashed var(--fm-border-soft);
+  border-radius: 18px;
+  background: rgba(255, 253, 248, 0.5);
+  display: grid;
+  gap: 8px;
+  place-content: center;
 }
 
 .vendors-board-card,
