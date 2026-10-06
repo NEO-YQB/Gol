@@ -361,6 +361,8 @@ export function SettlementsPage({ session, onOpenFinanceWorkspace }: { session: 
               </button>
             ))}
           </div>
+        </SectionCard>
+
         <SectionCard
           eyebrow="سیستم مالی و واریز"
           title="کارتابل درخواست‌های تسویه حساب فروشندگان"
