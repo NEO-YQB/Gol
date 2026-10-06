@@ -304,6 +304,7 @@ function renderRoute(
     financeWorkspaceSettlement: Record<string, unknown> | null
     onOpenVendorWorkspace: (store: Record<string, unknown>) => void
     onOpenVendorOnboardingWorkspace: (request: Record<string, unknown>) => void
+    onNavigateToVendorOnboarding?: () => void
     onBackToVendors: () => void
     onBackToVendorOnboarding: () => void
     onOpenFinanceWorkspace: (item: Record<string, unknown>) => void
@@ -359,7 +360,13 @@ function renderRoute(
     case 'supportWorkspace':
       return <SupportWorkspacePage onBack={options.onBackToSupport} session={session} ticket={options.supportWorkspaceTicket} />
     case 'vendors':
-      return <VendorsPage onOpenVendorWorkspace={options.onOpenVendorWorkspace} session={session} />
+      return (
+        <VendorsPage
+          onNavigateToOnboarding={options.onNavigateToVendorOnboarding}
+          onOpenVendorWorkspace={options.onOpenVendorWorkspace}
+          session={session}
+        />
+      )
     case 'vendorWorkspace':
       return <VendorWorkspacePage onBack={options.onBackToVendors} session={session} store={options.vendorWorkspaceStore} />
     case 'vendorOnboarding':
@@ -876,6 +883,7 @@ export default function App() {
         vendorOnboardingRequest,
         onOpenVendorWorkspace: handleOpenVendorWorkspace,
         onOpenVendorOnboardingWorkspace: handleOpenVendorOnboardingWorkspace,
+        onNavigateToVendorOnboarding: () => handleNavigate('vendorOnboarding'),
         onBackToVendors: handleBackToVendors,
         onBackToVendorOnboarding: handleBackToVendorOnboarding,
         financeWorkspaceSettlement,

@@ -145,9 +145,11 @@ function translateEventType(value: string) {
 export function VendorsPage({
   session,
   onOpenVendorWorkspace,
+  onNavigateToOnboarding,
 }: {
   session: AuthSession
   onOpenVendorWorkspace: (store: Record<string, unknown>) => void
+  onNavigateToOnboarding?: () => void
 }) {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -433,7 +435,18 @@ export function VendorsPage({
                 <strong>{formatPersianNumber(pendingOnboardingCount)} درخواست ثبت‌نام فروشنده جدید</strong> در صف بررسی منتظر تایید یا رسیدگی است.
               </span>
             </div>
-            <Pill tone="warning">صف بررسی</Pill>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              {onNavigateToOnboarding ? (
+                <button
+                  className="fm-button fm-button--primary fm-button--small"
+                  onClick={onNavigateToOnboarding}
+                  type="button"
+                >
+                  ورود به صف و بررسی درخواست‌ها ↗
+                </button>
+              ) : null}
+              <Pill tone="warning">صف بررسی</Pill>
+            </div>
           </div>
         ) : null}
 
