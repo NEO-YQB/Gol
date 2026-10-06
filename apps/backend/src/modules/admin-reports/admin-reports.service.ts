@@ -349,7 +349,17 @@ export class AdminReportsService {
         },
       }),
       this.prisma.vendorOnboardingRequest.count({
-        where: { applicationStatus: 'SUBMITTED' },
+        where: {
+          applicationStatus: 'SUBMITTED',
+          NOT: {
+            user: {
+              store: {
+                isVerified: true,
+                isActive: true,
+              },
+            },
+          },
+        },
       }),
     ]);
 

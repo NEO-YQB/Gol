@@ -1,13 +1,21 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Prisma, ProductPublicationStatus, VendorMembershipStatus } from '@prisma/client';
 import slugify from 'slugify';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
-export class VendorProvisioningService {
+export class VendorProvisioningService implements OnModuleInit {
   private readonly logger = new Logger(VendorProvisioningService.name);
 
   constructor(private readonly prisma: PrismaService) {}
+
+  async onModuleInit() {
+    try {
+      await this.syncVerifiedStoreOnboardingRequests();
+    } catch (err: any) {
+      this.logger.warn(`Could not sync onboarding requests on init: ${err.message}`);
+    }
+  }
 
   async provisionUserIfEligible(userId: number) {
     const request = await this.prisma.vendorOnboardingRequest.findUnique({
@@ -242,5 +250,33 @@ export class VendorProvisioningService {
       }
     }
     return results;
+  }
+
+  async syncVerifiedStoreOnboardingRequests() {
+    const requestsToApprove = await this.prisma.vendorOnboardingRequest.findMany({
+      where: {
+        applicationStatus: 'SUBMITTED',
+        user: {
+          store: {
+            isVerified: true,
+          },
+        },
+      },
+      select: { id: true, userId: true },
+    });
+
+    if (requestsToApprove.length > 0) {
+      await this.prisma.vendorOnboardingRequest.updateMany({
+        where: {
+          id: { in: requestsToApprove.map((r) => r.id) },
+        },
+        data: {
+          applicationStatus: 'APPROVED',
+          reviewedAt: new Date(),
+          storeActivatedAt: new Date(),
+        },
+      });
+      this.logger.log(`Synced ${requestsToApprove.length} onboarding requests for already verified store owners.`);
+    }
   }
 }
