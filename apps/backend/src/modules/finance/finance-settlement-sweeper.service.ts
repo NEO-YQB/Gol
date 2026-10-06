@@ -13,6 +13,9 @@ export class FinanceSettlementSweeperService implements OnModuleInit, OnModuleDe
       60000,
     );
 
+    // آزادسازی فوری تسویه‌های موعد رسیده در زمان راه‌اندازی سرور
+    void this.financeService.releaseEligibleSettlements();
+
     this.timer = setInterval(() => {
       void this.financeService.releaseEligibleSettlements();
     }, intervalMs);

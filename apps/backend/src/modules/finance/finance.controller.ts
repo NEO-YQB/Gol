@@ -7,6 +7,9 @@ import { CreateCommissionRuleDto } from './dto/create-commission-rule.dto';
 import { UpdateCommissionRuleDto } from './dto/update-commission-rule.dto';
 import { GetCommissionRulesQueryDto } from './dto/get-commission-rules-query.dto';
 import { ManualWalletAdjustmentDto } from './dto/manual-wallet-adjustment.dto';
+import { UpsertStoreCommissionRuleDto } from './dto/upsert-store-commission-rule.dto';
+import { RequestSettlementPayoutDto } from './dto/request-settlement-payout.dto';
+import { ApproveSettlementPayoutDto, RejectSettlementPayoutDto } from './dto/process-settlement-payout.dto';
 
 @ApiTags('Finance')
 @ApiBearerAuth('JWT-auth')
@@ -105,5 +108,62 @@ export class FinanceController {
   @ApiOperation({ summary: 'دریافت کیف پول فروشنده جاری' })
   getMyWallet(@GetUser() user: { id: number; roles: string[] }) {
     return this.financeService.vendorGetOwnWallet(user);
+  }
+
+  @Get('admin/stores/:storeId/commission-rule')
+  @ApiOperation({ summary: 'دریافت قانون کمیسیون و تسویه اختصاصی فروشگاه' })
+  getStoreCommissionRule(
+    @GetUser() user: { id: number; roles: string[] },
+    @Param('storeId', ParseIntPipe) storeId: number,
+  ) {
+    return this.financeService.adminGetStoreCommissionRule(user, storeId);
+  }
+
+  @Post('admin/stores/:storeId/commission-rule')
+  @ApiOperation({ summary: 'تعیین یا ویرایش کمیسیون و تعداد روزهای هولد تسویه فروشگاه' })
+  upsertStoreCommissionRule(
+    @GetUser() user: { id: number; roles: string[] },
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Body() dto: UpsertStoreCommissionRuleDto,
+  ) {
+    return this.financeService.adminUpsertStoreCommissionRule(user, storeId, dto);
+  }
+
+  @Post('vendor/settlement-payout')
+  @ApiOperation({ summary: 'ثبت درخواست تسویه حساب توسط فروشنده' })
+  requestSettlementPayout(
+    @GetUser() user: { id: number; roles: string[] },
+    @Body() dto: RequestSettlementPayoutDto,
+  ) {
+    return this.financeService.vendorRequestSettlementPayout(user, dto);
+  }
+
+  @Get('admin/settlement-payout-requests')
+  @ApiOperation({ summary: 'لیست درخواست های تسویه حساب فروشندگان' })
+  listSettlementPayoutRequests(
+    @GetUser() user: { id: number; roles: string[] },
+    @Query('status') status?: string,
+  ) {
+    return this.financeService.adminListSettlementPayoutRequests(user, status);
+  }
+
+  @Post('admin/settlement-payout-requests/:id/approve')
+  @ApiOperation({ summary: 'تایید و واریز درخواست تسویه حساب' })
+  approveSettlementPayout(
+    @GetUser() user: { id: number; roles: string[] },
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ApproveSettlementPayoutDto,
+  ) {
+    return this.financeService.adminApproveSettlementPayout(user, id, dto);
+  }
+
+  @Post('admin/settlement-payout-requests/:id/reject')
+  @ApiOperation({ summary: 'رد درخواست تسویه حساب و عودت وجه به کیف پول' })
+  rejectSettlementPayout(
+    @GetUser() user: { id: number; roles: string[] },
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: RejectSettlementPayoutDto,
+  ) {
+    return this.financeService.adminRejectSettlementPayout(user, id, dto);
   }
 }

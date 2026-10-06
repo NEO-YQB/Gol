@@ -372,6 +372,15 @@ export const vendorApi = {
   getSettlementsSummary(session: AuthSession) {
     return request<unknown>('/vendor-dashboard/settlements-summary', {}, session.accessToken)
   },
+  requestSettlementPayout(
+    session: AuthSession,
+    payload: { amount: number; bankAccountInfo?: string; notes?: string },
+  ) {
+    return request<unknown>('/finance/vendor/settlement-payout', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }, session.accessToken)
+  },
   getTicketsSummary(session: AuthSession) {
     return request<unknown>('/vendor-dashboard/tickets-summary', {}, session.accessToken)
   },

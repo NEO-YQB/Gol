@@ -166,59 +166,59 @@ export function SettlementsPage({ session, onOpenFinanceWorkspace }: { session: 
   const [stats, setStats] = useState(() => makeStats([]))
   const [wallets, setWallets] = useState<FinanceRecord[]>([])
   const [exceptions, setExceptions] = useState<FinanceRecord[]>([])
+  const [payoutRequests, setPayoutRequests] = useState<FinanceRecord[]>([])
+  const [payoutFilter, setPayoutFilter] = useState<'ALL' | 'PENDING' | 'PAID' | 'REJECTED'>('ALL')
+  const [payoutActionBusy, setPayoutActionBusy] = useState<number | null>(null)
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [selectedSettlementId, setSelectedSettlementId] = useState<string | null>(null)
   const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null)
 
-  useEffect(() => {
-    let active = true
+  const loadData = async () => {
+    setLoading(true)
+    setError(null)
 
-    async function load() {
-      setLoading(true)
-      setError(null)
+    try {
+      const [wallets, exceptions, financeSummary, refundSummary, payouts] = await Promise.all([
+        adminApi.getWallets(session),
+        adminApi.getSettlementExceptions(session),
+        adminApi.getFinanceSummary(session),
+        adminApi.getRefundSummary(session),
+        adminApi.getSettlementPayoutRequests(session).catch(() => []),
+      ])
 
-      try {
-        const [wallets, exceptions, financeSummary, refundSummary] = await Promise.all([
-          adminApi.getWallets(session),
-          adminApi.getSettlementExceptions(session),
-          adminApi.getFinanceSummary(session),
-          adminApi.getRefundSummary(session),
-        ])
+      const walletList = toArray(wallets)
+      const exceptionList = toArray(exceptions)
+      const payoutList = toArray(payouts)
 
-        if (!active) return
-
-        const walletList = toArray(wallets)
-        const exceptionList = toArray(exceptions)
-
-        setStats(
-          makeStats([
-            { label: 'کیف پول', value: wallets, detail: '', tone: 'primary' },
-            { label: 'استثناها', value: exceptions, detail: '', tone: 'warning' },
-            { label: 'خلاصه مالی', value: financeSummary, detail: '', tone: 'success' },
-            { label: 'بازگشت به مشتری', value: refundSummary, detail: '', tone: 'danger' },
-          ]),
-        )
-        setWallets(walletList)
-        setExceptions(exceptionList)
-        if (walletList.length > 0) {
-          setSelectedWalletId(getWalletId(walletList[0]))
-        }
-        if (exceptionList.length > 0) {
-          setSelectedSettlementId(getSettlementId(exceptionList[0]))
-        }
-      } catch (loadError) {
-        if (!active) return
-        setError(loadError instanceof Error ? loadError.message : 'خطا در بارگذاری مالی و تسویه')
-      } finally {
-        if (active) setLoading(false)
+      setStats(
+        makeStats([
+          { label: 'کیف پول', value: wallets, detail: '', tone: 'primary' },
+          { label: 'استثناها', value: exceptions, detail: '', tone: 'warning' },
+          { label: 'تسویه در انتظار', value: payoutList.filter((p) => {
+            const meta = toObject(p.metadata)
+            return meta.payoutStatus === 'PENDING' || !meta.payoutStatus
+          }).length, detail: 'نیازمند بررسی و واریز', tone: 'danger' },
+          { label: 'خلاصه مالی', value: financeSummary, detail: '', tone: 'success' },
+        ]),
+      )
+      setWallets(walletList)
+      setExceptions(exceptionList)
+      setPayoutRequests(payoutList)
+      if (walletList.length > 0) {
+        setSelectedWalletId(getWalletId(walletList[0]))
       }
+      if (exceptionList.length > 0) {
+        setSelectedSettlementId(getSettlementId(exceptionList[0]))
+      }
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'خطا در بارگذاری مالی و تسویه')
+    } finally {
+      setLoading(false)
     }
+  }
 
-    void load()
-
-    return () => {
-      active = false
-    }
+  useEffect(() => {
+    void loadData()
   }, [session])
 
   const filteredExceptions = useMemo(
@@ -294,6 +294,47 @@ export function SettlementsPage({ session, onOpenFinanceWorkspace }: { session: 
     })
   }
 
+  async function handleApprovePayout(item: FinanceRecord) {
+    const id = Number(item.id)
+    const trackingCode = window.prompt('لطفاً شماره پیگیری یا شماره حواله پایا/ساتنا را وارد کنید (اختیاری):')
+    if (trackingCode === null) return
+
+    setPayoutActionBusy(id)
+    try {
+      await adminApi.approveSettlementPayout(session, id, { trackingCode: trackingCode.trim() || undefined })
+      await loadData()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'خطا در ثبت واریز تسویه')
+    } finally {
+      setPayoutActionBusy(null)
+    }
+  }
+
+  async function handleRejectPayout(item: FinanceRecord) {
+    const id = Number(item.id)
+    const reason = window.prompt('دلیل رد درخواست تسویه را بنویسید (وجه فوراً به کیف پول فروشگاه عودت داده می‌شود):')
+    if (!reason || !reason.trim()) return
+
+    setPayoutActionBusy(id)
+    try {
+      await adminApi.rejectSettlementPayout(session, id, { reason: reason.trim() })
+      await loadData()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'خطا در رد درخواست تسویه')
+    } finally {
+      setPayoutActionBusy(null)
+    }
+  }
+
+  const filteredPayouts = useMemo(() => {
+    return payoutRequests.filter((item) => {
+      const meta = toObject(item.metadata)
+      const status = (meta.payoutStatus as string) || 'PENDING'
+      if (payoutFilter === 'ALL') return true
+      return status === payoutFilter
+    })
+  }, [payoutFilter, payoutRequests])
+
   return (
     <div className="fm-stack">
       <LoadableState error={error} loading={loading}>
@@ -320,6 +361,142 @@ export function SettlementsPage({ session, onOpenFinanceWorkspace }: { session: 
               </button>
             ))}
           </div>
+        <SectionCard
+          eyebrow="سیستم مالی و واریز"
+          title="کارتابل درخواست‌های تسویه حساب فروشندگان"
+          actions={
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <Pill tone="warning">{`${filteredPayouts.length} درخواست`}</Pill>
+              <button
+                className="fm-button fm-button--ghost fm-button--small"
+                onClick={() => void loadData()}
+                type="button"
+              >
+                بروزرسانی
+              </button>
+            </div>
+          }
+        >
+          <div className="settlements-filters" style={{ marginBottom: '16px' }}>
+            {(['ALL', 'PENDING', 'PAID', 'REJECTED'] as const).map((filter) => {
+              const label =
+                filter === 'ALL'
+                  ? 'همه درخواست‌ها'
+                  : filter === 'PENDING'
+                    ? 'در انتظار واریز'
+                    : filter === 'PAID'
+                      ? 'واریز شده'
+                      : 'رد شده'
+              return (
+                <button
+                  key={filter}
+                  className={`settlements-filter-chip ${payoutFilter === filter ? 'is-active' : ''}`}
+                  onClick={() => setPayoutFilter(filter)}
+                  type="button"
+                >
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+
+          {filteredPayouts.length === 0 ? (
+            <div className="fm-message" style={{ textAlign: 'center', padding: '24px 0' }}>
+              هیچ درخواست تسویه حسابی در این وضعیت یافت نشد.
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table className="fm-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--fm-color-border, #e2e8f0)', textAlign: 'right' }}>
+                    <th style={{ padding: '10px 12px' }}>شناسه</th>
+                    <th style={{ padding: '10px 12px' }}>فروشگاه</th>
+                    <th style={{ padding: '10px 12px' }}>مبلغ درخواستی</th>
+                    <th style={{ padding: '10px 12px' }}>اطلاعات حساب / شبا</th>
+                    <th style={{ padding: '10px 12px' }}>تاریخ درخواست</th>
+                    <th style={{ padding: '10px 12px' }}>وضعیت</th>
+                    <th style={{ padding: '10px 12px' }}>کد پیگیری / توضیحات</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'center' }}>عملیات مالی</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredPayouts.map((item) => {
+                    const id = Number(item.id)
+                    const meta = toObject(item.metadata)
+                    const status = (meta.payoutStatus as string) || 'PENDING'
+                    const store = toObject(item.store)
+                    const storeName = readText(store, ['name', 'slug'], String(item.storeId))
+                    const bankInfo = String(meta.bankAccountInfo || item.description || '—')
+                    const trackingCode = String(meta.trackingCode || '')
+                    const rejectionReason = String(meta.rejectionReason || '')
+                    const requestedAt = String(meta.requestedAt || item.createdAt)
+                    const isBusy = payoutActionBusy === id
+
+                    return (
+                      <tr key={id} style={{ borderBottom: '1px solid var(--fm-color-border, #f1f5f9)' }}>
+                        <td style={{ padding: '12px' }}>#{id}</td>
+                        <td style={{ padding: '12px' }}>
+                          <strong>{storeName}</strong>
+                          <div style={{ fontSize: '0.75rem', color: '#64748b' }}>شناسه #{String(item.storeId)}</div>
+                        </td>
+                        <td style={{ padding: '12px', fontWeight: 600, color: 'var(--fm-color-primary, #0f172a)' }}>
+                          {formatPersianNumber(item.amount)} تومان
+                        </td>
+                        <td style={{ padding: '12px', maxWidth: '220px', wordBreak: 'break-word' }}>
+                          {bankInfo}
+                        </td>
+                        <td style={{ padding: '12px', fontSize: '0.8rem', color: '#64748b' }}>
+                          {formatJalaliDate(requestedAt, true)}
+                        </td>
+                        <td style={{ padding: '12px' }}>
+                          {status === 'PAID' ? (
+                            <Pill tone="success">واریز شده</Pill>
+                          ) : status === 'REJECTED' ? (
+                            <Pill tone="danger">رد شده</Pill>
+                          ) : (
+                            <Pill tone="warning">در انتظار واریز</Pill>
+                          )}
+                        </td>
+                        <td style={{ padding: '12px', fontSize: '0.8rem' }}>
+                          {trackingCode ? (
+                            <span style={{ color: '#16a34a' }}>کد پیگیری: {trackingCode}</span>
+                          ) : rejectionReason ? (
+                            <span style={{ color: '#dc2626' }}>دلیل رد: {rejectionReason}</span>
+                          ) : (
+                            <span style={{ color: '#94a3b8' }}>—</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'center' }}>
+                          {status === 'PENDING' ? (
+                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                              <button
+                                className="fm-button fm-button--primary fm-button--small"
+                                disabled={isBusy}
+                                onClick={() => void handleApprovePayout(item)}
+                                type="button"
+                              >
+                                {isBusy ? '...' : 'تایید و ثبت واریز'}
+                              </button>
+                              <button
+                                className="fm-button fm-button--danger fm-button--small"
+                                disabled={isBusy}
+                                onClick={() => void handleRejectPayout(item)}
+                                type="button"
+                              >
+                                {isBusy ? '...' : 'رد درخواست'}
+                              </button>
+                            </div>
+                          ) : (
+                            <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>تکمیل شده</span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </SectionCard>
 
         <div className="settlements-layout">

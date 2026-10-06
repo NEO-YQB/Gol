@@ -36,6 +36,12 @@ const transactionTypeTranslations: Record<string, string> = {
   COMMISSION_DEDUCTION: 'کسر کمیسیون',
   PENALTY: 'جریمه',
   BONUS: 'پاداش',
+  SETTLEMENT_PAYOUT: 'درخواست تسویه حساب (واریز)',
+  ORDER_EARNING: 'درآمد سفارش (هولد)',
+  ORDER_RELEASE: 'آزادسازی خودکار درآمد',
+  ORDER_REVERSAL: 'برگشت مالی سفارش',
+  MANUAL_CREDIT: 'شارژ / عودت مالی',
+  MANUAL_DEBIT: 'برداشت دستی',
   UNKNOWN: 'نامشخص',
 }
 
@@ -115,51 +121,94 @@ export function WalletPage({ session }: { session: AuthSession }) {
   const [settlementStatusFilter, setSettlementStatusFilter] = useState('ALL')
   const [selectedSettlementId, setSelectedSettlementId] = useState<string | null>(null)
   const [workspaceOpen, setWorkspaceOpen] = useState(false)
+  const [payoutModalOpen, setPayoutModalOpen] = useState(false)
+  const [payoutAmount, setPayoutAmount] = useState('')
+  const [bankAccountInfo, setBankAccountInfo] = useState('')
+  const [payoutNotes, setPayoutNotes] = useState('')
+  const [payoutSubmitting, setPayoutSubmitting] = useState(false)
+  const [payoutMessage, setPayoutMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  const loadWallet = async () => {
+    setLoading(true)
+    setError(null)
+
+    try {
+      const [wallet, settlementSummary] = await Promise.all([
+        vendorApi.getWalletSummary(session),
+        vendorApi.getSettlementsSummary(session),
+      ])
+
+      const walletRecord = (wallet as Record<string, unknown>) ?? {}
+      const settlementRecord = (settlementSummary as Record<string, unknown>) ?? {}
+      const walletData = (walletRecord.wallet as Record<string, unknown>) ?? {}
+      const activity = (walletRecord.activity as Record<string, unknown>) ?? {}
+      const amounts = (settlementRecord.amounts as Record<string, unknown>) ?? {}
+      const counts = (settlementRecord.counts as Record<string, unknown>) ?? {}
+      const transactionList = toArray(walletRecord.recentTransactions)
+      const settlementList = toArray(settlementRecord.recentOrders)
+
+      setWalletMeta(walletData)
+      setActivityMeta(activity)
+      setSettlementMeta({ ...amounts, ...counts })
+      setTransactions(transactionList)
+      setSettlements(settlementList)
+      if (settlementList.length > 0) {
+        setSelectedSettlementId((current) => current ?? readText(settlementList[0], ['id'], ''))
+      }
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'خطا در بارگذاری کیف پول و تسویه')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    let active = true
-
-    async function load() {
-      setLoading(true)
-      setError(null)
-
-      try {
-        const [wallet, settlementSummary] = await Promise.all([
-          vendorApi.getWalletSummary(session),
-          vendorApi.getSettlementsSummary(session),
-        ])
-        if (!active) return
-
-        const walletRecord = (wallet as Record<string, unknown>) ?? {}
-        const settlementRecord = (settlementSummary as Record<string, unknown>) ?? {}
-        const walletData = (walletRecord.wallet as Record<string, unknown>) ?? {}
-        const activity = (walletRecord.activity as Record<string, unknown>) ?? {}
-        const amounts = (settlementRecord.amounts as Record<string, unknown>) ?? {}
-        const counts = (settlementRecord.counts as Record<string, unknown>) ?? {}
-        const transactionList = toArray(walletRecord.recentTransactions)
-        const settlementList = toArray(settlementRecord.recentOrders)
-
-        setWalletMeta(walletData)
-        setActivityMeta(activity)
-        setSettlementMeta({ ...amounts, ...counts })
-        setTransactions(transactionList)
-        setSettlements(settlementList)
-        if (settlementList.length > 0) {
-          setSelectedSettlementId((current) => current ?? readText(settlementList[0], ['id'], ''))
-        }
-      } catch (loadError) {
-        if (!active) return
-        setError(loadError instanceof Error ? loadError.message : 'خطا در بارگذاری کیف پول و تسویه')
-      } finally {
-        if (active) setLoading(false)
-      }
-    }
-
-    void load()
-    return () => {
-      active = false
-    }
+    void loadWallet()
   }, [session])
+
+  async function handleSubmitPayout(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const amount = Number(payoutAmount)
+    const available = Number(walletMeta.availableBalance ?? 0)
+
+    if (Number.isNaN(amount) || amount <= 0) {
+      setPayoutMessage({ type: 'error', text: 'لطفاً مبلغ معتبری برای تسویه وارد کنید.' })
+      return
+    }
+
+    if (amount > available) {
+      setPayoutMessage({
+        type: 'error',
+        text: `مبلغ درخواستی نمی‌تواند بیشتر از موجودی قابل برداشت (${formatAmount(available)}) باشد.`,
+      })
+      return
+    }
+
+    setPayoutSubmitting(true)
+    setPayoutMessage(null)
+
+    try {
+      await vendorApi.requestSettlementPayout(session, {
+        amount,
+        bankAccountInfo: bankAccountInfo.trim() || undefined,
+        notes: payoutNotes.trim() || undefined,
+      })
+      setPayoutMessage({
+        type: 'success',
+        text: 'درخواست تسویه حساب شما با موفقیت ثبت شد و به سیستم مالی جهت واریز ارجاع گردید.',
+      })
+      setPayoutAmount('')
+      setPayoutNotes('')
+      await loadWallet()
+    } catch (err) {
+      setPayoutMessage({
+        type: 'error',
+        text: err instanceof Error ? err.message : 'خطا در ثبت درخواست تسویه',
+      })
+    } finally {
+      setPayoutSubmitting(false)
+    }
+  }
 
   const filteredTransactions = useMemo(
     () => transactions.filter((item) => (transactionDirectionFilter === 'ALL' ? true : getTransactionDirection(item) === transactionDirectionFilter)),
@@ -303,13 +352,132 @@ export function WalletPage({ session }: { session: AuthSession }) {
 
         <SectionCard
           eyebrow="کارتابل مالی"
-          title="کیف پول، تسویه و drill-down مالی فروشگاه"
-          description="این صفحه حالا لیست و snapshot مالی را از workspace detail جدا می‌کند تا فروشنده بدون شلوغی، هم وضعیت پول را اسکن کند و هم برای هر سفارش context عمیق‌تر بگیرد."
-          actions={<Pill tone="success">مالی v3</Pill>}
+          title="کیف پول و تسویه حساب فروشگاه"
+          description="درآمد حاصل از سفارش‌های تحویل‌شده پس از پایان بازه هولد، به صورت خودکار به موجودی قابل برداشت منتقل می‌شود و می‌توانید درخواست تسویه ثبت کنید."
+          actions={
+            <button
+              className="fm-button fm-button--primary"
+              disabled={Number(walletMeta.availableBalance ?? 0) <= 0}
+              onClick={() => {
+                setPayoutModalOpen((prev) => !prev)
+                setPayoutAmount(String(walletMeta.availableBalance ?? ''))
+                setPayoutMessage(null)
+              }}
+              type="button"
+            >
+              {payoutModalOpen ? 'بستن فرم تسویه' : 'درخواست تسویه حساب'}
+            </button>
+          }
         >
-          <div className="vendor-wallet-note">
-            {formatAmount(walletMeta.availableBalance)} قابل برداشت، {formatAmount(walletMeta.heldBalance)} نگه‌داری‌شده و {formatAmount(activityMeta.creditAmount)} ورودی در بازه فعلی ثبت شده است.
+          <div className="vendor-wallet-note" style={{ marginBottom: payoutModalOpen ? '16px' : 0 }}>
+            <strong>{formatAmount(walletMeta.availableBalance)}</strong> قابل برداشت، {formatAmount(walletMeta.heldBalance)} نگه‌داری‌شده و {formatAmount(activityMeta.creditAmount)} ورودی در بازه فعلی ثبت شده است.
           </div>
+
+          {payoutModalOpen ? (
+            <div
+              style={{
+                marginTop: '16px',
+                padding: '20px',
+                background: 'var(--fm-color-surface-sunken, #f8fafc)',
+                borderRadius: '12px',
+                border: '1px solid var(--fm-color-border, #e2e8f0)',
+              }}
+            >
+              <h4 style={{ margin: '0 0 12px', fontSize: '1rem', fontWeight: 600 }}>
+                فرم ثبت درخواست تسویه و واریز وجه
+              </h4>
+              <p style={{ margin: '0 0 16px', fontSize: '0.85rem', color: '#64748b' }}>
+                پس از ثبت درخواست، مبلغ موردنظر از موجودی قابل تسویه کسر شده و جهت انجام حواله بانکی به واحد مالی ارجاع می‌شود.
+              </p>
+
+              {payoutMessage ? (
+                <div
+                  style={{
+                    padding: '12px 16px',
+                    borderRadius: '8px',
+                    marginBottom: '16px',
+                    fontSize: '0.875rem',
+                    backgroundColor: payoutMessage.type === 'success' ? '#f0fdf4' : '#fef2f2',
+                    color: payoutMessage.type === 'success' ? '#166534' : '#991b1b',
+                    border: `1px solid ${payoutMessage.type === 'success' ? '#bbf7d0' : '#fecaca'}`,
+                  }}
+                >
+                  {payoutMessage.text}
+                </div>
+              ) : null}
+
+              <form className="fm-form-grid" onSubmit={handleSubmitPayout}>
+                <div className="fm-field">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <label htmlFor="payout-amount">مبلغ تسویه (تومان)</label>
+                    <button
+                      type="button"
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--fm-color-primary, #2563eb)',
+                        fontSize: '0.8rem',
+                        cursor: 'pointer',
+                        padding: 0,
+                      }}
+                      onClick={() => setPayoutAmount(String(walletMeta.availableBalance ?? ''))}
+                    >
+                      تسویه کل موجودی ({formatAmount(walletMeta.availableBalance)})
+                    </button>
+                  </div>
+                  <input
+                    id="payout-amount"
+                    type="number"
+                    min="1000"
+                    max={Number(walletMeta.availableBalance ?? 0)}
+                    value={payoutAmount}
+                    onChange={(event) => setPayoutAmount(event.target.value)}
+                    placeholder="مثلا ۵۰۰,۰۰۰"
+                    required
+                  />
+                </div>
+
+                <div className="fm-field">
+                  <label htmlFor="payout-bank-info">اطلاعات شبا یا شماره کارت و نام صاحب حساب</label>
+                  <input
+                    id="payout-bank-info"
+                    type="text"
+                    value={bankAccountInfo}
+                    onChange={(event) => setBankAccountInfo(event.target.value)}
+                    placeholder="مثلا IR120120000000001234567890 - بانک سامان - علی اکبری"
+                  />
+                </div>
+
+                <div className="fm-field">
+                  <label htmlFor="payout-notes">توضیحات اختیاری</label>
+                  <input
+                    id="payout-notes"
+                    type="text"
+                    value={payoutNotes}
+                    onChange={(event) => setPayoutNotes(event.target.value)}
+                    placeholder="مثلا تسویه حساب فروش هفتگی"
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                  <button
+                    className="fm-button fm-button--primary"
+                    disabled={payoutSubmitting || !payoutAmount || Number(payoutAmount) <= 0}
+                    type="submit"
+                  >
+                    {payoutSubmitting ? 'در حال ارسال درخواست...' : 'ارسال درخواست تسویه به سیستم مالی'}
+                  </button>
+                  <button
+                    className="fm-button fm-button--ghost"
+                    onClick={() => setPayoutModalOpen(false)}
+                    type="button"
+                  >
+                    انصراف
+                  </button>
+                </div>
+              </form>
+            </div>
+          ) : null}
         </SectionCard>
 
         {!workspaceOpen ? (

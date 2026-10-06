@@ -184,6 +184,13 @@ export function VendorWorkspacePage({
     lat: 35.7219,
     lng: 51.3347,
   })
+  const [commissionForm, setCommissionForm] = useState({
+    commissionRate: '10',
+    settlementHoldDays: '7',
+    autoReleaseEnabled: true,
+    reason: '',
+    isCustom: false,
+  })
 
   const storeId = readText(store ?? {}, ['storeId'], '')
   const canUpdateStoreLocation = hasPermission(session, 'manage', 'all') || hasPermission(session, 'update', 'Store')
@@ -209,17 +216,30 @@ export function VendorWorkspacePage({
     setError(null)
 
     try {
-      const [timelinePayload, healthPayload, walletPayload] = await Promise.all([
+      const [timelinePayload, healthPayload, walletPayload, commissionRulePayload] = await Promise.all([
         adminApi.getVendorPolicyTimeline(session, storeId),
         adminApi.getVendorHealthDetail(session, storeId),
         canReadWallet
           ? adminApi.getWalletByStore(session, storeId)
           : Promise.resolve(null),
+        adminApi.getStoreCommissionRule(session, storeId).catch(() => null),
       ])
 
       setDetail(toObject(timelinePayload))
       setHealthDetail(toObject(healthPayload))
       setWalletDetail(toObject(walletPayload))
+
+      if (commissionRulePayload && typeof commissionRulePayload === 'object') {
+        const cPayload = commissionRulePayload as Record<string, unknown>
+        const rule = (cPayload.rule as Record<string, unknown>) ?? {}
+        setCommissionForm({
+          commissionRate: String(rule.commissionRate ?? '10'),
+          settlementHoldDays: String(rule.settlementHoldDays ?? '7'),
+          autoReleaseEnabled: rule.autoReleaseEnabled !== false,
+          reason: typeof rule.reason === 'string' ? rule.reason : '',
+          isCustom: Boolean(cPayload.isCustom),
+        })
+      }
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'خطا در بارگذاری میزکار فروشنده')
     } finally {
@@ -607,6 +627,35 @@ export function VendorWorkspacePage({
     )
   }
 
+  async function handleCommissionSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const rate = Number(commissionForm.commissionRate)
+    const holdDays = Number(commissionForm.settlementHoldDays)
+
+    if (Number.isNaN(rate) || rate < 0 || rate > 100) {
+      setActionError('درصد کمیسیون باید بین ۰ تا ۱۰۰ باشد')
+      return
+    }
+
+    if (Number.isNaN(holdDays) || holdDays < 0 || holdDays > 90) {
+      setActionError('تعداد روزهای هولد تسویه باید بین ۰ تا ۹۰ روز باشد')
+      return
+    }
+
+    await runAction(
+      'commission-submit',
+      () =>
+        adminApi.upsertStoreCommissionRule(session, storeId, {
+          commissionRate: rate,
+          settlementHoldDays: holdDays,
+          autoReleaseEnabled: commissionForm.autoReleaseEnabled,
+          reason: commissionForm.reason.trim() || undefined,
+        }),
+      'تنظیمات کمیسیون و آزادسازی تسویه فروشنده با موفقیت ذخیره شد.',
+    )
+    setCommissionForm((prev) => ({ ...prev, isCustom: true }))
+  }
+
   async function handleRecalculateHealth() {
     await runAction(
       'health-recalculate',
@@ -930,12 +979,96 @@ export function VendorWorkspacePage({
         ) : null}
 
         {activeLane === 'finance' ? (
-          <SectionCard
-          eyebrow="کنترل کیف پول"
-          title="کیف پول"
-          actions={<Pill tone="success">ثبت مالی دستی</Pill>}
-        >
-          <div className="vendors-workspace-wallet-grid">
+          <>
+            <SectionCard
+              eyebrow="نرخ و قوانین مالی"
+              title="کمیسیون و دوره آزادسازی پول فروشنده"
+              actions={
+                <Pill tone={commissionForm.isCustom ? 'success' : 'neutral'}>
+                  {commissionForm.isCustom ? 'قانون اختصاصی فعال است' : 'استفاده از قانون پیش‌فرض سیستم'}
+                </Pill>
+              }
+            >
+              <form className="fm-form-grid vendors-workspace-form-grid" onSubmit={handleCommissionSubmit}>
+                <div className="fm-field">
+                  <label htmlFor="vendor-commission-rate">درصد کمیسیون پلتفرم (٪)</label>
+                  <input
+                    id="vendor-commission-rate"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    type="number"
+                    value={commissionForm.commissionRate}
+                    onChange={(event) =>
+                      setCommissionForm((prev) => ({ ...prev, commissionRate: event.target.value }))
+                    }
+                    placeholder="مثلا 10 یا 15"
+                  />
+                  <small style={{ color: 'var(--fm-color-text-muted, #64748b)', marginTop: '4px' }}>
+                    این درصد از درآمد سفارشات این فروشنده به عنوان کمیسیون پلتفرم کسر می‌شود.
+                  </small>
+                </div>
+
+                <div className="fm-field">
+                  <label htmlFor="vendor-settlement-hold-days">دوره هولد و نگه داشتن پول (روز)</label>
+                  <input
+                    id="vendor-settlement-hold-days"
+                    min="0"
+                    max="90"
+                    type="number"
+                    value={commissionForm.settlementHoldDays}
+                    onChange={(event) =>
+                      setCommissionForm((prev) => ({ ...prev, settlementHoldDays: event.target.value }))
+                    }
+                    placeholder="مثلا 7 یا 10"
+                  />
+                  <small style={{ color: 'var(--fm-color-text-muted, #64748b)', marginTop: '4px' }}>
+                    پول حاصل از سفارش تا این تعداد روز پس از تحویل در موجودی نگه‌داری‌شده (Held) می‌ماند.
+                  </small>
+                </div>
+
+                <div className="vendors-workspace-toggle-grid">
+                  <label className="vendors-workspace-toggle">
+                    <input
+                      checked={commissionForm.autoReleaseEnabled}
+                      onChange={(event) =>
+                        setCommissionForm((prev) => ({ ...prev, autoReleaseEnabled: event.target.checked }))
+                      }
+                      type="checkbox"
+                    />
+                    <span>آزادسازی خودکار وجه پس از انقضای این مهلت فعال باشد</span>
+                  </label>
+                </div>
+
+                <div className="fm-field">
+                  <label htmlFor="vendor-commission-reason">یادداشت یا دلیل تعیین این نرخ</label>
+                  <input
+                    id="vendor-commission-reason"
+                    type="text"
+                    value={commissionForm.reason}
+                    onChange={(event) =>
+                      setCommissionForm((prev) => ({ ...prev, reason: event.target.value }))
+                    }
+                    placeholder="مثلا قرارداد همکاری ویژه، دسته بندی گل و گیاه خاص"
+                  />
+                </div>
+
+                <button
+                  className="fm-button fm-button--primary"
+                  disabled={actionBusy === 'commission-submit'}
+                  type="submit"
+                >
+                  {actionBusy === 'commission-submit' ? 'در حال ذخیره...' : 'ذخیره تنظیمات کمیسیون و آزادسازی'}
+                </button>
+              </form>
+            </SectionCard>
+
+            <SectionCard
+              eyebrow="کنترل کیف پول"
+              title="کیف پول"
+              actions={<Pill tone="success">ثبت مالی دستی</Pill>}
+            >
+              <div className="vendors-workspace-wallet-grid">
             <div className="vendors-workspace-wallet-summary">
               <div className="vendors-brief-grid">
                 {[
@@ -1044,8 +1177,9 @@ export function VendorWorkspacePage({
                 {actionBusy === 'wallet-submit' ? 'در حال ثبت...' : 'ثبت تغییر کیف پول'}
               </button>
             </form>
-          </div>
-        </SectionCard>
+            </div>
+          </SectionCard>
+        </>
         ) : null}
 
         {activeLane === 'finance' ? (

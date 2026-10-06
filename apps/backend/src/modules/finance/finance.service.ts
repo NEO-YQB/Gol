@@ -23,6 +23,9 @@ import { CreateCommissionRuleDto } from './dto/create-commission-rule.dto';
 import { UpdateCommissionRuleDto } from './dto/update-commission-rule.dto';
 import { GetCommissionRulesQueryDto } from './dto/get-commission-rules-query.dto';
 import { ManualWalletAdjustmentDto } from './dto/manual-wallet-adjustment.dto';
+import { UpsertStoreCommissionRuleDto } from './dto/upsert-store-commission-rule.dto';
+import { RequestSettlementPayoutDto } from './dto/request-settlement-payout.dto';
+import { ApproveSettlementPayoutDto, RejectSettlementPayoutDto } from './dto/process-settlement-payout.dto';
 
 type AuthenticatedUser = {
   id: number;
@@ -1153,6 +1156,319 @@ export class FinanceService {
           },
           settlementReviewedAt: new Date(),
           settlementReviewedByUserId: input.actorUserId ?? null,
+        },
+      });
+    }, FINANCE_TX_OPTIONS);
+  }
+
+  async adminGetStoreCommissionRule(user: AuthenticatedUser, storeId: number) {
+    this.assertAdmin(user);
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: { id: true, name: true, slug: true },
+    });
+    if (!store) {
+      throw new NotFoundException('فروشگاه مورد نظر یافت نشد');
+    }
+
+    const customRule = await this.prisma.commissionRule.findFirst({
+      where: {
+        scope: CommissionRuleScope.STORE,
+        storeId,
+        isActive: true,
+      },
+      orderBy: [{ priority: 'asc' }, { id: 'desc' }],
+      include: this.commissionRuleInclude(),
+    });
+
+    if (customRule) {
+      return {
+        isCustom: true,
+        rule: customRule,
+      };
+    }
+
+    const globalRule = await this.prisma.commissionRule.findFirst({
+      where: {
+        scope: CommissionRuleScope.GLOBAL,
+        isActive: true,
+      },
+      orderBy: [{ priority: 'asc' }, { id: 'desc' }],
+      include: this.commissionRuleInclude(),
+    });
+
+    return {
+      isCustom: false,
+      rule: globalRule ?? {
+        scope: CommissionRuleScope.GLOBAL,
+        commissionRate: 0,
+        settlementHoldDays: 7,
+        autoReleaseEnabled: true,
+      },
+    };
+  }
+
+  async adminUpsertStoreCommissionRule(
+    user: AuthenticatedUser,
+    storeId: number,
+    dto: UpsertStoreCommissionRuleDto,
+  ) {
+    this.assertAdmin(user);
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: { id: true, name: true },
+    });
+    if (!store) {
+      throw new NotFoundException('فروشگاه مورد نظر یافت نشد');
+    }
+
+    const existingRule = await this.prisma.commissionRule.findFirst({
+      where: {
+        scope: CommissionRuleScope.STORE,
+        storeId,
+      },
+      orderBy: [{ priority: 'asc' }, { id: 'desc' }],
+    });
+
+    if (existingRule) {
+      return this.prisma.commissionRule.update({
+        where: { id: existingRule.id },
+        data: {
+          commissionRate: dto.commissionRate,
+          settlementHoldDays: dto.settlementHoldDays,
+          autoReleaseEnabled: dto.autoReleaseEnabled ?? true,
+          reason: dto.reason ?? existingRule.reason,
+          isActive: true,
+        },
+        include: this.commissionRuleInclude(),
+      });
+    }
+
+    return this.prisma.commissionRule.create({
+      data: {
+        scope: CommissionRuleScope.STORE,
+        storeId,
+        title: `قانون کمیسیون و تسویه فروشگاه ${store.name}`,
+        description: `تعیین کمیسیون ${dto.commissionRate}% و بازه هولد ${dto.settlementHoldDays} روزه`,
+        commissionRate: dto.commissionRate,
+        settlementHoldDays: dto.settlementHoldDays,
+        autoReleaseEnabled: dto.autoReleaseEnabled ?? true,
+        priority: 10,
+        isActive: true,
+        createdByUserId: user.id,
+        reason: dto.reason,
+      },
+      include: this.commissionRuleInclude(),
+    });
+  }
+
+  async vendorRequestSettlementPayout(
+    user: AuthenticatedUser,
+    dto: RequestSettlementPayoutDto,
+  ) {
+    this.assertVendorOrAdmin(user);
+    const store = await this.prisma.store.findFirst({
+      where: { ownerId: user.id },
+      select: { id: true, name: true },
+    });
+
+    if (!store) {
+      throw new NotFoundException('فروشگاهی برای این فروشنده یافت نشد');
+    }
+
+    // قبل از بررسی موجودی، سفارش‌های موعد رسیده آزاد می‌شوند تا موجودی دقیق باشد
+    await this.releaseEligibleSettlements();
+
+    const wallet = await this.ensureWallet(store.id);
+    const requestAmount = this.roundMoney(dto.amount);
+
+    if (requestAmount <= 0) {
+      throw new BadRequestException('مبلغ درخواستی باید بزرگتر از صفر باشد');
+    }
+
+    if (Number(wallet.availableBalance) < requestAmount) {
+      throw new ConflictException(
+        `موجودی قابل تسویه شما (${wallet.availableBalance} تومان) برای این درخواست کافی نیست`,
+      );
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.storeWallet.update({
+        where: { id: wallet.id },
+        data: {
+          availableBalance: { decrement: requestAmount },
+          currentBalance: { decrement: requestAmount },
+        },
+      });
+
+      const txRecord = await tx.walletTransaction.create({
+        data: {
+          walletId: wallet.id,
+          storeId: store.id,
+          type: WalletTransactionType.SETTLEMENT_PAYOUT,
+          direction: WalletTransactionDirection.DEBIT,
+          amount: requestAmount,
+          title: 'درخواست تسویه حساب',
+          description: dto.notes ?? 'درخواست تسویه حساب توسط فروشنده ثبت شد و در انتظار واریز مالی است',
+          createdByUserId: user.id,
+          metadata: {
+            payoutStatus: 'PENDING',
+            bankAccountInfo: dto.bankAccountInfo ?? '',
+            requestedAt: new Date().toISOString(),
+            notes: dto.notes ?? '',
+          } as Prisma.InputJsonValue,
+        },
+      });
+
+      await this.domainEvents.record(tx, {
+        eventType: DomainEventType.SETTLEMENT_HELD,
+        aggregateType: 'store_wallet',
+        aggregateId: wallet.id,
+        actorUserId: user.id,
+        storeId: store.id,
+        walletId: wallet.id,
+        summary: `درخواست تسویه حساب به مبلغ ${requestAmount} تومان ثبت شد`,
+        payload: {
+          amount: requestAmount,
+          bankAccountInfo: dto.bankAccountInfo,
+        },
+      });
+
+      return txRecord;
+    }, FINANCE_TX_OPTIONS);
+  }
+
+  async adminListSettlementPayoutRequests(
+    user: AuthenticatedUser,
+    payoutStatus?: string,
+  ) {
+    this.assertAdmin(user);
+    const transactions = await this.prisma.walletTransaction.findMany({
+      where: {
+        type: WalletTransactionType.SETTLEMENT_PAYOUT,
+      },
+      include: {
+        store: {
+          select: { id: true, name: true, slug: true, ownerId: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+
+    if (payoutStatus && payoutStatus !== 'ALL') {
+      return transactions.filter((tx) => {
+        const meta = tx.metadata as Record<string, unknown> | null;
+        return meta?.payoutStatus === payoutStatus;
+      });
+    }
+
+    return transactions;
+  }
+
+  async adminApproveSettlementPayout(
+    user: AuthenticatedUser,
+    transactionId: number,
+    dto: ApproveSettlementPayoutDto,
+  ) {
+    this.assertAdmin(user);
+    const tx = await this.prisma.walletTransaction.findUnique({
+      where: { id: transactionId },
+    });
+
+    if (!tx || tx.type !== WalletTransactionType.SETTLEMENT_PAYOUT) {
+      throw new NotFoundException('تراکنش درخواست تسویه یافت نشد');
+    }
+
+    const currentMeta = (tx.metadata as Record<string, unknown> | null) ?? {};
+    if (currentMeta.payoutStatus && currentMeta.payoutStatus !== 'PENDING') {
+      throw new ConflictException('این درخواست قبلاً پردازش شده است');
+    }
+
+    const updatedMeta = {
+      ...currentMeta,
+      payoutStatus: 'PAID',
+      trackingCode: dto.trackingCode ?? '',
+      paidAt: new Date().toISOString(),
+      processedByUserId: user.id,
+      note: dto.note ?? '',
+    };
+
+    return this.prisma.walletTransaction.update({
+      where: { id: transactionId },
+      data: {
+        title: 'تسویه حساب واریز شد',
+        description: dto.note
+          ? `واریز وجه انجام شد - ${dto.note}`
+          : dto.trackingCode
+            ? `واریز وجه با کد پیگیری ${dto.trackingCode} انجام شد`
+            : 'واریز وجه تسویه به حساب فروشنده انجام شد',
+        metadata: updatedMeta as Prisma.InputJsonValue,
+      },
+    });
+  }
+
+  async adminRejectSettlementPayout(
+    user: AuthenticatedUser,
+    transactionId: number,
+    dto: RejectSettlementPayoutDto,
+  ) {
+    this.assertAdmin(user);
+    const txRecord = await this.prisma.walletTransaction.findUnique({
+      where: { id: transactionId },
+    });
+
+    if (!txRecord || txRecord.type !== WalletTransactionType.SETTLEMENT_PAYOUT) {
+      throw new NotFoundException('تراکنش درخواست تسویه یافت نشد');
+    }
+
+    const currentMeta = (txRecord.metadata as Record<string, unknown> | null) ?? {};
+    if (currentMeta.payoutStatus && currentMeta.payoutStatus !== 'PENDING') {
+      throw new ConflictException('این درخواست قبلاً پردازش شده است');
+    }
+
+    const refundAmount = Number(txRecord.amount);
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.storeWallet.update({
+        where: { id: txRecord.walletId },
+        data: {
+          availableBalance: { increment: refundAmount },
+          currentBalance: { increment: refundAmount },
+        },
+      });
+
+      await tx.walletTransaction.create({
+        data: {
+          walletId: txRecord.walletId,
+          storeId: txRecord.storeId,
+          type: WalletTransactionType.MANUAL_CREDIT,
+          direction: WalletTransactionDirection.CREDIT,
+          amount: refundAmount,
+          title: 'بازگشت وجه تسویه رد شده',
+          description: `دلیل رد تسویه: ${dto.reason}`,
+          createdByUserId: user.id,
+          metadata: {
+            originalTransactionId: transactionId,
+            reason: dto.reason,
+          } as Prisma.InputJsonValue,
+        },
+      });
+
+      const updatedMeta = {
+        ...currentMeta,
+        payoutStatus: 'REJECTED',
+        rejectedAt: new Date().toISOString(),
+        rejectionReason: dto.reason,
+        processedByUserId: user.id,
+      };
+
+      return tx.walletTransaction.update({
+        where: { id: transactionId },
+        data: {
+          title: 'درخواست تسویه رد شد',
+          description: `درخواست تسویه رد شد: ${dto.reason}`,
+          metadata: updatedMeta as Prisma.InputJsonValue,
         },
       });
     }, FINANCE_TX_OPTIONS);

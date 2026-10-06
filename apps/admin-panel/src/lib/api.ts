@@ -748,6 +748,48 @@ export const adminApi = {
       method: 'POST',
     }, session.accessToken)
   },
+  getStoreCommissionRule(session: AuthSession, storeId: string | number) {
+    return request<unknown>(`/finance/admin/stores/${storeId}/commission-rule`, {}, session.accessToken)
+  },
+  upsertStoreCommissionRule(
+    session: AuthSession,
+    storeId: string | number,
+    body: {
+      commissionRate: number
+      settlementHoldDays: number
+      autoReleaseEnabled?: boolean
+      reason?: string
+    },
+  ) {
+    return request<unknown>(`/finance/admin/stores/${storeId}/commission-rule`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
+  getSettlementPayoutRequests(session: AuthSession, status?: string) {
+    const query = status ? `?status=${encodeURIComponent(status)}` : ''
+    return request<unknown[]>(`/finance/admin/settlement-payout-requests${query}`, {}, session.accessToken)
+  },
+  approveSettlementPayout(
+    session: AuthSession,
+    id: number | string,
+    body?: { trackingCode?: string; note?: string },
+  ) {
+    return request<unknown>(`/finance/admin/settlement-payout-requests/${id}/approve`, {
+      method: 'POST',
+      body: JSON.stringify(body ?? {}),
+    }, session.accessToken)
+  },
+  rejectSettlementPayout(
+    session: AuthSession,
+    id: number | string,
+    body: { reason: string },
+  ) {
+    return request<unknown>(`/finance/admin/settlement-payout-requests/${id}/reject`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, session.accessToken)
+  },
   getFinanceSummary(session: AuthSession) {
     return request<unknown>('/admin-reports/finance/wallets-settlements-summary', {}, session.accessToken)
   },
