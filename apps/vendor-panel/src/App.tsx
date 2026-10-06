@@ -23,14 +23,51 @@ type PublicRoute = 'login' | 'privacy-fa' | 'privacy-en'
 
 const defaultRoute: VendorRoute = 'overview'
 
-function getRouteFromHash(options?: { hasOrder?: boolean }): VendorRoute | null {
-  if (typeof window === 'undefined') return null
-  const clean = window.location.hash.replace(/^#\/?/, '').trim()
-  if (clean && (vendorRouteOrder as readonly string[]).includes(clean)) {
-    if (clean === 'order-workspace' && !options?.hasOrder) return 'orders'
-    return clean as VendorRoute
+type ParsedVendorHash = {
+  route: VendorRoute | null
+  params: Record<string, string>
+}
+
+function parseVendorHash(): ParsedVendorHash {
+  if (typeof window === 'undefined') return { route: null, params: {} }
+  const raw = window.location.hash.replace(/^#\/?/, '').trim()
+  if (!raw) return { route: null, params: {} }
+
+  const questionMarkIndex = raw.indexOf('?')
+  const routePart = questionMarkIndex >= 0 ? raw.slice(0, questionMarkIndex) : raw
+  const queryPart = questionMarkIndex >= 0 ? raw.slice(questionMarkIndex + 1) : ''
+
+  const cleanRoute = routePart.replace(/\/+$/, '').trim()
+  const route = (vendorRouteOrder as readonly string[]).includes(cleanRoute)
+    ? (cleanRoute as VendorRoute)
+    : null
+
+  const params: Record<string, string> = {}
+  if (queryPart) {
+    const searchParams = new URLSearchParams(queryPart)
+    searchParams.forEach((value, key) => {
+      params[key] = value
+    })
   }
-  return null
+
+  return { route, params }
+}
+
+function buildVendorHash(route: VendorRoute, params?: Record<string, string | number | null | undefined>): string {
+  let query = ''
+  if (params) {
+    const searchParams = new URLSearchParams()
+    Object.entries(params).forEach(([key, val]) => {
+      if (val !== null && val !== undefined && val !== '') {
+        searchParams.set(key, String(val))
+      }
+    })
+    const str = searchParams.toString()
+    if (str) {
+      query = `?${str}`
+    }
+  }
+  return `#/${route}${query}`
 }
 
 function resolvePublicRoute(pathname: string): PublicRoute {
@@ -142,8 +179,11 @@ function resolveAccessState(session: AuthSession): VendorAccessState {
 export default function App() {
   const [publicRoute, setPublicRoute] = useState<PublicRoute>(() => resolvePublicRoute(window.location.pathname))
   const [session, setSession] = useState<AuthSession | null>(() => loadSession())
-  const [route, setRoute] = useState<VendorRoute>(() => getRouteFromHash() ?? defaultRoute)
-  const [selectedOrder, setSelectedOrder] = useState<Record<string, unknown> | null>(null)
+  const [route, setRoute] = useState<VendorRoute>(() => parseVendorHash().route ?? defaultRoute)
+  const [selectedOrder, setSelectedOrder] = useState<Record<string, unknown> | null>(() => {
+    const h = parseVendorHash()
+    return h.route === 'order-workspace' && h.params.id ? { id: h.params.id } : null
+  })
   const [phoneNumber, setPhoneNumber] = useState('')
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
@@ -177,21 +217,29 @@ export default function App() {
   }
 
   useEffect(() => {
-    const currentHash = window.location.hash.replace(/^#\/?/, '').trim()
-    if (currentHash !== route) {
-      window.location.hash = `#/${route}`
+    let params: Record<string, string | number | null | undefined> = {}
+    if (route === 'order-workspace' && selectedOrder?.id) {
+      params = { id: String(selectedOrder.id) }
     }
-  }, [route])
+    const targetHash = buildVendorHash(route, params)
+    if (window.location.hash !== targetHash) {
+      window.location.hash = targetHash
+    }
+  }, [route, selectedOrder])
 
   useEffect(() => {
     const handleHashChange = () => {
-      const nextRoute = getRouteFromHash({ hasOrder: Boolean(selectedOrder) })
-      if (nextRoute && nextRoute !== route) {
+      const parsed = parseVendorHash()
+      const nextRoute = parsed.route
+      if (nextRoute) {
         if (
           accessState === 'suspended' &&
           !['overview', 'orders', 'order-workspace', 'wallet', 'support', 'notifications'].includes(nextRoute)
         ) {
           return
+        }
+        if (nextRoute === 'order-workspace' && parsed.params.id) {
+          setSelectedOrder({ id: parsed.params.id })
         }
         setRoute(nextRoute)
       }
@@ -201,7 +249,7 @@ export default function App() {
     return () => {
       window.removeEventListener('hashchange', handleHashChange)
     }
-  }, [route, accessState, selectedOrder])
+  }, [accessState])
 
   useEffect(() => {
     const syncRoute = () => {
@@ -234,13 +282,13 @@ export default function App() {
   const prevAccessStateRef = useRef<VendorAccessState>(accessState)
   useEffect(() => {
     if (prevAccessStateRef.current === 'pending' && accessState === 'active') {
-      const hashRoute = getRouteFromHash({ hasOrder: Boolean(selectedOrder) })
+      const hashRoute = parseVendorHash().route
       if (!hashRoute) {
         setRoute(defaultRoute)
       }
     }
     prevAccessStateRef.current = accessState
-  }, [accessState, selectedOrder])
+  }, [accessState])
 
   useEffect(() => {
     if (
@@ -316,7 +364,7 @@ export default function App() {
       const nextSession: AuthSession = { accessToken: response.access_token, user: response.user }
       saveSession(nextSession)
       setSession(nextSession)
-      const hashRoute = getRouteFromHash()
+      const hashRoute = parseVendorHash().route
       setRoute(hashRoute ?? defaultRoute)
       setCode('')
       setOtpExpiresAt(null)

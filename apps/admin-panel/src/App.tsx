@@ -50,24 +50,51 @@ import { VendorWorkspacePage } from './pages/VendorWorkspacePage'
 
 const defaultRoute: AdminRoute = 'dashboard'
 
-function getRouteFromHash(options?: {
-  hasOrder?: boolean
-  hasVendor?: boolean
-  hasOnboarding?: boolean
-  hasSupport?: boolean
-  hasFinance?: boolean
-}): AdminRoute | null {
-  if (typeof window === 'undefined') return null
-  const clean = window.location.hash.replace(/^#\/?/, '').trim()
-  if (clean && (adminRouteOrder as readonly string[]).includes(clean)) {
-    if (clean === 'ordersWorkspace' && !options?.hasOrder) return 'orders'
-    if (clean === 'vendorWorkspace' && !options?.hasVendor) return 'vendors'
-    if (clean === 'vendorOnboardingWorkspace' && !options?.hasOnboarding) return 'vendorOnboarding'
-    if (clean === 'supportWorkspace' && !options?.hasSupport) return 'support'
-    if (clean === 'financeWorkspace' && !options?.hasFinance) return 'settlements'
-    return clean as AdminRoute
+type ParsedHash = {
+  route: AdminRoute | null
+  params: Record<string, string>
+}
+
+function parseHash(): ParsedHash {
+  if (typeof window === 'undefined') return { route: null, params: {} }
+  const raw = window.location.hash.replace(/^#\/?/, '').trim()
+  if (!raw) return { route: null, params: {} }
+
+  const questionMarkIndex = raw.indexOf('?')
+  const routePart = questionMarkIndex >= 0 ? raw.slice(0, questionMarkIndex) : raw
+  const queryPart = questionMarkIndex >= 0 ? raw.slice(questionMarkIndex + 1) : ''
+
+  const cleanRoute = routePart.replace(/\/+$/, '').trim()
+  const route = (adminRouteOrder as readonly string[]).includes(cleanRoute)
+    ? (cleanRoute as AdminRoute)
+    : null
+
+  const params: Record<string, string> = {}
+  if (queryPart) {
+    const searchParams = new URLSearchParams(queryPart)
+    searchParams.forEach((value, key) => {
+      params[key] = value
+    })
   }
-  return null
+
+  return { route, params }
+}
+
+function buildHash(route: AdminRoute, params?: Record<string, string | number | null | undefined>): string {
+  let query = ''
+  if (params) {
+    const searchParams = new URLSearchParams()
+    Object.entries(params).forEach(([key, val]) => {
+      if (val !== null && val !== undefined && val !== '') {
+        searchParams.set(key, String(val))
+      }
+    })
+    const str = searchParams.toString()
+    if (str) {
+      query = `?${str}`
+    }
+  }
+  return `#/${route}${query}`
 }
 
 function buildNav(currentRoute: AdminRoute, session: AuthSession): NavSection[] {
@@ -443,20 +470,60 @@ function renderRoute(
 
 export default function App() {
   const [session, setSession] = useState<AuthSession | null>(() => loadSession())
-  const [route, setRoute] = useState<AdminRoute>(() => getRouteFromHash() ?? defaultRoute)
-  const [ordersWorkspaceOrder, setOrdersWorkspaceOrder] = useState<Record<string, unknown> | null>(null)
-  const [supportWorkspaceTicket, setSupportWorkspaceTicket] = useState<Record<string, unknown> | null>(null)
-  const [vendorWorkspaceStore, setVendorWorkspaceStore] = useState<Record<string, unknown> | null>(null)
-  const [vendorOnboardingRequest, setVendorOnboardingRequest] = useState<Record<string, unknown> | null>(null)
-  const [financeWorkspaceSettlement, setFinanceWorkspaceSettlement] = useState<Record<string, unknown> | null>(null)
-  const [productWorkspaceSlug, setProductWorkspaceSlug] = useState<string | null>(null)
-  const [productWorkspaceMode, setProductWorkspaceMode] = useState<'create' | 'edit'>('create')
-  const [pageBuilderWorkspacePageId, setPageBuilderWorkspacePageId] = useState<string | null>(null)
-  const [pageBuilderWorkspaceMode, setPageBuilderWorkspaceMode] = useState<'create' | 'edit'>('create')
-  const [contentWorkspaceArticleId, setContentWorkspaceArticleId] = useState<string | null>(null)
-  const [contentWorkspaceMode, setContentWorkspaceMode] = useState<'create' | 'edit'>('create')
-  const [seoLandingWorkspaceId, setSeoLandingWorkspaceId] = useState<number | null>(null)
-  const [seoLandingWorkspaceMode, setSeoLandingWorkspaceMode] = useState<'create' | 'edit'>('create')
+  const [route, setRoute] = useState<AdminRoute>(() => parseHash().route ?? defaultRoute)
+  const [ordersWorkspaceOrder, setOrdersWorkspaceOrder] = useState<Record<string, unknown> | null>(() => {
+    const h = parseHash()
+    return h.route === 'ordersWorkspace' && h.params.id ? { id: h.params.id } : null
+  })
+  const [supportWorkspaceTicket, setSupportWorkspaceTicket] = useState<Record<string, unknown> | null>(() => {
+    const h = parseHash()
+    return h.route === 'supportWorkspace' && h.params.id ? { id: h.params.id } : null
+  })
+  const [vendorWorkspaceStore, setVendorWorkspaceStore] = useState<Record<string, unknown> | null>(() => {
+    const h = parseHash()
+    const storeId = h.params.storeId || h.params.id
+    return h.route === 'vendorWorkspace' && storeId ? { storeId, id: storeId } : null
+  })
+  const [vendorOnboardingRequest, setVendorOnboardingRequest] = useState<Record<string, unknown> | null>(() => {
+    const h = parseHash()
+    return h.route === 'vendorOnboardingWorkspace' && h.params.id ? { id: h.params.id } : null
+  })
+  const [financeWorkspaceSettlement, setFinanceWorkspaceSettlement] = useState<Record<string, unknown> | null>(() => {
+    const h = parseHash()
+    return h.route === 'financeWorkspace' && h.params.id ? { id: h.params.id, orderId: h.params.id, storeId: h.params.storeId } : null
+  })
+  const [productWorkspaceSlug, setProductWorkspaceSlug] = useState<string | null>(() => {
+    const h = parseHash()
+    return h.route === 'productWorkspace' && h.params.slug ? h.params.slug : null
+  })
+  const [productWorkspaceMode, setProductWorkspaceMode] = useState<'create' | 'edit'>(() => {
+    const h = parseHash()
+    return h.route === 'productWorkspace' && h.params.mode === 'create' ? 'create' : 'edit'
+  })
+  const [pageBuilderWorkspacePageId, setPageBuilderWorkspacePageId] = useState<string | null>(() => {
+    const h = parseHash()
+    return h.route === 'pageBuilderWorkspace' && h.params.id ? h.params.id : null
+  })
+  const [pageBuilderWorkspaceMode, setPageBuilderWorkspaceMode] = useState<'create' | 'edit'>(() => {
+    const h = parseHash()
+    return h.route === 'pageBuilderWorkspace' && h.params.mode === 'create' ? 'create' : 'edit'
+  })
+  const [contentWorkspaceArticleId, setContentWorkspaceArticleId] = useState<string | null>(() => {
+    const h = parseHash()
+    return h.route === 'contentWorkspace' && h.params.id ? h.params.id : null
+  })
+  const [contentWorkspaceMode, setContentWorkspaceMode] = useState<'create' | 'edit'>(() => {
+    const h = parseHash()
+    return h.route === 'contentWorkspace' && h.params.mode === 'create' ? 'create' : 'edit'
+  })
+  const [seoLandingWorkspaceId, setSeoLandingWorkspaceId] = useState<number | null>(() => {
+    const h = parseHash()
+    return h.route === 'seoLandingWorkspace' && h.params.id ? Number(h.params.id) : null
+  })
+  const [seoLandingWorkspaceMode, setSeoLandingWorkspaceMode] = useState<'create' | 'edit'>(() => {
+    const h = parseHash()
+    return h.route === 'seoLandingWorkspace' && h.params.mode === 'create' ? 'create' : 'edit'
+  })
   const [phoneNumber, setPhoneNumber] = useState('')
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
@@ -467,23 +534,78 @@ export default function App() {
   const [otpCountdown, setOtpCountdown] = useState<string | null>(null)
 
   useEffect(() => {
-    const currentHash = window.location.hash.replace(/^#\/?/, '').trim()
-    if (currentHash !== route) {
-      window.location.hash = `#/${route}`
+    let params: Record<string, string | number | null | undefined> = {}
+    if (route === 'ordersWorkspace' && ordersWorkspaceOrder?.id) {
+      params = { id: String(ordersWorkspaceOrder.id) }
+    } else if (route === 'vendorWorkspace' && (vendorWorkspaceStore?.storeId || vendorWorkspaceStore?.id)) {
+      params = { storeId: String(vendorWorkspaceStore.storeId || vendorWorkspaceStore.id) }
+    } else if (route === 'vendorOnboardingWorkspace' && vendorOnboardingRequest?.id) {
+      params = { id: String(vendorOnboardingRequest.id) }
+    } else if (route === 'supportWorkspace' && supportWorkspaceTicket?.id) {
+      params = { id: String(supportWorkspaceTicket.id) }
+    } else if (route === 'financeWorkspace' && financeWorkspaceSettlement?.id) {
+      params = { id: String(financeWorkspaceSettlement.id), storeId: financeWorkspaceSettlement.storeId ? String(financeWorkspaceSettlement.storeId) : undefined }
+    } else if (route === 'contentWorkspace') {
+      params = { mode: contentWorkspaceMode, ...(contentWorkspaceArticleId ? { id: contentWorkspaceArticleId } : {}) }
+    } else if (route === 'productWorkspace') {
+      params = { mode: productWorkspaceMode, ...(productWorkspaceSlug ? { slug: productWorkspaceSlug } : {}) }
+    } else if (route === 'pageBuilderWorkspace') {
+      params = { mode: pageBuilderWorkspaceMode, ...(pageBuilderWorkspacePageId ? { id: pageBuilderWorkspacePageId } : {}) }
+    } else if (route === 'seoLandingWorkspace') {
+      params = { mode: seoLandingWorkspaceMode, ...(seoLandingWorkspaceId ? { id: seoLandingWorkspaceId } : {}) }
     }
-  }, [route])
+
+    const targetHash = buildHash(route, params)
+    if (window.location.hash !== targetHash) {
+      window.location.hash = targetHash
+    }
+  }, [
+    route,
+    ordersWorkspaceOrder,
+    vendorWorkspaceStore,
+    vendorOnboardingRequest,
+    supportWorkspaceTicket,
+    financeWorkspaceSettlement,
+    contentWorkspaceArticleId,
+    contentWorkspaceMode,
+    productWorkspaceSlug,
+    productWorkspaceMode,
+    pageBuilderWorkspacePageId,
+    pageBuilderWorkspaceMode,
+    seoLandingWorkspaceId,
+    seoLandingWorkspaceMode,
+  ])
 
   useEffect(() => {
     const handleHashChange = () => {
-      const nextRoute = getRouteFromHash({
-        hasOrder: Boolean(ordersWorkspaceOrder),
-        hasVendor: Boolean(vendorWorkspaceStore),
-        hasOnboarding: Boolean(vendorOnboardingRequest),
-        hasSupport: Boolean(supportWorkspaceTicket),
-        hasFinance: Boolean(financeWorkspaceSettlement),
-      })
-      if (nextRoute && nextRoute !== route) {
+      const parsed = parseHash()
+      const nextRoute = parsed.route
+      if (nextRoute) {
         if (!session || canAccessRoute(session, nextRoute)) {
+          if (nextRoute === 'ordersWorkspace') {
+            setOrdersWorkspaceOrder(parsed.params.id ? { id: parsed.params.id } : null)
+          } else if (nextRoute === 'vendorWorkspace') {
+            const storeId = parsed.params.storeId || parsed.params.id
+            setVendorWorkspaceStore(storeId ? { storeId, id: storeId } : null)
+          } else if (nextRoute === 'vendorOnboardingWorkspace') {
+            setVendorOnboardingRequest(parsed.params.id ? { id: parsed.params.id } : null)
+          } else if (nextRoute === 'supportWorkspace') {
+            setSupportWorkspaceTicket(parsed.params.id ? { id: parsed.params.id } : null)
+          } else if (nextRoute === 'financeWorkspace') {
+            setFinanceWorkspaceSettlement(parsed.params.id ? { id: parsed.params.id, orderId: parsed.params.id, storeId: parsed.params.storeId } : null)
+          } else if (nextRoute === 'contentWorkspace') {
+            setContentWorkspaceMode(parsed.params.mode === 'create' ? 'create' : 'edit')
+            setContentWorkspaceArticleId(parsed.params.id || null)
+          } else if (nextRoute === 'productWorkspace') {
+            setProductWorkspaceMode(parsed.params.mode === 'create' ? 'create' : 'edit')
+            setProductWorkspaceSlug(parsed.params.slug || null)
+          } else if (nextRoute === 'pageBuilderWorkspace') {
+            setPageBuilderWorkspaceMode(parsed.params.mode === 'create' ? 'create' : 'edit')
+            setPageBuilderWorkspacePageId(parsed.params.id || null)
+          } else if (nextRoute === 'seoLandingWorkspace') {
+            setSeoLandingWorkspaceMode(parsed.params.mode === 'create' ? 'create' : 'edit')
+            setSeoLandingWorkspaceId(parsed.params.id ? Number(parsed.params.id) : null)
+          }
           setRoute(nextRoute)
         }
       }
@@ -493,15 +615,7 @@ export default function App() {
     return () => {
       window.removeEventListener('hashchange', handleHashChange)
     }
-  }, [
-    route,
-    session,
-    ordersWorkspaceOrder,
-    vendorWorkspaceStore,
-    vendorOnboardingRequest,
-    supportWorkspaceTicket,
-    financeWorkspaceSettlement,
-  ])
+  }, [session])
 
   useEffect(() => {
     const apiBase = (import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL ?? 'http://localhost:3000/v1').replace(/\/+$/, '')
@@ -534,13 +648,7 @@ export default function App() {
         saveSession(nextSession)
         setSession(nextSession)
 
-        const currentHashRoute = getRouteFromHash({
-          hasOrder: Boolean(ordersWorkspaceOrder),
-          hasVendor: Boolean(vendorWorkspaceStore),
-          hasOnboarding: Boolean(vendorOnboardingRequest),
-          hasSupport: Boolean(supportWorkspaceTicket),
-          hasFinance: Boolean(financeWorkspaceSettlement),
-        })
+        const currentHashRoute = parseHash().route
         const candidateRoute = currentHashRoute && canAccessRoute(nextSession, currentHashRoute)
           ? currentHashRoute
           : route
@@ -579,13 +687,7 @@ export default function App() {
       }
     }
 
-    const currentHashRoute = getRouteFromHash({
-      hasOrder: Boolean(ordersWorkspaceOrder),
-      hasVendor: Boolean(vendorWorkspaceStore),
-      hasOnboarding: Boolean(vendorOnboardingRequest),
-      hasSupport: Boolean(supportWorkspaceTicket),
-      hasFinance: Boolean(financeWorkspaceSettlement),
-    })
+    const currentHashRoute = parseHash().route
     const candidateRoute = currentHashRoute && canAccessRoute(session, currentHashRoute)
       ? currentHashRoute
       : route
@@ -600,15 +702,7 @@ export default function App() {
     return () => {
       active = false
     }
-  }, [
-    route,
-    session,
-    ordersWorkspaceOrder,
-    vendorWorkspaceStore,
-    vendorOnboardingRequest,
-    supportWorkspaceTicket,
-    financeWorkspaceSettlement,
-  ])
+  }, [route, session])
 
   useEffect(() => {
     if (!otpExpiresAt) {

@@ -182,6 +182,15 @@ const routeRequirements: Partial<Record<AdminRoute, AccessRequirement>> = {
       { action: 'read', subject: 'AdminPermission' },
     ],
   },
+  accessControlWorkspace: {
+    anyOf: [
+      { action: 'manage', subject: 'all' },
+      { action: 'read', subject: 'AdminUser' },
+      { action: 'create', subject: 'AdminUser' },
+      { action: 'read', subject: 'AdminRole' },
+      { action: 'read', subject: 'AdminPermission' },
+    ],
+  },
 }
 
 function normalizePermissionKey(action: string, subject: string) {
