@@ -6,12 +6,14 @@ import { UpdateStoreDto } from './dto/update-store.dto';
 import { AbilityFactory } from '../auth/ability.factory';
 import { subject } from '@casl/ability';
 import { UpdateStoreStatusDto } from './dto/update-store-status.dto';
+import { VendorProvisioningService } from '../../common/services/vendor-provisioning.service';
 
 @Injectable()
 export class StoreService {
   constructor(
     private prisma: PrismaService,
     private abilityFactory: AbilityFactory,
+    private vendorProvisioning: VendorProvisioningService,
   ) {}
 
   async create(
@@ -71,12 +73,55 @@ export class StoreService {
     });
   }
 
+  async findMyStore(user: { id: number; roles: string[] }) {
+    let store = await this.prisma.store.findFirst({
+      where: { ownerId: user.id },
+      include: {
+        _count: {
+          select: {
+            products: {
+              where: { deletedAt: null },
+            },
+          },
+        },
+      },
+    });
+
+    if (!store) {
+      await this.vendorProvisioning.provisionUserIfEligible(user.id);
+      store = await this.prisma.store.findFirst({
+        where: { ownerId: user.id },
+        include: {
+          _count: {
+            select: {
+              products: {
+                where: { deletedAt: null },
+              },
+            },
+          },
+        },
+      });
+    }
+
+    if (!store) {
+      throw new NotFoundException('فروشگاهی برای این کاربر یافت نشد');
+    }
+
+    return store;
+  }
+
   async findBySlug(slug: string) {
+    let decodedSlug = slug;
+    try {
+      decodedSlug = decodeURIComponent(slug);
+    } catch {
+      // fallback to original slug
+    }
+
     const store = await this.prisma.store.findFirst({
       where: {
-        slug,
+        OR: [{ slug }, { slug: decodedSlug }],
         isActive: true,
-        isVerified: true,
       },
       include: {
         products: {
@@ -129,7 +174,9 @@ export class StoreService {
         (updateStoreDto.lat !== undefined && updateStoreDto.lat !== Number(store.lat ?? updateStoreDto.lat)) ||
         (updateStoreDto.lng !== undefined && updateStoreDto.lng !== Number(store.lng ?? updateStoreDto.lng)))
     ) {
-      throw new ForbiddenException('فروشنده اجازه ویرایش آدرس فروشگاه را ندارد');
+      delete updateStoreDto.address;
+      delete updateStoreDto.lat;
+      delete updateStoreDto.lng;
     }
 
     if (updateStoreDto.slug) {

@@ -265,8 +265,11 @@ export const vendorApi = {
 
     return request<unknown>(`/products/manage/list?${params.toString()}`, {}, session.accessToken)
   },
+  getMyStore(session: AuthSession) {
+    return request<unknown>('/stores/me', {}, session.accessToken)
+  },
   getStoreBySlug(slug: string) {
-    return request<unknown>(`/stores/${slug}`)
+    return request<unknown>(`/stores/${encodeURIComponent(slug)}`)
   },
   createStore(session: AuthSession, payload: VendorStorePayload) {
     return request<unknown>('/stores', {

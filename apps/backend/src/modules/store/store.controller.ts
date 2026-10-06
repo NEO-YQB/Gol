@@ -179,6 +179,14 @@ export class StoreController {
     return this.vendorHealthService.adminUpsertVendorRiskPolicy(user, id, dto);
   }
 
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'دریافت اطلاعات فروشگاه اختصاصی فروشنده جاری' })
+  findMyStore(@GetUser() user: { id: number; roles: string[] }) {
+    return this.storeService.findMyStore(user);
+  }
+
   @Get(':slug')
   @ApiOperation({ summary: 'دریافت جزئیات فروشگاه با اسلاگ' })
   @ApiParam({ name: 'slug', type: String, description: 'اسلاگ فروشگاه' })

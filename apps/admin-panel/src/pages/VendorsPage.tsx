@@ -66,12 +66,10 @@ function getMetric(record: VendorRecord, key: string) {
 }
 
 function toDisplayValue(value: unknown): string | number | null | undefined {
-  if (
-    typeof value === 'string' ||
-    typeof value === 'number' ||
-    value === null ||
-    value === undefined
-  ) {
+  if (typeof value === 'string' || typeof value === 'number') {
+    return value
+  }
+  if (value === null || value === undefined) {
     return value
   }
 

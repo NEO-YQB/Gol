@@ -110,14 +110,14 @@ export class VendorProvisioningService {
             lat: request?.businessLat ?? null,
             lng: request?.businessLng ?? null,
             ownerId: userId,
-            isVerified: false,
+            isVerified: true,
             isActive: true,
           },
         });
-      } else if (!store.isActive) {
+      } else if (!store.isActive || !store.isVerified) {
         store = await tx.store.update({
           where: { id: store.id },
-          data: { isActive: true },
+          data: { isActive: true, isVerified: true },
         });
       }
 

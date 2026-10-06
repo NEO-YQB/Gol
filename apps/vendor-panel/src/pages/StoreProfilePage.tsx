@@ -146,22 +146,47 @@ export function StoreProfilePage({ session }: { session: AuthSession }) {
   const [form, setForm] = useState<StoreFormState>(initialForm)
 
   async function loadStoreProfile(activeRef = { current: true }) {
-    const health = await vendorApi.getHealthSummary(session)
-    if (!activeRef.current) return
-
-    const healthStore = (((health as StoreRecord).store as StoreRecord) ?? null)
-    if (!healthStore || !Object.keys(healthStore).length) {
-      setStore(null)
-      setForm(initialForm)
-      return
+    try {
+      const myStore = (await vendorApi.getMyStore(session)) as StoreRecord
+      if (!activeRef.current) return
+      if (myStore && typeof myStore === 'object' && Object.keys(myStore).length) {
+        setStore(myStore)
+        setForm(normalizeStoreForm(myStore))
+        return
+      }
+    } catch {
+      // Fallback to health summary if /stores/me returns not found
     }
 
-    const slug = readText(healthStore, ['slug'], '')
-    const detail = slug ? ((await vendorApi.getStoreBySlug(slug)) as StoreRecord) : healthStore
-    if (!activeRef.current) return
+    try {
+      const health = await vendorApi.getHealthSummary(session)
+      if (!activeRef.current) return
 
-    setStore(detail)
-    setForm(normalizeStoreForm(detail))
+      const healthStore = (((health as StoreRecord).store as StoreRecord) ?? null)
+      if (!healthStore || !Object.keys(healthStore).length) {
+        setStore(null)
+        setForm(initialForm)
+        return
+      }
+
+      const slug = readText(healthStore, ['slug'], '')
+      let detail: StoreRecord = healthStore
+      if (slug) {
+        try {
+          detail = (await vendorApi.getStoreBySlug(slug)) as StoreRecord
+        } catch {
+          detail = healthStore
+        }
+      }
+      if (!activeRef.current) return
+
+      setStore(detail)
+      setForm(normalizeStoreForm(detail))
+    } catch {
+      if (!activeRef.current) return
+      setStore(null)
+      setForm(initialForm)
+    }
   }
 
   useEffect(() => {
