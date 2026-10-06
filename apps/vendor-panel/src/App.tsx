@@ -1,9 +1,9 @@
 import { AppShell, Pill, type NavSection } from '@flower-marketplace/frontend-core'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import { clearSession, loadSession, saveSession, type AuthSession } from './lib/session'
 import { vendorApi } from './lib/api'
-import { vendorRouteLabels, type VendorRoute } from './lib/routes'
+import { vendorRouteLabels, vendorRouteOrder, type VendorRoute } from './lib/routes'
 import { LoginPage } from './pages/LoginPage'
 import { NotificationsPage } from './pages/NotificationsPage'
 import { DiscountsPage } from './pages/DiscountsPage'
@@ -22,6 +22,16 @@ type VendorAccessState = 'pending' | 'active' | 'suspended'
 type PublicRoute = 'login' | 'privacy-fa' | 'privacy-en'
 
 const defaultRoute: VendorRoute = 'overview'
+
+function getRouteFromHash(options?: { hasOrder?: boolean }): VendorRoute | null {
+  if (typeof window === 'undefined') return null
+  const clean = window.location.hash.replace(/^#\/?/, '').trim()
+  if (clean && (vendorRouteOrder as readonly string[]).includes(clean)) {
+    if (clean === 'order-workspace' && !options?.hasOrder) return 'orders'
+    return clean as VendorRoute
+  }
+  return null
+}
 
 function resolvePublicRoute(pathname: string): PublicRoute {
   const normalizedPath = pathname.replace(/\/+$/, '') || '/'
@@ -131,8 +141,8 @@ function resolveAccessState(session: AuthSession): VendorAccessState {
 
 export default function App() {
   const [publicRoute, setPublicRoute] = useState<PublicRoute>(() => resolvePublicRoute(window.location.pathname))
-  const [session, setSession] = useState<AuthSession | null>(null)
-  const [route, setRoute] = useState<VendorRoute>(defaultRoute)
+  const [session, setSession] = useState<AuthSession | null>(() => loadSession())
+  const [route, setRoute] = useState<VendorRoute>(() => getRouteFromHash() ?? defaultRoute)
   const [selectedOrder, setSelectedOrder] = useState<Record<string, unknown> | null>(null)
   const [phoneNumber, setPhoneNumber] = useState('')
   const [code, setCode] = useState('')
@@ -141,7 +151,10 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const [otpExpiresAt, setOtpExpiresAt] = useState<string | null>(null)
   const [otpCountdown, setOtpCountdown] = useState<string | null>(null)
-  const [accessState, setAccessState] = useState<VendorAccessState>('pending')
+  const [accessState, setAccessState] = useState<VendorAccessState>(() => {
+    const s = loadSession()
+    return s ? resolveAccessState(s) : 'pending'
+  })
 
   async function refreshSessionBootstrap(baseSession?: AuthSession) {
     const currentSession = baseSession ?? session
@@ -164,8 +177,31 @@ export default function App() {
   }
 
   useEffect(() => {
-    setSession(loadSession())
-  }, [])
+    const currentHash = window.location.hash.replace(/^#\/?/, '').trim()
+    if (currentHash !== route) {
+      window.location.hash = `#/${route}`
+    }
+  }, [route])
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const nextRoute = getRouteFromHash({ hasOrder: Boolean(selectedOrder) })
+      if (nextRoute && nextRoute !== route) {
+        if (
+          accessState === 'suspended' &&
+          !['overview', 'orders', 'order-workspace', 'wallet', 'support', 'notifications'].includes(nextRoute)
+        ) {
+          return
+        }
+        setRoute(nextRoute)
+      }
+    }
+
+    window.addEventListener('hashchange', handleHashChange)
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange)
+    }
+  }, [route, accessState, selectedOrder])
 
   useEffect(() => {
     const syncRoute = () => {
@@ -195,11 +231,16 @@ export default function App() {
     setAccessState(resolveAccessState(session))
   }, [session])
 
+  const prevAccessStateRef = useRef<VendorAccessState>(accessState)
   useEffect(() => {
-    if (accessState === 'active') {
-      setRoute(defaultRoute)
+    if (prevAccessStateRef.current === 'pending' && accessState === 'active') {
+      const hashRoute = getRouteFromHash({ hasOrder: Boolean(selectedOrder) })
+      if (!hashRoute) {
+        setRoute(defaultRoute)
+      }
     }
-  }, [accessState])
+    prevAccessStateRef.current = accessState
+  }, [accessState, selectedOrder])
 
   useEffect(() => {
     if (
@@ -275,7 +316,8 @@ export default function App() {
       const nextSession: AuthSession = { accessToken: response.access_token, user: response.user }
       saveSession(nextSession)
       setSession(nextSession)
-      setRoute(defaultRoute)
+      const hashRoute = getRouteFromHash()
+      setRoute(hashRoute ?? defaultRoute)
       setCode('')
       setOtpExpiresAt(null)
       setOtpCountdown(null)
@@ -297,6 +339,7 @@ export default function App() {
     setOtpExpiresAt(null)
     setOtpCountdown(null)
     setAccessState('pending')
+    window.location.hash = ''
   }
 
   useEffect(() => {

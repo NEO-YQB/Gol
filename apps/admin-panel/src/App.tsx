@@ -50,6 +50,26 @@ import { VendorWorkspacePage } from './pages/VendorWorkspacePage'
 
 const defaultRoute: AdminRoute = 'dashboard'
 
+function getRouteFromHash(options?: {
+  hasOrder?: boolean
+  hasVendor?: boolean
+  hasOnboarding?: boolean
+  hasSupport?: boolean
+  hasFinance?: boolean
+}): AdminRoute | null {
+  if (typeof window === 'undefined') return null
+  const clean = window.location.hash.replace(/^#\/?/, '').trim()
+  if (clean && (adminRouteOrder as readonly string[]).includes(clean)) {
+    if (clean === 'ordersWorkspace' && !options?.hasOrder) return 'orders'
+    if (clean === 'vendorWorkspace' && !options?.hasVendor) return 'vendors'
+    if (clean === 'vendorOnboardingWorkspace' && !options?.hasOnboarding) return 'vendorOnboarding'
+    if (clean === 'supportWorkspace' && !options?.hasSupport) return 'support'
+    if (clean === 'financeWorkspace' && !options?.hasFinance) return 'settlements'
+    return clean as AdminRoute
+  }
+  return null
+}
+
 function buildNav(currentRoute: AdminRoute, session: AuthSession): NavSection[] {
   const isAccessOnly = hasRole(session, 'ACCESS_MANAGER') && !hasPermission(session, 'manage', 'all')
   const isSeoOnly = (hasRole(session, 'SEO_MANAGER') || hasRole(session, 'CONTENT_EDITOR') || hasRole(session, 'CONTENT_WRITER')) && !hasPermission(session, 'manage', 'all')
@@ -422,8 +442,8 @@ function renderRoute(
 }
 
 export default function App() {
-  const [session, setSession] = useState<AuthSession | null>(null)
-  const [route, setRoute] = useState<AdminRoute>(defaultRoute)
+  const [session, setSession] = useState<AuthSession | null>(() => loadSession())
+  const [route, setRoute] = useState<AdminRoute>(() => getRouteFromHash() ?? defaultRoute)
   const [ordersWorkspaceOrder, setOrdersWorkspaceOrder] = useState<Record<string, unknown> | null>(null)
   const [supportWorkspaceTicket, setSupportWorkspaceTicket] = useState<Record<string, unknown> | null>(null)
   const [vendorWorkspaceStore, setVendorWorkspaceStore] = useState<Record<string, unknown> | null>(null)
@@ -447,9 +467,41 @@ export default function App() {
   const [otpCountdown, setOtpCountdown] = useState<string | null>(null)
 
   useEffect(() => {
-    const storedSession = loadSession()
-    setSession(storedSession)
-  }, [])
+    const currentHash = window.location.hash.replace(/^#\/?/, '').trim()
+    if (currentHash !== route) {
+      window.location.hash = `#/${route}`
+    }
+  }, [route])
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const nextRoute = getRouteFromHash({
+        hasOrder: Boolean(ordersWorkspaceOrder),
+        hasVendor: Boolean(vendorWorkspaceStore),
+        hasOnboarding: Boolean(vendorOnboardingRequest),
+        hasSupport: Boolean(supportWorkspaceTicket),
+        hasFinance: Boolean(financeWorkspaceSettlement),
+      })
+      if (nextRoute && nextRoute !== route) {
+        if (!session || canAccessRoute(session, nextRoute)) {
+          setRoute(nextRoute)
+        }
+      }
+    }
+
+    window.addEventListener('hashchange', handleHashChange)
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange)
+    }
+  }, [
+    route,
+    session,
+    ordersWorkspaceOrder,
+    vendorWorkspaceStore,
+    vendorOnboardingRequest,
+    supportWorkspaceTicket,
+    financeWorkspaceSettlement,
+  ])
 
   useEffect(() => {
     const apiBase = (import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL ?? 'http://localhost:3000/v1').replace(/\/+$/, '')
@@ -482,8 +534,18 @@ export default function App() {
         saveSession(nextSession)
         setSession(nextSession)
 
-        const safeRoute = canAccessRoute(nextSession, route)
-          ? route
+        const currentHashRoute = getRouteFromHash({
+          hasOrder: Boolean(ordersWorkspaceOrder),
+          hasVendor: Boolean(vendorWorkspaceStore),
+          hasOnboarding: Boolean(vendorOnboardingRequest),
+          hasSupport: Boolean(supportWorkspaceTicket),
+          hasFinance: Boolean(financeWorkspaceSettlement),
+        })
+        const candidateRoute = currentHashRoute && canAccessRoute(nextSession, currentHashRoute)
+          ? currentHashRoute
+          : route
+        const safeRoute = canAccessRoute(nextSession, candidateRoute)
+          ? candidateRoute
           : getFirstAccessibleRoute(nextSession, adminRouteOrder) ?? defaultRoute
         setRoute(safeRoute)
       } catch (requestError) {
@@ -517,8 +579,18 @@ export default function App() {
       }
     }
 
-    const safeRoute = canAccessRoute(session, route)
-      ? route
+    const currentHashRoute = getRouteFromHash({
+      hasOrder: Boolean(ordersWorkspaceOrder),
+      hasVendor: Boolean(vendorWorkspaceStore),
+      hasOnboarding: Boolean(vendorOnboardingRequest),
+      hasSupport: Boolean(supportWorkspaceTicket),
+      hasFinance: Boolean(financeWorkspaceSettlement),
+    })
+    const candidateRoute = currentHashRoute && canAccessRoute(session, currentHashRoute)
+      ? currentHashRoute
+      : route
+    const safeRoute = canAccessRoute(session, candidateRoute)
+      ? candidateRoute
       : getFirstAccessibleRoute(session, adminRouteOrder) ?? defaultRoute
 
     if (safeRoute !== route) {
@@ -528,7 +600,15 @@ export default function App() {
     return () => {
       active = false
     }
-  }, [route, session])
+  }, [
+    route,
+    session,
+    ordersWorkspaceOrder,
+    vendorWorkspaceStore,
+    vendorOnboardingRequest,
+    supportWorkspaceTicket,
+    financeWorkspaceSettlement,
+  ])
 
   useEffect(() => {
     if (!otpExpiresAt) {
@@ -628,6 +708,7 @@ export default function App() {
     setError(null)
     setOtpExpiresAt(null)
     setOtpCountdown(null)
+    window.location.hash = ''
   }
 
   function handleNavigate(nextRoute: AdminRoute) {
