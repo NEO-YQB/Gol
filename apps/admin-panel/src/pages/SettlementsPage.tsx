@@ -178,11 +178,10 @@ export function SettlementsPage({ session, onOpenFinanceWorkspace }: { session: 
     setError(null)
 
     try {
-      const [wallets, exceptions, financeSummary, refundSummary, payouts] = await Promise.all([
+      const [wallets, exceptions, financeSummary, payouts] = await Promise.all([
         adminApi.getWallets(session),
         adminApi.getSettlementExceptions(session),
         adminApi.getFinanceSummary(session),
-        adminApi.getRefundSummary(session),
         adminApi.getSettlementPayoutRequests(session).catch(() => []),
       ])
 
