@@ -513,7 +513,7 @@ export const getCategories = cache(async (): Promise<CategorySummary[]> => {
 })
 
 export const getStores = cache(async (): Promise<StoreSummary[]> => {
-  return requestNoStore<StoreSummary[]>('/stores')
+  return requestCached<StoreSummary[]>('/stores')
 })
 
 export const getProductTypes = cache(async (): Promise<ProductTypeSummary[]> => {
@@ -717,12 +717,12 @@ export async function getStorefrontArticleArchive({
   params.set('sort', sort)
   if (search.trim()) params.set('search', search.trim())
 
-  return requestNoStore<PublicArticleListing>(`/content/public/articles?${params.toString()}`)
+  return requestCached<PublicArticleListing>(`/content/public/articles?${params.toString()}`)
 }
 
 export async function getStorefrontArticleBySlug(slug: string): Promise<PublicArticleDetail | null> {
   try {
-    return await requestNoStore<PublicArticleDetail>(`/content/public/articles/${slug}`)
+    return await requestCached<PublicArticleDetail>(`/content/public/articles/${slug}`)
   } catch {
     return null
   }
@@ -748,7 +748,7 @@ export async function getStorefrontArticleCategoryArchive({
   if (search.trim()) params.set('search', search.trim())
 
   try {
-    return await requestNoStore<PublicCategoryArticleListing>(
+    return await requestCached<PublicCategoryArticleListing>(
       `/content/public/categories/${slug}?${params.toString()}`,
     )
   } catch {
@@ -1716,7 +1716,7 @@ export function buildProductJsonLd(product: StorefrontProductDetail) {
 
 export async function getStorefrontSeoSettings(): Promise<SeoSettings | null> {
   try {
-    return await requestNoStore<SeoSettings>('/settings/seo')
+    return await requestCached<SeoSettings>('/settings/seo')
   } catch {
     return null
   }
@@ -1770,7 +1770,7 @@ export async function getSeoLandingsForSitemap(): Promise<SeoLandingMatch[]> {
 
 export async function getStorefrontInfoPagesSettings(): Promise<StorefrontInfoPagesSettings | null> {
   try {
-    return await requestNoStore<StorefrontInfoPagesSettings>('/settings/storefront-info-pages')
+    return await requestCached<StorefrontInfoPagesSettings>('/settings/storefront-info-pages')
   } catch {
     return null
   }
@@ -1788,7 +1788,7 @@ export type FaviconSettings = {
 
 export async function getFaviconSettings(): Promise<FaviconSettings | null> {
   try {
-    return await requestNoStore<FaviconSettings>('/settings/favicon')
+    return await requestCached<FaviconSettings>('/settings/favicon')
   } catch {
     return null
   }

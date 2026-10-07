@@ -123,45 +123,89 @@ export class RedisCacheService implements OnModuleInit, OnModuleDestroy {
     return this.isAvailable && this.client !== null;
   }
 
+  private static readonly L1_MAX_ITEMS = 1000;
+  private static readonly L1_DEFAULT_TTL_SECONDS = 30;
+
+  /**
+   * Internal helper to store an item in the L1 memory cache with bounded capacity.
+   */
+  private setL1(key: string, serialized: string, ttlSeconds?: number): void {
+    if (this.memoryCache.size >= RedisCacheService.L1_MAX_ITEMS) {
+      const now = Date.now();
+      for (const [k, v] of this.memoryCache.entries()) {
+        if (v.expiresAt !== null && v.expiresAt <= now) {
+          this.memoryCache.delete(k);
+        }
+      }
+      if (this.memoryCache.size >= RedisCacheService.L1_MAX_ITEMS) {
+        let purged = 0;
+        for (const k of this.memoryCache.keys()) {
+          this.memoryCache.delete(k);
+          purged++;
+          if (purged >= 200) break;
+        }
+      }
+    }
+
+    const effectiveTtl = ttlSeconds && ttlSeconds > 0
+      ? Math.min(ttlSeconds, RedisCacheService.L1_DEFAULT_TTL_SECONDS)
+      : RedisCacheService.L1_DEFAULT_TTL_SECONDS;
+
+    this.memoryCache.set(key, {
+      value: serialized,
+      expiresAt: Date.now() + effectiveTtl * 1000,
+    });
+  }
+
   /**
    * Retrieve cached value by key.
+   * Tier 1: In-memory cache (0.01ms)
+   * Tier 2: Redis cache (0.5-1ms)
    */
   async get<T>(key: string): Promise<T | null> {
+    // 1. Check L1 In-Memory Cache
+    const entry = this.memoryCache.get(key);
+    if (entry) {
+      if (entry.expiresAt === null || entry.expiresAt > Date.now()) {
+        try {
+          return JSON.parse(entry.value) as T;
+        } catch {
+          this.memoryCache.delete(key);
+        }
+      } else {
+        this.memoryCache.delete(key);
+      }
+    }
+
+    // 2. Check L2 Redis Cache
     if (this.isConnected && this.client) {
       try {
         const raw = await this.client.get(key);
         if (raw !== null) {
+          // Populate L1 cache for subsequent fast reads
+          this.setL1(key, raw);
           return JSON.parse(raw) as T;
         }
         return null;
       } catch (err: any) {
-        this.logger.warn(`Redis get failed for key "${key}": ${err.message}. Checking memory fallback.`);
+        this.logger.warn(`Redis get failed for key "${key}": ${err.message}`);
       }
     }
 
-    // In-memory fallback
-    const entry = this.memoryCache.get(key);
-    if (!entry) {
-      return null;
-    }
-    if (entry.expiresAt !== null && entry.expiresAt <= Date.now()) {
-      this.memoryCache.delete(key);
-      return null;
-    }
-
-    try {
-      return JSON.parse(entry.value) as T;
-    } catch {
-      return null;
-    }
+    return null;
   }
 
   /**
    * Set cached value with optional TTL in seconds.
+   * Writes to both L1 In-Memory cache and L2 Redis.
    */
   async set<T>(key: string, value: T, ttlSeconds?: number): Promise<void> {
     const serialized = JSON.stringify(value);
 
+    // 1. Store in L1 In-Memory Cache
+    this.setL1(key, serialized, ttlSeconds);
+
+    // 2. Store in L2 Redis Cache
     if (this.isConnected && this.client) {
       try {
         if (ttlSeconds && ttlSeconds > 0) {
@@ -169,17 +213,10 @@ export class RedisCacheService implements OnModuleInit, OnModuleDestroy {
         } else {
           await this.client.set(key, serialized);
         }
-        return;
       } catch (err: any) {
-        this.logger.warn(`Redis set failed for key "${key}": ${err.message}. Storing in memory fallback.`);
+        this.logger.warn(`Redis set failed for key "${key}": ${err.message}`);
       }
     }
-
-    // In-memory fallback
-    this.memoryCache.set(key, {
-      value: serialized,
-      expiresAt: ttlSeconds && ttlSeconds > 0 ? Date.now() + ttlSeconds * 1000 : null,
-    });
   }
 
   /**
