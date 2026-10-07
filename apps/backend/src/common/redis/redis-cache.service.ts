@@ -76,8 +76,9 @@ export class RedisCacheService implements OnModuleInit, OnModuleDestroy {
         console.log('✅ [Redis]: Connected to Redis successfully.');
       });
 
-      this.client.on('ready', () => {
+      this.client.on('ready', async () => {
         this.isAvailable = true;
+        await this.enforceMemoryPolicy();
       });
 
       this.client.on('close', () => {
@@ -91,11 +92,27 @@ export class RedisCacheService implements OnModuleInit, OnModuleDestroy {
 
       await this.client.connect();
       this.isAvailable = true;
+      await this.enforceMemoryPolicy();
     } catch (error: any) {
       this.isAvailable = false;
       this.logger.warn(
         `Failed to connect to Redis (${error?.message ?? error}). Falling back to memory cache.`,
       );
+    }
+  }
+
+  private async enforceMemoryPolicy() {
+    if (!this.client || !this.isAvailable) {
+      return;
+    }
+    const maxMemory = process.env.REDIS_MAX_MEMORY || '256mb';
+    const policy = process.env.REDIS_MAX_MEMORY_POLICY || 'allkeys-lru';
+
+    try {
+      await this.client.config('SET', 'maxmemory', maxMemory);
+      await this.client.config('SET', 'maxmemory-policy', policy);
+    } catch {
+      // Ignore if CONFIG command is restricted in certain environments
     }
   }
 
