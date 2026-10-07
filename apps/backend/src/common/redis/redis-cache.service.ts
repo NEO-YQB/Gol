@@ -73,7 +73,7 @@ export class RedisCacheService implements OnModuleInit, OnModuleDestroy {
 
       this.client.on('connect', () => {
         this.isAvailable = true;
-        this.logger.log('Redis connection established successfully.');
+        console.log('✅ [Redis]: Connected to Redis successfully.');
       });
 
       this.client.on('ready', () => {
