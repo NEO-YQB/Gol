@@ -9,10 +9,26 @@ import { UpdateCategoryDto } from './dto/update-category.dto';
 import { CreateCategoryFaqDto } from './dto/create-category-faq.dto';
 import { UpdateCategoryFaqDto } from './dto/update-category-faq.dto';
 import { ReorderCategoryFaqDto } from './dto/reorder-category-faq.dto';
+import { RedisCacheService } from '../../common/redis/redis-cache.service';
 
 @Injectable()
 export class CategoryService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private redisCache: RedisCacheService,
+  ) {}
+
+  private async invalidateCategoryCache(id?: number) {
+    try {
+      await this.redisCache.del('categories:tree');
+      if (id) {
+        await this.redisCache.del(`categories:detail:${id}`);
+      }
+      await this.redisCache.delByPattern('catalog:products:list:*');
+    } catch {
+      // ignore
+    }
+  }
 
   async create(dto: CreateCategoryDto) {
     const { parentId, ...rest } = dto;
@@ -20,16 +36,24 @@ export class CategoryService {
     await this.ensureSlugIsAvailable(dto.slug);
     await this.ensureParentExists(parentId);
 
-    return this.prisma.category.create({
+    const created = await this.prisma.category.create({
       data: {
         ...rest,
         parent: parentId ? { connect: { id: parentId } } : undefined,
       },
     });
+    await this.invalidateCategoryCache(created.id);
+    return created;
   }
 
   async findAllWithChildren() {
-    return this.prisma.category.findMany({
+    const cacheKey = 'categories:tree';
+    const cached = await this.redisCache.get<any>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const categories = await this.prisma.category.findMany({
       where: { parentId: null },
       include: {
         children: {
@@ -45,9 +69,17 @@ export class CategoryService {
         categoryFaqs: { orderBy: { sortOrder: 'asc' } },
       },
     });
+    await this.redisCache.set(cacheKey, categories, 3600);
+    return categories;
   }
 
   async findOne(id: number) {
+    const cacheKey = `categories:detail:${id}`;
+    const cached = await this.redisCache.get<any>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const category = await this.prisma.category.findUnique({
       where: { id },
       include: {
@@ -71,6 +103,7 @@ export class CategoryService {
       throw new NotFoundException('دسته بندی یافت نشد');
     }
 
+    await this.redisCache.set(cacheKey, category, 3600);
     return category;
   }
 
@@ -92,7 +125,7 @@ export class CategoryService {
 
     const { parentId, ...rest } = dto;
 
-    return this.prisma.category.update({
+    const updated = await this.prisma.category.update({
       where: { id },
       data: {
         ...rest,
@@ -104,6 +137,8 @@ export class CategoryService {
               : { connect: { id: parentId } },
       },
     });
+    await this.invalidateCategoryCache(id);
+    return updated;
   }
 
   async remove(id: number) {
@@ -135,6 +170,7 @@ export class CategoryService {
     await this.prisma.category.delete({
       where: { id },
     });
+    await this.invalidateCategoryCache(id);
   }
 
   private async ensureSlugIsAvailable(slug: string, currentId?: number) {
@@ -194,7 +230,7 @@ export class CategoryService {
   async createFaq(categoryId: number, dto: CreateCategoryFaqDto) {
     await this.ensureCategoryExists(categoryId);
 
-    return this.prisma.categoryFaq.create({
+    const created = await this.prisma.categoryFaq.create({
       data: {
         question: dto.question,
         answer: dto.answer,
@@ -203,6 +239,8 @@ export class CategoryService {
         category: { connect: { id: categoryId } },
       },
     });
+    await this.invalidateCategoryCache(categoryId);
+    return created;
   }
 
   async findFaqs(categoryId: number) {
@@ -226,7 +264,7 @@ export class CategoryService {
       throw new NotFoundException('سوال متداول یافت نشد');
     }
 
-    return this.prisma.categoryFaq.update({
+    const updated = await this.prisma.categoryFaq.update({
       where: { id: faqId },
       data: {
         ...(dto.question !== undefined && { question: dto.question }),
@@ -235,6 +273,8 @@ export class CategoryService {
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
       },
     });
+    await this.invalidateCategoryCache(categoryId);
+    return updated;
   }
 
   async removeFaq(categoryId: number, faqId: number) {
@@ -250,6 +290,7 @@ export class CategoryService {
     }
 
     await this.prisma.categoryFaq.delete({ where: { id: faqId } });
+    await this.invalidateCategoryCache(categoryId);
   }
 
   async reorderFaqs(categoryId: number, dto: ReorderCategoryFaqDto) {
@@ -263,6 +304,7 @@ export class CategoryService {
     );
 
     await this.prisma.$transaction(updates);
+    await this.invalidateCategoryCache(categoryId);
 
     return this.prisma.categoryFaq.findMany({
       where: { categoryId },

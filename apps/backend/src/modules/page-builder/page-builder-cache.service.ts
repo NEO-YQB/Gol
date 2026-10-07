@@ -1,47 +1,28 @@
 import { Injectable } from '@nestjs/common';
-
-type CacheEntry<T> = {
-  value: T;
-  expiresAt: number | null;
-};
+import { RedisCacheService } from '../../common/redis/redis-cache.service';
 
 @Injectable()
 export class PageBuilderCacheService {
-  private readonly cache = new Map<string, CacheEntry<unknown>>();
-  private readonly ttlMs: number | null;
+  private readonly ttlSeconds: number;
 
-  constructor() {
-    const ttlSeconds = Number(process.env.PAGE_CACHE_TTL_SECONDS ?? 300);
-    this.ttlMs = Number.isFinite(ttlSeconds) && ttlSeconds > 0 ? ttlSeconds * 1000 : null;
+  constructor(private readonly redisCache: RedisCacheService) {
+    const rawTtl = Number(process.env.PAGE_CACHE_TTL_SECONDS ?? 300);
+    this.ttlSeconds = Number.isFinite(rawTtl) && rawTtl > 0 ? rawTtl : 300;
   }
 
   buildSlugKey(slug: string) {
     return `page:slug:${slug}`;
   }
 
-  get<T>(key: string): T | null {
-    const entry = this.cache.get(key);
-
-    if (!entry) {
-      return null;
-    }
-
-    if (entry.expiresAt !== null && entry.expiresAt <= Date.now()) {
-      this.cache.delete(key);
-      return null;
-    }
-
-    return entry.value as T;
+  async get<T>(key: string): Promise<T | null> {
+    return this.redisCache.get<T>(key);
   }
 
-  set<T>(key: string, value: T) {
-    this.cache.set(key, {
-      value,
-      expiresAt: this.ttlMs === null ? null : Date.now() + this.ttlMs,
-    });
+  async set<T>(key: string, value: T): Promise<void> {
+    await this.redisCache.set(key, value, this.ttlSeconds);
   }
 
-  invalidateBySlug(slug: string) {
-    this.cache.delete(this.buildSlugKey(slug));
+  async invalidateBySlug(slug: string): Promise<void> {
+    await this.redisCache.del(this.buildSlugKey(slug));
   }
 }

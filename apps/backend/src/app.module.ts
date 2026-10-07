@@ -2,6 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { join } from 'path';
 import { CommonServicesModule } from './common/common-services.module';
+import { RedisCacheModule } from './common/redis/redis-cache.module';
 import { AbilitiesGuard } from './common/guards/abilities.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AddressModule } from './modules/address/address.module';
@@ -37,6 +38,7 @@ import { PrismaService } from './prisma/prisma.service';
     AuthModule,
     AccessControlModule,
     CommonServicesModule,
+    RedisCacheModule,
     AdminOperationsModule,
     AdminReportsModule,
     StoreModule,

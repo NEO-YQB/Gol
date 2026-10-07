@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/com
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SmsProviderService } from './sms-provider.service';
+import { RedisCacheService } from '../../common/redis/redis-cache.service';
 
 const SMS_IR_SETTING_KEY = 'sms_ir_config';
 const STOREFRONT_INFO_PAGES_SETTING_KEY = 'storefront_info_pages_config';
@@ -197,6 +198,7 @@ export class SettingsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly smsProviderService: SmsProviderService,
+    private readonly redisCache: RedisCacheService,
   ) {}
 
   async getSmsSettings(user: AuthenticatedUser) {
@@ -281,7 +283,14 @@ export class SettingsService {
   }
 
   async getSeoSettingsPublic() {
-    return this.readSeoSettings();
+    const cacheKey = 'settings:public:seo';
+    const cached = await this.redisCache.get<any>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+    const settings = await this.readSeoSettings();
+    await this.redisCache.set(cacheKey, settings, 3600);
+    return settings;
   }
 
   async updateSeoSettings(user: AuthenticatedUser, input: Record<string, unknown>) {
@@ -302,16 +311,25 @@ export class SettingsService {
       },
     });
 
-    return this.normalizeSeoSettings(
+    const result = this.normalizeSeoSettings(
       persisted.value && typeof persisted.value === 'object' && !Array.isArray(persisted.value)
         ? (persisted.value as Record<string, unknown>)
         : {},
       DEFAULT_SEO_SETTINGS,
     );
+    await this.redisCache.del('settings:public:seo');
+    return result;
   }
 
   async getStorefrontInfoPagesSettingsPublic() {
-    return this.readStorefrontInfoPagesSettings();
+    const cacheKey = 'settings:public:infopages';
+    const cached = await this.redisCache.get<any>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+    const settings = await this.readStorefrontInfoPagesSettings();
+    await this.redisCache.set(cacheKey, settings, 3600);
+    return settings;
   }
 
   async getFaviconSettings(user: AuthenticatedUser) {
@@ -320,7 +338,14 @@ export class SettingsService {
   }
 
   async getFaviconSettingsPublic() {
-    return this.readFaviconSettings();
+    const cacheKey = 'settings:public:favicon';
+    const cached = await this.redisCache.get<any>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+    const settings = await this.readFaviconSettings();
+    await this.redisCache.set(cacheKey, settings, 3600);
+    return settings;
   }
 
   async updateFaviconSettings(
@@ -344,12 +369,14 @@ export class SettingsService {
       },
     });
 
-    return this.normalizeFaviconSettings(
+    const result = this.normalizeFaviconSettings(
       persisted.value && typeof persisted.value === 'object' && !Array.isArray(persisted.value)
         ? (persisted.value as Record<string, unknown>)
         : {},
       DEFAULT_FAVICON_SETTINGS,
     );
+    await this.redisCache.del('settings:public:favicon');
+    return result;
   }
 
   async getVendorMembershipSettings(user: AuthenticatedUser): Promise<VendorMembershipSettings> {
@@ -411,12 +438,14 @@ export class SettingsService {
       },
     });
 
-    return this.normalizeStorefrontInfoPagesSettings(
+    const result = this.normalizeStorefrontInfoPagesSettings(
       persisted.value && typeof persisted.value === 'object' && !Array.isArray(persisted.value)
         ? (persisted.value as Record<string, unknown>)
         : {},
       DEFAULT_INFO_PAGES_SETTINGS,
     );
+    await this.redisCache.del('settings:public:infopages');
+    return result;
   }
 
   async sendOtpViaSmsIr(phoneNumber: string, code: string, settings?: SmsIrSettings) {

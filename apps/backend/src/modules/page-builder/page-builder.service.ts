@@ -58,7 +58,7 @@ export class PageBuilderService {
       data: payload,
     });
 
-    this.cache.invalidateBySlug(payload.slug);
+    await this.cache.invalidateBySlug(payload.slug);
 
     return this.mapAdminPage(page);
   }
@@ -111,8 +111,8 @@ export class PageBuilderService {
       data: payload,
     });
 
-    this.cache.invalidateBySlug(existing.slug);
-    this.cache.invalidateBySlug(page.slug);
+    await this.cache.invalidateBySlug(existing.slug);
+    await this.cache.invalidateBySlug(page.slug);
 
     return this.mapAdminPage(page);
   }
@@ -130,13 +130,13 @@ export class PageBuilderService {
       where: { id },
     });
 
-    this.cache.invalidateBySlug(page.slug);
+    await this.cache.invalidateBySlug(page.slug);
   }
 
   async findPublicPageBySlug(query: GetPageBySlugQueryDto) {
     const slug = this.normalizeSlug(query.slug);
     const cacheKey = this.cache.buildSlugKey(slug);
-    const cached = this.cache.get(cacheKey);
+    const cached = await this.cache.get(cacheKey);
 
     if (cached) {
       return cached;
@@ -154,7 +154,7 @@ export class PageBuilderService {
     }
 
     const payload = this.mapPublicPage(page);
-    this.cache.set(cacheKey, payload);
+    await this.cache.set(cacheKey, payload);
 
     return payload;
   }

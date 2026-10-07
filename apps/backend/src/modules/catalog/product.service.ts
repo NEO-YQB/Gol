@@ -21,6 +21,7 @@ import { AbilityFactory } from '../auth/ability.factory';
 import { subject } from '@casl/ability';
 import { PricingService } from '../discount/pricing.service';
 import { VendorProvisioningService } from '../../common/services/vendor-provisioning.service';
+import { RedisCacheService } from '../../common/redis/redis-cache.service';
 
 @Injectable()
 export class ProductService {
@@ -29,7 +30,19 @@ export class ProductService {
     private abilityFactory: AbilityFactory,
     private pricingService: PricingService,
     private vendorProvisioning: VendorProvisioningService,
+    private redisCache: RedisCacheService,
   ) {}
+
+  private async invalidateCatalogCache(slug?: string) {
+    try {
+      await this.redisCache.delByPattern('catalog:products:list:*');
+      if (slug) {
+        await this.redisCache.del(`catalog:products:detail:${slug}`);
+      }
+    } catch {
+      // ignore
+    }
+  }
 
   async create(dto: CreateProductDto, user: { id: number; roles: string[] }) {
     const {
@@ -97,7 +110,7 @@ export class ProductService {
           ? ProductPublicationStatus.DRAFT
           : ProductPublicationStatus.SUBMITTED;
 
-      return await this.prisma.$transaction(async (tx) => {
+      const created = await this.prisma.$transaction(async (tx) => {
         return await tx.product.create({
           data: {
             ...rest,
@@ -122,6 +135,8 @@ export class ProductService {
           },
         });
       });
+      await this.invalidateCatalogCache(created.slug);
+      return created;
     } catch (error: any) {
       if (error.code === 'P2002') {
         throw new ConflictException('نام یا اسلاگ محصول تکراری است');
@@ -200,7 +215,7 @@ export class ProductService {
       isPurchasable,
     );
 
-    return this.prisma.$transaction(async (tx) => {
+    const updated = await this.prisma.$transaction(async (tx) => {
       if (compositions) {
         await tx.productComposition.deleteMany({ where: { productId: id } });
       }
@@ -237,6 +252,11 @@ export class ProductService {
         },
       });
     });
+    await this.invalidateCatalogCache(existingProduct.slug);
+    if (updated.slug !== existingProduct.slug) {
+      await this.invalidateCatalogCache(updated.slug);
+    }
+    return updated;
   }
 
   private async buildUniqueProductSlug(baseSlug: string) {
@@ -299,6 +319,13 @@ export class ProductService {
   }
 
   async findAll(query: GetProductsQueryDto, publicOnly = true) {
+    if (publicOnly) {
+      const cacheKey = `catalog:products:list:${JSON.stringify(query)}`;
+      const cached = await this.redisCache.get<any>(cacheKey);
+      if (cached) {
+        return cached;
+      }
+    }
     const {
       page = 1,
       limit = 10,
@@ -473,7 +500,7 @@ export class ProductService {
 
     const pricedProducts = await this.pricingService.projectProductsPricing(products);
 
-    return {
+    const result = {
       data: pricedProducts,
       meta: {
         total,
@@ -483,9 +510,21 @@ export class ProductService {
         maxPrice: aggregate._max.price ?? null,
       },
     };
+
+    if (publicOnly) {
+      const cacheKey = `catalog:products:list:${JSON.stringify(query)}`;
+      await this.redisCache.set(cacheKey, result, 300);
+    }
+
+    return result;
   }
 
   async findOne(slug: string) {
+    const cacheKey = `catalog:products:detail:${slug}`;
+    const cached = await this.redisCache.get<any>(cacheKey);
+    if (cached) {
+      return cached;
+    }
     const product = await this.prisma.product.findFirst({
       where: {
         slug,
@@ -524,6 +563,7 @@ export class ProductService {
     const [pricedProduct] = await this.pricingService.projectProductsPricing([
       product,
     ]);
+    await this.redisCache.set(cacheKey, pricedProduct, 600);
     return pricedProduct;
   }
 
@@ -587,7 +627,7 @@ export class ProductService {
     this.assertStoreAllowsCatalogManagement(user, product.store.isActive);
     const redirectTargetUrl = this.normalizeRedirectTargetUrl(dto.redirectTargetUrl);
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.product.update({
         where: { id },
         data: {
@@ -621,6 +661,8 @@ export class ProductService {
 
       return updated;
     });
+    await this.invalidateCatalogCache(product.slug);
+    return result;
   }
 
   async review(id: number, dto: ReviewProductDto, user: { id: number; roles: string[] }) {
@@ -640,7 +682,7 @@ export class ProductService {
         ? ProductPublicationStatus.CHANGES_REQUESTED
         : ProductPublicationStatus.SUBMITTED;
 
-    return this.prisma.product.update({
+    const updated = await this.prisma.product.update({
       where: { id },
       data: {
         publicationStatus: nextStatus,
@@ -654,6 +696,8 @@ export class ProductService {
         reviewedByUser: { select: { id: true, fullName: true, phoneNumber: true } },
       },
     });
+    await this.invalidateCatalogCache(product.slug);
+    return updated;
   }
 
   async publish(id: number, dto: PublishProductDto, user: { id: number; roles: string[] }) {
@@ -680,7 +724,7 @@ export class ProductService {
       );
     }
 
-    return this.prisma.product.update({
+    const updated = await this.prisma.product.update({
       where: { id },
       data: {
         publicationStatus: shouldPublish ? ProductPublicationStatus.PUBLISHED : ProductPublicationStatus.APPROVED,
@@ -692,6 +736,8 @@ export class ProductService {
         publishedByUser: { select: { id: true, fullName: true, phoneNumber: true } },
       },
     });
+    await this.invalidateCatalogCache(product.slug);
+    return updated;
   }
 
   async togglePurchasable(id: number, dto: ToggleProductPurchasableDto, user: { id: number; roles: string[] }) {
@@ -707,7 +753,7 @@ export class ProductService {
       dto.isPurchasable,
     );
 
-    return this.prisma.product.update({
+    const updated = await this.prisma.product.update({
       where: { id },
       data: {
         isPurchasable: dto.isArchived ? false : dto.isPurchasable,
@@ -721,6 +767,8 @@ export class ProductService {
               : product.publicationStatus,
       },
     });
+    await this.invalidateCatalogCache(product.slug);
+    return updated;
   }
 
   async createElement(dto: CreateElementDto) {

@@ -27,10 +27,25 @@ import { UpdateArticleDto } from './dto/update-article.dto';
 import { UpdateArticleFaqDto } from './dto/update-article-faq.dto';
 import { UpdateArticleTagDto } from './dto/update-article-tag.dto';
 import { UpdateAuthorDto } from './dto/update-author.dto';
+import { RedisCacheService } from '../../common/redis/redis-cache.service';
 
 @Injectable()
 export class ContentService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly redisCache: RedisCacheService,
+  ) {}
+
+  private async invalidateContentCache(slug?: string) {
+    try {
+      await this.redisCache.delByPattern('content:articles:*');
+      if (slug) {
+        await this.redisCache.del(`content:articles:detail:${slug}`);
+      }
+    } catch {
+      // ignore
+    }
+  }
 
   async createAuthor(dto: CreateAuthorDto) {
     await this.ensureAuthorSlugAvailable(dto.slug);
@@ -402,7 +417,7 @@ export class ContentService {
     const readingTimeMinutes = this.estimateReadingTimeMinutes(articleData.content);
     const tableOfContents = this.extractTableOfContents(articleData.content);
 
-    return this.prisma.article.create({
+    const created = await this.prisma.article.create({
       data: {
         ...articleData,
         readingTimeMinutes,
@@ -420,6 +435,8 @@ export class ContentService {
       },
       include: this.articleInclude,
     });
+    await this.invalidateContentCache(created.slug);
+    return created;
   }
 
   async findAllArticles(query: GetArticlesQueryDto) {
@@ -528,7 +545,7 @@ export class ContentService {
       ? this.extractTableOfContents(nextContent)
       : undefined;
 
-    return this.prisma.article.update({
+    const updated = await this.prisma.article.update({
       where: { id },
       data: {
         ...articleData,
@@ -550,9 +567,19 @@ export class ContentService {
       },
       include: this.articleInclude,
     });
+    await this.invalidateContentCache(currentArticle.slug);
+    if (updated.slug !== currentArticle.slug) {
+      await this.invalidateContentCache(updated.slug);
+    }
+    return updated;
   }
 
   async listPublishedArticles(query: GetPublicArticleListingQueryDto) {
+    const cacheKey = `content:articles:list:${JSON.stringify(query)}`;
+    const cached = await this.redisCache.get<any>(cacheKey);
+    if (cached) {
+      return cached;
+    }
     const { page = 1, limit = 12, search, sort = ArticleListingSort.NEWEST } = query;
     const skip = (page - 1) * limit;
     const orderBy =
@@ -583,7 +610,7 @@ export class ContentService {
       this.prisma.article.count({ where }),
     ]);
 
-    return {
+    const result = {
       data,
       meta: {
         total,
@@ -591,9 +618,16 @@ export class ContentService {
         lastPage: Math.ceil(total / limit),
       },
     };
+    await this.redisCache.set(cacheKey, result, 600);
+    return result;
   }
 
   async getPublishedArticleDetailBySlug(slug: string) {
+    const cacheKey = `content:articles:detail:${slug}`;
+    const cached = await this.redisCache.get<any>(cacheKey);
+    if (cached) {
+      return cached;
+    }
     const article = await this.resolvePublishedArticleBySlug(slug);
     const breadcrumbs = await this.getBreadcrumbsBySlug(
       slug,
@@ -604,7 +638,7 @@ export class ContentService {
       StructuredDataPageType.ARTICLE,
     );
 
-    return {
+    const result = {
       article,
       seo: {
         canonicalUrl: article.canonicalUrl ?? null,
@@ -619,6 +653,8 @@ export class ContentService {
       breadcrumbs,
       structuredData,
     };
+    await this.redisCache.set(cacheKey, result, 600);
+    return result;
   }
 
   async listPublishedCategories(query: GetPublicArticleListingQueryDto) {
@@ -982,8 +1018,9 @@ export class ContentService {
   }
 
   async removeArticle(id: number) {
-    await this.ensureArticleExists(id);
+    const article = await this.ensureArticleExists(id);
     await this.prisma.article.delete({ where: { id } });
+    await this.invalidateContentCache(article.slug);
   }
 
   async createArticleFaq(articleId: number, dto: CreateArticleFaqDto) {
