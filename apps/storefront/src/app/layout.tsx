@@ -29,6 +29,30 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 }
 
+const consoleBannerScript = `
+(function () {
+  try {
+    var art = "\\n" +
+"┌─────────────────────────────────────────────────────────────┐\\n" +
+"│                                                             │\\n" +
+"│    ██████╗  ██████╗ ██╗     ██╗███╗   ██╗ ██████╗           │\\n" +
+"│   ██╔════╝ ██╔═══██╗██║     ██║████╗  ██║██╔═══██╗          │\\n" +
+"│   ██║  ███╗██║   ██║██║     ██║██╔██╗ ██║██║   ██║          │\\n" +
+"│   ██║   ██║██║   ██║██║     ██║██║╚██╗██║██║   ██║          │\\n" +
+"│   ╚██████╔╝╚██████╔╝███████╗██║██║ ╚████║╚██████╔╝          │\\n" +
+"│    ╚═════╝  ╚═════╝ ╚══════╝╚═╝╚═╝  ╚═══╝ ╚═════╝           │\\n" +
+"│                                                             │\\n" +
+"└─────────────────────────────────────────────────────────────┘";
+    var brand = 'color:#f4f1b0;background:#173126;font-family:monospace;font-size:11px;font-weight:700;line-height:1.2;padding:12px 18px;border-radius:8px;';
+    var title = 'color:#173126;font-size:13px;font-weight:700;padding:6px 0;';
+    var warn = 'color:#b45309;background:#fef3c7;font-size:12px;font-weight:700;padding:6px 12px;border-radius:6px;border-right:4px solid #b45309;';
+    console.log('%c' + art, brand);
+    console.log('%cطراحی شده با ❤️ توسط نوین سایت برای عاشقان گل', title);
+    console.log('%c⚠️ هشدار امنیتی: هرگز کدی را که متوجه عملکرد آن نمی‌شوید در این قسمت Paste نکنید — این کار می‌تواند حساب کاربری شما را در اختیار مهاجمان قرار دهد.', warn);
+  } catch (e) {}
+})();
+`;
+
 export default async function RootLayout({
   children,
 }: {
@@ -40,6 +64,12 @@ export default async function RootLayout({
 
   return (
     <html lang="fa" dir="rtl">
+      <head>
+        <script
+          id="console-banner"
+          dangerouslySetInnerHTML={{ __html: consoleBannerScript }}
+        />
+      </head>
       <body className="font-yekan">
         {gtmId ? (
           <>
