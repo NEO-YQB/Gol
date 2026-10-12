@@ -29,27 +29,22 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 }
 
-const golinoAsciiArt = [
-  '┌────────────────────────────────────────────────────────────────────────────┐',
-  '│                                                                            │',
-  '│   .g8"""bgd    .g8""8q.   `7MMF\'      `7MMF\' `7MN.   `7MF\'    .g8""8q.    │',
-  '│ .dP\'     `M   .dP\'    `YM.   MM          MM     MMN.    M    .dP\'    `YM.  │',
-  '│ dM\'       `   dM\'      `MM   MM          MM     M YMb.  M    dM\'      `MM  │',
-  '│ MM            MM        MM   MM          MM     M  `MN. M    MM        MM  │',
-  '│ MM.    `7MMF\' MM.      ,MP   MM      ,   MM     M   `MM.M    MM.      ,MP  │',
-  '│ `Mb.     MM   `Mb.    ,dP\'   MM     ,M   MM     M     YMM    `Mb.    ,dP\'  │',
-  '│   `"bmmmdPY     `"bmmd"\'   .JMMmmmmMMM .JMML. .JML.    YM      `"bmmd"\'    │',
-  '│                                                                            │',
-  '└────────────────────────────────────────────────────────────────────────────┘',
-].join('\\n');
-
 const consoleBannerScript = `
 (function () {
   try {
-    var art = ${JSON.stringify('\\n' + golinoAsciiArt)};
-    var brand = 'color:#f4f1b0;background:#173126;font-family:monospace;font-size:11px;font-weight:400;line-height:1.15;direction:ltr;text-align:left;white-space:pre;display:inline-block;padding:12px 16px;border-radius:8px;';
-    var title = 'color:#ef394e;font-size:13px;font-weight:700;padding:6px 0;font-family:Tahoma,system-ui,sans-serif;direction:rtl;';
-    var warn = 'color:#e6a817;font-size:12px;font-weight:700;padding:4px 0;font-family:Tahoma,system-ui,sans-serif;direction:rtl;';
+    var art = \`
+┌─────────────────────────────────────────────────────────────┐
+│                                                             │
+│    ______   ____     __     ____  _   __  ____              │
+│   / ____/  / __ \\\\   / /    /  _/ / | / / / __ \\\\             │
+│  / / __   / / / /  / /     / /  /  |/ / / / / /             │
+│ / /_/ /  / /_/ /  / /___ _/ /  / /|  / / /_/ /              │
+│ \\\\____/   \\\\____/  /_____//___/ /_/ |_/  \\\\____/               │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘\`;
+    var brand = 'color:#173126;font-family:monospace;font-size:12px;font-weight:700;line-height:1.2;direction:ltr;';
+    var title = 'color:#ef394e;font-size:13px;font-weight:700;';
+    var warn = 'color:#e6a817;font-size:12px;font-weight:700;';
     console.log('%c' + art, brand);
     console.log('%cطراحی شده با ❤️ توسط نوین سایت برای عاشقان گل', title);
     console.log('%c⚠️ هشدار امنیتی: هرگز کدی را که متوجه عملکرد آن نمی‌شوید در این قسمت Paste نکنید — این کار می‌تواند حساب کاربری شما را در اختیار مهاجمان قرار دهد.', warn);
