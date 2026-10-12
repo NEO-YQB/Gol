@@ -42,7 +42,9 @@ const consoleBannerScript = `
 │ \\\\____/   \\\\____/  /_____//___/ /_/ |_/  \\\\____/               │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘\`;
-    var brand = 'color:#173126;font-family:monospace;font-size:12px;font-weight:700;line-height:1.2;direction:ltr;';
+    var isDark = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var brandColor = isDark ? '#f4f1b0' : '#173126';
+    var brand = 'color:' + brandColor + ';font-family:monospace;font-size:12px;font-weight:700;line-height:1.2;direction:ltr;';
     var title = 'color:#ef394e;font-size:13px;font-weight:700;';
     var warn = 'color:#e6a817;font-size:12px;font-weight:700;';
     console.log('%c' + art, brand);
