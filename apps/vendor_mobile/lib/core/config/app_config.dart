@@ -1,7 +1,7 @@
 class AppConfig {
   static const apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://api.golino.shop/v1',
+    defaultValue: 'https://api.masterdebug.com/v1',
   );
 
   static const enableDevOtpBypass = bool.fromEnvironment(

@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
+import '../../../../core/config/app_config.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../app_shell/domain/vendor_shell_tab.dart';
 
@@ -323,7 +324,7 @@ class _StoreAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final validLogo = (storeLogo ?? '').trim().isNotEmpty ? storeLogo!.trim() : null;
+    final validLogo = _resolveLogoUrl(storeLogo);
 
     return Container(
       width: size,
@@ -359,6 +360,22 @@ class _StoreAvatar extends StatelessWidget {
               ),
       ),
     );
+  }
+
+  String? _resolveLogoUrl(String? logoUrl) {
+    final trimmedLogoUrl = logoUrl?.trim() ?? '';
+    if (trimmedLogoUrl.isEmpty) return null;
+
+    final parsedLogoUrl = Uri.tryParse(trimmedLogoUrl);
+    if (parsedLogoUrl != null &&
+        parsedLogoUrl.hasScheme &&
+        parsedLogoUrl.hasAuthority) {
+      return trimmedLogoUrl;
+    }
+
+    final apiRoot = AppConfig.apiBaseUrl.replaceFirst(RegExp(r'/v1/?$'), '');
+    return '$apiRoot'
+        '${trimmedLogoUrl.startsWith('/') ? '' : '/'}$trimmedLogoUrl';
   }
 }
 
