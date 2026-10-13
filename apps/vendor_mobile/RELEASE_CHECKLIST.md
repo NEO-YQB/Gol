@@ -20,6 +20,6 @@
 - لینک support/contact
 
 ## Runtime
-- `API_BASE_URL` باید production و با `https` باشد.
+- `API_BASE_URL` باید production و با `https` باشد: `https://api.golino.shop/v1`.
 - نوتیفیکیشن‌ها روی build release تست شوند.
 - تماس با مشتری روی دستگاه واقعی تست شود.

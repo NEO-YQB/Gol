@@ -536,7 +536,7 @@ export class CreatePageDto {
   @MaxLength(2000)
   ogImage?: string;
 
-  @ApiPropertyOptional({ example: 'https://masterdebug.ir/' })
+  @ApiPropertyOptional({ example: 'https://golino.shop/' })
   @IsOptional()
   @IsString()
   @MaxLength(2000)

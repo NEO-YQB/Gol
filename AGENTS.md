@@ -60,5 +60,5 @@ For deployed UIs, verify API paths include the backend global prefix (`/v1`).
 
 ## Coolify & Docker
 - Each frontend workspace uses its own `Dockerfile`; set the build context to the repository root in Coolify.
-- For panel deployments, define `VITE_API_BASE_URL` with the full API base such as `https://api.masterdebug.com/v1`.
-- Keep backend `CORS_ORIGINS` aligned with deployed panel domains, for example `https://panel.masterdebug.com,https://vendor.masterdebug.com`.
+- For panel deployments, define `VITE_API_BASE_URL` with the full API base such as `https://api.golino.shop/v1`.
+- Keep backend `CORS_ORIGINS` aligned with deployed panel domains, for example `https://panel.golino.shop,https://vendor.golino.shop`.
