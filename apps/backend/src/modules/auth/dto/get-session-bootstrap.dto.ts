@@ -43,6 +43,9 @@ class SessionBootstrapStoreDto {
 
   @ApiProperty({ example: 'bahar-flower-shop' })
   slug!: string;
+
+  @ApiProperty({ example: null, nullable: true, required: false })
+  logo?: string | null;
 }
 
 export class SessionBootstrapDto {

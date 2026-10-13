@@ -272,6 +272,7 @@ export class AuthService {
             suspensionReason: true,
             name: true,
             slug: true,
+            logo: true,
           },
         },
         vendorOnboardingRequest: true,
@@ -320,6 +321,7 @@ export class AuthService {
             suspensionReason: dbUser.store.suspensionReason,
             name: dbUser.store.name,
             slug: dbUser.store.slug,
+            logo: dbUser.store.logo ?? null,
           }
         : null,
       vendorOnboarding: dbUser?.vendorOnboardingRequest

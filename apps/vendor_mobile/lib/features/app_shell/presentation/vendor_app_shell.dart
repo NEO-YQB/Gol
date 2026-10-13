@@ -16,17 +16,8 @@ import '../../products/presentation/products_screen.dart';
 import '../../store_profile/presentation/store_profile_screen.dart';
 import '../../support/presentation/support_screen.dart';
 import '../../wallet/presentation/wallet_screen.dart';
-
-enum VendorShellTab {
-  dashboard,
-  orders,
-  products,
-  discounts,
-  wallet,
-  notifications,
-  support,
-  profile,
-}
+import '../domain/vendor_shell_tab.dart';
+export '../domain/vendor_shell_tab.dart';
 
 class VendorAppShell extends StatefulWidget {
   const VendorAppShell({
@@ -50,12 +41,12 @@ class _VendorAppShellState extends State<VendorAppShell> {
       widget.session.bootstrap?.store?.isActive == false;
 
   List<_NavItemData> get _items => [
-        _NavItemData(
+        const _NavItemData(
           tab: VendorShellTab.dashboard,
           label: 'داشبورد',
           icon: Icons.dashboard_rounded,
         ),
-        _NavItemData(
+        const _NavItemData(
           tab: VendorShellTab.orders,
           label: 'سفارش‌ها',
           icon: Icons.receipt_long_rounded,
@@ -71,27 +62,6 @@ class _VendorAppShellState extends State<VendorAppShell> {
             tab: VendorShellTab.discounts,
             label: 'تخفیف‌ها',
             icon: Icons.local_offer_rounded,
-          ),
-        _NavItemData(
-          tab: VendorShellTab.wallet,
-          label: 'کیف پول',
-          icon: Icons.account_balance_wallet_rounded,
-        ),
-        _NavItemData(
-          tab: VendorShellTab.notifications,
-          label: 'اعلان‌ها',
-          icon: Icons.notifications_rounded,
-        ),
-        _NavItemData(
-          tab: VendorShellTab.support,
-          label: 'پشتیبانی',
-          icon: Icons.support_agent_rounded,
-        ),
-        if (!_isSuspended)
-          const _NavItemData(
-            tab: VendorShellTab.profile,
-            label: 'پروفایل',
-            icon: Icons.storefront_rounded,
           ),
       ];
 
@@ -127,9 +97,12 @@ class _VendorAppShellState extends State<VendorAppShell> {
   @override
   Widget build(BuildContext context) {
     final visibleItems = _items;
-    final effectiveTab = visibleItems.any((item) => item.tab == _currentTab)
-        ? _currentTab
-        : VendorShellTab.dashboard;
+    final effectiveTab = (_isSuspended &&
+            (_currentTab == VendorShellTab.products ||
+                _currentTab == VendorShellTab.discounts ||
+                _currentTab == VendorShellTab.profile))
+        ? VendorShellTab.dashboard
+        : _currentTab;
 
     final body = switch (effectiveTab) {
       VendorShellTab.dashboard => DashboardScreen(
@@ -139,8 +112,12 @@ class _VendorAppShellState extends State<VendorAppShell> {
           storeName: widget.session.bootstrap?.store?.name.isNotEmpty == true
               ? widget.session.bootstrap!.store!.name
               : 'فروشگاه شما',
+          storeLogo: widget.session.bootstrap?.store?.logo,
           isPreview: widget.session.isPreview,
           onLogout: widget.onLogout,
+          onSelectTab: (tab) => setState(() {
+            _currentTab = tab;
+          }),
         ),
       VendorShellTab.orders => OrdersScreen(
           accessToken: widget.session.accessToken,
@@ -250,7 +227,8 @@ class _FloatingNavigationBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final activeIndex = items.indexWhere((item) => item.tab == currentTab);
-    final safeIndex = activeIndex < 0 ? 0 : activeIndex;
+    final hasActive = activeIndex >= 0;
+    final safeIndex = hasActive ? activeIndex : 0;
     final contentWidth =
         (items.length * _slotWidth) + (_activeWidth - _slotWidth);
 
@@ -277,15 +255,16 @@ class _FloatingNavigationBar extends StatelessWidget {
                     child: Stack(
                       clipBehavior: Clip.none,
                       children: [
-                        AnimatedPositionedDirectional(
-                          duration: const Duration(milliseconds: 320),
-                          curve: Curves.easeOutCubic,
-                          start: safeIndex * _slotWidth,
-                          top: 0,
-                          child: _WaterSurfaceAccent(
-                            width: _activeWidth,
+                        if (hasActive)
+                          AnimatedPositionedDirectional(
+                            duration: const Duration(milliseconds: 320),
+                            curve: Curves.easeOutCubic,
+                            start: safeIndex * _slotWidth,
+                            top: 0,
+                            child: _WaterSurfaceAccent(
+                              width: _activeWidth,
+                            ),
                           ),
-                        ),
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           textDirection: TextDirection.rtl,

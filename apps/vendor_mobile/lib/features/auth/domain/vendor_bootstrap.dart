@@ -82,6 +82,7 @@ class BootstrapStore {
     required this.slug,
     this.suspendedAt,
     this.suspensionReason,
+    this.logo,
   });
 
   final int id;
@@ -91,6 +92,7 @@ class BootstrapStore {
   final String slug;
   final String? suspendedAt;
   final String? suspensionReason;
+  final String? logo;
 
   factory BootstrapStore.fromJson(Map<String, dynamic> json) {
     return BootstrapStore(
@@ -101,6 +103,7 @@ class BootstrapStore {
       slug: json['slug'] as String? ?? '',
       suspendedAt: json['suspendedAt'] as String?,
       suspensionReason: json['suspensionReason'] as String?,
+      logo: json['logo'] as String?,
     );
   }
 
@@ -113,6 +116,7 @@ class BootstrapStore {
       'slug': slug,
       'suspendedAt': suspendedAt,
       'suspensionReason': suspensionReason,
+      'logo': logo,
     };
   }
 }
