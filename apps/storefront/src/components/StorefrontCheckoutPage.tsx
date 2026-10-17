@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { JalaliDatePicker } from '../../../../packages/frontend-core/src/components/JalaliDatePicker'
+import '../../../../packages/frontend-core/src/styles/jalali-date-picker.css'
 import { calculateCartValue, pushToDataLayer, toAnalyticsItem } from '../lib/analytics'
 import {
   getAddresses,
@@ -25,6 +27,16 @@ function toTehranDateTimeInput(value?: string | null, roundUp = false) {
   const timestamp = new Date(value).getTime()
   const rounded = roundUp ? Math.ceil(timestamp / 60_000) * 60_000 : timestamp
   return new Date(rounded + 210 * 60_000).toISOString().slice(0, 16)
+}
+
+function toDatePickerValue(tehranDateTime?: string) {
+  if (!tehranDateTime) return undefined
+  return new Date(`${tehranDateTime.slice(0, 10)}T12:00:00`).toISOString()
+}
+
+function fromDatePickerValue(value: string) {
+  const date = new Date(value)
+  return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-')
 }
 
 type CheckoutPreview = {
@@ -246,6 +258,9 @@ export function StorefrontCheckoutPage() {
     ? preview?.delivery?.earliestExpressDeliveryAt
     : preview?.delivery?.earliestStandardDeliveryAt
   const latestDeliveryAt = preview?.delivery?.latestScheduledDeliveryAt
+  const earliestDeliveryInput = toTehranDateTimeInput(earliestDeliveryAt, true)
+  const latestDeliveryInput = toTehranDateTimeInput(latestDeliveryAt)
+  const selectedDeliveryDate = scheduledDeliveryAt.slice(0, 10)
   const scheduledTimestamp = scheduledDeliveryAt ? new Date(`${scheduledDeliveryAt}+03:30`).getTime() : NaN
   const validScheduledDelivery = !scheduleDelivery || (
     Boolean(earliestDeliveryAt && latestDeliveryAt) &&
@@ -283,6 +298,15 @@ export function StorefrontCheckoutPage() {
       return
     }
     emitStorefrontToast({ message: 'کد تخفیف برای پیش‌نمایش سفارش بررسی شد.', variant: 'success', duration: 5000 })
+  }
+
+  function handleDeliveryDateChange(value: string) {
+    const selectedDate = fromDatePickerValue(value)
+    const selectedTime = scheduledDeliveryAt.slice(11) || earliestDeliveryInput?.slice(11) || '12:00'
+    let nextValue = `${selectedDate}T${selectedTime}`
+    if (earliestDeliveryInput && nextValue < earliestDeliveryInput) nextValue = earliestDeliveryInput
+    if (latestDeliveryInput && nextValue > latestDeliveryInput) nextValue = latestDeliveryInput
+    setScheduledDeliveryAt(nextValue)
   }
 
   function handleSelectAddress(address: StorefrontAddress) {
@@ -580,17 +604,33 @@ export function StorefrontCheckoutPage() {
                 </p>
                 {scheduleDelivery ? (
                   <>
-                    <label className="grid gap-2 font-bold text-[#6e6152]">
-                      تاریخ و ساعت تحویل
-                      <input
-                        type="datetime-local"
-                        className="rounded-[22px] border border-[#e8ded2] bg-[#fbf8f3] px-4 py-3 text-[#173126]"
-                        min={toTehranDateTimeInput(earliestDeliveryAt, true)}
-                        max={toTehranDateTimeInput(latestDeliveryAt)}
-                        value={scheduledDeliveryAt}
-                        onChange={(event) => setScheduledDeliveryAt(event.target.value)}
-                      />
-                    </label>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="grid content-start gap-2 font-bold text-[#6e6152]">
+                        <span>تاریخ تحویل (شمسی)</span>
+                        <JalaliDatePicker
+                          ariaLabel="انتخاب تاریخ شمسی تحویل"
+                          includeTime={false}
+                          disabled={previewLoading || submitting || !earliestDeliveryInput || !latestDeliveryInput}
+                          minDate={toDatePickerValue(earliestDeliveryInput)}
+                          maxDate={toDatePickerValue(latestDeliveryInput)}
+                          value={toDatePickerValue(scheduledDeliveryAt)}
+                          onChange={handleDeliveryDateChange}
+                          placeholder="انتخاب از تقویم شمسی"
+                        />
+                      </div>
+                      <label className="grid content-start gap-2 font-bold text-[#6e6152]">
+                        ساعت تحویل (تهران)
+                        <input
+                          type="time"
+                          className="min-h-12 rounded-[22px] border border-[#e8ded2] bg-[#fbf8f3] px-4 py-3 text-[#173126] disabled:opacity-50"
+                          disabled={!selectedDeliveryDate || previewLoading || submitting}
+                          min={selectedDeliveryDate === earliestDeliveryInput?.slice(0, 10) ? earliestDeliveryInput.slice(11) : undefined}
+                          max={selectedDeliveryDate === latestDeliveryInput?.slice(0, 10) ? latestDeliveryInput.slice(11) : undefined}
+                          value={scheduledDeliveryAt.slice(11)}
+                          onChange={(event) => setScheduledDeliveryAt(`${selectedDeliveryDate}T${event.target.value}`)}
+                        />
+                      </label>
+                    </div>
                     {Number.isFinite(scheduledTimestamp) ? <p className="text-[#173126]">زمان انتخابی: {new Intl.DateTimeFormat('fa-IR', { timeZone: 'Asia/Tehran', dateStyle: 'full', timeStyle: 'short' }).format(new Date(scheduledTimestamp))}</p> : null}
                     {earliestDeliveryAt ? <p className="text-xs text-[#7b6d5d]">زودترین تحویل: {new Intl.DateTimeFormat('fa-IR', { timeZone: 'Asia/Tehran', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(earliestDeliveryAt))}</p> : null}
                     {!validScheduledDelivery ? <p role="alert" className="text-xs text-red-700">تاریخ و ساعت معتبر در محدوده مجاز انتخاب کن.</p> : null}

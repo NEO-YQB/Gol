@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { cx } from '../cx'
 
 type JalaliDatePickerProps = {
@@ -9,6 +9,9 @@ type JalaliDatePickerProps = {
   placeholder?: string
   includeTime?: boolean
   disabled?: boolean
+  minDate?: string
+  maxDate?: string
+  ariaLabel?: string
 }
 
 type JalaliParts = {
@@ -61,6 +64,10 @@ function getJalaliPartsFromDate(date: Date): JalaliParts {
 
 function sameJalaliDate(left: JalaliParts, right: JalaliParts) {
   return left.jy === right.jy && left.jm === right.jm && left.jd === right.jd
+}
+
+function dateKey(parts: JalaliParts) {
+  return parts.jy * 10000 + parts.jm * 100 + parts.jd
 }
 
 function jalaliToGregorian(parts: JalaliParts): GregorianParts {
@@ -142,15 +149,30 @@ export function JalaliDatePicker({
   placeholder = 'انتخاب تاریخ',
   includeTime = true,
   disabled = false,
+  minDate,
+  maxDate,
+  ariaLabel = 'انتخاب تاریخ شمسی',
 }: JalaliDatePickerProps) {
   const parsedValue = useMemo(() => parseIsoValue(value), [value])
+  const parsedMinimum = useMemo(() => parseIsoValue(minDate), [minDate])
+  const parsedMaximum = useMemo(() => parseIsoValue(maxDate), [maxDate])
   const today = useMemo(() => {
     return getJalaliPartsFromDate(new Date())
   }, [])
 
   const [open, setOpen] = useState(false)
-  const [viewMonth, setViewMonth] = useState<JalaliParts>(parsedValue?.parts ?? today)
+  const [viewMonth, setViewMonth] = useState<JalaliParts>(parsedValue?.parts ?? parsedMinimum?.parts ?? today)
   const [timeValue, setTimeValue] = useState(parsedValue?.time ?? '00:00')
+  const fieldRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handleOutsideClick(event: PointerEvent) {
+      if (event.target instanceof Node && !fieldRef.current?.contains(event.target)) setOpen(false)
+    }
+    document.addEventListener('pointerdown', handleOutsideClick)
+    return () => document.removeEventListener('pointerdown', handleOutsideClick)
+  }, [open])
 
   useEffect(() => {
     if (parsedValue) {
@@ -158,8 +180,9 @@ export function JalaliDatePicker({
       setTimeValue(parsedValue.time)
       return
     }
+    if (parsedMinimum) setViewMonth(parsedMinimum.parts)
     setTimeValue('00:00')
-  }, [parsedValue])
+  }, [parsedValue, parsedMinimum])
 
   const days = useMemo(() => {
     const firstWeekday = firstWeekdayOfMonth(viewMonth)
@@ -180,6 +203,13 @@ export function JalaliDatePicker({
   const selectedDay = parsedValue?.parts.jd ?? null
   const selectedMonth = parsedValue?.parts.jm ?? null
   const selectedYear = parsedValue?.parts.jy ?? null
+  const minimumKey = parsedMinimum ? dateKey(parsedMinimum.parts) : null
+  const maximumKey = parsedMaximum ? dateKey(parsedMaximum.parts) : null
+
+  function isDayDisabled(day: number) {
+    const key = dateKey({ ...viewMonth, jd: day })
+    return disabled || (minimumKey !== null && key < minimumKey) || (maximumKey !== null && key > maximumKey)
+  }
 
   function changeMonth(offset: number) {
     let nextMonth = viewMonth.jm + offset
@@ -197,6 +227,7 @@ export function JalaliDatePicker({
   }
 
   function handleDaySelect(day: number) {
+    if (isDayDisabled(day)) return
     const nextParts = { jy: viewMonth.jy, jm: viewMonth.jm, jd: day }
     onChange(buildIsoValue(nextParts, includeTime ? timeValue : '00:00'))
     setOpen(false)
@@ -210,8 +241,18 @@ export function JalaliDatePicker({
   }
 
   return (
-    <div className="fm-jalali-field">
+    <div
+      className="fm-jalali-field"
+      dir="rtl"
+      ref={fieldRef}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') setOpen(false)
+      }}
+    >
       <button
+        aria-label={ariaLabel}
+        aria-haspopup="dialog"
+        aria-expanded={open && !disabled}
         className={cx('fm-jalali-trigger', open && 'is-open')}
         disabled={disabled}
         onClick={() => setOpen((current) => !current)}
@@ -223,6 +264,7 @@ export function JalaliDatePicker({
       {includeTime ? (
         <input
           className="fm-jalali-time"
+          aria-label="ساعت"
           disabled={disabled}
           onChange={(event) => handleTimeChange(event.target.value)}
           type="time"
@@ -230,16 +272,26 @@ export function JalaliDatePicker({
         />
       ) : null}
 
-      {open ? (
-        <div className="fm-jalali-popover">
+      {open && !disabled ? (
+        <div className="fm-jalali-popover" role="dialog" aria-label={ariaLabel}>
           <div className="fm-jalali-head">
-            <button className="fm-jalali-nav" onClick={() => changeMonth(1)} type="button">
+            <button
+              className="fm-jalali-nav"
+              disabled={parsedMaximum !== null && viewMonth.jy * 12 + viewMonth.jm >= parsedMaximum.parts.jy * 12 + parsedMaximum.parts.jm}
+              onClick={() => changeMonth(1)}
+              type="button"
+            >
               بعد
             </button>
             <strong>
               {monthLabels[viewMonth.jm - 1]} {toPersianDigits(String(viewMonth.jy))}
             </strong>
-            <button className="fm-jalali-nav" onClick={() => changeMonth(-1)} type="button">
+            <button
+              className="fm-jalali-nav"
+              disabled={parsedMinimum !== null && viewMonth.jy * 12 + viewMonth.jm <= parsedMinimum.parts.jy * 12 + parsedMinimum.parts.jm}
+              onClick={() => changeMonth(-1)}
+              type="button"
+            >
               قبل
             </button>
           </div>
@@ -262,6 +314,9 @@ export function JalaliDatePicker({
                       'is-selected',
                   )}
                   key={`${viewMonth.jy}-${viewMonth.jm}-${item.day}`}
+                  disabled={isDayDisabled(item.day)}
+                  aria-label={formatDisplayValue({ ...viewMonth, jd: item.day })}
+                  aria-pressed={selectedDay === item.day && selectedMonth === viewMonth.jm && selectedYear === viewMonth.jy}
                   onClick={() => handleDaySelect(item.day)}
                   type="button"
                 >

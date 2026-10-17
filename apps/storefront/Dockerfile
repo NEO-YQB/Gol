@@ -17,6 +17,7 @@ WORKDIR /app
 COPY --from=installer /app/node_modules ./node_modules
 COPY package*.json ./
 COPY packages/database ./packages/database
+COPY packages/frontend-core ./packages/frontend-core
 COPY apps/storefront ./apps/storefront
 
 RUN npx prisma generate --schema=packages/database/prisma/schema.prisma && \
