@@ -19,11 +19,13 @@ class StoreProfileScreen extends StatefulWidget {
     required this.accessToken,
     required this.storeId,
     required this.storeSlug,
+    this.onProfileUpdated,
   });
 
   final String accessToken;
   final int storeId;
   final String storeSlug;
+  final ValueChanged<VendorStoreProfile>? onProfileUpdated;
 
   @override
   State<StoreProfileScreen> createState() => _StoreProfileScreenState();
@@ -40,6 +42,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
   late final TextEditingController _expressDeliveryController;
 
   late final StoreProfileViewModel _viewModel;
+  VendorStoreProfile? _lastReportedProfile;
 
   @override
   void initState() {
@@ -77,6 +80,10 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
     if (profile == null || _viewModel.state.isEditMode) return;
 
     _fillForm(profile);
+    if (!identical(profile, _lastReportedProfile)) {
+      _lastReportedProfile = profile;
+      widget.onProfileUpdated?.call(profile);
+    }
   }
 
   void _fillForm(VendorStoreProfile profile) {

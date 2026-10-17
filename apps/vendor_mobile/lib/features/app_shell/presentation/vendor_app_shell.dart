@@ -7,13 +7,16 @@ import '../../../core/services/push_notification_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_glass_card.dart';
+import '../../../shared/widgets/app_shell_background.dart';
 import '../../auth/domain/auth_session.dart';
 import '../../dashboard/presentation/dashboard_screen.dart';
+import '../../dashboard/presentation/widgets/store_profile_glass_menu.dart';
 import '../../discounts/presentation/discounts_screen.dart';
 import '../../notifications/presentation/notifications_screen.dart';
 import '../../orders/presentation/orders_screen.dart';
 import '../../products/presentation/products_screen.dart';
 import '../../store_profile/presentation/store_profile_screen.dart';
+import '../../store_profile/domain/vendor_store_profile.dart';
 import '../../support/presentation/support_screen.dart';
 import '../../wallet/presentation/wallet_screen.dart';
 import '../domain/vendor_shell_tab.dart';
@@ -36,6 +39,7 @@ class VendorAppShell extends StatefulWidget {
 class _VendorAppShellState extends State<VendorAppShell> {
   VendorShellTab _currentTab = VendorShellTab.dashboard;
   StreamSubscription<PushNavigationIntent>? _pushNavigationSubscription;
+  VendorStoreProfile? _storeProfile;
 
   bool get _isSuspended =>
       widget.session.bootstrap?.store?.isActive == false;
@@ -112,12 +116,7 @@ class _VendorAppShellState extends State<VendorAppShell> {
           storeName: widget.session.bootstrap?.store?.name.isNotEmpty == true
               ? widget.session.bootstrap!.store!.name
               : 'فروشگاه شما',
-          storeLogo: widget.session.bootstrap?.store?.logo,
           isPreview: widget.session.isPreview,
-          onLogout: widget.onLogout,
-          onSelectTab: (tab) => setState(() {
-            _currentTab = tab;
-          }),
         ),
       VendorShellTab.orders => OrdersScreen(
           accessToken: widget.session.accessToken,
@@ -145,15 +144,24 @@ class _VendorAppShellState extends State<VendorAppShell> {
         ),
       VendorShellTab.profile =>
         (widget.session.bootstrap?.store?.slug ?? '').isEmpty
-            ? const _ShellPlaceholder(
-                title: 'پروفایل فروشگاه',
-                description:
-                    'هنوز اطلاعات فروشگاه برای این حساب کامل نشده است.',
+            ? const AppShellBackground(
+                child: _ShellPlaceholder(
+                  title: 'پروفایل فروشگاه',
+                  description:
+                      'هنوز اطلاعات فروشگاه برای این حساب کامل نشده است.',
+                ),
               )
             : StoreProfileScreen(
                 accessToken: widget.session.accessToken,
                 storeId: widget.session.bootstrap?.store?.id ?? 0,
-                storeSlug: widget.session.bootstrap!.store!.slug,
+                storeSlug: _storeProfile?.slug ??
+                    widget.session.bootstrap!.store!.slug,
+                onProfileUpdated: (profile) {
+                  if (!mounted) return;
+                  setState(() {
+                    _storeProfile = profile;
+                  });
+                },
               ),
     };
 
@@ -192,7 +200,30 @@ class _VendorAppShellState extends State<VendorAppShell> {
                   ),
                 ),
               ),
-            Expanded(child: body),
+            Expanded(
+              child: AppShellHeaderScope(
+                header: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 8),
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: StoreProfileMenuButton(
+                      storeName: _storeProfile?.name ??
+                          (widget.session.bootstrap?.store?.name.isNotEmpty == true
+                              ? widget.session.bootstrap!.store!.name
+                              : 'فروشگاه شما'),
+                      storeLogo: _storeProfile?.logo ??
+                          widget.session.bootstrap?.store?.logo,
+                      fullName: widget.session.bootstrap?.fullName,
+                      onSelectTab: (tab) => setState(() {
+                        _currentTab = tab;
+                      }),
+                      onLogout: widget.onLogout,
+                    ),
+                  ),
+                ),
+                child: body,
+              ),
+            ),
           ],
         ),
         bottomNavigationBar: SafeArea(
@@ -230,27 +261,29 @@ class _FloatingNavigationBar extends StatelessWidget {
     final hasActive = activeIndex >= 0;
     final safeIndex = hasActive ? activeIndex : 0;
     final contentWidth =
-        (items.length * _slotWidth) + (_activeWidth - _slotWidth);
+        (items.length * _slotWidth) +
+        (hasActive ? _activeWidth - _slotWidth : 0);
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final shellWidth = math.max(0.0, constraints.maxWidth - 36.0);
+        final shellWidth = math.min(contentWidth + 20.0, constraints.maxWidth);
         final visibleContentWidth = math.max(0.0, shellWidth - 20.0);
 
         return Transform.translate(
           offset: const Offset(0, -6),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18),
+          child: Align(
+            alignment: Alignment.center,
+            heightFactor: 1,
             child: AppGlassCard(
               padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
               child: SizedBox(
-                width: shellWidth,
+                width: visibleContentWidth,
                 height: 58,
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   clipBehavior: Clip.hardEdge,
                   child: SizedBox(
-                    width: math.max(contentWidth.toDouble(), visibleContentWidth),
+                    width: contentWidth,
                     height: 58,
                     child: Stack(
                       clipBehavior: Clip.none,

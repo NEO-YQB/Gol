@@ -62,9 +62,23 @@ class StoreProfileMenuButton extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   _StoreAvatar(
-                    storeName: storeName,
                     storeLogo: storeLogo,
                     size: 28,
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      (fullName ?? '').trim().isNotEmpty
+                          ? fullName!.trim()
+                          : 'فروشنده',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 4),
                   const Icon(
@@ -202,7 +216,6 @@ class _StoreProfileGlassCard extends StatelessWidget {
               children: [
                 // Top Header: Store Avatar & Names
                 _StoreAvatar(
-                  storeName: storeName,
                   storeLogo: storeLogo,
                   size: 64,
                 ),
@@ -313,12 +326,10 @@ class _StoreProfileGlassCard extends StatelessWidget {
 
 class _StoreAvatar extends StatelessWidget {
   const _StoreAvatar({
-    required this.storeName,
     this.storeLogo,
     required this.size,
   });
 
-  final String storeName;
   final String? storeLogo;
   final double size;
 
@@ -349,15 +360,10 @@ class _StoreAvatar extends StatelessWidget {
             ? Image.network(
                 validLogo,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => _FallbackAvatar(
-                  storeName: storeName,
-                  size: size,
-                ),
+                errorBuilder: (context, error, stackTrace) =>
+                    _FallbackAvatar(size: size),
               )
-            : _FallbackAvatar(
-                storeName: storeName,
-                size: size,
-              ),
+            : _FallbackAvatar(size: size),
       ),
     );
   }
@@ -367,31 +373,29 @@ class _StoreAvatar extends StatelessWidget {
     if (trimmedLogoUrl.isEmpty) return null;
 
     final parsedLogoUrl = Uri.tryParse(trimmedLogoUrl);
-    if (parsedLogoUrl != null &&
-        parsedLogoUrl.hasScheme &&
-        parsedLogoUrl.hasAuthority) {
-      return trimmedLogoUrl;
+    if (parsedLogoUrl == null) return null;
+
+    final apiOrigin = Uri.parse(AppConfig.apiBaseUrl).origin;
+    final resolvedLogoUrl = Uri.parse('$apiOrigin/').resolveUri(parsedLogoUrl);
+    if ((resolvedLogoUrl.scheme != 'http' &&
+            resolvedLogoUrl.scheme != 'https') ||
+        resolvedLogoUrl.host.isEmpty) {
+      return null;
     }
 
-    final apiRoot = AppConfig.apiBaseUrl.replaceFirst(RegExp(r'/v1/?$'), '');
-    return '$apiRoot'
-        '${trimmedLogoUrl.startsWith('/') ? '' : '/'}$trimmedLogoUrl';
+    return resolvedLogoUrl.toString();
   }
 }
 
 class _FallbackAvatar extends StatelessWidget {
   const _FallbackAvatar({
-    required this.storeName,
     required this.size,
   });
 
-  final String storeName;
   final double size;
 
   @override
   Widget build(BuildContext context) {
-    final initial = storeName.trim().isNotEmpty ? storeName.trim().substring(0, 1) : 'گ';
-
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -404,20 +408,11 @@ class _FallbackAvatar extends StatelessWidget {
         ),
       ),
       alignment: Alignment.center,
-      child: size > 40
-          ? Text(
-              initial,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: size * 0.44,
-                fontWeight: FontWeight.w800,
-              ),
-            )
-          : Icon(
-              Icons.storefront_rounded,
-              color: Colors.white,
-              size: size * 0.58,
-            ),
+      child: Icon(
+        Icons.storefront_rounded,
+        color: Colors.white,
+        size: size * 0.58,
+      ),
     );
   }
 }

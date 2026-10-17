@@ -6,10 +6,8 @@ import '../../../shared/widgets/app_glass_card.dart';
 import '../../../shared/widgets/app_metric_tile.dart';
 import '../../../shared/widgets/app_section_heading.dart';
 import '../../../shared/widgets/app_shell_background.dart';
-import '../../app_shell/domain/vendor_shell_tab.dart';
 import '../domain/dashboard_summary.dart';
 import 'view_models/dashboard_view_model.dart';
-import 'widgets/store_profile_glass_menu.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({
@@ -18,20 +16,14 @@ class DashboardScreen extends StatefulWidget {
     required this.phoneNumber,
     this.fullName,
     required this.storeName,
-    this.storeLogo,
     required this.isPreview,
-    required this.onLogout,
-    this.onSelectTab,
   });
 
   final String accessToken;
   final String phoneNumber;
   final String? fullName;
   final String storeName;
-  final String? storeLogo;
   final bool isPreview;
-  final Future<void> Function() onLogout;
-  final ValueChanged<VendorShellTab>? onSelectTab;
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -76,10 +68,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   return _DashboardErrorView(
                     message: state.errorMessage!,
                     fullName: widget.fullName,
-                    storeName: widget.storeName,
-                    storeLogo: widget.storeLogo,
-                    onLogout: widget.onLogout,
-                    onSelectTab: widget.onSelectTab,
                     onRetry: _viewModel.refresh,
                   );
                 }
@@ -89,10 +77,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   return _DashboardErrorView(
                     message: 'اطلاعات داشبورد در دسترس نیست.',
                     fullName: widget.fullName,
-                    storeName: widget.storeName,
-                    storeLogo: widget.storeLogo,
-                    onLogout: widget.onLogout,
-                    onSelectTab: widget.onSelectTab,
                     onRetry: _viewModel.refresh,
                   );
                 }
@@ -109,10 +93,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     children: [
                       _DashboardHeader(
                         fullName: widget.fullName,
-                        storeName: widget.storeName,
-                        storeLogo: widget.storeLogo,
-                        onLogout: widget.onLogout,
-                        onSelectTab: widget.onSelectTab,
                       ),
                       if (state.isRefreshing) ...[
                         const SizedBox(height: AppSpacing.md),
@@ -167,17 +147,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 class _DashboardHeader extends StatelessWidget {
   const _DashboardHeader({
     this.fullName,
-    required this.storeName,
-    this.storeLogo,
-    required this.onLogout,
-    this.onSelectTab,
   });
 
   final String? fullName;
-  final String storeName;
-  final String? storeLogo;
-  final Future<void> Function() onLogout;
-  final ValueChanged<VendorShellTab>? onSelectTab;
 
   @override
   Widget build(BuildContext context) {
@@ -206,13 +178,6 @@ class _DashboardHeader extends StatelessWidget {
             ],
           ),
         ),
-        StoreProfileMenuButton(
-          storeName: storeName,
-          storeLogo: storeLogo,
-          fullName: fullName,
-          onSelectTab: onSelectTab,
-          onLogout: onLogout,
-        ),
       ],
     );
   }
@@ -222,19 +187,11 @@ class _DashboardErrorView extends StatelessWidget {
   const _DashboardErrorView({
     required this.message,
     this.fullName,
-    required this.storeName,
-    this.storeLogo,
-    required this.onLogout,
-    this.onSelectTab,
     required this.onRetry,
   });
 
   final String message;
   final String? fullName;
-  final String storeName;
-  final String? storeLogo;
-  final Future<void> Function() onLogout;
-  final ValueChanged<VendorShellTab>? onSelectTab;
   final Future<void> Function() onRetry;
 
   @override
@@ -248,10 +205,6 @@ class _DashboardErrorView extends StatelessWidget {
         const SizedBox(height: 16),
         _DashboardHeader(
           fullName: fullName,
-          storeName: storeName,
-          storeLogo: storeLogo,
-          onLogout: onLogout,
-          onSelectTab: onSelectTab,
         ),
         const SizedBox(height: 18),
         AppGlassCard(

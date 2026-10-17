@@ -5,6 +5,25 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
 
+class AppShellHeaderScope extends InheritedWidget {
+  const AppShellHeaderScope({
+    super.key,
+    required this.header,
+    required super.child,
+  });
+
+  final Widget header;
+
+  static AppShellHeaderScope? maybeOf(BuildContext context) {
+    return context.dependOnInheritedWidgetOfExactType<AppShellHeaderScope>();
+  }
+
+  @override
+  bool updateShouldNotify(AppShellHeaderScope oldWidget) {
+    return header != oldWidget.header;
+  }
+}
+
 class AppShellBackground extends StatelessWidget {
   const AppShellBackground({
     super.key,
@@ -15,6 +34,8 @@ class AppShellBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final header = AppShellHeaderScope.maybeOf(context)?.header;
+
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -88,7 +109,20 @@ class AppShellBackground extends StatelessWidget {
             ),
           ),
           Positioned.fill(
-            child: child,
+            child: header == null
+                ? child
+                : Column(
+                    children: [
+                      SafeArea(bottom: false, child: header),
+                      Expanded(
+                        child: MediaQuery.removePadding(
+                          context: context,
+                          removeTop: true,
+                          child: child,
+                        ),
+                      ),
+                    ],
+                  ),
           ),
         ],
       ),
