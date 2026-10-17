@@ -143,7 +143,7 @@ export class OrderService {
       delivery: this.buildDeliveryPreview(store, cart.items.map((item) => item.product)),
       address: this.mapAddress(address),
       payment: {
-        paymentMethod: PaymentMethod.COD,
+        paymentMethod: PaymentMethod.ONLINE,
         paymentStatus: PaymentStatus.PENDING,
       },
       items: pricing.items,
@@ -189,7 +189,7 @@ export class OrderService {
 
     return this.createOrderRecord(user, dto.items, {
       address,
-      paymentMethod: dto.paymentMethod ?? PaymentMethod.COD,
+      paymentMethod: dto.paymentMethod ?? PaymentMethod.ONLINE,
       deliveryType: dto.deliveryType,
       deliveryWindowLabel: dto.deliveryWindowLabel,
       scheduledDeliveryAt: dto.scheduledDeliveryAt,
@@ -497,6 +497,10 @@ export class OrderService {
       scheduledDeliveryAt?: string;
     },
   ) {
+    if (options.paymentMethod !== PaymentMethod.ONLINE) {
+      throw new BadRequestException('ثبت سفارش فقط با پرداخت آنلاین امکان‌پذیر است');
+    }
+
     if (items.length === 0) {
       throw new BadRequestException('حداقل یک آیتم برای ثبت سفارش لازم است');
     }

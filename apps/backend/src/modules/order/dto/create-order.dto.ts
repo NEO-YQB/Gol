@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
+  Equals,
   IsArray,
   IsEnum,
   IsISO8601,
@@ -52,9 +53,9 @@ export class CreateOrderDto {
   @Min(1)
   addressId?: number;
 
-  @ApiProperty({ enum: PaymentMethod, required: false, example: PaymentMethod.COD })
+  @ApiProperty({ enum: [PaymentMethod.ONLINE], required: false, default: PaymentMethod.ONLINE, example: PaymentMethod.ONLINE })
   @IsOptional()
-  @IsEnum(PaymentMethod)
+  @Equals(PaymentMethod.ONLINE, { message: 'ثبت سفارش فقط با پرداخت آنلاین امکان‌پذیر است' })
   paymentMethod?: PaymentMethod;
 
   @ApiProperty({ enum: DeliveryType, required: false, example: DeliveryType.STANDARD })

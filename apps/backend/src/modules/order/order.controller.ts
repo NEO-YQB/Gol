@@ -42,7 +42,7 @@ export class OrderController {
     schema: {
       example: {
         cartId: 4,
-        payment: { paymentMethod: 'COD', paymentStatus: 'PENDING' },
+        payment: { paymentMethod: 'ONLINE', paymentStatus: 'PENDING' },
         items: [],
         totalAmount: 850000,
       },

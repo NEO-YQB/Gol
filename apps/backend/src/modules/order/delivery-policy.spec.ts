@@ -60,6 +60,17 @@ describe('product delivery scheduling', () => {
     expect(resolveScheduledDelivery(buildProductDeliveryPolicy([product], now), 'STANDARD')).toBeNull();
   });
 
+  it('rejects express delivery for scheduled orders even when every product supports it', () => {
+    const policy = buildProductDeliveryPolicy([product], now);
+    expect(policy.hasExpressDelivery).toBe(true);
+    expect(() => resolveScheduledDelivery(policy, 'EXPRESS', '2026-10-19T15:00:00+03:30'))
+      .toThrow('ارسال فوری برای سفارش زمان‌بندی‌شده قابل انتخاب نیست');
+  });
+
+  it('keeps express delivery available for immediate orders', () => {
+    expect(resolveScheduledDelivery(buildProductDeliveryPolicy([product], now), 'EXPRESS')).toBeNull();
+  });
+
   it.each(['2026-10-16T15:00:00+03:30', '2026-10-17T16:00:00+03:30', '2026-10-23T00:00:00+03:30', 'invalid'])(
     'rejects a past, too-early, out-of-horizon or invalid date: %s', (selected) => {
       expect(() => resolveScheduledDelivery(buildProductDeliveryPolicy([product], now), 'STANDARD', selected))

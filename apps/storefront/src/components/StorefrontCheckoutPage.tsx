@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { JalaliDatePicker } from '../../../../packages/frontend-core/src/components/JalaliDatePicker'
 import '../../../../packages/frontend-core/src/styles/jalali-date-picker.css'
 import { calculateCartValue, pushToDataLayer, toAnalyticsItem } from '../lib/analytics'
@@ -17,7 +16,6 @@ import {
   type StorefrontCartItem,
   writeStoredSelectedAddress,
 } from '../lib/storefrontAuth'
-import { emitStorefrontCartUpdated } from '../lib/storefrontCartEvents'
 import { emitStorefrontToast } from './storefrontToast'
 import { storefrontCatalog } from './storefrontCatalog'
 import { storefrontShared } from './storefrontShared'
@@ -68,7 +66,7 @@ type CheckoutPreview = {
     lng?: number | null
   } | null
   payment?: {
-    paymentMethod?: 'COD' | 'ONLINE'
+    paymentMethod?: 'ONLINE'
     paymentStatus?: string
   } | null
   items?: Array<{
@@ -141,7 +139,6 @@ function getProductLineTotal(item: StorefrontCartItem) {
 }
 
 export function StorefrontCheckoutPage() {
-  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [previewLoading, setPreviewLoading] = useState(false)
@@ -160,7 +157,6 @@ export function StorefrontCheckoutPage() {
   const [recipientName, setRecipientName] = useState('')
   const [recipientPhone, setRecipientPhone] = useState('')
   const [nationalId, setNationalId] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'ONLINE'>('ONLINE')
 
   useEffect(() => {
     const token = readStoredToken()
@@ -254,7 +250,7 @@ export function StorefrontCheckoutPage() {
   const hasItems = Boolean(cart?.items.length)
   const availableDeliveryTypes = preview?.delivery?.availableDeliveryTypes || ['STANDARD']
   const deliveryWindows = preview?.delivery?.deliveryWindows || []
-  const earliestDeliveryAt = deliveryType === 'EXPRESS'
+  const earliestDeliveryAt = !scheduleDelivery && deliveryType === 'EXPRESS'
     ? preview?.delivery?.earliestExpressDeliveryAt
     : preview?.delivery?.earliestStandardDeliveryAt
   const latestDeliveryAt = preview?.delivery?.latestScheduledDeliveryAt
@@ -344,8 +340,8 @@ export function StorefrontCheckoutPage() {
         },
         body: JSON.stringify({
           addressId: selectedAddressId,
-          paymentMethod,
-          deliveryType,
+          paymentMethod: 'ONLINE',
+          deliveryType: scheduleDelivery ? undefined : deliveryType,
           deliveryWindowLabel: scheduleDelivery ? undefined : deliveryWindowLabel || undefined,
           scheduledDeliveryAt: scheduleDelivery ? new Date(scheduledTimestamp).toISOString() : undefined,
           couponCode: appliedCouponCode || undefined,
@@ -361,43 +357,28 @@ export function StorefrontCheckoutPage() {
         throw new Error(message || 'ثبت سفارش با خطا مواجه شد')
       }
 
-      if (paymentMethod === 'ONLINE') {
-        const orderPayload = payload as CreatedOrder
-        const initiateResponse = await fetch('/api/payments/initiate', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            orderId: orderPayload.id,
-            gatewayKey: 'zarinpal-sandbox',
-          }),
-        })
-
-        const initiatePayload = (await initiateResponse.json()) as PaymentInitiationResult | { message?: string | string[] }
-        if (!initiateResponse.ok) {
-          const message = Array.isArray((initiatePayload as { message?: string | string[] }).message)
-            ? (initiatePayload as { message?: string[] }).message?.[0]
-            : (initiatePayload as { message?: string }).message
-          throw new Error(message || 'شروع پرداخت آنلاین با خطا مواجه شد')
-        }
-
-        window.location.href = (initiatePayload as PaymentInitiationResult).gateway.paymentUrl
-        return
-      }
-
-      const refreshedCart = await getCart(token).catch(() => null)
-      if (refreshedCart) {
-        emitStorefrontCartUpdated(refreshedCart)
-      }
-
-      emitStorefrontToast({
-        message: `سفارش شما با موفقیت ثبت شد و با شماره ${new Intl.NumberFormat('fa-IR').format((payload as CreatedOrder).id)} در حساب کاربری‌ات قرار گرفت.`,
-        variant: 'success',
-        duration: 7000,
+      const orderPayload = payload as CreatedOrder
+      const initiateResponse = await fetch('/api/payments/initiate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          orderId: orderPayload.id,
+          gatewayKey: 'zarinpal-sandbox',
+        }),
       })
-      router.push('/account')
+
+      const initiatePayload = (await initiateResponse.json()) as PaymentInitiationResult | { message?: string | string[] }
+      if (!initiateResponse.ok) {
+        const message = Array.isArray((initiatePayload as { message?: string | string[] }).message)
+          ? (initiatePayload as { message?: string[] }).message?.[0]
+          : (initiatePayload as { message?: string }).message
+        throw new Error(message || 'شروع پرداخت آنلاین با خطا مواجه شد')
+      }
+
+      window.location.href = (initiatePayload as PaymentInitiationResult).gateway.paymentUrl
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'ثبت سفارش با خطا مواجه شد')
     } finally {
@@ -554,37 +535,26 @@ export function StorefrontCheckoutPage() {
           <section className="rounded-[32px] bg-white/82 px-5 py-5 shadow-[0_14px_34px_rgba(52,36,17,0.06)]">
             <h2 className="text-2xl font-black text-[#173126]">ارسال و تخفیف</h2>
             <div className="mt-5 grid gap-5">
-              <div className="grid gap-3 md:grid-cols-2">
-                {[
-                  { value: 'ONLINE', title: 'پرداخت آنلاین', description: 'اتصال مستقیم به زرین‌پال sandbox' },
-                  { value: 'COD', title: 'پرداخت در محل', description: 'ثبت سفارش بدون انتقال به درگاه' },
-                ].map((method) => (
-                  <button
-                    className={`rounded-[24px] border px-4 py-4 text-right transition ${paymentMethod === method.value ? 'border-[#173126] bg-[#173126] text-white' : 'border-[#e8ded2] bg-[#fbf8f3] text-[#173126]'}`}
-                    key={method.value}
-                    onClick={() => setPaymentMethod(method.value as 'COD' | 'ONLINE')}
-                    type="button"
-                  >
-                    <strong className="block text-sm font-black">{method.title}</strong>
-                    <span className={`mt-2 block text-xs leading-6 ${paymentMethod === method.value ? 'text-white/78' : 'text-[#7b6d5d]'}`}>
-                      {method.description}
-                    </span>
-                  </button>
-                ))}
+              <div className="rounded-[24px] border border-[#173126] bg-[#173126] px-4 py-4 text-white">
+                <strong className="block text-sm font-black">پرداخت آنلاین</strong>
+                <p className="mt-2 text-xs leading-6 text-white/80">پس از ثبت سفارش برای پرداخت به درگاه منتقل می‌شوی.</p>
               </div>
 
               <div className="grid gap-3 md:grid-cols-2">
                 {availableDeliveryTypes.map((type) => {
                   const isExpress = type === 'EXPRESS'
+                  const isSelected = !scheduleDelivery && deliveryType === type
                   return (
                     <button
-                      className={`rounded-[24px] border px-4 py-4 text-right transition ${deliveryType === type ? 'border-[#173126] bg-[#173126] text-white' : 'border-[#e8ded2] bg-[#fbf8f3] text-[#173126]'}`}
+                      className={`rounded-[24px] border px-4 py-4 text-right transition disabled:cursor-not-allowed disabled:opacity-40 ${isSelected ? 'border-[#173126] bg-[#173126] text-white' : 'border-[#e8ded2] bg-[#fbf8f3] text-[#173126]'}`}
+                      disabled={scheduleDelivery || submitting || previewLoading}
+                      aria-pressed={isSelected}
                       key={type}
                       onClick={() => setDeliveryType(type)}
                       type="button"
                     >
                       <strong className="block text-sm font-black">{isExpress ? 'ارسال فوری' : 'ارسال استاندارد'}</strong>
-                      <span className={`mt-2 block text-xs leading-6 ${deliveryType === type ? 'text-white/78' : 'text-[#7b6d5d]'}`}>
+                      <span className={`mt-2 block text-xs leading-6 ${isSelected ? 'text-white/78' : 'text-[#7b6d5d]'}`}>
                         {isExpress
                           ? `حدود ${new Intl.NumberFormat('fa-IR').format(preview?.delivery?.expressDeliveryHours ?? 1)} ساعت`
                           : `بین ${new Intl.NumberFormat('fa-IR').format(preview?.delivery?.minDeliveryHours ?? 0)} تا ${new Intl.NumberFormat('fa-IR').format(preview?.delivery?.maxDeliveryHours ?? 0)} ساعت`}
@@ -596,12 +566,13 @@ export function StorefrontCheckoutPage() {
 
               <div className="grid gap-3 rounded-[24px] border border-[#e8ded2] p-4 text-sm">
                 <label className="flex items-center gap-2 font-bold text-[#173126]">
-                  <input type="checkbox" checked={scheduleDelivery} onChange={(event) => setScheduleDelivery(event.target.checked)} />
+                  <input type="checkbox" checked={scheduleDelivery} disabled={submitting || previewLoading} onChange={(event) => setScheduleDelivery(event.target.checked)} />
                   انتخاب تاریخ و ساعت تحویل (سفارش برای آینده)
                 </label>
                 <p className="text-xs leading-6 text-[#7b6d5d]">
                   امکان انتخاب تا {new Intl.NumberFormat('fa-IR').format(preview?.delivery?.maxAdvanceOrderDays ?? 5)} روز آینده؛ ساعت‌ها به وقت تهران هستند. زمان آماده‌سازی همه محصولات رعایت می‌شود.
                 </p>
+                {scheduleDelivery ? <p className="text-xs leading-6 text-[#7b6d5d]">در سفارش آینده، ارسال استاندارد و فوری قابل انتخاب نیستند؛ تحویل براساس تاریخ و ساعت انتخابی و زمان آماده‌سازی عادی انجام می‌شود.</p> : null}
                 {scheduleDelivery ? (
                   <>
                     <div className="grid gap-4 sm:grid-cols-2">
@@ -730,7 +701,7 @@ export function StorefrontCheckoutPage() {
                 onClick={handleSubmitOrder}
                 type="button"
               >
-                {submitting ? 'در حال ثبت سفارش...' : paymentMethod === 'ONLINE' ? 'ثبت سفارش و انتقال به پرداخت' : 'ثبت سفارش و ادامه'}
+                {submitting ? 'در حال ثبت سفارش...' : 'ثبت سفارش و انتقال به پرداخت'}
               </button>
               <Link className="inline-flex items-center justify-center rounded-full border border-[#d8ccbf] bg-white px-5 py-3 text-sm font-bold text-[#173126]" href="/cart">
                 بازگشت به سبد خرید

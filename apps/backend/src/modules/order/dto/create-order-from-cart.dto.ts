@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { DeliveryType, PaymentMethod } from '@prisma/client';
-import { IsEnum, IsInt, IsISO8601, IsOptional, IsString, Matches, MaxLength, Min } from 'class-validator';
+import { Equals, IsEnum, IsInt, IsISO8601, IsOptional, IsString, Matches, MaxLength, Min } from 'class-validator';
 
 export class CreateOrderFromCartDto {
   @ApiProperty({ required: false, description: 'زمان تحویل با منطقه زمانی، حداکثر پنج روز آینده', example: '2026-10-19T15:00:00+03:30' })
@@ -14,8 +14,8 @@ export class CreateOrderFromCartDto {
   @Min(1)
   addressId!: number;
 
-  @ApiProperty({ enum: PaymentMethod, example: PaymentMethod.COD })
-  @IsEnum(PaymentMethod)
+  @ApiProperty({ enum: [PaymentMethod.ONLINE], example: PaymentMethod.ONLINE })
+  @Equals(PaymentMethod.ONLINE, { message: 'ثبت سفارش فقط با پرداخت آنلاین امکان‌پذیر است' })
   paymentMethod!: PaymentMethod;
 
   @ApiProperty({ enum: DeliveryType, required: false, example: DeliveryType.STANDARD })

@@ -78,10 +78,11 @@ export function resolveScheduledDelivery(
   scheduledDeliveryAt?: string,
 ) {
   if (!scheduledDeliveryAt) return null;
+  if (deliveryType === 'EXPRESS') {
+    throw new BadRequestException('ارسال فوری برای سفارش زمان‌بندی‌شده قابل انتخاب نیست');
+  }
   const selected = new Date(scheduledDeliveryAt);
-  const earliest = deliveryType === 'EXPRESS'
-    ? policy.earliestExpressDeliveryAt
-    : policy.earliestStandardDeliveryAt;
+  const earliest = policy.earliestStandardDeliveryAt;
   if (
     !Number.isFinite(selected.getTime()) ||
     !earliest ||
