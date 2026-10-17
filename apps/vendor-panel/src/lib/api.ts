@@ -65,6 +65,11 @@ export type VendorDiscountPayload = {
 }
 
 export type VendorProductPayload = {
+  minDeliveryHours?: number | null
+  maxDeliveryHours?: number | null
+  hasExpressDelivery?: boolean | null
+  expressDeliveryHours?: number | null
+  maxAdvanceOrderDays?: number
   name: string
   description?: string
   shortDescription?: string

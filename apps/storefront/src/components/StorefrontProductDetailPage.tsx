@@ -56,6 +56,10 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
   const hasDiscount = typeof discountPrice === 'number' && discountPrice > 0 && discountPrice < basePrice
   const ratingAverage = Number(product.store?.customerRatingAverage ?? 0)
   const ratingCount = Number(product.store?.customerRatingCount ?? 0)
+  const hasExpressDelivery = product.hasExpressDelivery ?? product.store?.hasExpressDelivery ?? false
+  const standardMinimum = product.minDeliveryHours ?? product.store?.minDeliveryHours ?? 0
+  const standardHours = Math.max(standardMinimum, product.maxDeliveryHours ?? product.store?.maxDeliveryHours ?? standardMinimum)
+  const expressHours = product.expressDeliveryHours ?? product.store?.expressDeliveryHours ?? (standardMinimum || 1)
 
   return (
     <div className="grid gap-6">
@@ -194,8 +198,9 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
                 <strong className="mt-1 block text-base text-[#173126]">{product.productType?.name || 'نامشخص'}</strong>
               </div>
               <div className="rounded-[20px] bg-[#f9f4ec] px-4 py-4">
-                <span className="block text-xs font-bold text-[#92785a]">ارسال فروشگاه</span>
-                <strong className="mt-1 block text-base text-[#173126]">{product.store?.sameDayDelivery ? 'امکان ارسال فوری' : 'ارسال استاندارد'}</strong>
+                <span className="block text-xs font-bold text-[#92785a]">تحویل این محصول</span>
+                <strong className="mt-1 block text-base text-[#173126]">عادی: {new Intl.NumberFormat('fa-IR').format(standardHours)} ساعت{hasExpressDelivery ? `؛ فوری: ${new Intl.NumberFormat('fa-IR').format(expressHours)} ساعت` : ''}</strong>
+                <span className="mt-2 block text-xs text-[#92785a]">سفارش تا {new Intl.NumberFormat('fa-IR').format(product.maxAdvanceOrderDays ?? 5)} روز آینده</span>
               </div>
             </div>
           </section>
@@ -249,7 +254,7 @@ export function StorefrontProductDetailPage({ product }: { product: StorefrontPr
             </div>
             <div className="rounded-[20px] bg-white/70 px-4 py-4">
               <span className="block text-xs font-bold text-[#6f8f80]">وضعیت ارسال</span>
-              <strong className="mt-1 block text-base text-[#224638]">{product.store?.sameDayDelivery ? 'ارسال فوری فعال است' : 'ارسال استاندارد فروشگاه'}</strong>
+              <strong className="mt-1 block text-base text-[#224638]">{hasExpressDelivery ? 'ارسال عادی و فوری' : 'ارسال عادی'}</strong>
             </div>
           </div>
         </aside>

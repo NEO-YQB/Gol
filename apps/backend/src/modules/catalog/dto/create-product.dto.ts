@@ -6,6 +6,8 @@ import {
   IsNotEmpty, 
   IsInt, 
   Min, 
+  Max,
+  ValidateIf,
   IsEnum, 
   ValidateNested,
   IsBoolean,
@@ -42,6 +44,39 @@ class ProductGalleryItemDto {
 }
 
 export class CreateProductDto {
+  @ApiPropertyOptional({ description: 'حداقل ساعت تحویل عادی؛ null یعنی تنظیم فروشگاه' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(120)
+  minDeliveryHours?: number | null;
+
+  @ApiPropertyOptional({ description: 'حداکثر ساعت تحویل عادی؛ null یعنی تنظیم فروشگاه' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(120)
+  maxDeliveryHours?: number | null;
+
+  @ApiPropertyOptional({ description: 'فعال بودن ارسال فوری؛ null یعنی تنظیم فروشگاه' })
+  @IsOptional()
+  @IsBoolean()
+  hasExpressDelivery?: boolean | null;
+
+  @ApiPropertyOptional({ description: 'زمان تحویل فوری به ساعت؛ null یعنی تنظیم فروشگاه' })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(120)
+  expressDeliveryHours?: number | null;
+
+  @ApiPropertyOptional({ description: 'حداکثر روز پیش‌سفارش؛ صفر یعنی فقط امروز', minimum: 0, maximum: 5 })
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsInt()
+  @Min(0)
+  @Max(5)
+  maxAdvanceOrderDays?: number;
+
   @ApiProperty({ description: 'نام محصول', example: 'اسپرسو' })
   @IsString()
   @IsNotEmpty({ message: 'نام محصول اجباری است' })

@@ -12,6 +12,7 @@ import '../data/products_api_service.dart';
 import '../domain/product_editor_models.dart';
 import 'view_models/create_product_view_model.dart';
 import 'product_workspace_screen.dart';
+import 'widgets/product_delivery_fields.dart';
 
 class CreateProductScreen extends StatefulWidget {
   const CreateProductScreen({
@@ -28,6 +29,7 @@ class CreateProductScreen extends StatefulWidget {
 }
 
 class _CreateProductScreenState extends State<CreateProductScreen> {
+  EditableDeliverySettings _deliverySettings = const EditableDeliverySettings();
   final _imagePicker = ImagePicker();
   late final CreateProductViewModel _viewModel;
 
@@ -121,6 +123,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
 
   Future<void> _createProduct() async {
     final created = await _viewModel.createProduct(
+      deliverySettings: _deliverySettings,
       name: _nameController.text,
       price: _priceController.text,
       discountPrice: _discountPriceController.text,
@@ -298,6 +301,12 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                               onUpload: _pickGalleryImage,
                               onAltChanged: _viewModel.updateGalleryAlt,
                               onRemove: _viewModel.removeGalleryItem,
+                            ),
+                            const SizedBox(height: AppSpacing.lg),
+                            ProductDeliveryFields(
+                              settings: _deliverySettings,
+                              enabled: !state.isSaving,
+                              onChanged: (settings) => setState(() => _deliverySettings = settings),
                             ),
                             const SizedBox(height: AppSpacing.lg),
                             TextField(

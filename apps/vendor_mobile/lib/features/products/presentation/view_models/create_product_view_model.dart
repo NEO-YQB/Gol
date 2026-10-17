@@ -259,6 +259,7 @@ class CreateProductViewModel extends ChangeNotifier {
   }
 
   Future<VendorProductDetail?> createProduct({
+    EditableDeliverySettings deliverySettings = const EditableDeliverySettings(),
     required String name,
     required String price,
     required String discountPrice,
@@ -267,6 +268,11 @@ class CreateProductViewModel extends ChangeNotifier {
     required String shortDescription,
     required String description,
   }) async {
+    if (deliverySettings.validationError != null) {
+      _state = _state.copyWith(errorMessage: deliverySettings.validationError);
+      _notifyIfActive();
+      return null;
+    }
     if (name.trim().isEmpty ||
         price.trim().isEmpty ||
         quantity.trim().isEmpty ||
@@ -288,6 +294,7 @@ class CreateProductViewModel extends ChangeNotifier {
       return await _repository.createProduct(
         accessToken: _accessToken,
         input: {
+          ...deliverySettings.toJson(),
           'name': name.trim(),
           'price': _parseNum(price) ?? 0,
           'discountPrice': _parseNum(discountPrice),

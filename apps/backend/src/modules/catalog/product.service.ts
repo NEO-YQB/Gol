@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
+import { assertProductDeliveryHours } from '../order/delivery-policy';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { GetProductsQueryDto } from './dto/get-products-query.dto';
 import { CreateElementDto } from './dto/create-element.dto';
@@ -45,6 +46,7 @@ export class ProductService {
   }
 
   async create(dto: CreateProductDto, user: { id: number; roles: string[] }) {
+    assertProductDeliveryHours(dto);
     const {
       compositions,
       storeId,
@@ -172,6 +174,7 @@ export class ProductService {
       },
     });
     if (!existingProduct) throw new NotFoundException('محصول یافت نشد');
+    assertProductDeliveryHours({ ...existingProduct, ...dto });
     await this.assertCanManageProduct(user, 'update', existingProduct);
     this.assertStoreAllowsCatalogManagement(
       user,

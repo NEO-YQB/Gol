@@ -24,6 +24,7 @@ function formatJalaliDate(value: unknown, withTime = false) {
   if (Number.isNaN(parsed.getTime())) return value
 
   return new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+    timeZone: 'Asia/Tehran',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -584,6 +585,7 @@ export function OrdersWorkspacePage({
     { label: 'روش پرداخت', value: getPaymentMethodLabel(readText(currentOrder, ['paymentMethod'], '')) },
     { label: 'وضعیت تسویه', value: getSettlementStatusLabel(settlementStatus) },
     { label: 'آدرس تحویل', value: getAddressLabel(currentOrder), wide: true },
+    { label: 'زمان درخواستی تحویل', value: currentOrder.scheduledDeliveryAt ? formatJalaliDate(currentOrder.scheduledDeliveryAt, true) : 'اولین زمان ممکن' },
   ]
 
   return (

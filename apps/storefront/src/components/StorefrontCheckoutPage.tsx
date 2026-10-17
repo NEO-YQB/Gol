@@ -20,6 +20,13 @@ import { emitStorefrontToast } from './storefrontToast'
 import { storefrontCatalog } from './storefrontCatalog'
 import { storefrontShared } from './storefrontShared'
 
+function toTehranDateTimeInput(value?: string | null, roundUp = false) {
+  if (!value) return undefined
+  const timestamp = new Date(value).getTime()
+  const rounded = roundUp ? Math.ceil(timestamp / 60_000) * 60_000 : timestamp
+  return new Date(rounded + 210 * 60_000).toISOString().slice(0, 16)
+}
+
 type CheckoutPreview = {
   cartId: number
   store?: {
@@ -35,6 +42,10 @@ type CheckoutPreview = {
     expressDeliveryHours?: number | null
     deliveryWindows?: Array<{ key?: string; label?: string }>
     availableDeliveryTypes?: Array<'STANDARD' | 'EXPRESS'>
+    maxAdvanceOrderDays?: number
+    earliestStandardDeliveryAt?: string
+    earliestExpressDeliveryAt?: string | null
+    latestScheduledDeliveryAt?: string
   } | null
   address?: {
     id: number
@@ -132,6 +143,8 @@ export function StorefrontCheckoutPage() {
   const [appliedCouponCode, setAppliedCouponCode] = useState('')
   const [deliveryType, setDeliveryType] = useState<'STANDARD' | 'EXPRESS'>('STANDARD')
   const [deliveryWindowLabel, setDeliveryWindowLabel] = useState('')
+  const [scheduledDeliveryAt, setScheduledDeliveryAt] = useState('')
+  const [scheduleDelivery, setScheduleDelivery] = useState(false)
   const [recipientName, setRecipientName] = useState('')
   const [recipientPhone, setRecipientPhone] = useState('')
   const [nationalId, setNationalId] = useState('')
@@ -229,6 +242,17 @@ export function StorefrontCheckoutPage() {
   const hasItems = Boolean(cart?.items.length)
   const availableDeliveryTypes = preview?.delivery?.availableDeliveryTypes || ['STANDARD']
   const deliveryWindows = preview?.delivery?.deliveryWindows || []
+  const earliestDeliveryAt = deliveryType === 'EXPRESS'
+    ? preview?.delivery?.earliestExpressDeliveryAt
+    : preview?.delivery?.earliestStandardDeliveryAt
+  const latestDeliveryAt = preview?.delivery?.latestScheduledDeliveryAt
+  const scheduledTimestamp = scheduledDeliveryAt ? new Date(`${scheduledDeliveryAt}+03:30`).getTime() : NaN
+  const validScheduledDelivery = !scheduleDelivery || (
+    Boolean(earliestDeliveryAt && latestDeliveryAt) &&
+    Number.isFinite(scheduledTimestamp) &&
+    scheduledTimestamp >= new Date(earliestDeliveryAt!).getTime() &&
+    scheduledTimestamp <= new Date(latestDeliveryAt!).getTime()
+  )
   useEffect(() => {
     if (!cart?.items.length) return
     pushToDataLayer({
@@ -248,6 +272,7 @@ export function StorefrontCheckoutPage() {
     recipientPhone.trim().length >= 10 &&
     isValidNationalId(nationalId) &&
     !submitting &&
+    validScheduledDelivery &&
     !previewLoading
 
   function handleApplyCoupon() {
@@ -268,6 +293,10 @@ export function StorefrontCheckoutPage() {
   }
 
   async function handleSubmitOrder() {
+    if (!validScheduledDelivery) {
+      setError('تاریخ و ساعت تحویل را در محدوده مجاز و پس از زمان آماده‌سازی انتخاب کن.')
+      return
+    }
     const token = readStoredToken()
     if (!token || !selectedAddressId) {
       setError('برای نهایی‌کردن سفارش، ابتدا آدرس را مشخص کن.')
@@ -293,7 +322,8 @@ export function StorefrontCheckoutPage() {
           addressId: selectedAddressId,
           paymentMethod,
           deliveryType,
-          deliveryWindowLabel: deliveryWindowLabel || undefined,
+          deliveryWindowLabel: scheduleDelivery ? undefined : deliveryWindowLabel || undefined,
+          scheduledDeliveryAt: scheduleDelivery ? new Date(scheduledTimestamp).toISOString() : undefined,
           couponCode: appliedCouponCode || undefined,
           nationalId,
         }),
@@ -540,7 +570,35 @@ export function StorefrontCheckoutPage() {
                 })}
               </div>
 
-              {deliveryWindows.length ? (
+              <div className="grid gap-3 rounded-[24px] border border-[#e8ded2] p-4 text-sm">
+                <label className="flex items-center gap-2 font-bold text-[#173126]">
+                  <input type="checkbox" checked={scheduleDelivery} onChange={(event) => setScheduleDelivery(event.target.checked)} />
+                  انتخاب تاریخ و ساعت تحویل (سفارش برای آینده)
+                </label>
+                <p className="text-xs leading-6 text-[#7b6d5d]">
+                  امکان انتخاب تا {new Intl.NumberFormat('fa-IR').format(preview?.delivery?.maxAdvanceOrderDays ?? 5)} روز آینده؛ ساعت‌ها به وقت تهران هستند. زمان آماده‌سازی همه محصولات رعایت می‌شود.
+                </p>
+                {scheduleDelivery ? (
+                  <>
+                    <label className="grid gap-2 font-bold text-[#6e6152]">
+                      تاریخ و ساعت تحویل
+                      <input
+                        type="datetime-local"
+                        className="rounded-[22px] border border-[#e8ded2] bg-[#fbf8f3] px-4 py-3 text-[#173126]"
+                        min={toTehranDateTimeInput(earliestDeliveryAt, true)}
+                        max={toTehranDateTimeInput(latestDeliveryAt)}
+                        value={scheduledDeliveryAt}
+                        onChange={(event) => setScheduledDeliveryAt(event.target.value)}
+                      />
+                    </label>
+                    {Number.isFinite(scheduledTimestamp) ? <p className="text-[#173126]">زمان انتخابی: {new Intl.DateTimeFormat('fa-IR', { timeZone: 'Asia/Tehran', dateStyle: 'full', timeStyle: 'short' }).format(new Date(scheduledTimestamp))}</p> : null}
+                    {earliestDeliveryAt ? <p className="text-xs text-[#7b6d5d]">زودترین تحویل: {new Intl.DateTimeFormat('fa-IR', { timeZone: 'Asia/Tehran', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(earliestDeliveryAt))}</p> : null}
+                    {!validScheduledDelivery ? <p role="alert" className="text-xs text-red-700">تاریخ و ساعت معتبر در محدوده مجاز انتخاب کن.</p> : null}
+                  </>
+                ) : <p className="text-xs text-[#7b6d5d]">سفارش در اولین زمان ممکن با روش ارسال انتخاب‌شده تحویل می‌شود.</p>}
+              </div>
+
+              {!scheduleDelivery && deliveryWindows.length ? (
                 <label className="grid gap-2 text-sm">
                   <span className="font-bold text-[#6e6152]">بازه زمانی ارسال</span>
                   <select

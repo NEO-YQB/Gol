@@ -748,6 +748,12 @@ class _OrderDetailSection extends StatelessWidget {
                           ? 'هنوز ثبت نشده'
                           : _formatDateLabel(order.deliveryDate),
                     ),
+                    _IdentityRow(
+                      label: 'تحویل درخواستی (تهران)',
+                      value: order.scheduledDeliveryAt.isEmpty
+                          ? 'اولین زمان ممکن'
+                          : _formatDateLabel(order.scheduledDeliveryAt, tehranTime: true),
+                    ),
                   ],
                 ),
               ),
@@ -1558,13 +1564,13 @@ String _formatMoney(num value) {
   return buffer.toString();
 }
 
-String _formatDateLabel(String raw) {
+String _formatDateLabel(String raw, {bool tehranTime = false}) {
   final parsed = DateTime.tryParse(raw);
   if (parsed == null) {
     return raw.isEmpty ? '—' : raw;
   }
 
-  final local = parsed.toLocal();
+  final local = tehranTime ? parsed.toUtc().add(const Duration(hours: 3, minutes: 30)) : parsed.toLocal();
   final hh = local.hour.toString().padLeft(2, '0');
   final mm = local.minute.toString().padLeft(2, '0');
   final yyyy = local.year.toString().padLeft(4, '0');

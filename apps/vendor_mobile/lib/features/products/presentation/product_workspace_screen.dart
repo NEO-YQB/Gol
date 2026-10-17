@@ -12,6 +12,7 @@ import '../data/products_api_service.dart';
 import '../domain/product_editor_models.dart';
 import '../domain/vendor_product_detail.dart';
 import 'view_models/product_workspace_view_model.dart';
+import 'widgets/product_delivery_fields.dart';
 
 class ProductWorkspaceScreen extends StatefulWidget {
   const ProductWorkspaceScreen({
@@ -28,6 +29,8 @@ class ProductWorkspaceScreen extends StatefulWidget {
 }
 
 class _ProductWorkspaceScreenState extends State<ProductWorkspaceScreen> {
+  EditableDeliverySettings _deliverySettings = const EditableDeliverySettings();
+  int _deliveryFormVersion = 0;
   final _imagePicker = ImagePicker();
   late final ProductWorkspaceViewModel _viewModel;
 
@@ -83,6 +86,10 @@ class _ProductWorkspaceScreenState extends State<ProductWorkspaceScreen> {
   }
 
   void _fillForm(VendorProductDetail product) {
+    setState(() {
+      _deliverySettings = EditableDeliverySettings.fromDetail(product);
+      _deliveryFormVersion += 1;
+    });
     _nameController.text = product.name;
     _priceController.text = product.price.toString();
     _discountPriceController.text = product.discountPrice?.toString() ?? '';
@@ -154,6 +161,7 @@ class _ProductWorkspaceScreenState extends State<ProductWorkspaceScreen> {
 
   Future<void> _saveProduct() async {
     final updated = await _viewModel.saveProduct(
+      deliverySettings: _deliverySettings,
       name: _nameController.text,
       price: _priceController.text,
       discountPrice: _discountPriceController.text,
@@ -358,6 +366,13 @@ class _ProductWorkspaceScreenState extends State<ProductWorkspaceScreen> {
                                       onAltChanged:
                                           _viewModel.updateGalleryAlt,
                                       onRemove: _viewModel.removeGalleryItem,
+                                    ),
+                                    const SizedBox(height: AppSpacing.lg),
+                                    ProductDeliveryFields(
+                                      key: ValueKey(_deliveryFormVersion),
+                                      settings: _deliverySettings,
+                                      enabled: !state.isSaving,
+                                      onChanged: (settings) => setState(() => _deliverySettings = settings),
                                     ),
                                     const SizedBox(height: AppSpacing.lg),
                                     _CompositionEditorCard(

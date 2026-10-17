@@ -286,6 +286,7 @@ class ProductWorkspaceViewModel extends ChangeNotifier {
   }
 
   Future<VendorProductDetail?> saveProduct({
+    EditableDeliverySettings? deliverySettings,
     required String name,
     required String price,
     required String discountPrice,
@@ -296,6 +297,12 @@ class ProductWorkspaceViewModel extends ChangeNotifier {
   }) async {
     final product = _state.product;
     if (product == null) return null;
+
+    if (deliverySettings?.validationError != null) {
+      _state = _state.copyWith(errorMessage: deliverySettings!.validationError, clearSuccess: true);
+      _notifyIfActive();
+      return null;
+    }
 
     if (name.trim().isEmpty ||
         price.trim().isEmpty ||
@@ -322,6 +329,7 @@ class ProductWorkspaceViewModel extends ChangeNotifier {
         productId: product.id,
         slug: product.slug,
         input: {
+          if (deliverySettings != null) ...deliverySettings.toJson(),
           'name': name.trim(),
           'price': _parseNum(price) ?? product.price,
           'discountPrice': _parseNum(discountPrice),

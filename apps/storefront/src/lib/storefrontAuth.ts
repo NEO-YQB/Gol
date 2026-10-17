@@ -154,6 +154,7 @@ export type StorefrontOrderDetail = {
   shippingCity?: string | null
   deliveryType?: string | null
   deliveryWindowLabel?: string | null
+  scheduledDeliveryAt?: string | null
   estimatedDeliveryMinHours?: number | null
   estimatedDeliveryMaxHours?: number | null
   createdAt?: string

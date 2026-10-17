@@ -110,6 +110,7 @@ function formatJalaliDate(value: unknown, withTime = false) {
   const parsed = new Date(value)
   if (Number.isNaN(parsed.getTime())) return '—'
   return new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+    timeZone: 'Asia/Tehran',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -251,7 +252,8 @@ export function OrderWorkspacePage({
         { label: 'مشتری', value: getCustomerText(currentOrder) },
         { label: 'مبلغ', value: getTotalAmount(currentOrder) },
         { label: 'ثبت سفارش', value: formatJalaliDate(currentOrder.createdAt ?? currentOrder.updatedAt, true) },
-        { label: 'بازه تحویل', value: formatJalaliDate(currentOrder.deliveredAt ?? currentOrder.deliveryDate ?? currentOrder.scheduledFor, true) },
+        { label: 'زمان درخواستی تحویل', value: currentOrder.scheduledDeliveryAt ? formatJalaliDate(currentOrder.scheduledDeliveryAt, true) : 'اولین زمان ممکن' },
+        { label: 'تحویل انجام‌شده', value: formatJalaliDate(currentOrder.deliveredAt, true) },
         { label: 'شماره تماس', value: readText(currentOrder, ['recipientPhoneNumber', 'phoneNumber'], '—') },
       ]
     : []

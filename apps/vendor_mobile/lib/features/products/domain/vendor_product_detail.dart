@@ -1,5 +1,10 @@
 class VendorProductDetail {
   const VendorProductDetail({
+    this.minDeliveryHours,
+    this.maxDeliveryHours,
+    this.hasExpressDelivery,
+    this.expressDeliveryHours,
+    this.maxAdvanceOrderDays = 5,
     required this.id,
     required this.name,
     required this.slug,
@@ -27,6 +32,11 @@ class VendorProductDetail {
   });
 
   final int id;
+  final int? minDeliveryHours;
+  final int? maxDeliveryHours;
+  final bool? hasExpressDelivery;
+  final int? expressDeliveryHours;
+  final int maxAdvanceOrderDays;
   final String name;
   final String slug;
   final num price;
@@ -53,6 +63,11 @@ class VendorProductDetail {
 
   factory VendorProductDetail.fromJson(Map<String, dynamic> json) {
     return VendorProductDetail(
+      minDeliveryHours: (json['minDeliveryHours'] as num?)?.toInt(),
+      maxDeliveryHours: (json['maxDeliveryHours'] as num?)?.toInt(),
+      hasExpressDelivery: json['hasExpressDelivery'] as bool?,
+      expressDeliveryHours: (json['expressDeliveryHours'] as num?)?.toInt(),
+      maxAdvanceOrderDays: (json['maxAdvanceOrderDays'] as num?)?.toInt() ?? 5,
       id: _asInt(json['id']),
       name: _readText(json, const ['name'], fallback: 'محصول بدون نام'),
       slug: _readText(json, const ['slug']),

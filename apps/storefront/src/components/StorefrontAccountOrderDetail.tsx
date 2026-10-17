@@ -23,6 +23,7 @@ function formatMoney(value?: number | string | null) {
 function formatDateTime(value?: string | null) {
   if (!value) return '—'
   return new Intl.DateTimeFormat('fa-IR', {
+    timeZone: 'Asia/Tehran',
     dateStyle: 'long',
     timeStyle: 'short',
   }).format(new Date(value))
@@ -169,6 +170,7 @@ export function StorefrontAccountOrderDetail({ orderId }: { orderId: number }) {
               <p><strong className="text-[#173126]">شماره تماس:</strong> {order.customerPhoneNumber || '—'}</p>
               <p><strong className="text-[#173126]">کد ملی:</strong> {order.customerNationalId || '—'}</p>
               <p><strong className="text-[#173126]">بازه تحویل:</strong> {order.deliveryWindowLabel || '—'}</p>
+              <p><strong className="text-[#173126]">زمان درخواستی تحویل (تهران):</strong> {order.scheduledDeliveryAt ? formatDateTime(order.scheduledDeliveryAt) : 'اولین زمان ممکن'}</p>
               <p><strong className="text-[#173126]">آدرس:</strong> {[order.shippingCity, order.shippingAddressText].filter(Boolean).join(' — ') || '—'}</p>
             </div>
           </section>

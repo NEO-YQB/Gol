@@ -14,6 +14,11 @@ type CompositionRow = {
 }
 
 type ProductFormState = {
+  minDeliveryHours: string
+  maxDeliveryHours: string
+  hasExpressDelivery: string
+  expressDeliveryHours: string
+  maxAdvanceOrderDays: string
   name: string
   categoryId: string
   productTypeId: string
@@ -97,6 +102,11 @@ const productColumns = [
 ]
 
 const initialFormState: ProductFormState = {
+  minDeliveryHours: '',
+  maxDeliveryHours: '',
+  hasExpressDelivery: '',
+  expressDeliveryHours: '',
+  maxAdvanceOrderDays: '5',
   name: '',
   categoryId: '',
   productTypeId: '',
@@ -199,6 +209,11 @@ function buildPayload(form: ProductFormState, storeId: number): VendorProductPay
     .filter(Boolean)
 
   return {
+    minDeliveryHours: form.minDeliveryHours.trim() ? Number(form.minDeliveryHours) : null,
+    maxDeliveryHours: form.maxDeliveryHours.trim() ? Number(form.maxDeliveryHours) : null,
+    hasExpressDelivery: form.hasExpressDelivery === '' ? null : form.hasExpressDelivery === 'true',
+    expressDeliveryHours: form.expressDeliveryHours.trim() ? Number(form.expressDeliveryHours) : null,
+    maxAdvanceOrderDays: Number(form.maxAdvanceOrderDays),
     name: form.name.trim(),
     description: form.description.trim() || undefined,
     shortDescription: form.shortDescription.trim() || undefined,
@@ -742,6 +757,11 @@ export function ProductsPage({ session }: { session: AuthSession }) {
     setFormMessage(null)
     setForm({
       name: readText(selectedProduct, ['name'], ''),
+      minDeliveryHours: readText(selectedProduct, ['minDeliveryHours'], ''),
+      maxDeliveryHours: readText(selectedProduct, ['maxDeliveryHours'], ''),
+      hasExpressDelivery: selectedProduct.hasExpressDelivery == null ? '' : String(selectedProduct.hasExpressDelivery),
+      expressDeliveryHours: readText(selectedProduct, ['expressDeliveryHours'], ''),
+      maxAdvanceOrderDays: readText(selectedProduct, ['maxAdvanceOrderDays'], '5'),
       categoryId: readText(selectedProduct, ['categoryId'], readText((selectedProduct.category as ProductRecord) ?? {}, ['id'], '')),
       productTypeId: readText(selectedProduct, ['productTypeId'], readText((selectedProduct.productType as ProductRecord) ?? {}, ['id'], '')),
       price: readText(selectedProduct, ['price'], ''),
@@ -807,6 +827,14 @@ export function ProductsPage({ session }: { session: AuthSession }) {
   }
 
   async function handleSubmit() {
+    const deliveryHours = [form.minDeliveryHours, form.maxDeliveryHours, form.expressDeliveryHours]
+    if (deliveryHours.some((value) => value.trim() && (!Number.isInteger(Number(value)) || Number(value) < 0 || Number(value) > 120)) ||
+        (form.expressDeliveryHours.trim() && Number(form.expressDeliveryHours) < 1) ||
+        !form.maxAdvanceOrderDays.trim() || !Number.isInteger(Number(form.maxAdvanceOrderDays)) || Number(form.maxAdvanceOrderDays) < 0 || Number(form.maxAdvanceOrderDays) > 5 ||
+        (form.minDeliveryHours.trim() && form.maxDeliveryHours.trim() && Number(form.minDeliveryHours) > Number(form.maxDeliveryHours))) {
+      setFormError('زمان‌های تحویل را به ساعت صحیح وارد کنید؛ حداقل نباید از حداکثر بیشتر باشد و مهلت پیش‌سفارش باید بین صفر و ۵ روز باشد.')
+      return
+    }
     if (!storeId) {
       setFormError('فروشگاه فعالی برای این حساب پیدا نشد.')
       return
@@ -1029,6 +1057,32 @@ export function ProductsPage({ session }: { session: AuthSession }) {
                           placeholder="مثلا ۱۲"
                           value={form.quantity}
                         />
+                      </div>
+
+                      <div className="fm-field">
+                        <label htmlFor="product-min-delivery">حداقل زمان تحویل عادی (ساعت)</label>
+                        <input id="product-min-delivery" type="number" min="0" max="120" placeholder="تنظیم فروشگاه" value={form.minDeliveryHours} onChange={(event) => setForm((current) => ({ ...current, minDeliveryHours: event.target.value }))} />
+                      </div>
+                      <div className="fm-field">
+                        <label htmlFor="product-max-delivery">حداکثر زمان تحویل عادی (ساعت)</label>
+                        <input id="product-max-delivery" type="number" min="0" max="120" placeholder="مثلاً ۶ ساعت؛ خالی یعنی تنظیم فروشگاه" value={form.maxDeliveryHours} onChange={(event) => setForm((current) => ({ ...current, maxDeliveryHours: event.target.value }))} />
+                      </div>
+                      <div className="fm-field">
+                        <label htmlFor="product-express">ارسال فوری این محصول</label>
+                        <select id="product-express" value={form.hasExpressDelivery} onChange={(event) => setForm((current) => ({ ...current, hasExpressDelivery: event.target.value }))}>
+                          <option value="">طبق تنظیم فروشگاه</option>
+                          <option value="true">فعال</option>
+                          <option value="false">غیرفعال؛ فقط ارسال عادی</option>
+                        </select>
+                      </div>
+                      <div className="fm-field">
+                        <label htmlFor="product-express-hours">زمان تحویل فوری (ساعت)</label>
+                        <input id="product-express-hours" type="number" min="1" max="120" placeholder="مثلاً ۲ ساعت؛ خالی یعنی تنظیم فروشگاه" value={form.expressDeliveryHours} onChange={(event) => setForm((current) => ({ ...current, expressDeliveryHours: event.target.value }))} />
+                      </div>
+                      <div className="fm-field">
+                        <label htmlFor="product-advance-days">امکان سفارش تا چند روز آینده</label>
+                        <input id="product-advance-days" type="number" min="0" max="5" value={form.maxAdvanceOrderDays} onChange={(event) => setForm((current) => ({ ...current, maxAdvanceOrderDays: event.target.value }))} />
+                        <small>از صفر (فقط امروز) تا ۵ روز؛ زمان آماده‌سازی برای سفارش آینده هم رعایت می‌شود. همه این تنظیمات بعداً قابل ویرایش‌اند.</small>
                       </div>
 
                       <div className="fm-field">

@@ -209,6 +209,11 @@ model Product {
   quantity        Int      @default(0)
   price           Float
   discountPrice   Float?
+  minDeliveryHours Int?
+  maxDeliveryHours Int?
+  hasExpressDelivery Boolean?
+  expressDeliveryHours Int?
+  maxAdvanceOrderDays Int @default(5)
   mainImage       String
   mainImageAlt    String?
   images          Json?
@@ -780,6 +785,7 @@ model Order {
   storeSlug            String?
   deliveryType         DeliveryType?
   deliveryWindowLabel  String?
+  scheduledDeliveryAt DateTime?
   estimatedDeliveryMinHours Int?
   estimatedDeliveryMaxHours Int?
   userId               Int

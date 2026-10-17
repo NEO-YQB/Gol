@@ -214,6 +214,11 @@ type PaginatedResponse<T> = {
 }
 
 export type StorefrontProductDetail = ProductSummary & {
+  minDeliveryHours?: number | null
+  maxDeliveryHours?: number | null
+  hasExpressDelivery?: boolean | null
+  expressDeliveryHours?: number | null
+  maxAdvanceOrderDays?: number
   description?: string | null
   shortDescription?: string | null
   gallery?: Array<{ url: string; alt?: string | null }>
@@ -223,6 +228,10 @@ export type StorefrontProductDetail = ProductSummary & {
     name: string
     slug: string
     sameDayDelivery?: boolean
+    hasExpressDelivery?: boolean
+    minDeliveryHours?: number | null
+    maxDeliveryHours?: number | null
+    expressDeliveryHours?: number | null
     customerRatingAverage?: string | number | null
     customerRatingCount?: number | null
   } | null

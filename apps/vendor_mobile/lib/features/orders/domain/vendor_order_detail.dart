@@ -1,5 +1,6 @@
 class VendorOrderDetail {
   const VendorOrderDetail({
+    this.scheduledDeliveryAt = '',
     required this.id,
     required this.status,
     required this.paymentStatus,
@@ -31,6 +32,7 @@ class VendorOrderDetail {
   final num payableAmount;
   final String createdAt;
   final String deliveryDate;
+  final String scheduledDeliveryAt;
   final String shippingAddressTitle;
   final String shippingAddressText;
   final Map<String, dynamic> availableActions;
@@ -41,6 +43,7 @@ class VendorOrderDetail {
 
   factory VendorOrderDetail.fromJson(Map<String, dynamic> json) {
     return VendorOrderDetail(
+      scheduledDeliveryAt: _readText(json, const ['scheduledDeliveryAt']),
       id: _asInt(json['id']),
       status: _readText(json, const ['status'], fallback: 'UNKNOWN'),
       paymentStatus:

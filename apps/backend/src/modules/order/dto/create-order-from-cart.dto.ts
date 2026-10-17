@@ -1,8 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { DeliveryType, PaymentMethod } from '@prisma/client';
-import { IsEnum, IsInt, IsOptional, IsString, Matches, MaxLength, Min } from 'class-validator';
+import { IsEnum, IsInt, IsISO8601, IsOptional, IsString, Matches, MaxLength, Min } from 'class-validator';
 
 export class CreateOrderFromCartDto {
+  @ApiProperty({ required: false, description: 'زمان تحویل با منطقه زمانی، حداکثر پنج روز آینده', example: '2026-10-19T15:00:00+03:30' })
+  @IsOptional()
+  @IsISO8601({ strict: true })
+  @Matches(/T.*(?:Z|[+-]\d{2}:\d{2})$/)
+  scheduledDeliveryAt?: string;
+
   @ApiProperty({ example: 3 })
   @IsInt()
   @Min(1)

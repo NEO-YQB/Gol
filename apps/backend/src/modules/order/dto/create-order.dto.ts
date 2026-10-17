@@ -4,6 +4,8 @@ import {
   ArrayMinSize,
   IsArray,
   IsEnum,
+  IsISO8601,
+  Matches,
   IsInt,
   IsOptional,
   IsString,
@@ -25,6 +27,12 @@ export class CreateOrderItemDto {
 }
 
 export class CreateOrderDto {
+  @ApiProperty({ required: false, description: 'زمان تحویل با منطقه زمانی، حداکثر پنج روز آینده', example: '2026-10-19T15:00:00+03:30' })
+  @IsOptional()
+  @IsISO8601({ strict: true })
+  @Matches(/T.*(?:Z|[+-]\d{2}:\d{2})$/)
+  scheduledDeliveryAt?: string;
+
   @ApiProperty({
     type: [CreateOrderItemDto],
     example: [

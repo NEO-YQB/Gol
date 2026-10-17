@@ -27,6 +27,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { CheckoutPreviewDto } from './dto/checkout-preview.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { CreateOrderFromCartDto } from './dto/create-order-from-cart.dto';
+import { buildProductDeliveryPolicy, resolveScheduledDelivery } from './delivery-policy';
 import { OptionalOrderReasonDto } from './dto/optional-order-reason.dto';
 import { OrderActionNoteDto } from './dto/order-action-note.dto';
 import { OrderReasonDto } from './dto/order-reason.dto';
@@ -49,6 +50,11 @@ type OrderExpiryCheckShape = {
 };
 
 type ProductSnapshot = {
+  minDeliveryHours: number | null;
+  maxDeliveryHours: number | null;
+  hasExpressDelivery: boolean | null;
+  expressDeliveryHours: number | null;
+  maxAdvanceOrderDays: number;
   id: number;
   name: string;
   slug: string;
@@ -134,7 +140,7 @@ export class OrderService {
     return {
       cartId: cart.id,
       store,
-      delivery: this.buildDeliveryPreview(store),
+      delivery: this.buildDeliveryPreview(store, cart.items.map((item) => item.product)),
       address: this.mapAddress(address),
       payment: {
         paymentMethod: PaymentMethod.COD,
@@ -167,6 +173,7 @@ export class OrderService {
       paymentMethod: dto.paymentMethod,
       deliveryType: dto.deliveryType,
       deliveryWindowLabel: dto.deliveryWindowLabel,
+      scheduledDeliveryAt: dto.scheduledDeliveryAt,
       couponCode: dto.couponCode,
       nationalId: dto.nationalId,
       clearCartId: cart.id,
@@ -185,6 +192,7 @@ export class OrderService {
       paymentMethod: dto.paymentMethod ?? PaymentMethod.COD,
       deliveryType: dto.deliveryType,
       deliveryWindowLabel: dto.deliveryWindowLabel,
+      scheduledDeliveryAt: dto.scheduledDeliveryAt,
       couponCode: dto.couponCode,
     });
   }
@@ -486,6 +494,7 @@ export class OrderService {
       couponCode?: string;
       nationalId?: string;
       clearCartId?: number;
+      scheduledDeliveryAt?: string;
     },
   ) {
     if (items.length === 0) {
@@ -498,9 +507,10 @@ export class OrderService {
     );
     const productMap = new Map(products.map((product) => [product.id, product]));
     const store = this.extractSingleStore(products);
-    const deliverySelection = this.resolveDeliverySelection(store, {
+    const deliverySelection = this.resolveDeliverySelection(store, products, {
       deliveryType: options.deliveryType,
       deliveryWindowLabel: options.deliveryWindowLabel,
+      scheduledDeliveryAt: options.scheduledDeliveryAt,
     });
 
     for (const item of normalizedItems) {
@@ -607,6 +617,7 @@ export class OrderService {
       storeSlug: store.slug,
       deliveryType: deliverySelection.deliveryType,
       deliveryWindowLabel: deliverySelection.deliveryWindowLabel,
+      scheduledDeliveryAt: deliverySelection.scheduledDeliveryAt,
       estimatedDeliveryMinHours: deliverySelection.estimatedDeliveryMinHours,
       estimatedDeliveryMaxHours: deliverySelection.estimatedDeliveryMaxHours,
       orderItems: {
@@ -887,33 +898,35 @@ export class OrderService {
     };
   }
 
-  private buildDeliveryPreview(store: ReturnType<OrderService['extractSingleStore']>) {
+  private buildDeliveryPreview(store: ReturnType<OrderService['extractSingleStore']>, products: ProductSnapshot[]) {
+    const policy = buildProductDeliveryPolicy(products);
     return {
       sameDayDelivery: store.sameDayDelivery,
-      hasExpressDelivery: store.hasExpressDelivery,
-      minDeliveryHours: store.minDeliveryHours,
-      maxDeliveryHours: store.maxDeliveryHours,
-      expressDeliveryHours: store.expressDeliveryHours,
+      ...policy,
       deliveryWindows: store.deliveryWindows ?? [],
       availableDeliveryTypes: [
         DeliveryType.STANDARD,
-        ...(store.hasExpressDelivery ? [DeliveryType.EXPRESS] : []),
+        ...(policy.hasExpressDelivery ? [DeliveryType.EXPRESS] : []),
       ],
     };
   }
 
   private resolveDeliverySelection(
     store: ReturnType<OrderService['extractSingleStore']>,
+    products: ProductSnapshot[],
     selection: {
       deliveryType?: DeliveryType;
       deliveryWindowLabel?: string;
+      scheduledDeliveryAt?: string;
     },
   ) {
     const deliveryType = selection.deliveryType ?? DeliveryType.STANDARD;
+    const policy = buildProductDeliveryPolicy(products);
 
-    if (deliveryType === DeliveryType.EXPRESS && !store.hasExpressDelivery) {
-      throw new BadRequestException('این فروشگاه در حال حاضر ارسال فوری ندارد');
+    if (deliveryType === DeliveryType.EXPRESS && !policy.hasExpressDelivery) {
+      throw new BadRequestException('ارسال فوری برای همه محصولات این سبد در دسترس نیست');
     }
+    const scheduledDeliveryAt = resolveScheduledDelivery(policy, deliveryType, selection.scheduledDeliveryAt);
 
     const availableWindows = Array.isArray(store.deliveryWindows)
       ? store.deliveryWindows
@@ -938,9 +951,10 @@ export class OrderService {
     }
 
     if (deliveryType === DeliveryType.EXPRESS) {
-      const expressHours = store.expressDeliveryHours ?? store.minDeliveryHours ?? 1;
+      const expressHours = policy.expressDeliveryHours!;
       return {
         deliveryType,
+        scheduledDeliveryAt,
         deliveryWindowLabel: selection.deliveryWindowLabel ?? null,
         estimatedDeliveryMinHours: expressHours,
         estimatedDeliveryMaxHours: expressHours,
@@ -949,9 +963,10 @@ export class OrderService {
 
     return {
       deliveryType,
+      scheduledDeliveryAt,
       deliveryWindowLabel: selection.deliveryWindowLabel ?? null,
-      estimatedDeliveryMinHours: store.minDeliveryHours ?? null,
-      estimatedDeliveryMaxHours: store.maxDeliveryHours ?? null,
+      estimatedDeliveryMinHours: policy.minDeliveryHours,
+      estimatedDeliveryMaxHours: policy.maxDeliveryHours,
     };
   }
 
@@ -968,6 +983,11 @@ export class OrderService {
         quantity: true,
         price: true,
         discountPrice: true,
+        minDeliveryHours: true,
+        maxDeliveryHours: true,
+        hasExpressDelivery: true,
+        expressDeliveryHours: true,
+        maxAdvanceOrderDays: true,
         isPurchasable: true,
         isArchived: true,
         publicationStatus: true,
@@ -1052,6 +1072,11 @@ export class OrderService {
                 quantity: true,
                 price: true,
                 discountPrice: true,
+                minDeliveryHours: true,
+                maxDeliveryHours: true,
+                hasExpressDelivery: true,
+                expressDeliveryHours: true,
+                maxAdvanceOrderDays: true,
                 isPurchasable: true,
                 isArchived: true,
                 publicationStatus: true,
