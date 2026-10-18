@@ -931,6 +931,9 @@ export class OrderService {
       throw new BadRequestException('ارسال فوری برای همه محصولات این سبد در دسترس نیست');
     }
     const scheduledDeliveryAt = resolveScheduledDelivery(policy, deliveryType, selection.scheduledDeliveryAt);
+    if (scheduledDeliveryAt && selection.deliveryWindowLabel) {
+      throw new BadRequestException('برای سفارش زمان‌بندی‌شده، بازه ارسال جداگانه قابل انتخاب نیست');
+    }
 
     const availableWindows = Array.isArray(store.deliveryWindows)
       ? store.deliveryWindows

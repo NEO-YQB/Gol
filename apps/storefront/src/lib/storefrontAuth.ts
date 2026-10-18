@@ -140,6 +140,14 @@ export type StorefrontOrderDetail = {
   status: string
   paymentStatus: string
   paymentMethod?: string | null
+  payment?: {
+    status: string
+    paymentUrl?: string | null
+    expiresAt?: string | null
+  } | null
+  availableActions?: {
+    canInitiatePayment?: boolean
+  }
   totalAmount: number | string
   subtotalAmount?: number | string
   deliveryFee?: number | string

@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
+import { getOrderPaymentUrl } from '../lib/storefrontPayments'
 import {
   getOrderDetail,
   readStoredToken,
@@ -33,6 +34,8 @@ export function StorefrontAccountOrderDetail({ orderId }: { orderId: number }) {
   const [order, setOrder] = useState<StorefrontOrderDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [paying, setPaying] = useState(false)
+  const [paymentError, setPaymentError] = useState('')
 
   useEffect(() => {
     if (!Number.isFinite(orderId) || orderId <= 0) {
@@ -74,6 +77,26 @@ export function StorefrontAccountOrderDetail({ orderId }: { orderId: number }) {
       { label: 'نوع ارسال', value: translateDeliveryType(order.deliveryType) },
     ]
   }, [order])
+
+  const canPay = order?.paymentMethod === 'ONLINE' && order.availableActions?.canInitiatePayment === true
+
+  async function handlePayOrder() {
+    if (!order || !canPay || paying) return
+    const token = readStoredToken()
+    if (!token) {
+      setPaymentError('برای پرداخت سفارش، ابتدا وارد حساب کاربری شو.')
+      return
+    }
+    try {
+      setPaying(true)
+      setPaymentError('')
+      window.location.href = await getOrderPaymentUrl(token, order.id)
+    } catch (requestError) {
+      setPaymentError(requestError instanceof Error ? requestError.message : 'شروع پرداخت با خطا مواجه شد')
+    } finally {
+      setPaying(false)
+    }
+  }
 
   if (loading) {
     return <section className="rounded-[32px] bg-white/75 px-6 py-12 text-center shadow-[0_14px_34px_rgba(52,36,17,0.06)]">در حال بارگذاری سفارش...</section>
@@ -117,6 +140,22 @@ export function StorefrontAccountOrderDetail({ orderId }: { orderId: number }) {
           </div>
         </div>
       </section>
+
+      {canPay ? (
+        <section className="grid gap-3 rounded-[26px] bg-white/80 px-5 py-5">
+          <h3 className="text-lg font-black text-[#173126]">تکمیل پرداخت آنلاین</h3>
+          <p className="text-sm leading-7 text-[#6e6152]">برای تکمیل همین سفارش به درگاه پرداخت برو؛ سفارش جدیدی ساخته نمی‌شود.</p>
+          {paymentError ? <p role="alert" className="text-sm text-red-700">{paymentError}</p> : null}
+          <button
+            className="justify-self-start rounded-full bg-[#173126] px-5 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={paying}
+            onClick={handlePayOrder}
+            type="button"
+          >
+            {paying ? 'در حال اتصال به درگاه...' : 'پرداخت همین سفارش'}
+          </button>
+        </section>
+      ) : null}
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {summaryCards.map((item) => (

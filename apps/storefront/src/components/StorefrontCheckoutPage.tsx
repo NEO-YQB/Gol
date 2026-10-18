@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { JalaliDatePicker } from '../../../../packages/frontend-core/src/components/JalaliDatePicker'
 import '../../../../packages/frontend-core/src/styles/jalali-date-picker.css'
 import { calculateCartValue, pushToDataLayer, toAnalyticsItem } from '../lib/analytics'
+import { getOrderPaymentUrl } from '../lib/storefrontPayments'
 import {
   getAddresses,
   getCart,
@@ -99,25 +100,6 @@ type CreatedOrder = {
   totalAmount: string | number
 }
 
-type PaymentInitiationResult = {
-  message: string
-  payment: {
-    id: number
-    orderId: number
-    status: string
-    authority: string
-    paymentUrl: string
-  }
-  gateway: {
-    id: number
-    key: string
-    displayName: string
-    driver: string
-    authority: string
-    paymentUrl: string
-  }
-}
-
 function formatMoney(value: number) {
   return `${new Intl.NumberFormat('fa-IR').format(value)} تومان`
 }
@@ -148,6 +130,8 @@ export function StorefrontCheckoutPage() {
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null)
   const [addressModalOpen, setAddressModalOpen] = useState(false)
   const [preview, setPreview] = useState<CheckoutPreview | null>(null)
+  const [previewKey, setPreviewKey] = useState('')
+  const [pendingOrder, setPendingOrder] = useState<CreatedOrder | null>(null)
   const [couponInput, setCouponInput] = useState('')
   const [appliedCouponCode, setAppliedCouponCode] = useState('')
   const [deliveryType, setDeliveryType] = useState<'STANDARD' | 'EXPRESS'>('STANDARD')
@@ -199,11 +183,14 @@ export function StorefrontCheckoutPage() {
     const token = readStoredToken()
     if (!token || !selectedAddressId) return
 
+    const controller = new AbortController()
     setPreviewLoading(true)
+    setPreview(null)
     setError('')
 
     fetch('/api/orders/preview', {
       method: 'POST',
+      signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
@@ -223,7 +210,9 @@ export function StorefrontCheckoutPage() {
         }
 
         const nextPreview = payload as CheckoutPreview
+        if (controller.signal.aborted) return
         setPreview(nextPreview)
+        setPreviewKey(`${selectedAddressId}:${appliedCouponCode}`)
 
         const availableTypes = nextPreview.delivery?.availableDeliveryTypes || ['STANDARD']
         setDeliveryType((current) => (availableTypes.includes(current) ? current : availableTypes[0] || 'STANDARD'))
@@ -236,10 +225,15 @@ export function StorefrontCheckoutPage() {
         })
       })
       .catch((requestError) => {
+        if (controller.signal.aborted) return
         setPreview(null)
         setError(requestError instanceof Error ? requestError.message : 'پیش‌نمایش تسویه حساب با خطا مواجه شد')
       })
-      .finally(() => setPreviewLoading(false))
+      .finally(() => {
+        if (!controller.signal.aborted) setPreviewLoading(false)
+      })
+
+    return () => controller.abort()
   }, [selectedAddressId, appliedCouponCode])
 
   const selectedAddress = useMemo(
@@ -278,6 +272,9 @@ export function StorefrontCheckoutPage() {
 
   const canSubmit =
     Boolean(hasItems) &&
+    Boolean(preview) &&
+    previewKey === `${selectedAddressId}:${appliedCouponCode}` &&
+    preview?.address?.id === selectedAddressId &&
     Boolean(selectedAddressId) &&
     recipientName.trim().length >= 2 &&
     recipientPhone.trim().length >= 10 &&
@@ -313,18 +310,27 @@ export function StorefrontCheckoutPage() {
   }
 
   async function handleSubmitOrder() {
-    if (!validScheduledDelivery) {
+    if (submitting) return
+    if (!pendingOrder && !validScheduledDelivery) {
       setError('تاریخ و ساعت تحویل را در محدوده مجاز و پس از زمان آماده‌سازی انتخاب کن.')
       return
     }
     const token = readStoredToken()
-    if (!token || !selectedAddressId) {
+    if (!token) {
+      setError('برای پرداخت سفارش، ابتدا وارد حساب کاربری شو.')
+      return
+    }
+    if (!pendingOrder && !selectedAddressId) {
       setError('برای نهایی‌کردن سفارش، ابتدا آدرس را مشخص کن.')
       return
     }
 
-    if (!isValidNationalId(nationalId)) {
+    if (!pendingOrder && !isValidNationalId(nationalId)) {
       setError('کد ملی باید ۱۰ رقم باشد.')
+      return
+    }
+    if (!pendingOrder && !canSubmit) {
+      setError('برای ثبت سفارش، اطلاعات گیرنده و پیش‌نمایش معتبر تسویه حساب لازم است.')
       return
     }
 
@@ -332,53 +338,38 @@ export function StorefrontCheckoutPage() {
       setSubmitting(true)
       setError('')
 
-      const response = await fetch('/api/orders/from-cart', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          addressId: selectedAddressId,
-          paymentMethod: 'ONLINE',
-          deliveryType: scheduleDelivery ? undefined : deliveryType,
-          deliveryWindowLabel: scheduleDelivery ? undefined : deliveryWindowLabel || undefined,
-          scheduledDeliveryAt: scheduleDelivery ? new Date(scheduledTimestamp).toISOString() : undefined,
-          couponCode: appliedCouponCode || undefined,
-          nationalId,
-        }),
-      })
+      let orderPayload = pendingOrder
+      if (!orderPayload) {
+        const response = await fetch('/api/orders/from-cart', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            addressId: selectedAddressId,
+            paymentMethod: 'ONLINE',
+            deliveryType: scheduleDelivery ? undefined : deliveryType,
+            deliveryWindowLabel: scheduleDelivery ? undefined : deliveryWindowLabel || undefined,
+            scheduledDeliveryAt: scheduleDelivery ? new Date(scheduledTimestamp).toISOString() : undefined,
+            couponCode: appliedCouponCode || undefined,
+            nationalId,
+          }),
+        })
 
-      const payload = (await response.json()) as CreatedOrder | { message?: string | string[] }
-      if (!response.ok) {
-        const message = Array.isArray((payload as { message?: string | string[] }).message)
-          ? (payload as { message?: string[] }).message?.[0]
-          : (payload as { message?: string }).message
-        throw new Error(message || 'ثبت سفارش با خطا مواجه شد')
+        const payload = (await response.json()) as CreatedOrder | { message?: string | string[] }
+        if (!response.ok) {
+          const message = Array.isArray((payload as { message?: string | string[] }).message)
+            ? (payload as { message?: string[] }).message?.[0]
+            : (payload as { message?: string }).message
+          throw new Error(message || 'ثبت سفارش با خطا مواجه شد')
+        }
+
+        orderPayload = payload as CreatedOrder
+        setPendingOrder(orderPayload)
       }
 
-      const orderPayload = payload as CreatedOrder
-      const initiateResponse = await fetch('/api/payments/initiate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          orderId: orderPayload.id,
-          gatewayKey: 'zarinpal-sandbox',
-        }),
-      })
-
-      const initiatePayload = (await initiateResponse.json()) as PaymentInitiationResult | { message?: string | string[] }
-      if (!initiateResponse.ok) {
-        const message = Array.isArray((initiatePayload as { message?: string | string[] }).message)
-          ? (initiatePayload as { message?: string[] }).message?.[0]
-          : (initiatePayload as { message?: string }).message
-        throw new Error(message || 'شروع پرداخت آنلاین با خطا مواجه شد')
-      }
-
-      window.location.href = (initiatePayload as PaymentInitiationResult).gateway.paymentUrl
+      window.location.href = await getOrderPaymentUrl(token, orderPayload.id)
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'ثبت سفارش با خطا مواجه شد')
     } finally {
@@ -388,6 +379,28 @@ export function StorefrontCheckoutPage() {
 
   if (loading) {
     return <section className="rounded-[32px] bg-white/75 px-6 py-12 text-center shadow-[0_14px_34px_rgba(52,36,17,0.06)]">در حال آماده‌سازی تسویه حساب...</section>
+  }
+
+  if (pendingOrder) {
+    return (
+      <section className="grid gap-5 rounded-[32px] bg-white/82 px-6 py-8 text-[#173126] shadow-[0_14px_34px_rgba(52,36,17,0.06)]">
+        <h1 className="text-2xl font-black">تکمیل پرداخت سفارش #{new Intl.NumberFormat('fa-IR').format(pendingOrder.id)}</h1>
+        <p className="text-sm leading-8 text-[#6e6152]">سفارش ثبت شده و هنوز پرداخت نشده است. تلاش مجدد پرداخت برای همین سفارش انجام می‌شود و سفارش جدیدی ایجاد نمی‌کند.</p>
+        <strong>مبلغ سفارش: {formatMoney(Number(pendingOrder.totalAmount))}</strong>
+        {error ? <p role="alert" className="rounded-[20px] bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
+        <div className="flex flex-wrap gap-3">
+          <button
+            className="rounded-full bg-[#173126] px-5 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={submitting}
+            onClick={handleSubmitOrder}
+            type="button"
+          >
+            {submitting ? 'در حال اتصال به درگاه پرداخت...' : 'تلاش مجدد پرداخت همین سفارش'}
+          </button>
+          <Link className="rounded-full border border-[#d8ccbf] px-5 py-3 text-sm font-bold" href={`/account/orders/${pendingOrder.id}`}>مشاهده سفارش</Link>
+        </div>
+      </section>
+    )
   }
 
   if (!hasItems) {

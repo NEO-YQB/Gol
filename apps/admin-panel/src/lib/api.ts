@@ -148,6 +148,7 @@ export type PaymentGatewayConfigResponse = {
   sandboxMode: boolean
   priority: number
   merchantConfig?: Record<string, unknown> | null
+  technicalConfig?: Record<string, unknown> | null
   callbackUrl?: string | null
   returnUrl?: string | null
   notes?: string | null
@@ -318,6 +319,7 @@ export const adminApi = {
     isDefault?: boolean
     priority?: number
     merchantConfig?: Record<string, unknown>
+    technicalConfig?: Record<string, unknown>
     callbackUrl?: string
     returnUrl?: string
     notes?: string
@@ -336,6 +338,7 @@ export const adminApi = {
     isDefault?: boolean
     priority?: number
     merchantConfig?: Record<string, unknown>
+    technicalConfig?: Record<string, unknown>
     callbackUrl?: string
     returnUrl?: string
     notes?: string

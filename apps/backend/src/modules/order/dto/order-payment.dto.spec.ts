@@ -31,6 +31,30 @@ describe('online-only order payment', () => {
     ]));
   });
 
+  it.each(orderDtos)('rejects unsupported payment values for $name', async ({ create }) => {
+    for (const paymentMethod of ['OFFLINE', '', false, 0]) {
+      const errors = await validate(create(paymentMethod));
+      expect(errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({ property: 'paymentMethod' }),
+      ]));
+    }
+  });
+
+  it.each(orderDtos)('requires a full timestamp with timezone for scheduled $name', async ({ create }) => {
+    for (const scheduledDeliveryAt of ['2026-10-19', '2026-10-19T15:00:00', 'invalid']) {
+      const dto = Object.assign(create(PaymentMethod.ONLINE), { scheduledDeliveryAt });
+      const errors = await validate(dto);
+      expect(errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({ property: 'scheduledDeliveryAt' }),
+      ]));
+    }
+  });
+
+  it.each(orderDtos)('accepts a timezone-aware scheduled $name', async ({ create }) => {
+    const dto = Object.assign(create(PaymentMethod.ONLINE), { scheduledDeliveryAt: '2026-10-19T15:00:00+03:30' });
+    expect(await validate(dto)).toHaveLength(0);
+  });
+
   it('allows the direct-order API to use its online-only default', async () => {
     expect(await validate(orderDtos[0].create(undefined))).toHaveLength(0);
   });
