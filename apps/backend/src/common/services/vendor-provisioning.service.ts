@@ -122,11 +122,12 @@ export class VendorProvisioningService implements OnModuleInit {
             isActive: true,
           },
         });
-      } else if (!store.isActive || !store.isVerified) {
-        store = await tx.store.update({
-          where: { id: store.id },
-          data: { isActive: true, isVerified: true },
+      } else if (!store.isVerified && !store.suspendedAt) {
+        await tx.store.updateMany({
+          where: { id: store.id, isVerified: false, suspendedAt: null },
+          data: { isVerified: true },
         });
+        store = await tx.store.findUniqueOrThrow({ where: { id: store.id } });
       }
 
       // 3. Ensure StoreWallet exists
@@ -142,7 +143,7 @@ export class VendorProvisioningService implements OnModuleInit {
       });
 
       // 4. Ensure initial product exists in Product table if approved and has name
-      if (request?.productStatus === 'APPROVED' && request?.productName?.trim()) {
+      if (store.isActive && request?.productStatus === 'APPROVED' && request?.productName?.trim()) {
         const existingProduct = await tx.product.findFirst({
           where: { storeId: store.id },
           select: { id: true },
