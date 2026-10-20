@@ -1,6 +1,10 @@
 class VendorOrderDetail {
   const VendorOrderDetail({
     this.scheduledDeliveryAt = '',
+    this.deliveryType = '',
+    this.deliveryWindowLabel = '',
+    this.estimatedDeliveryMinHours,
+    this.estimatedDeliveryMaxHours,
     required this.id,
     required this.status,
     required this.paymentStatus,
@@ -33,6 +37,10 @@ class VendorOrderDetail {
   final String createdAt;
   final String deliveryDate;
   final String scheduledDeliveryAt;
+  final String deliveryType;
+  final String deliveryWindowLabel;
+  final num? estimatedDeliveryMinHours;
+  final num? estimatedDeliveryMaxHours;
   final String shippingAddressTitle;
   final String shippingAddressText;
   final Map<String, dynamic> availableActions;
@@ -44,6 +52,12 @@ class VendorOrderDetail {
   factory VendorOrderDetail.fromJson(Map<String, dynamic> json) {
     return VendorOrderDetail(
       scheduledDeliveryAt: _readText(json, const ['scheduledDeliveryAt']),
+      deliveryType: _readText(json, const ['deliveryType']),
+      deliveryWindowLabel: _readText(json, const ['deliveryWindowLabel']),
+      estimatedDeliveryMinHours:
+          num.tryParse('${json['estimatedDeliveryMinHours']}'),
+      estimatedDeliveryMaxHours:
+          num.tryParse('${json['estimatedDeliveryMaxHours']}'),
       id: _asInt(json['id']),
       status: _readText(json, const ['status'], fallback: 'UNKNOWN'),
       paymentStatus:

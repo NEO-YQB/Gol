@@ -9,6 +9,7 @@ import '../../../shared/widgets/app_section_heading.dart';
 import '../../../shared/widgets/app_shell_background.dart';
 import '../domain/vendor_order_detail.dart';
 import '../domain/vendor_order_summary.dart';
+import 'order_formatters.dart';
 import 'view_models/orders_view_model.dart';
 
 class OrdersScreen extends StatefulWidget {
@@ -749,10 +750,9 @@ class _OrderDetailSection extends StatelessWidget {
                           : _formatDateLabel(order.deliveryDate),
                     ),
                     _IdentityRow(
-                      label: 'تحویل درخواستی (تهران)',
-                      value: order.scheduledDeliveryAt.isEmpty
-                          ? 'اولین زمان ممکن'
-                          : _formatDateLabel(order.scheduledDeliveryAt, tehranTime: true),
+                      label: 'زمان درخواستی تحویل (تهران)',
+                      value: formatRequestedOrderDelivery(order),
+                      expandValue: true,
                     ),
                   ],
                 ),
@@ -1564,21 +1564,7 @@ String _formatMoney(num value) {
   return buffer.toString();
 }
 
-String _formatDateLabel(String raw, {bool tehranTime = false}) {
-  final parsed = DateTime.tryParse(raw);
-  if (parsed == null) {
-    return raw.isEmpty ? '—' : raw;
-  }
-
-  final local = tehranTime ? parsed.toUtc().add(const Duration(hours: 3, minutes: 30)) : parsed.toLocal();
-  final hh = local.hour.toString().padLeft(2, '0');
-  final mm = local.minute.toString().padLeft(2, '0');
-  final yyyy = local.year.toString().padLeft(4, '0');
-  final month = local.month.toString().padLeft(2, '0');
-  final day = local.day.toString().padLeft(2, '0');
-
-  return '$yyyy/$month/$day - $hh:$mm';
-}
+String _formatDateLabel(String raw) => formatOrderDate(raw);
 
 Future<void> _callCustomer(BuildContext context, String phoneNumber) async {
   final normalized = phoneNumber
