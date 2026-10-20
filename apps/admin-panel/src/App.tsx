@@ -1,4 +1,4 @@
-import { AppShell, Pill, type NavSection } from '@flower-marketplace/frontend-core'
+import { AppShell, Pill, readPanelLocation, syncPanelLocation, type NavSection } from '@flower-marketplace/frontend-core'
 import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 import { useNoticeEffect } from './components/NoticeCenter'
@@ -50,14 +50,14 @@ import { VendorWorkspacePage } from './pages/VendorWorkspacePage'
 
 const defaultRoute: AdminRoute = 'dashboard'
 
-type ParsedHash = {
+type ParsedLocation = {
   route: AdminRoute | null
   params: Record<string, string>
 }
 
-function parseHash(): ParsedHash {
+function parseLocation(): ParsedLocation {
   if (typeof window === 'undefined') return { route: null, params: {} }
-  const raw = window.location.hash.replace(/^#\/?/, '').trim()
+  const raw = readPanelLocation()
   if (!raw) return { route: null, params: {} }
 
   const questionMarkIndex = raw.indexOf('?')
@@ -80,7 +80,7 @@ function parseHash(): ParsedHash {
   return { route, params }
 }
 
-function buildHash(route: AdminRoute, params?: Record<string, string | number | null | undefined>): string {
+function buildPath(route: AdminRoute, params?: Record<string, string | number | null | undefined>): string {
   let query = ''
   if (params) {
     const searchParams = new URLSearchParams()
@@ -94,7 +94,7 @@ function buildHash(route: AdminRoute, params?: Record<string, string | number | 
       query = `?${str}`
     }
   }
-  return `#/${route}${query}`
+  return `/${route}${query}`
 }
 
 function buildNav(currentRoute: AdminRoute, session: AuthSession): NavSection[] {
@@ -470,58 +470,58 @@ function renderRoute(
 
 export default function App() {
   const [session, setSession] = useState<AuthSession | null>(() => loadSession())
-  const [route, setRoute] = useState<AdminRoute>(() => parseHash().route ?? defaultRoute)
+  const [route, setRoute] = useState<AdminRoute>(() => parseLocation().route ?? defaultRoute)
   const [ordersWorkspaceOrder, setOrdersWorkspaceOrder] = useState<Record<string, unknown> | null>(() => {
-    const h = parseHash()
+    const h = parseLocation()
     return h.route === 'ordersWorkspace' && h.params.id ? { id: h.params.id } : null
   })
   const [supportWorkspaceTicket, setSupportWorkspaceTicket] = useState<Record<string, unknown> | null>(() => {
-    const h = parseHash()
+    const h = parseLocation()
     return h.route === 'supportWorkspace' && h.params.id ? { id: h.params.id } : null
   })
   const [vendorWorkspaceStore, setVendorWorkspaceStore] = useState<Record<string, unknown> | null>(() => {
-    const h = parseHash()
+    const h = parseLocation()
     const storeId = h.params.storeId || h.params.id
     return h.route === 'vendorWorkspace' && storeId ? { storeId, id: storeId } : null
   })
   const [vendorOnboardingRequest, setVendorOnboardingRequest] = useState<Record<string, unknown> | null>(() => {
-    const h = parseHash()
+    const h = parseLocation()
     return h.route === 'vendorOnboardingWorkspace' && h.params.id ? { id: h.params.id } : null
   })
   const [financeWorkspaceSettlement, setFinanceWorkspaceSettlement] = useState<Record<string, unknown> | null>(() => {
-    const h = parseHash()
+    const h = parseLocation()
     return h.route === 'financeWorkspace' && h.params.id ? { id: h.params.id, orderId: h.params.id, storeId: h.params.storeId } : null
   })
   const [productWorkspaceSlug, setProductWorkspaceSlug] = useState<string | null>(() => {
-    const h = parseHash()
+    const h = parseLocation()
     return h.route === 'productWorkspace' && h.params.slug ? h.params.slug : null
   })
   const [productWorkspaceMode, setProductWorkspaceMode] = useState<'create' | 'edit'>(() => {
-    const h = parseHash()
+    const h = parseLocation()
     return h.route === 'productWorkspace' && h.params.mode === 'create' ? 'create' : 'edit'
   })
   const [pageBuilderWorkspacePageId, setPageBuilderWorkspacePageId] = useState<string | null>(() => {
-    const h = parseHash()
+    const h = parseLocation()
     return h.route === 'pageBuilderWorkspace' && h.params.id ? h.params.id : null
   })
   const [pageBuilderWorkspaceMode, setPageBuilderWorkspaceMode] = useState<'create' | 'edit'>(() => {
-    const h = parseHash()
+    const h = parseLocation()
     return h.route === 'pageBuilderWorkspace' && h.params.mode === 'create' ? 'create' : 'edit'
   })
   const [contentWorkspaceArticleId, setContentWorkspaceArticleId] = useState<string | null>(() => {
-    const h = parseHash()
+    const h = parseLocation()
     return h.route === 'contentWorkspace' && h.params.id ? h.params.id : null
   })
   const [contentWorkspaceMode, setContentWorkspaceMode] = useState<'create' | 'edit'>(() => {
-    const h = parseHash()
+    const h = parseLocation()
     return h.route === 'contentWorkspace' && h.params.mode === 'create' ? 'create' : 'edit'
   })
   const [seoLandingWorkspaceId, setSeoLandingWorkspaceId] = useState<number | null>(() => {
-    const h = parseHash()
+    const h = parseLocation()
     return h.route === 'seoLandingWorkspace' && h.params.id ? Number(h.params.id) : null
   })
   const [seoLandingWorkspaceMode, setSeoLandingWorkspaceMode] = useState<'create' | 'edit'>(() => {
-    const h = parseHash()
+    const h = parseLocation()
     return h.route === 'seoLandingWorkspace' && h.params.mode === 'create' ? 'create' : 'edit'
   })
   const [phoneNumber, setPhoneNumber] = useState('')
@@ -555,10 +555,7 @@ export default function App() {
       params = { mode: seoLandingWorkspaceMode, ...(seoLandingWorkspaceId ? { id: seoLandingWorkspaceId } : {}) }
     }
 
-    const targetHash = buildHash(route, params)
-    if (window.location.hash !== targetHash) {
-      window.location.hash = targetHash
-    }
+    syncPanelLocation(buildPath(route, params))
   }, [
     route,
     ordersWorkspaceOrder,
@@ -577,8 +574,8 @@ export default function App() {
   ])
 
   useEffect(() => {
-    const handleHashChange = () => {
-      const parsed = parseHash()
+    const handleLocationChange = () => {
+      const parsed = parseLocation()
       const nextRoute = parsed.route
       if (nextRoute) {
         if (!session || canAccessRoute(session, nextRoute)) {
@@ -611,9 +608,11 @@ export default function App() {
       }
     }
 
-    window.addEventListener('hashchange', handleHashChange)
+    window.addEventListener('popstate', handleLocationChange)
+    window.addEventListener('hashchange', handleLocationChange)
     return () => {
-      window.removeEventListener('hashchange', handleHashChange)
+      window.removeEventListener('popstate', handleLocationChange)
+      window.removeEventListener('hashchange', handleLocationChange)
     }
   }, [session])
 
@@ -648,9 +647,9 @@ export default function App() {
         saveSession(nextSession)
         setSession(nextSession)
 
-        const currentHashRoute = parseHash().route
-        const candidateRoute = currentHashRoute && canAccessRoute(nextSession, currentHashRoute)
-          ? currentHashRoute
+        const currentLocationRoute = parseLocation().route
+        const candidateRoute = currentLocationRoute && canAccessRoute(nextSession, currentLocationRoute)
+          ? currentLocationRoute
           : route
         const safeRoute = canAccessRoute(nextSession, candidateRoute)
           ? candidateRoute
@@ -687,9 +686,9 @@ export default function App() {
       }
     }
 
-    const currentHashRoute = parseHash().route
-    const candidateRoute = currentHashRoute && canAccessRoute(session, currentHashRoute)
-      ? currentHashRoute
+    const currentLocationRoute = parseLocation().route
+    const candidateRoute = currentLocationRoute && canAccessRoute(session, currentLocationRoute)
+      ? currentLocationRoute
       : route
     const safeRoute = canAccessRoute(session, candidateRoute)
       ? candidateRoute
@@ -802,7 +801,7 @@ export default function App() {
     setError(null)
     setOtpExpiresAt(null)
     setOtpCountdown(null)
-    window.location.hash = ''
+    window.history.replaceState(null, '', '/')
   }
 
   function handleNavigate(nextRoute: AdminRoute) {

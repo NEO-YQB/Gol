@@ -1,4 +1,4 @@
-import { AppShell, Pill, type NavSection } from '@flower-marketplace/frontend-core'
+import { AppShell, Pill, readPanelLocation, syncPanelLocation, type NavSection } from '@flower-marketplace/frontend-core'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import { clearSession, loadSession, saveSession, type AuthSession } from './lib/session'
@@ -23,14 +23,14 @@ type PublicRoute = 'login' | 'privacy-fa' | 'privacy-en'
 
 const defaultRoute: VendorRoute = 'overview'
 
-type ParsedVendorHash = {
+type ParsedVendorLocation = {
   route: VendorRoute | null
   params: Record<string, string>
 }
 
-function parseVendorHash(): ParsedVendorHash {
+function parseVendorLocation(): ParsedVendorLocation {
   if (typeof window === 'undefined') return { route: null, params: {} }
-  const raw = window.location.hash.replace(/^#\/?/, '').trim()
+  const raw = readPanelLocation()
   if (!raw) return { route: null, params: {} }
 
   const questionMarkIndex = raw.indexOf('?')
@@ -53,7 +53,7 @@ function parseVendorHash(): ParsedVendorHash {
   return { route, params }
 }
 
-function buildVendorHash(route: VendorRoute, params?: Record<string, string | number | null | undefined>): string {
+function buildVendorPath(route: VendorRoute, params?: Record<string, string | number | null | undefined>): string {
   let query = ''
   if (params) {
     const searchParams = new URLSearchParams()
@@ -67,7 +67,7 @@ function buildVendorHash(route: VendorRoute, params?: Record<string, string | nu
       query = `?${str}`
     }
   }
-  return `#/${route}${query}`
+  return `/${route}${query}`
 }
 
 function resolvePublicRoute(pathname: string): PublicRoute {
@@ -179,9 +179,9 @@ function resolveAccessState(session: AuthSession): VendorAccessState {
 export default function App() {
   const [publicRoute, setPublicRoute] = useState<PublicRoute>(() => resolvePublicRoute(window.location.pathname))
   const [session, setSession] = useState<AuthSession | null>(() => loadSession())
-  const [route, setRoute] = useState<VendorRoute>(() => parseVendorHash().route ?? defaultRoute)
+  const [route, setRoute] = useState<VendorRoute>(() => parseVendorLocation().route ?? defaultRoute)
   const [selectedOrder, setSelectedOrder] = useState<Record<string, unknown> | null>(() => {
-    const h = parseVendorHash()
+    const h = parseVendorLocation()
     return h.route === 'order-workspace' && h.params.id ? { id: h.params.id } : null
   })
   const [phoneNumber, setPhoneNumber] = useState('')
@@ -217,19 +217,18 @@ export default function App() {
   }
 
   useEffect(() => {
+    if (resolvePublicRoute(window.location.pathname) !== 'login') return
     let params: Record<string, string | number | null | undefined> = {}
     if (route === 'order-workspace' && selectedOrder?.id) {
       params = { id: String(selectedOrder.id) }
     }
-    const targetHash = buildVendorHash(route, params)
-    if (window.location.hash !== targetHash) {
-      window.location.hash = targetHash
-    }
-  }, [route, selectedOrder])
+    syncPanelLocation(buildVendorPath(route, params))
+  }, [route, selectedOrder, publicRoute])
 
   useEffect(() => {
-    const handleHashChange = () => {
-      const parsed = parseVendorHash()
+    const handleLocationChange = () => {
+      if (resolvePublicRoute(window.location.pathname) !== 'login') return
+      const parsed = parseVendorLocation()
       const nextRoute = parsed.route
       if (nextRoute) {
         if (
@@ -238,16 +237,18 @@ export default function App() {
         ) {
           return
         }
-        if (nextRoute === 'order-workspace' && parsed.params.id) {
-          setSelectedOrder({ id: parsed.params.id })
+        if (nextRoute === 'order-workspace') {
+          setSelectedOrder(parsed.params.id ? { id: parsed.params.id } : null)
         }
         setRoute(nextRoute)
       }
     }
 
-    window.addEventListener('hashchange', handleHashChange)
+    window.addEventListener('popstate', handleLocationChange)
+    window.addEventListener('hashchange', handleLocationChange)
     return () => {
-      window.removeEventListener('hashchange', handleHashChange)
+      window.removeEventListener('popstate', handleLocationChange)
+      window.removeEventListener('hashchange', handleLocationChange)
     }
   }, [accessState])
 
@@ -282,8 +283,8 @@ export default function App() {
   const prevAccessStateRef = useRef<VendorAccessState>(accessState)
   useEffect(() => {
     if (prevAccessStateRef.current === 'pending' && accessState === 'active') {
-      const hashRoute = parseVendorHash().route
-      if (!hashRoute) {
+      const locationRoute = parseVendorLocation().route
+      if (!locationRoute) {
         setRoute(defaultRoute)
       }
     }
@@ -364,8 +365,8 @@ export default function App() {
       const nextSession: AuthSession = { accessToken: response.access_token, user: response.user }
       saveSession(nextSession)
       setSession(nextSession)
-      const hashRoute = parseVendorHash().route
-      setRoute(hashRoute ?? defaultRoute)
+      const locationRoute = parseVendorLocation().route
+      setRoute(locationRoute ?? defaultRoute)
       setCode('')
       setOtpExpiresAt(null)
       setOtpCountdown(null)
@@ -387,7 +388,7 @@ export default function App() {
     setOtpExpiresAt(null)
     setOtpCountdown(null)
     setAccessState('pending')
-    window.location.hash = ''
+    window.history.replaceState(null, '', '/')
   }
 
   useEffect(() => {

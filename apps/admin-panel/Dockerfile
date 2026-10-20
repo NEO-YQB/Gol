@@ -14,6 +14,7 @@ RUN npm run build --workspace=admin-panel
 
 FROM nginx:stable-alpine
 
+COPY apps/admin-panel/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/apps/admin-panel/dist /usr/share/nginx/html
 
 EXPOSE 80

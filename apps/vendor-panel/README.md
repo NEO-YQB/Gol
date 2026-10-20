@@ -1,5 +1,27 @@
 # React + TypeScript + Vite
 
+## Panel URLs and deployment
+
+Panel navigation uses paths such as `/overview` and `/order-workspace?id=123`,
+without a hash. Existing `/#/…` links are converted to the corresponding path
+when opened, preserving the selected order ID.
+
+The Docker image already installs `nginx.conf` with an `index.html` fallback
+for direct links and page refreshes. Keep the Docker build context at the
+repository root. Other static hosts must also rewrite application routes to
+`index.html`. The public `/fa/privacy` and `/en/privacy` pages remain separate
+from authenticated panel navigation.
+
+From the repository root, validate manually:
+
+```bash
+npm run lint -w apps/vendor-panel
+npm run build --workspace=apps/vendor-panel
+```
+
+After deployment, check direct order links, page refreshes, browser Back and
+Forward, old hash links, logout/login, privacy pages, and suspended-store access.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:
