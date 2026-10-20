@@ -20,6 +20,7 @@ import '../../store_profile/domain/vendor_store_profile.dart';
 import '../../support/presentation/support_screen.dart';
 import '../../wallet/presentation/wallet_screen.dart';
 import '../domain/vendor_shell_tab.dart';
+import 'widgets/store_suspension_dialog.dart';
 export '../domain/vendor_shell_tab.dart';
 
 class VendorAppShell extends StatefulWidget {
@@ -40,6 +41,8 @@ class _VendorAppShellState extends State<VendorAppShell> {
   VendorShellTab _currentTab = VendorShellTab.dashboard;
   StreamSubscription<PushNavigationIntent>? _pushNavigationSubscription;
   VendorStoreProfile? _storeProfile;
+  String? _lastSuspensionNoticeKey;
+  bool _isSuspensionNoticePending = false;
 
   bool get _isSuspended =>
       widget.session.bootstrap?.store?.isActive == false;
@@ -75,6 +78,59 @@ class _VendorAppShellState extends State<VendorAppShell> {
     _pushNavigationSubscription = PushNotificationService.instance
         .navigationStream
         .listen(_handlePushNavigation);
+    _scheduleSuspensionNotice();
+  }
+
+  @override
+  void didUpdateWidget(covariant VendorAppShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _scheduleSuspensionNotice();
+  }
+
+  void _scheduleSuspensionNotice({bool force = false}) {
+    if (!_isSuspended) {
+      _lastSuspensionNoticeKey = null;
+      return;
+    }
+    final currentStore = widget.session.bootstrap!.store!;
+    final currentNoticeKey =
+        '${currentStore.id}:${currentStore.suspendedAt}:${currentStore.suspensionReason}';
+    if (!force && currentNoticeKey == _lastSuspensionNoticeKey) return;
+    if (_isSuspensionNoticePending) return;
+
+    _isSuspensionNoticePending = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted || !_isSuspended) {
+        _isSuspensionNoticePending = false;
+        return;
+      }
+
+      final store = widget.session.bootstrap!.store!;
+      final noticeKey =
+          '${store.id}:${store.suspendedAt}:${store.suspensionReason}';
+      if (!force && noticeKey == _lastSuspensionNoticeKey) {
+        _isSuspensionNoticePending = false;
+        return;
+      }
+
+      _lastSuspensionNoticeKey = noticeKey;
+      final openSupport = await showDialog<bool>(
+        context: context,
+        barrierDismissible: true,
+        builder: (context) => StoreSuspensionDialog(
+          reason: store.suspensionReason,
+        ),
+      );
+      _isSuspensionNoticePending = false;
+      if (!mounted) return;
+      if (openSupport == true) {
+        setState(() {
+          _currentTab = VendorShellTab.support;
+        });
+      }
+      _scheduleSuspensionNotice();
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
   }
 
   @override
@@ -171,53 +227,44 @@ class _VendorAppShellState extends State<VendorAppShell> {
         extendBody: true,
         body: Column(
           children: [
-            if (_isSuspended)
-              SafeArea(
-                bottom: false,
-                child: Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFF1F2),
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: const Color(0xFFFDA4AF)),
-                  ),
-                  child: Text(
-                    [
-                      'فروشگاه توسط مدیریت غیرفعال شده است.',
-                      'محصولات و صفحه فروشگاه نمایش داده نمی‌شوند؛ فقط سفارش‌های جاری و امور مالی قابل رسیدگی هستند.',
-                      if ((widget.session.bootstrap?.store?.suspensionReason ?? '')
-                          .trim()
-                          .isNotEmpty)
-                        'دلیل: ${widget.session.bootstrap!.store!.suspensionReason}',
-                    ].join('\n'),
-                    style: const TextStyle(
-                      color: Color(0xFF881337),
-                      height: 1.7,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ),
             Expanded(
               child: AppShellHeaderScope(
                 header: Padding(
                   padding: const EdgeInsets.fromLTRB(24, 12, 24, 8),
                   child: Align(
                     alignment: AlignmentDirectional.centerStart,
-                    child: StoreProfileMenuButton(
-                      storeName: _storeProfile?.name ??
-                          (widget.session.bootstrap?.store?.name.isNotEmpty == true
-                              ? widget.session.bootstrap!.store!.name
-                              : 'فروشگاه شما'),
-                      storeLogo: _storeProfile?.logo ??
-                          widget.session.bootstrap?.store?.logo,
-                      fullName: widget.session.bootstrap?.fullName,
-                      onSelectTab: (tab) => setState(() {
-                        _currentTab = tab;
-                      }),
-                      onLogout: widget.onLogout,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        StoreProfileMenuButton(
+                          storeName: _storeProfile?.name ??
+                              (widget.session.bootstrap?.store?.name.isNotEmpty ==
+                                      true
+                                  ? widget.session.bootstrap!.store!.name
+                                  : 'فروشگاه شما'),
+                          storeLogo: _storeProfile?.logo ??
+                              widget.session.bootstrap?.store?.logo,
+                          fullName: widget.session.bootstrap?.fullName,
+                          onSelectTab: (tab) => setState(() {
+                            _currentTab = tab;
+                          }),
+                          onLogout: widget.onLogout,
+                        ),
+                        if (_isSuspended)
+                          TextButton.icon(
+                            onPressed: () =>
+                                _scheduleSuspensionNotice(force: true),
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.danger,
+                            ),
+                            icon: const Icon(
+                              Icons.info_outline_rounded,
+                              size: 18,
+                            ),
+                            label: const Text('فروشگاه غیرفعال · جزئیات'),
+                          ),
+                      ],
                     ),
                   ),
                 ),
