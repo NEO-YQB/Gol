@@ -1,4 +1,5 @@
 export * from './types'
+export * from './orderDelivery'
 export * from './components/AppShell'
 export * from './components/ActivityFeed'
 export * from './components/DataTable'

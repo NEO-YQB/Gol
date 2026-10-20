@@ -1,4 +1,4 @@
-import { ActivityFeed, Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
+import { ActivityFeed, formatRequestedOrderDelivery, Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
 import { useEffect, useMemo, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { vendorApi } from '../lib/api'
@@ -252,7 +252,7 @@ export function OrderWorkspacePage({
         { label: 'مشتری', value: getCustomerText(currentOrder) },
         { label: 'مبلغ', value: getTotalAmount(currentOrder) },
         { label: 'ثبت سفارش', value: formatJalaliDate(currentOrder.createdAt ?? currentOrder.updatedAt, true) },
-        { label: 'زمان درخواستی تحویل', value: currentOrder.scheduledDeliveryAt ? formatJalaliDate(currentOrder.scheduledDeliveryAt, true) : 'اولین زمان ممکن' },
+        { label: 'زمان درخواستی تحویل (تهران)', value: formatRequestedOrderDelivery(currentOrder) },
         { label: 'تحویل انجام‌شده', value: formatJalaliDate(currentOrder.deliveredAt, true) },
         { label: 'شماره تماس', value: readText(currentOrder, ['recipientPhoneNumber', 'phoneNumber'], '—') },
       ]

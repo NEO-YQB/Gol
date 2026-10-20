@@ -1,4 +1,4 @@
-import { ActivityFeed, Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
+import { ActivityFeed, formatRequestedOrderDelivery, Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { useNoticeEffect } from '../components/NoticeCenter'
@@ -585,7 +585,7 @@ export function OrdersWorkspacePage({
     { label: 'روش پرداخت', value: getPaymentMethodLabel(readText(currentOrder, ['paymentMethod'], '')) },
     { label: 'وضعیت تسویه', value: getSettlementStatusLabel(settlementStatus) },
     { label: 'آدرس تحویل', value: getAddressLabel(currentOrder), wide: true },
-    { label: 'زمان درخواستی تحویل', value: currentOrder.scheduledDeliveryAt ? formatJalaliDate(currentOrder.scheduledDeliveryAt, true) : 'اولین زمان ممکن' },
+    { label: 'زمان درخواستی تحویل (تهران)', value: formatRequestedOrderDelivery(currentOrder), wide: true },
   ]
 
   return (
