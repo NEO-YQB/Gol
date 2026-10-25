@@ -115,8 +115,8 @@ export function FloralScrollyHero({ pageTitle }: FloralScrollyHeroProps) {
       ref={containerRef}
       className="relative left-1/2 right-1/2 ml-[-50vw] mr-[-50vw] w-screen max-w-none isolate"
       style={{
-        // 380vh gives generous headroom for the 3-phase linger & float motion
-        height: reducedMotion ? '100vh' : '380vh',
+        // 480vh provides a deep, meditative scroll track with spacious breathing room
+        height: reducedMotion ? '100vh' : '480vh',
       }}
     >
       {/* SSR SEO Semantic Layer (Indexed by Googlebot on first payload) */}

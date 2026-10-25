@@ -24,7 +24,7 @@ interface TextFragment {
   rotation?: number
 }
 
-// 8 sparse, poetic fragments with distinct entry, resting (dwell), and exit timing
+// Generously spaced, meditative timeline — especially after 50%
 const FRAGMENTS: TextFragment[] = [
   {
     id: 'f1',
@@ -40,10 +40,10 @@ const FRAGMENTS: TextFragment[] = [
   },
   {
     id: 'f2',
-    enterStart: 0.13,
-    enterEnd: 0.18,
-    exitStart: 0.25,
-    exitEnd: 0.31,
+    enterStart: 0.14,
+    enterEnd: 0.19,
+    exitStart: 0.27,
+    exitEnd: 0.33,
     content: 'با واژه‌ها گفته نمی‌شوند.',
     positionClass: 'top-[42%] md:top-[44%] right-[8%] md:right-[15%]',
     sizeClass: 'text-3xl sm:text-5xl md:text-7xl font-light',
@@ -52,10 +52,10 @@ const FRAGMENTS: TextFragment[] = [
   },
   {
     id: 'f3',
-    enterStart: 0.26,
-    enterEnd: 0.31,
-    exitStart: 0.38,
-    exitEnd: 0.44,
+    enterStart: 0.28,
+    enterEnd: 0.33,
+    exitStart: 0.40,
+    exitEnd: 0.46,
     content: 'با یک گل...',
     positionClass: 'top-[38%] md:top-[40%] left-[8%] md:left-[14%]',
     sizeClass: 'text-4xl sm:text-7xl md:text-8xl font-extrabold text-amber-200',
@@ -64,10 +64,10 @@ const FRAGMENTS: TextFragment[] = [
   },
   {
     id: 'f4',
-    enterStart: 0.39,
-    enterEnd: 0.44,
-    exitStart: 0.52,
-    exitEnd: 0.58,
+    enterStart: 0.41,
+    enterEnd: 0.46,
+    exitStart: 0.54,
+    exitEnd: 0.60,
     content: 'شکوفا می‌شوند.',
     positionClass: 'top-[45%] md:top-[46%] left-1/2 -translate-x-1/2',
     sizeClass: 'text-5xl sm:text-7xl md:text-9xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-white/95 to-white/30',
@@ -76,50 +76,27 @@ const FRAGMENTS: TextFragment[] = [
   },
   {
     id: 'f5',
-    enterStart: 0.53,
-    enterEnd: 0.58,
-    exitStart: 0.68,
-    exitEnd: 0.74,
+    enterStart: 0.55,
+    enterEnd: 0.60,
+    exitStart: 0.70,
+    exitEnd: 0.76,
     content: 'برای چه حسی؟',
     subContent: 'لمس کن تا جهان هماهنگ شود',
-    positionClass: 'top-[32%] md:top-[35%] left-1/2 -translate-x-1/2',
+    positionClass: 'top-[30%] md:top-[33%] left-1/2 -translate-x-1/2',
     sizeClass: 'text-3xl sm:text-5xl md:text-6xl font-light',
     alignClass: 'text-center',
     rotation: 0,
   },
   {
     id: 'f6',
-    enterStart: 0.68,
-    enterEnd: 0.73,
-    exitStart: 0.80,
-    exitEnd: 0.86,
-    content: 'دست‌هایی در این شهر...',
-    positionClass: 'top-[40%] md:top-[42%] right-[10%] md:right-[18%]',
-    sizeClass: 'text-3xl sm:text-5xl md:text-6xl font-extralight text-emerald-200',
-    alignClass: 'text-right',
-    rotation: 1,
-  },
-  {
-    id: 'f7',
-    enterStart: 0.79,
-    enterEnd: 0.83,
-    exitStart: 0.89,
-    exitEnd: 0.94,
+    enterStart: 0.72,
+    enterEnd: 0.77,
+    exitStart: 0.85,
+    exitEnd: 0.90,
     content: 'شاید همین نزدیکی...',
-    positionClass: 'top-[42%] md:top-[44%] left-[10%] md:left-[16%]',
-    sizeClass: 'text-4xl sm:text-6xl md:text-7xl font-semibold text-cyan-200',
-    alignClass: 'text-left',
-    rotation: -1.5,
-  },
-  {
-    id: 'f8',
-    enterStart: 0.87,
-    enterEnd: 0.91,
-    exitStart: 0.94,
-    exitEnd: 0.97,
-    content: 'در انتظارِ توست.',
+    subContent: 'دست‌هایی هنرمند، گلی را در انتظارِ تو چیده‌اند',
     positionClass: 'top-[40%] md:top-[42%] left-1/2 -translate-x-1/2',
-    sizeClass: 'text-4xl sm:text-6xl md:text-8xl font-black text-amber-300',
+    sizeClass: 'text-4xl sm:text-6xl md:text-8xl font-black text-amber-200',
     alignClass: 'text-center',
     rotation: 0,
   },
@@ -145,12 +122,11 @@ function getFragmentMotion(
   // Phase 1: Entry (Deceleration into focus)
   if (progress < enterEnd) {
     const t = (progress - enterStart) / (enterEnd - enterStart)
-    // Ease-out cubic: starts responsive, gently settles
     const ease = 1 - Math.pow(1 - t, 3)
     return {
       isVisible: true,
       opacity: Math.max(0, Math.min(ease, 1)),
-      translateY: (1 - ease) * 55, // descends softly into place
+      translateY: (1 - ease) * 55,
       scale: 0.86 + ease * 0.14,
       blur: (1 - ease) * 16,
     }
@@ -159,8 +135,7 @@ function getFragmentMotion(
   // Phase 2: Dwell / On-Screen (Peaceful, slow floating drift)
   if (progress <= exitStart) {
     const t = (progress - enterEnd) / (exitStart - enterEnd)
-    // Very gentle linear-to-sine drift while user absorbs the words
-    const floatY = -t * 14 // very slow upward travel
+    const floatY = -t * 12
     const floatScale = 1.0 + t * 0.03
     return {
       isVisible: true,
@@ -173,13 +148,12 @@ function getFragmentMotion(
 
   // Phase 3: Exit (Accelerating dissolve out)
   const t = (progress - exitStart) / (exitEnd - exitStart)
-  // Ease-in cubic: lifts off and vanishes into ethereal fog
   const ease = t * t * t
   return {
     isVisible: true,
     opacity: Math.max(0, 1 - ease),
-    translateY: -14 - ease * 65, // lifts upward past camera
-    scale: 1.03 + ease * 0.22, // zooms past camera
+    translateY: -12 - ease * 65,
+    scale: 1.03 + ease * 0.22,
     blur: ease * 18,
   }
 }
@@ -190,16 +164,16 @@ export default function FloralAtmosphereOverlay({
   onSelectMood,
   onSkipToCatalog,
 }: FloralAtmosphereOverlayProps) {
-  // Show emotion pills during fragment f5 window (0.52 to 0.74)
-  const showMoodPills = progress >= 0.52 && progress <= 0.74
+  // Show emotion pills generously during 0.55 to 0.76 (over 20% of scroll space!)
+  const showMoodPills = progress >= 0.55 && progress <= 0.76
   const moodPillMotion = useMemo(
-    () => getFragmentMotion(progress, 0.52, 0.57, 0.69, 0.74),
+    () => getFragmentMotion(progress, 0.55, 0.60, 0.70, 0.76),
     [progress],
   )
 
-  // Climax ending (0.92 to 1.0)
+  // Climax ending: spacious from 0.88 to 1.0 (serene and grounded)
   const endingMotion = useMemo(
-    () => getFragmentMotion(progress, 0.92, 0.96, 0.99, 1.0),
+    () => getFragmentMotion(progress, 0.88, 0.92, 0.99, 1.0),
     [progress],
   )
 
@@ -224,7 +198,7 @@ export default function FloralAtmosphereOverlay({
         </button>
       </header>
 
-      {/* 2. CHUNKED KINETIC FRAGMENTS (SPATIAL & ASYMMETRIC) */}
+      {/* 2. CHUNKED KINETIC FRAGMENTS (SPATIOUS & CALM) */}
       <div className="relative w-full h-full">
         {FRAGMENTS.map((frag) => {
           const motion = getFragmentMotion(
@@ -253,7 +227,7 @@ export default function FloralAtmosphereOverlay({
                 {frag.content}
               </span>
               {frag.subContent && (
-                <span className="block text-white/60 text-xs md:text-sm mt-3 font-light tracking-wider">
+                <span className="block text-white/70 text-sm md:text-lg mt-4 font-light tracking-wide">
                   {frag.subContent}
                 </span>
               )}
@@ -261,7 +235,7 @@ export default function FloralAtmosphereOverlay({
           )
         })}
 
-        {/* INTERACTIVE FLOATING EMOTION WORDS (Fragment 5) */}
+        {/* INTERACTIVE FLOATING EMOTION WORDS (0.55 to 0.76) */}
         {showMoodPills && moodPillMotion.isVisible && (
           <div
             className="absolute top-[48%] md:top-[50%] left-1/2 -translate-x-1/2 flex flex-wrap items-center justify-center gap-5 md:gap-10 pointer-events-auto w-full max-w-xl px-4"
@@ -310,7 +284,7 @@ export default function FloralAtmosphereOverlay({
           </div>
         )}
 
-        {/* CLIMAX / DESTINATION ENTRY (Ending) */}
+        {/* CLIMAX / DESTINATION ENTRY (0.88 to 1.0) */}
         {endingMotion.isVisible && (
           <div
             className="absolute top-[42%] md:top-[44%] left-1/2 -translate-x-1/2 text-center pointer-events-auto w-full max-w-lg px-6"
