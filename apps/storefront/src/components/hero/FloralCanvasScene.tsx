@@ -9,25 +9,24 @@ interface FloralCanvasSceneProps {
   onBudInteract?: () => void
 }
 
-interface SpatialPetal {
-  x: number
-  y: number // Absolute vertical coordinate in the 4000px descent column
+interface VortexPetal {
+  angle: number
+  radius: number
+  y: number // Absolute height in the 3600px descent vortex
   z: number
-  rotation: number
-  rotSpeed: number
   scale: number
-  type: number // petal shape variant
-  colorVariation: number
+  tilt: number
+  tiltSpeed: number
+  rotation: number
+  colorOffset: number
 }
 
-interface DustParticle {
+interface BokehOrb {
   x: number
   y: number
-  z: number
-  size: number
-  speedX: number
-  speedY: number
+  radius: number
   opacity: number
+  speedY: number
 }
 
 export default function FloralCanvasScene({
@@ -86,28 +85,32 @@ export default function FloralCanvasScene({
     window.addEventListener('mousemove', handleMouseMove, { passive: true })
     window.addEventListener('touchmove', handleTouchMove, { passive: true })
 
-    // Generate a 3D vertical spatial column of 90 tumbling glass petals
-    const TOTAL_DEPTH = 3400
-    const petals: SpatialPetal[] = Array.from({ length: 90 }).map((_, i) => ({
-      x: (Math.random() - 0.5) * width * 1.5,
-      y: (i / 90) * TOTAL_DEPTH + (Math.random() - 0.5) * 120,
-      z: Math.random() * 650 + 100,
-      rotation: Math.random() * Math.PI * 2,
-      rotSpeed: (Math.random() - 0.5) * 0.02,
-      scale: Math.random() * 0.7 + 0.6,
-      type: Math.floor(Math.random() * 3),
-      colorVariation: Math.random(),
-    }))
+    const TOTAL_DEPTH = 3600
 
-    // 120 floating bioluminescent dust and dew particles
-    const dustParticles: DustParticle[] = Array.from({ length: 120 }).map(() => ({
-      x: (Math.random() - 0.5) * width * 1.6,
+    // 100 Crystalline Glass Petals arranged along a descending logarithmic double-helix
+    const petals: VortexPetal[] = Array.from({ length: 110 }).map((_, i) => {
+      const angle = (i * 0.28) + (i % 2 === 0 ? 0 : Math.PI)
+      const radius = 180 + Math.sin(i * 0.4) * 120 + Math.random() * 80
+      return {
+        angle,
+        radius,
+        y: (i / 110) * TOTAL_DEPTH + (Math.random() - 0.5) * 60,
+        z: Math.random() * 450 + 80,
+        scale: Math.random() * 0.6 + 0.7,
+        tilt: Math.random() * Math.PI,
+        tiltSpeed: (Math.random() - 0.5) * 0.03,
+        rotation: Math.random() * Math.PI * 2,
+        colorOffset: Math.random(),
+      }
+    })
+
+    // 25 Large Cinematic Foreground Bokeh Orbs (Out-of-focus soft chromatic orbs)
+    const bokehOrbs: BokehOrb[] = Array.from({ length: 25 }).map(() => ({
+      x: (Math.random() - 0.5) * width * 1.4,
       y: Math.random() * TOTAL_DEPTH,
-      z: Math.random() * 700 + 50,
-      size: Math.random() * 2.8 + 1.2,
-      speedX: (Math.random() - 0.5) * 0.4,
-      speedY: (Math.random() - 0.5) * 0.3,
-      opacity: Math.random() * 0.6 + 0.25,
+      radius: Math.random() * 55 + 35,
+      opacity: Math.random() * 0.18 + 0.05,
+      speedY: (Math.random() - 0.5) * 0.2,
     }))
 
     let time = 0
@@ -119,14 +122,14 @@ export default function FloralCanvasScene({
     const render = () => {
       time += 0.016
 
-      // Lerp mouse
-      mouseRef.current.x += (mouseRef.current.targetX - mouseRef.current.x) * 0.06
-      mouseRef.current.y += (mouseRef.current.targetY - mouseRef.current.y) * 0.06
+      // Smooth mouse lerp
+      mouseRef.current.x += (mouseRef.current.targetX - mouseRef.current.x) * 0.05
+      mouseRef.current.y += (mouseRef.current.targetY - mouseRef.current.y) * 0.05
 
-      // Lerp progress for ultra-silky descent physics
-      smoothProgress += (progressRef.current - smoothProgress) * 0.1
+      // Smooth progress with inertia
+      smoothProgress += (progressRef.current - smoothProgress) * 0.09
 
-      // Dynamic mood color interpolation
+      // Target mood colors
       let targetR = 224
       let targetG = 83
       let targetB = 108
@@ -146,173 +149,180 @@ export default function FloralCanvasScene({
 
       ctx.clearRect(0, 0, width, height)
 
-      // CAMERA POSITION (Plunging downwards along Y)
+      // SPIRAL DESCENT COORDINATES
       const cameraY = smoothProgress * TOTAL_DEPTH
-      const cameraTiltX = mouseRef.current.x * 30
-      const cameraTiltY = mouseRef.current.y * 25
+      const cameraAngle = smoothProgress * Math.PI * 0.65 // Slight helical twist during descent
+      const cameraDriftX = mouseRef.current.x * 35
+      const cameraDriftY = mouseRef.current.y * 25
 
-      // 1. DYNAMIC VOLUMETRIC GRADIENT BACKGROUND
+      // 1. DEEP CINEMATIC GRADIENT VOID
       const bgGrad = ctx.createRadialGradient(
-        width / 2 + cameraTiltX,
-        height * 0.45 + cameraTiltY,
-        50,
+        width / 2 + cameraDriftX,
+        height * 0.42 + cameraDriftY,
+        40,
         width / 2,
         height / 2,
-        Math.max(width, height) * 0.85,
+        Math.max(width, height) * 0.9,
       )
-      // Shifting background warmth along descent
       bgGrad.addColorStop(
         0,
-        `rgba(${Math.round(curR * 0.35 + 15)}, ${Math.round(curG * 0.35 + 35)}, ${Math.round(curB * 0.35 + 25)}, 0.4)`,
+        `rgba(${Math.round(curR * 0.4 + 20)}, ${Math.round(curG * 0.4 + 30)}, ${Math.round(curB * 0.4 + 20)}, 0.45)`,
       )
-      bgGrad.addColorStop(0.5, 'rgba(15, 33, 24, 0.75)')
-      bgGrad.addColorStop(1, 'rgba(7, 16, 12, 0.98)')
+      bgGrad.addColorStop(0.55, 'rgba(12, 28, 20, 0.8)')
+      bgGrad.addColorStop(1, 'rgba(5, 12, 9, 0.98)')
       ctx.fillStyle = bgGrad
       ctx.fillRect(0, 0, width, height)
 
-      // 2. SOFT ANGLE GOD RAYS (Light rays passing by as we dive)
-      ctx.save()
-      ctx.translate(width / 2, 0)
-      ctx.rotate(0.18 + Math.sin(time * 0.5) * 0.02)
-      for (let ray = -2; ray <= 2; ray++) {
-        const rayX = ray * (width * 0.28) + Math.sin(time * 0.6 + ray) * 30
-        const rayGrad = ctx.createLinearGradient(rayX, 0, rayX, height * 1.2)
-        rayGrad.addColorStop(0, `rgba(255, 255, 255, ${0.06 - Math.abs(ray) * 0.015})`)
-        rayGrad.addColorStop(0.6, `rgba(${Math.round(curR)}, ${Math.round(curG)}, ${Math.round(curB)}, 0.02)`)
-        rayGrad.addColorStop(1, 'rgba(0, 0, 0, 0)')
-        ctx.fillStyle = rayGrad
-        ctx.fillRect(rayX - 60, 0, 120, height * 1.2)
+      // 2. RADIAL SHOCKWAVE / BLOOM BURST AT PROGRESS ~0.40 («شکوفا می‌شوند»)
+      if (smoothProgress > 0.30 && smoothProgress < 0.55) {
+        const shockProgress = (smoothProgress - 0.30) / 0.25
+        const shockRadius = shockProgress * (Math.max(width, height) * 0.75)
+        const shockAlpha = Math.sin(shockProgress * Math.PI) * 0.35
+
+        ctx.beginPath()
+        ctx.arc(width / 2, height / 2, shockRadius, 0, Math.PI * 2)
+        ctx.strokeStyle = `rgba(255, 255, 255, ${shockAlpha})`
+        ctx.lineWidth = 2.5
+        ctx.stroke()
+
+        // Inner glowing ring
+        ctx.beginPath()
+        ctx.arc(width / 2, height / 2, shockRadius * 0.7, 0, Math.PI * 2)
+        ctx.strokeStyle = `rgba(${Math.round(curR)}, ${Math.round(curG)}, ${Math.round(curB)}, ${shockAlpha * 0.6})`
+        ctx.lineWidth = 1.2
+        ctx.stroke()
       }
-      ctx.restore()
 
-      // 3. AMBIENT DUST & BIOLUMINESCENT PARTICLES (Travelling past camera)
-      for (const p of dustParticles) {
-        // Relative Y to camera
-        let relY = p.y - cameraY
-        // Wrap around infinite stream
-        if (relY < -400) p.y += TOTAL_DEPTH
-        if (relY > TOTAL_DEPTH) p.y -= TOTAL_DEPTH
-        relY = p.y - cameraY
+      // 3. LARGE CINEMATIC FOREGROUND BOKEH ORBS
+      for (const orb of bokehOrbs) {
+        let relY = orb.y - cameraY
+        if (relY < -300) orb.y += TOTAL_DEPTH
+        if (relY > TOTAL_DEPTH) orb.y -= TOTAL_DEPTH
+        relY = orb.y - cameraY
 
-        p.x += p.speedX
-        const fov = 420
-        const scale = fov / (fov + p.z)
-        const screenX = width / 2 + p.x * scale + cameraTiltX * scale
-        const screenY = height / 2 + relY * scale + cameraTiltY * scale
+        const screenX = width / 2 + orb.x + cameraDriftX * 0.5
+        const screenY = height / 2 + relY * 0.8 + cameraDriftY * 0.5
 
-        if (screenY > -50 && screenY < height + 50 && screenX > -50 && screenX < width + 50) {
-          const radius = Math.max(0.6, p.size * scale)
+        if (screenY > -100 && screenY < height + 100 && screenX > -100 && screenX < width + 100) {
+          const oGrad = ctx.createRadialGradient(
+            screenX,
+            screenY,
+            0,
+            screenX,
+            screenY,
+            orb.radius,
+          )
+          oGrad.addColorStop(
+            0,
+            `rgba(${Math.round(curR)}, ${Math.round(curG)}, ${Math.round(curB)}, ${orb.opacity * 1.5})`,
+          )
+          oGrad.addColorStop(
+            0.6,
+            `rgba(${Math.round(curR * 0.8)}, ${Math.round(curG * 0.8)}, ${Math.round(curB * 0.8)}, ${orb.opacity * 0.5})`,
+          )
+          oGrad.addColorStop(1, 'rgba(255, 255, 255, 0)')
+
           ctx.beginPath()
-          ctx.arc(screenX, screenY, radius, 0, Math.PI * 2)
-          ctx.fillStyle = `rgba(${Math.round(curR * 0.8 + 60)}, ${Math.round(curG * 0.8 + 60)}, ${Math.round(curB * 0.8 + 60)}, ${p.opacity * scale})`
+          ctx.arc(screenX, screenY, orb.radius, 0, Math.PI * 2)
+          ctx.fillStyle = oGrad
           ctx.fill()
         }
       }
 
-      // 4. TUMBLING GLASS PETALS IN 3D PERSPECTIVE (THE DESCENT)
-      // Sort petals by Z depth (painter's algorithm)
-      const visiblePetals = petals
-        .map((petal) => {
-          petal.rotation += petal.rotSpeed
-          // Relative Y to camera gives the physical feeling of falling down past them
-          const relY = petal.y - cameraY
-          const fov = 420
-          const scale = fov / (fov + petal.z)
-          const screenX = width / 2 + petal.x * scale + cameraTiltX * scale
-          const screenY = height / 2 + relY * scale + cameraTiltY * scale
-          return { petal, relY, scale, screenX, screenY }
+      // 4. THE DESCENDING HELIX OF TUMBLING GLASS PETALS
+      // Transform each petal relative to the plunging spiral camera
+      const projectedPetals = petals
+        .map((p) => {
+          p.tilt += p.tiltSpeed
+          // Relative coordinates
+          const relY = p.y - cameraY
+          const currentAngle = p.angle + cameraAngle + time * 0.15
+          const worldX = Math.cos(currentAngle) * p.radius
+          const worldZ = Math.sin(currentAngle) * p.radius + p.z
+
+          const fov = 440
+          const scale = fov / (fov + worldZ)
+          const screenX = width / 2 + worldX * scale + cameraDriftX * scale
+          const screenY = height / 2 + relY * scale + cameraDriftY * scale
+
+          return { p, relY, worldZ, scale, screenX, screenY }
         })
         .filter(
           (item) =>
-            item.screenY > -180 &&
-            item.screenY < height + 180 &&
-            item.screenX > -180 &&
-            item.screenX < width + 180,
+            item.screenY > -160 &&
+            item.screenY < height + 160 &&
+            item.screenX > -160 &&
+            item.screenX < width + 160,
         )
-        .sort((a, b) => b.petal.z - a.petal.z)
+        .sort((a, b) => b.worldZ - a.worldZ)
 
-      for (const { petal, scale, screenX, screenY } of visiblePetals) {
+      for (const { p, scale, screenX, screenY } of projectedPetals) {
         ctx.save()
         ctx.translate(screenX, screenY)
-        ctx.rotate(petal.rotation + Math.sin(time + petal.y) * 0.2)
-        ctx.scale(scale * petal.scale, scale * petal.scale)
+        ctx.rotate(p.rotation + Math.sin(time + p.y) * 0.3)
+        ctx.scale(scale * p.scale, scale * p.scale * Math.cos(p.tilt))
 
-        const petalW = 45
-        const petalH = 85
+        const petalW = 42
+        const petalH = 80
 
         ctx.beginPath()
         ctx.moveTo(0, 0)
-        ctx.bezierCurveTo(-petalW * 0.7, -petalH * 0.35, -petalW, -petalH * 0.8, 0, -petalH)
-        ctx.bezierCurveTo(petalW, -petalH * 0.8, petalW * 0.7, -petalH * 0.35, 0, 0)
+        ctx.bezierCurveTo(-petalW * 0.75, -petalH * 0.35, -petalW, -petalH * 0.8, 0, -petalH)
+        ctx.bezierCurveTo(petalW, -petalH * 0.8, petalW * 0.75, -petalH * 0.35, 0, 0)
         ctx.closePath()
 
-        // Translucent crystalline glass shading
+        // Prismatic glass petal gradient
         const pGrad = ctx.createLinearGradient(0, 0, 0, -petalH)
         pGrad.addColorStop(
           0,
-          `rgba(${Math.round(curR)}, ${Math.round(curG)}, ${Math.round(curB)}, 0.65)`,
+          `rgba(${Math.round(curR)}, ${Math.round(curG)}, ${Math.round(curB)}, 0.7)`,
         )
-        pGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.45)')
+        pGrad.addColorStop(0.45, 'rgba(255, 255, 255, 0.55)')
         pGrad.addColorStop(
           1,
-          `rgba(${Math.round(curR)}, ${Math.round(curG)}, ${Math.round(curB)}, 0.15)`,
+          `rgba(${Math.round(curR * 0.9 + 40)}, ${Math.round(curG * 0.9 + 40)}, ${Math.round(curB * 0.9 + 40)}, 0.15)`,
         )
 
         ctx.fillStyle = pGrad
-        ctx.shadowColor = `rgba(${Math.round(curR)}, ${Math.round(curG)}, ${Math.round(curB)}, 0.35)`
-        ctx.shadowBlur = 12 * scale
+        ctx.shadowColor = `rgba(${Math.round(curR)}, ${Math.round(curG)}, ${Math.round(curB)}, 0.4)`
+        ctx.shadowBlur = 10 * scale
         ctx.fill()
 
-        // Prismatic glass edge refraction
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)'
-        ctx.lineWidth = 1.2
+        // Edge chromatic highlight
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)'
+        ctx.lineWidth = 1.3
         ctx.stroke()
         ctx.shadowBlur = 0
 
         ctx.restore()
       }
 
-      // 5. CENTRAL BLOOMING NUCLEUS (The Sacred Bud you travel toward and through)
-      // At smoothProgress 0.0 it is at center; as you plunge past progress 0.35, it expands and surrounds you
-      const budRelY = 0 - cameraY * 0.4 // bud drifts slowly
-      const budFov = 400
-      const budZ = 300 - smoothProgress * 280
-      const budScale = Math.max(0.1, budFov / (budFov + budZ))
-      const budScreenX = width / 2 + cameraTiltX * budScale
-      const budScreenY = height / 2 + budRelY * budScale + cameraTiltY * budScale + Math.sin(time * 1.2) * 10
-
-      if (smoothProgress < 0.85) {
-        const budBloom = Math.min(Math.max((smoothProgress - 0.05) / 0.45, 0), 1)
-        const coreSize = 75 * budScale * (1 + budBloom * 1.5)
+      // 5. LUMINOUS ESSENCE CORE (Initial solitary bud at start, then bursts and dissolves)
+      if (smoothProgress < 0.45) {
+        const coreAlpha = Math.max(0, 1 - smoothProgress / 0.42)
+        const coreRelY = -cameraY * 0.3
+        const coreScale = Math.max(0.2, 1 - smoothProgress * 0.5)
+        const coreScreenX = width / 2 + cameraDriftX * coreScale
+        const coreScreenY = height / 2 + coreRelY + cameraDriftY * coreScale
 
         ctx.save()
-        ctx.translate(budScreenX, budScreenY)
-        ctx.rotate(time * 0.08)
+        ctx.translate(coreScreenX, coreScreenY)
+        ctx.rotate(time * 0.1)
 
-        // Radial bloom rings
-        for (let ring = 0; ring < 3; ring++) {
-          const rRadius = coreSize * (0.8 + ring * 0.4)
-          ctx.beginPath()
-          ctx.arc(0, 0, rRadius, 0, Math.PI * 2)
-          ctx.strokeStyle = `rgba(255, 255, 255, ${(0.3 - ring * 0.08) * (1 - smoothProgress * 0.8)})`
-          ctx.lineWidth = 1.2
-          ctx.stroke()
-        }
-
-        // Luminous glowing core
-        const cGrad = ctx.createRadialGradient(0, 0, 5, 0, 0, coreSize)
+        const coreRadius = 60 * coreScale
+        const cGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, coreRadius)
         cGrad.addColorStop(0, '#ffffff')
         cGrad.addColorStop(
-          0.4,
-          `rgba(${Math.round(curR)}, ${Math.round(curG)}, ${Math.round(curB)}, ${0.8 * (1 - smoothProgress * 0.7)})`,
+          0.35,
+          `rgba(${Math.round(curR)}, ${Math.round(curG)}, ${Math.round(curB)}, ${0.9 * coreAlpha})`,
         )
         cGrad.addColorStop(1, 'rgba(255, 255, 255, 0)')
 
         ctx.beginPath()
-        ctx.arc(0, 0, coreSize, 0, Math.PI * 2)
+        ctx.arc(0, 0, coreRadius, 0, Math.PI * 2)
         ctx.fillStyle = cGrad
-        ctx.shadowColor = `rgba(${Math.round(curR)}, ${Math.round(curG)}, ${Math.round(curB)}, 0.9)`
-        ctx.shadowBlur = 35 * budScale
+        ctx.shadowColor = `rgba(${Math.round(curR)}, ${Math.round(curG)}, ${Math.round(curB)}, ${coreAlpha})`
+        ctx.shadowBlur = 40
         ctx.fill()
         ctx.shadowBlur = 0
 
@@ -339,7 +349,7 @@ export default function FloralCanvasScene({
       ref={canvasRef}
       className="absolute inset-0 h-full w-full pointer-events-auto touch-none"
       onClick={onBudInteract}
-      aria-label="سفر فضایی در میان گلبرگ‌های شیشه‌ای و نور"
+      aria-label="سفر فضایی مارپیچ در میان گلبرگ‌ها و نور"
     />
   )
 }
