@@ -290,12 +290,56 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
     })
   }
 
+  const isHomePage = pathname === '/' || page.slug === '/' || page.pageType === 'HOME'
+  const firstHero = page.blocks.find((b) => b.type === 'HERO_HEADER')
+  const hasScrollyHero =
+    isHomePage &&
+    firstHero &&
+    String(firstHero.data?.heroMode ?? 'scrollytelling') !== 'standard'
+
+  const [isHeroFinished, setIsHeroFinished] = useState(!hasScrollyHero)
+
+  useEffect(() => {
+    if (!hasScrollyHero) {
+      setIsHeroFinished(true)
+      return
+    }
+
+    const checkHeroFinished = () => {
+      const catalogEl = document.getElementById('storefront-catalog')
+      if (catalogEl) {
+        const rect = catalogEl.getBoundingClientRect()
+        // When catalog top reaches near viewport top (within 90px), hero is 100% finished
+        setIsHeroFinished(rect.top <= 90)
+      } else {
+        setIsHeroFinished(window.scrollY > window.innerHeight * 3.5)
+      }
+    }
+
+    checkHeroFinished()
+    window.addEventListener('scroll', checkHeroFinished, { passive: true })
+    return () => window.removeEventListener('scroll', checkHeroFinished)
+  }, [hasScrollyHero])
+
   const shouldFloat = isScrolled && theme.stickyVariant === 'floating'
   const shouldShowGlass = isScrolled || !theme.transparentOnTop || !heroTouchesTop
   const headerVars = buildHeaderThemeVars(theme, shouldShowGlass)
+  const headerHiddenOnHero = hasScrollyHero && !isHeroFinished
 
   return (
-    <header className={`${storefrontStyles.headerRoot} ${shouldFloat ? 'px-4 pt-4 md:px-8' : 'px-0 pt-0'}`} ref={headerRef} style={headerVars}>
+    <header
+      className={`${storefrontStyles.headerRoot} ${shouldFloat ? 'px-4 pt-4 md:px-8' : 'px-0 pt-0'} ${
+        headerHiddenOnHero
+          ? 'opacity-0 -translate-y-full blur-md pointer-events-none'
+          : 'opacity-100 translate-y-0 blur-0'
+      }`}
+      ref={headerRef}
+      style={{
+        ...headerVars,
+        transition: 'transform 0.65s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s ease-out, filter 0.5s ease-out',
+        willChange: 'transform, opacity, filter',
+      }}
+    >
       <div
         className={`${storefrontStyles.headerShellBase} ${shouldFloat ? 'max-w-[1280px] rounded-[28px] px-5 py-3 md:px-7' : 'max-w-[1440px] px-4 py-5 md:px-8'} ${shouldShowGlass ? storefrontStyles.headerGlass : 'border-transparent bg-transparent shadow-none backdrop-blur-0'}`}
       >
