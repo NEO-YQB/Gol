@@ -347,8 +347,7 @@ export default function FloralCanvasScene({
   return (
     <canvas
       ref={canvasRef}
-      className="absolute inset-0 h-full w-full pointer-events-auto touch-none"
-      onClick={onBudInteract}
+      className="absolute inset-0 h-full w-full pointer-events-none"
       aria-label="سفر فضایی مارپیچ در میان گلبرگ‌ها و نور"
     />
   )
