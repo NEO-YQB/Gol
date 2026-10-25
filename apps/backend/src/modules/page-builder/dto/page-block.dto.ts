@@ -75,6 +75,11 @@ export enum HeroHeaderImagePosition {
   BOTTOM = 'bottom',
 }
 
+export enum HeroHeaderDisplayMode {
+  SCROLLYTELLING = 'scrollytelling',
+  STANDARD = 'standard',
+}
+
 export enum PageBlockLoadingMode {
   EAGER = 'eager',
   LAZY = 'lazy',
@@ -94,11 +99,11 @@ export class HeroHeaderBlockDataDto {
   @MaxLength(500)
   subtitle?: string;
 
-  @ApiProperty({ example: 'https://cdn.example.com/hero.jpg' })
+  @ApiPropertyOptional({ example: 'https://cdn.example.com/hero.jpg' })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(2000)
-  imageUrl!: string;
+  imageUrl?: string;
 
   @ApiPropertyOptional({ example: 'https://cdn.example.com/hero-mobile.jpg' })
   @IsOptional()
@@ -162,6 +167,14 @@ export class HeroHeaderBlockDataDto {
   @IsOptional()
   @IsEnum(HeroHeaderImagePosition)
   imagePosition?: HeroHeaderImagePosition;
+
+  @ApiPropertyOptional({
+    enum: HeroHeaderDisplayMode,
+    example: HeroHeaderDisplayMode.SCROLLYTELLING,
+  })
+  @IsOptional()
+  @IsEnum(HeroHeaderDisplayMode)
+  heroMode?: HeroHeaderDisplayMode;
 }
 
 export class CategoryCirclesBlockDataDto {

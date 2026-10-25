@@ -1518,6 +1518,33 @@ export function PageBuilderWorkspacePage({
           }
         }
 
+        if (block.type === 'HERO_HEADER') {
+          const raw = block.data
+          return {
+            ...block,
+            loadingMode: 'eager',
+            data: {
+              title: String(raw.title ?? '').trim() || 'گلینو',
+              ...(toOptionalText(raw.subtitle) ? { subtitle: toOptionalText(raw.subtitle) } : {}),
+              ...(toOptionalText(raw.imageUrl) ? { imageUrl: toOptionalText(raw.imageUrl) } : {}),
+              ...(toOptionalText(raw.mobileImageUrl) ? { mobileImageUrl: toOptionalText(raw.mobileImageUrl) } : {}),
+              ...(toOptionalText(raw.ctaText) ? { ctaText: toOptionalText(raw.ctaText) } : {}),
+              ...(toOptionalText(raw.ctaLink) ? { ctaLink: toOptionalText(raw.ctaLink) } : {}),
+              ...(toOptionalText(raw.textColor) ? { textColor: toOptionalText(raw.textColor) } : {}),
+              fullWidth: raw.fullWidth !== false,
+              flushTop: raw.flushTop !== false,
+              minHeightVh: Math.min(Math.max(Number(raw.minHeightVh ?? 92) || 92, 10), 140),
+              overlayOpacity: Math.min(Math.max(Number(raw.overlayOpacity ?? 0.42) || 0.42, 0), 1),
+              contentAlign: raw.contentAlign === 'center' ? 'center' : 'start',
+              imageFit: raw.imageFit === 'contain' ? 'contain' : 'cover',
+              imagePosition: ['top', 'bottom', 'center'].includes(String(raw.imagePosition ?? ''))
+                ? String(raw.imagePosition)
+                : 'center',
+              heroMode: String(raw.heroMode ?? 'scrollytelling') === 'standard' ? 'standard' : 'scrollytelling',
+            },
+          }
+        }
+
         return {
           ...block,
           loadingMode: block.type === 'HERO_HEADER' ? 'eager' : block.loadingMode,
