@@ -12,9 +12,10 @@ interface FloralAtmosphereOverlayProps {
 
 interface TextFragment {
   id: string
-  start: number
-  peak: number
-  end: number
+  enterStart: number
+  enterEnd: number
+  exitStart: number
+  exitEnd: number
   content: string
   subContent?: string
   positionClass: string
@@ -23,13 +24,14 @@ interface TextFragment {
   rotation?: number
 }
 
-// 10 sparse, poetic micro-fragments staggered along the scroll trajectory
+// 8 sparse, poetic fragments with distinct entry, resting (dwell), and exit timing
 const FRAGMENTS: TextFragment[] = [
   {
     id: 'f1',
-    start: 0.00,
-    peak: 0.07,
-    end: 0.16,
+    enterStart: 0.00,
+    enterEnd: 0.05,
+    exitStart: 0.12,
+    exitEnd: 0.18,
     content: 'بعضی حرف‌ها...',
     positionClass: 'top-[36%] md:top-[38%] left-1/2 -translate-x-1/2',
     sizeClass: 'text-4xl sm:text-6xl md:text-8xl font-black',
@@ -38,9 +40,10 @@ const FRAGMENTS: TextFragment[] = [
   },
   {
     id: 'f2',
-    start: 0.13,
-    peak: 0.20,
-    end: 0.29,
+    enterStart: 0.13,
+    enterEnd: 0.18,
+    exitStart: 0.25,
+    exitEnd: 0.31,
     content: 'با واژه‌ها گفته نمی‌شوند.',
     positionClass: 'top-[42%] md:top-[44%] right-[8%] md:right-[15%]',
     sizeClass: 'text-3xl sm:text-5xl md:text-7xl font-light',
@@ -49,9 +52,10 @@ const FRAGMENTS: TextFragment[] = [
   },
   {
     id: 'f3',
-    start: 0.25,
-    peak: 0.32,
-    end: 0.40,
+    enterStart: 0.26,
+    enterEnd: 0.31,
+    exitStart: 0.38,
+    exitEnd: 0.44,
     content: 'با یک گل...',
     positionClass: 'top-[38%] md:top-[40%] left-[8%] md:left-[14%]',
     sizeClass: 'text-4xl sm:text-7xl md:text-8xl font-extrabold text-amber-200',
@@ -60,9 +64,10 @@ const FRAGMENTS: TextFragment[] = [
   },
   {
     id: 'f4',
-    start: 0.36,
-    peak: 0.43,
-    end: 0.52,
+    enterStart: 0.39,
+    enterEnd: 0.44,
+    exitStart: 0.52,
+    exitEnd: 0.58,
     content: 'شکوفا می‌شوند.',
     positionClass: 'top-[45%] md:top-[46%] left-1/2 -translate-x-1/2',
     sizeClass: 'text-5xl sm:text-7xl md:text-9xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-white/95 to-white/30',
@@ -71,9 +76,10 @@ const FRAGMENTS: TextFragment[] = [
   },
   {
     id: 'f5',
-    start: 0.48,
-    peak: 0.56,
-    end: 0.65,
+    enterStart: 0.53,
+    enterEnd: 0.58,
+    exitStart: 0.68,
+    exitEnd: 0.74,
     content: 'برای چه حسی؟',
     subContent: 'لمس کن تا جهان هماهنگ شود',
     positionClass: 'top-[32%] md:top-[35%] left-1/2 -translate-x-1/2',
@@ -83,9 +89,10 @@ const FRAGMENTS: TextFragment[] = [
   },
   {
     id: 'f6',
-    start: 0.62,
-    peak: 0.70,
-    end: 0.78,
+    enterStart: 0.68,
+    enterEnd: 0.73,
+    exitStart: 0.80,
+    exitEnd: 0.86,
     content: 'دست‌هایی در این شهر...',
     positionClass: 'top-[40%] md:top-[42%] right-[10%] md:right-[18%]',
     sizeClass: 'text-3xl sm:text-5xl md:text-6xl font-extralight text-emerald-200',
@@ -94,9 +101,10 @@ const FRAGMENTS: TextFragment[] = [
   },
   {
     id: 'f7',
-    start: 0.73,
-    peak: 0.80,
-    end: 0.88,
+    enterStart: 0.79,
+    enterEnd: 0.83,
+    exitStart: 0.89,
+    exitEnd: 0.94,
     content: 'شاید همین نزدیکی...',
     positionClass: 'top-[42%] md:top-[44%] left-[10%] md:left-[16%]',
     sizeClass: 'text-4xl sm:text-6xl md:text-7xl font-semibold text-cyan-200',
@@ -105,9 +113,10 @@ const FRAGMENTS: TextFragment[] = [
   },
   {
     id: 'f8',
-    start: 0.83,
-    peak: 0.90,
-    end: 0.96,
+    enterStart: 0.87,
+    enterEnd: 0.91,
+    exitStart: 0.94,
+    exitEnd: 0.97,
     content: 'در انتظارِ توست.',
     positionClass: 'top-[40%] md:top-[42%] left-1/2 -translate-x-1/2',
     sizeClass: 'text-4xl sm:text-6xl md:text-8xl font-black text-amber-300',
@@ -116,40 +125,62 @@ const FRAGMENTS: TextFragment[] = [
   },
 ]
 
-function getFragmentMotion(progress: number, start: number, peak: number, end: number) {
-  if (progress < start || progress > end) {
-    return { isVisible: false, opacity: 0, translateY: 60, scale: 0.85, blur: 16 }
+/**
+ * 3-Phase Easing Calculation:
+ * 1. Entry: Smooth decelerating slide-in with unblur
+ * 2. Dwell / On-Screen: Ultra-slow, serene floating drift in crystal sharpness
+ * 3. Exit: Gentle accelerating dissolve upward into blur
+ */
+function getFragmentMotion(
+  progress: number,
+  enterStart: number,
+  enterEnd: number,
+  exitStart: number,
+  exitEnd: number,
+) {
+  if (progress < enterStart || progress > exitEnd) {
+    return { isVisible: false, opacity: 0, translateY: 55, scale: 0.85, blur: 16 }
   }
 
-  let opacity = 0
-  let translateY = 0
-  let scale = 1
-  let blur = 0
-
-  if (progress <= peak) {
-    // Zooming in from deep distance and sharp blur
-    const t = (progress - start) / (peak - start)
+  // Phase 1: Entry (Deceleration into focus)
+  if (progress < enterEnd) {
+    const t = (progress - enterStart) / (enterEnd - enterStart)
+    // Ease-out cubic: starts responsive, gently settles
     const ease = 1 - Math.pow(1 - t, 3)
-    opacity = ease
-    translateY = (1 - ease) * 45
-    scale = 0.82 + ease * 0.18
-    blur = (1 - ease) * 14
-  } else {
-    // Flying past the camera towards viewer, dissolving outward
-    const t = (progress - peak) / (end - peak)
-    const ease = t * t * t
-    opacity = 1 - ease
-    translateY = -ease * 55
-    scale = 1 + ease * 0.28
-    blur = ease * 18
+    return {
+      isVisible: true,
+      opacity: Math.max(0, Math.min(ease, 1)),
+      translateY: (1 - ease) * 55, // descends softly into place
+      scale: 0.86 + ease * 0.14,
+      blur: (1 - ease) * 16,
+    }
   }
 
+  // Phase 2: Dwell / On-Screen (Peaceful, slow floating drift)
+  if (progress <= exitStart) {
+    const t = (progress - enterEnd) / (exitStart - enterEnd)
+    // Very gentle linear-to-sine drift while user absorbs the words
+    const floatY = -t * 14 // very slow upward travel
+    const floatScale = 1.0 + t * 0.03
+    return {
+      isVisible: true,
+      opacity: 1,
+      translateY: floatY,
+      scale: floatScale,
+      blur: 0,
+    }
+  }
+
+  // Phase 3: Exit (Accelerating dissolve out)
+  const t = (progress - exitStart) / (exitEnd - exitStart)
+  // Ease-in cubic: lifts off and vanishes into ethereal fog
+  const ease = t * t * t
   return {
     isVisible: true,
-    opacity: Math.max(0, Math.min(opacity, 1)),
-    translateY,
-    scale,
-    blur: Math.max(0, blur),
+    opacity: Math.max(0, 1 - ease),
+    translateY: -14 - ease * 65, // lifts upward past camera
+    scale: 1.03 + ease * 0.22, // zooms past camera
+    blur: ease * 18,
   }
 }
 
@@ -159,16 +190,16 @@ export default function FloralAtmosphereOverlay({
   onSelectMood,
   onSkipToCatalog,
 }: FloralAtmosphereOverlayProps) {
-  // Show emotion pills during fragment f5 window (0.47 to 0.65)
-  const showMoodPills = progress >= 0.47 && progress <= 0.66
+  // Show emotion pills during fragment f5 window (0.52 to 0.74)
+  const showMoodPills = progress >= 0.52 && progress <= 0.74
   const moodPillMotion = useMemo(
-    () => getFragmentMotion(progress, 0.47, 0.56, 0.66),
+    () => getFragmentMotion(progress, 0.52, 0.57, 0.69, 0.74),
     [progress],
   )
 
   // Climax ending (0.92 to 1.0)
   const endingMotion = useMemo(
-    () => getFragmentMotion(progress, 0.91, 0.96, 1.0),
+    () => getFragmentMotion(progress, 0.92, 0.96, 0.99, 1.0),
     [progress],
   )
 
@@ -196,17 +227,24 @@ export default function FloralAtmosphereOverlay({
       {/* 2. CHUNKED KINETIC FRAGMENTS (SPATIAL & ASYMMETRIC) */}
       <div className="relative w-full h-full">
         {FRAGMENTS.map((frag) => {
-          const motion = getFragmentMotion(progress, frag.start, frag.peak, frag.end)
+          const motion = getFragmentMotion(
+            progress,
+            frag.enterStart,
+            frag.enterEnd,
+            frag.exitStart,
+            frag.exitEnd,
+          )
           if (!motion.isVisible) return null
 
           return (
             <div
               key={frag.id}
-              className={`absolute pointer-events-none transition-transform duration-75 ${frag.positionClass} ${frag.alignClass}`}
+              className={`absolute pointer-events-none ${frag.positionClass} ${frag.alignClass}`}
               style={{
                 opacity: motion.opacity,
                 transform: `translateY(${motion.translateY}px) scale(${motion.scale}) rotate(${frag.rotation || 0}deg)`,
                 filter: `blur(${motion.blur}px)`,
+                willChange: 'transform, opacity, filter',
               }}
             >
               <span
@@ -226,17 +264,18 @@ export default function FloralAtmosphereOverlay({
         {/* INTERACTIVE FLOATING EMOTION WORDS (Fragment 5) */}
         {showMoodPills && moodPillMotion.isVisible && (
           <div
-            className="absolute top-[48%] md:top-[50%] left-1/2 -translate-x-1/2 flex flex-wrap items-center justify-center gap-5 md:gap-10 pointer-events-auto transition-transform duration-75 w-full max-w-xl px-4"
+            className="absolute top-[48%] md:top-[50%] left-1/2 -translate-x-1/2 flex flex-wrap items-center justify-center gap-5 md:gap-10 pointer-events-auto w-full max-w-xl px-4"
             style={{
               opacity: moodPillMotion.opacity,
               transform: `translate(-50%, ${moodPillMotion.translateY}px) scale(${moodPillMotion.scale})`,
               filter: `blur(${moodPillMotion.blur}px)`,
+              willChange: 'transform, opacity, filter',
             }}
           >
             <button
               type="button"
               onClick={() => onSelectMood('love')}
-              className={`text-xl sm:text-2xl md:text-3xl font-extrabold transition-all duration-300 cursor-pointer ${
+              className={`text-xl sm:text-2xl md:text-3xl font-extrabold transition-all duration-500 cursor-pointer ${
                 mood === 'love'
                   ? 'text-pink-300 scale-110 drop-shadow-[0_0_30px_rgba(244,114,182,0.9)] underline decoration-pink-400 underline-offset-8'
                   : 'text-white/50 hover:text-white hover:scale-105'
@@ -248,7 +287,7 @@ export default function FloralAtmosphereOverlay({
             <button
               type="button"
               onClick={() => onSelectMood('longing')}
-              className={`text-xl sm:text-2xl md:text-3xl font-extrabold transition-all duration-300 cursor-pointer ${
+              className={`text-xl sm:text-2xl md:text-3xl font-extrabold transition-all duration-500 cursor-pointer ${
                 mood === 'longing'
                   ? 'text-blue-300 scale-110 drop-shadow-[0_0_30px_rgba(147,197,253,0.9)] underline decoration-blue-400 underline-offset-8'
                   : 'text-white/50 hover:text-white hover:scale-105'
@@ -260,7 +299,7 @@ export default function FloralAtmosphereOverlay({
             <button
               type="button"
               onClick={() => onSelectMood('new_beginning')}
-              className={`text-xl sm:text-2xl md:text-3xl font-extrabold transition-all duration-300 cursor-pointer ${
+              className={`text-xl sm:text-2xl md:text-3xl font-extrabold transition-all duration-500 cursor-pointer ${
                 mood === 'new_beginning'
                   ? 'text-amber-300 scale-110 drop-shadow-[0_0_30px_rgba(252,211,77,0.9)] underline decoration-amber-400 underline-offset-8'
                   : 'text-white/50 hover:text-white hover:scale-105'
@@ -271,14 +310,15 @@ export default function FloralAtmosphereOverlay({
           </div>
         )}
 
-        {/* CLIMAX / DESTINATION ENTRY (Fragment 9 / 10) */}
+        {/* CLIMAX / DESTINATION ENTRY (Ending) */}
         {endingMotion.isVisible && (
           <div
-            className="absolute top-[42%] md:top-[44%] left-1/2 -translate-x-1/2 text-center pointer-events-auto transition-transform duration-75 w-full max-w-lg px-6"
+            className="absolute top-[42%] md:top-[44%] left-1/2 -translate-x-1/2 text-center pointer-events-auto w-full max-w-lg px-6"
             style={{
               opacity: endingMotion.opacity,
               transform: `translate(-50%, ${endingMotion.translateY}px) scale(${endingMotion.scale})`,
               filter: `blur(${endingMotion.blur}px)`,
+              willChange: 'transform, opacity, filter',
             }}
           >
             <h2 className="text-5xl sm:text-7xl md:text-9xl font-black text-white drop-shadow-[0_15px_60px_rgba(0,0,0,0.8)] mb-4">
@@ -304,7 +344,7 @@ export default function FloralAtmosphereOverlay({
       <div className="absolute right-6 md:right-10 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2 pointer-events-none">
         <div className="w-[1.5px] h-24 md:h-36 bg-white/10 rounded-full overflow-hidden relative">
           <div
-            className="w-full bg-gradient-to-b from-emerald-400 via-amber-300 to-pink-400 transition-all duration-100 rounded-full"
+            className="w-full bg-gradient-to-b from-emerald-400 via-amber-300 to-pink-400 transition-all duration-150 rounded-full"
             style={{
               height: `${Math.round(progress * 100)}%`,
             }}
