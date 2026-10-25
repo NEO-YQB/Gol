@@ -237,6 +237,7 @@ function getDefaultBlockData(type: PageBlockType): Record<string, unknown> {
         textColor: '',
         imageFit: 'cover',
         imagePosition: 'center',
+        heroMode: 'scrollytelling',
       }
   }
 }
@@ -2129,7 +2130,24 @@ export function PageBuilderWorkspacePage({
                   <div className="page-builder-block-card__header">
                     <div>
                       <p className="page-builder-card__eyebrow">block #{index + 1}</p>
-                      <h3>{getBlockLabel(block.type)}</h3>
+                      <h3>
+                        {getBlockLabel(block.type)}
+                        {block.type === 'HERO_HEADER' ? (
+                          <span
+                            style={{
+                              fontSize: '0.72rem',
+                              padding: '2px 8px',
+                              borderRadius: '999px',
+                              background: (data.heroMode ?? 'scrollytelling') === 'scrollytelling' ? '#e0f2fe' : '#fef3c7',
+                              color: (data.heroMode ?? 'scrollytelling') === 'scrollytelling' ? '#0369a1' : '#92400e',
+                              marginRight: '8px',
+                              fontWeight: 600,
+                            }}
+                          >
+                            {(data.heroMode ?? 'scrollytelling') === 'scrollytelling' ? 'طرح اسکرولی‌تلینگ' : 'هیرو کلاسیک'}
+                          </span>
+                        ) : null}
+                      </h3>
                       <p className="page-builder-card__slug">{block.id}</p>
                     </div>
                     <div className="page-builder-block-card__actions">
@@ -2182,6 +2200,98 @@ export function PageBuilderWorkspacePage({
 
                     {block.type === 'HERO_HEADER' ? (
                       <>
+                        <div
+                          className="page-builder-field--wide"
+                          style={{
+                            padding: '16px',
+                            background: 'rgba(31, 106, 82, 0.05)',
+                            borderRadius: '16px',
+                            border: '1px solid rgba(31, 106, 82, 0.18)',
+                            marginBottom: '10px',
+                          }}
+                        >
+                          <span
+                            style={{
+                              display: 'block',
+                              fontWeight: 700,
+                              marginBottom: '12px',
+                              fontSize: '0.92rem',
+                              color: '#173126',
+                            }}
+                          >
+                            نوع نمایش هیرو هدر (Hero Display Mode)
+                          </span>
+                          <div
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                              gap: '12px',
+                            }}
+                          >
+                            <label
+                              style={{
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                gap: '10px',
+                                padding: '12px 14px',
+                                borderRadius: '12px',
+                                border: (String(data.heroMode ?? 'scrollytelling')) === 'scrollytelling' ? '2px solid #1f6a52' : '1px solid #d4c8b8',
+                                background: (String(data.heroMode ?? 'scrollytelling')) === 'scrollytelling' ? '#f0f7f3' : '#fff',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                              }}
+                            >
+                              <input
+                                checked={(String(data.heroMode ?? 'scrollytelling')) === 'scrollytelling'}
+                                name={`heroMode-${block.id}`}
+                                onChange={() => patchBlockData(block.id, 'heroMode', 'scrollytelling')}
+                                style={{ marginTop: '3px', accentColor: '#1f6a52', width: '18px', height: '18px', cursor: 'pointer' }}
+                                type="radio"
+                                value="scrollytelling"
+                              />
+                              <div>
+                                <strong style={{ display: 'block', color: '#173126', fontSize: '0.9rem', marginBottom: '3px' }}>
+                                  طرح جدید تعاملی (اسکرولی‌تلینگ)
+                                </strong>
+                                <span style={{ fontSize: '0.78rem', color: '#627166', lineHeight: 1.45, display: 'block' }}>
+                                  روایت احساسی «یک حس، هزار انتخاب» با غنچه شیشه‌ای، انتخاب حس، نمایش گلفروشی‌های اطراف و اتصال به اسکرول
+                                </span>
+                              </div>
+                            </label>
+
+                            <label
+                              style={{
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                gap: '10px',
+                                padding: '12px 14px',
+                                borderRadius: '12px',
+                                border: String(data.heroMode ?? '') === 'standard' ? '2px solid #1f6a52' : '1px solid #d4c8b8',
+                                background: String(data.heroMode ?? '') === 'standard' ? '#f0f7f3' : '#fff',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                              }}
+                            >
+                              <input
+                                checked={String(data.heroMode ?? '') === 'standard'}
+                                name={`heroMode-${block.id}`}
+                                onChange={() => patchBlockData(block.id, 'heroMode', 'standard')}
+                                style={{ marginTop: '3px', accentColor: '#1f6a52', width: '18px', height: '18px', cursor: 'pointer' }}
+                                type="radio"
+                                value="standard"
+                              />
+                              <div>
+                                <strong style={{ display: 'block', color: '#173126', fontSize: '0.9rem', marginBottom: '3px' }}>
+                                  هیرو هدر استاندارد (کلاسیک)
+                                </strong>
+                                <span style={{ fontSize: '0.78rem', color: '#627166', lineHeight: 1.45, display: 'block' }}>
+                                  بنر متداول سایت با تصویر ثابت، عنوان، زیرعنوان و دکمه CTA
+                                </span>
+                              </div>
+                            </label>
+                          </div>
+                        </div>
+
                         <label className="fm-field">
                           <span>Title</span>
                           <input onChange={(event) => patchBlockData(block.id, 'title', event.target.value)} type="text" value={String(data.title ?? '')} />

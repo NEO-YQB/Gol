@@ -5,6 +5,7 @@ import { useMemo, useRef, useState, useEffect } from 'react'
 import { resolveAssetUrl, type CategorySummary, type ProductSummary, type ProductTypeSummary, type StoreSummary } from '../lib/storefront'
 import { CategoryCircle, ProductTypeCircle, ProductCard, StorefrontPill, VendorCard } from './storefrontBlocks'
 import { storefrontShared } from './storefrontShared'
+import { FloralScrollyHero } from './hero/FloralScrollyHero'
 
 export function HeroSection({
   block,
@@ -17,6 +18,19 @@ export function HeroSection({
   pageType: string
   index: number
 }) {
+  const heroMode = String(block.data.heroMode ?? '').trim()
+  const isScrollyEnabled = heroMode
+    ? heroMode === 'scrollytelling'
+    : index === 0 && block.data.disableScrolly !== true
+
+  if (isScrollyEnabled) {
+    return (
+      <FloralScrollyHero
+        pageTitle={String(block.data.title ?? pageTitle)}
+      />
+    )
+  }
+
   const imageUrl = resolveAssetUrl(String(block.data.imageUrl ?? ''))
   const mobileImageUrl = resolveAssetUrl(String(block.data.mobileImageUrl ?? ''))
   const textColor = String(block.data.textColor ?? '#fff8ef')
@@ -205,7 +219,7 @@ export function CategoryCirclesSection({ block }: { block: { id: string; data: R
   const productTypeTitle = String(block.data.productTypeTitle ?? '').trim()
 
   return (
-    <section className={storefrontShared.sectionCard} key={block.id}>
+    <section id="storefront-catalog" className={storefrontShared.sectionCard} key={block.id}>
       {categories.length > 0 ? (
         <div className="mb-6">
           {categoryTitle ? <h3 className="mb-4 text-xl font-black text-[#173126]">{categoryTitle}</h3> : null}
