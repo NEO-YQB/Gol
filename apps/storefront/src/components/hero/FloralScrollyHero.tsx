@@ -106,8 +106,8 @@ export function FloralScrollyHero({ pageTitle }: FloralScrollyHeroProps) {
       ref={containerRef}
       className="relative left-1/2 right-1/2 ml-[-50vw] mr-[-50vw] w-screen max-w-none isolate"
       style={{
-        // 320vh ensures a smooth 20-30s natural scroll duration without scroll-jacking
-        height: reducedMotion ? '100vh' : '320vh',
+        // 360vh gives an airy, immersive downward flight through the floral dreamscape
+        height: reducedMotion ? '100vh' : '360vh',
       }}
     >
       {/* SSR SEO Semantic Layer (Indexed by Googlebot on first payload) */}
