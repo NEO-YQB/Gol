@@ -113,6 +113,7 @@ export function FloralScrollyHero({ pageTitle }: FloralScrollyHeroProps) {
   return (
     <div
       ref={containerRef}
+      data-scrolly-hero="true"
       className="relative left-1/2 right-1/2 ml-[-50vw] mr-[-50vw] w-screen max-w-none isolate"
       style={{
         // 480vh provides a deep, meditative scroll track with spacious breathing room

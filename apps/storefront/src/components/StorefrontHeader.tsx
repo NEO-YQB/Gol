@@ -306,13 +306,22 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
     }
 
     const checkHeroFinished = () => {
+      // Exactly 50px after the scrollytelling process reaches 100%:
+      // At 100%, the hero container bottom touches window.innerHeight.
+      // 50px after 100%, rect.bottom is <= window.innerHeight - 50.
+      const heroEl = document.querySelector('[data-scrolly-hero="true"]')
+      if (heroEl) {
+        const rect = heroEl.getBoundingClientRect()
+        setIsHeroFinished(rect.bottom <= window.innerHeight - 50)
+        return
+      }
+
       const catalogEl = document.getElementById('storefront-catalog')
       if (catalogEl) {
         const rect = catalogEl.getBoundingClientRect()
-        // When catalog top reaches near viewport top (within 90px), hero is 100% finished
-        setIsHeroFinished(rect.top <= 90)
+        setIsHeroFinished(rect.top <= -50)
       } else {
-        setIsHeroFinished(window.scrollY > window.innerHeight * 3.5)
+        setIsHeroFinished(window.scrollY > window.innerHeight * 4.2)
       }
     }
 

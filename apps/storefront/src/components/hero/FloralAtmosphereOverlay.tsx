@@ -44,7 +44,7 @@ const FRAGMENTS: TextFragment[] = [
     enterEnd: 0.19,
     exitStart: 0.27,
     exitEnd: 0.33,
-    content: 'با واژه‌ها گفته نمی‌شوند.',
+    content: 'با واژه‌ها گفته نمی‌شن.',
     positionClass: 'top-[42%] md:top-[44%] right-[8%] md:right-[15%]',
     sizeClass: 'text-3xl sm:text-5xl md:text-7xl font-light',
     alignClass: 'text-right',
@@ -68,7 +68,7 @@ const FRAGMENTS: TextFragment[] = [
     enterEnd: 0.46,
     exitStart: 0.54,
     exitEnd: 0.60,
-    content: 'شکوفا می‌شوند.',
+    content: 'شکوفا می‌شن.',
     positionClass: 'top-[45%] md:top-[46%] left-1/2 -translate-x-1/2',
     sizeClass: 'text-5xl sm:text-7xl md:text-9xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-white/95 to-white/30',
     alignClass: 'text-center',
@@ -249,11 +249,10 @@ export default function FloralAtmosphereOverlay({
             <button
               type="button"
               onClick={() => onSelectMood('love')}
-              className={`text-xl sm:text-2xl md:text-3xl font-extrabold transition-all duration-500 cursor-pointer ${
-                mood === 'love'
+              className={`text-xl sm:text-2xl md:text-3xl font-extrabold transition-all duration-500 cursor-pointer ${mood === 'love'
                   ? 'text-pink-300 scale-110 drop-shadow-[0_0_30px_rgba(244,114,182,0.9)] underline decoration-pink-400 underline-offset-8'
                   : 'text-white/50 hover:text-white hover:scale-105'
-              }`}
+                }`}
             >
               دوست‌داشتن
             </button>
@@ -261,11 +260,10 @@ export default function FloralAtmosphereOverlay({
             <button
               type="button"
               onClick={() => onSelectMood('longing')}
-              className={`text-xl sm:text-2xl md:text-3xl font-extrabold transition-all duration-500 cursor-pointer ${
-                mood === 'longing'
+              className={`text-xl sm:text-2xl md:text-3xl font-extrabold transition-all duration-500 cursor-pointer ${mood === 'longing'
                   ? 'text-blue-300 scale-110 drop-shadow-[0_0_30px_rgba(147,197,253,0.9)] underline decoration-blue-400 underline-offset-8'
                   : 'text-white/50 hover:text-white hover:scale-105'
-              }`}
+                }`}
             >
               دلتنگی
             </button>
@@ -273,11 +271,10 @@ export default function FloralAtmosphereOverlay({
             <button
               type="button"
               onClick={() => onSelectMood('new_beginning')}
-              className={`text-xl sm:text-2xl md:text-3xl font-extrabold transition-all duration-500 cursor-pointer ${
-                mood === 'new_beginning'
+              className={`text-xl sm:text-2xl md:text-3xl font-extrabold transition-all duration-500 cursor-pointer ${mood === 'new_beginning'
                   ? 'text-amber-300 scale-110 drop-shadow-[0_0_30px_rgba(252,211,77,0.9)] underline decoration-amber-400 underline-offset-8'
                   : 'text-white/50 hover:text-white hover:scale-105'
-              }`}
+                }`}
             >
               شروعی تازه
             </button>
