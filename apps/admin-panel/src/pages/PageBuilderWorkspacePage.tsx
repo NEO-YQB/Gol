@@ -598,7 +598,8 @@ function mapApiPageToForm(page: Record<string, unknown>): PageForm {
   }
 }
 
-function toOptionalText(value: string) {
+function toOptionalText(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
   const normalized = value.trim()
   return normalized.length > 0 ? normalized : undefined
 }
@@ -1520,17 +1521,24 @@ export function PageBuilderWorkspacePage({
 
         if (block.type === 'HERO_HEADER') {
           const raw = block.data
+          const subtitle = toOptionalText(raw.subtitle)
+          const imageUrl = toOptionalText(raw.imageUrl)
+          const mobileImageUrl = toOptionalText(raw.mobileImageUrl)
+          const ctaText = toOptionalText(raw.ctaText)
+          const ctaLink = toOptionalText(raw.ctaLink)
+          const textColor = toOptionalText(raw.textColor)
+
           return {
             ...block,
             loadingMode: 'eager',
             data: {
               title: String(raw.title ?? '').trim() || 'گلینو',
-              ...(toOptionalText(raw.subtitle) ? { subtitle: toOptionalText(raw.subtitle) } : {}),
-              ...(toOptionalText(raw.imageUrl) ? { imageUrl: toOptionalText(raw.imageUrl) } : {}),
-              ...(toOptionalText(raw.mobileImageUrl) ? { mobileImageUrl: toOptionalText(raw.mobileImageUrl) } : {}),
-              ...(toOptionalText(raw.ctaText) ? { ctaText: toOptionalText(raw.ctaText) } : {}),
-              ...(toOptionalText(raw.ctaLink) ? { ctaLink: toOptionalText(raw.ctaLink) } : {}),
-              ...(toOptionalText(raw.textColor) ? { textColor: toOptionalText(raw.textColor) } : {}),
+              ...(subtitle ? { subtitle } : {}),
+              ...(imageUrl ? { imageUrl } : {}),
+              ...(mobileImageUrl ? { mobileImageUrl } : {}),
+              ...(ctaText ? { ctaText } : {}),
+              ...(ctaLink ? { ctaLink } : {}),
+              ...(textColor ? { textColor } : {}),
               fullWidth: raw.fullWidth !== false,
               flushTop: raw.flushTop !== false,
               minHeightVh: Math.min(Math.max(Number(raw.minHeightVh ?? 92) || 92, 10), 140),
