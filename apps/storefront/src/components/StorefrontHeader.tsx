@@ -290,12 +290,15 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
     })
   }
 
-  const isHomePage = pathname === '/' || page.slug === '/' || page.pageType === 'HOME'
-  const firstHero = page.blocks.find((b) => b.type === 'HERO_HEADER')
-  const hasScrollyHero =
+  // ONLY on the home page ('/'), and ONLY when scrollytelling mode is active
+  const isHomePage = pathname === '/'
+  const firstHero = isHomePage ? page.blocks?.find((b) => b.type === 'HERO_HEADER') : undefined
+  const heroMode = String(firstHero?.data?.heroMode ?? '').trim()
+  const hasScrollyHero = Boolean(
     isHomePage &&
     firstHero &&
-    String(firstHero.data?.heroMode ?? 'scrollytelling') !== 'standard'
+    (heroMode ? heroMode === 'scrollytelling' : firstHero.data?.disableScrolly !== true)
+  )
 
   const [isHeroFinished, setIsHeroFinished] = useState(!hasScrollyHero)
 
@@ -316,13 +319,8 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
         return
       }
 
-      const catalogEl = document.getElementById('storefront-catalog')
-      if (catalogEl) {
-        const rect = catalogEl.getBoundingClientRect()
-        setIsHeroFinished(rect.top <= -50)
-      } else {
-        setIsHeroFinished(window.scrollY > window.innerHeight * 4.2)
-      }
+      // If no scrolly hero element is in the DOM, show header normally
+      setIsHeroFinished(true)
     }
 
     checkHeroFinished()
@@ -345,8 +343,12 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
       ref={headerRef}
       style={{
         ...headerVars,
-        transition: 'transform 0.65s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s ease-out, filter 0.5s ease-out',
-        willChange: 'transform, opacity, filter',
+        ...(hasScrollyHero
+          ? {
+              transition: 'transform 0.65s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s ease-out, filter 0.5s ease-out',
+              willChange: 'transform, opacity, filter',
+            }
+          : {}),
       }}
     >
       <div
