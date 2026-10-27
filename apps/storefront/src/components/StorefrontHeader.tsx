@@ -524,6 +524,7 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
                   <div className="grid gap-2">
                     {[
                       { label: 'پنل کاربری', href: '/account' },
+                      { label: 'سفارش‌های من', href: '/account/orders' },
                       { label: 'اطلاعات کاربری', href: '/account/profile' },
                       { label: 'کیف پول', href: '/account/wallet' },
                     ].map((item) => (
@@ -719,6 +720,7 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
               <div className="mt-2.5 grid gap-1">
                 {[
                   { label: 'پنل کاربری', href: '/account' },
+                  { label: 'سفارش‌های من', href: '/account/orders' },
                   { label: 'اطلاعات کاربری', href: '/account/profile' },
                   { label: 'کیف پول', href: '/account/wallet' },
                 ].map((item) => (

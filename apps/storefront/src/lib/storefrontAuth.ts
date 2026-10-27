@@ -30,6 +30,12 @@ export type StorefrontAccountSummary = {
     defaultAddressTitle?: string | null
     latestOrderStatus?: string | null
   }
+  ordersPagination?: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+  }
   recentOrders: Array<{
     id: number
     status: string
@@ -375,8 +381,33 @@ export async function completeProfile(token: string, fullName: string, nationalI
   })
 }
 
-export async function getAccountSummary(token: string) {
-  return request<StorefrontAccountSummary>('/auth/account-summary', {
+export async function getAccountSummary(token: string, page = 1, limit = 5) {
+  return request<StorefrontAccountSummary>(`/auth/account-summary?page=${page}&limit=${limit}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    cache: 'no-store',
+  })
+}
+
+export type StorefrontOrdersListResponse = {
+  items: Array<{
+    id: number
+    status: string
+    paymentStatus: string
+    totalAmount: number | string
+    createdAt: string
+    store?: { name: string; slug: string } | null
+    orderItems?: Array<{ id: number; productName?: string; quantity: number }>
+  }>
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+}
+
+export async function getOrders(token: string, page = 1, limit = 10) {
+  return request<StorefrontOrdersListResponse>(`/orders?page=${page}&limit=${limit}`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },

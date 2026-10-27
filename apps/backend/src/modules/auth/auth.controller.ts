@@ -1,4 +1,4 @@
-import { Controller, Post, Body, BadRequestException, Get, UseGuards, Patch } from '@nestjs/common';
+import { Controller, Post, Body, BadRequestException, Get, UseGuards, Patch, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { GetUser } from '../../common/decorators/get-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -50,8 +50,16 @@ export class AuthController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'دریافت خلاصه پنل کاربری مشتری' })
   @ApiOkResponse({ type: CustomerAccountSummaryDto })
-  getAccountSummary(@GetUser() user: { id: number }) {
-    return this.authService.getCustomerAccountSummary(user.id);
+  getAccountSummary(
+    @GetUser() user: { id: number },
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.authService.getCustomerAccountSummary(
+      user.id,
+      page ? parseInt(page, 10) : 1,
+      limit ? parseInt(limit, 10) : 5,
+    );
   }
 
   @Post('send-otp')

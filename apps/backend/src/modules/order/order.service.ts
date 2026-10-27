@@ -197,22 +197,59 @@ export class OrderService {
     });
   }
 
-  async findAll(user: AuthenticatedUser) {
+  async findAll(
+    user: AuthenticatedUser,
+    pagination?: { page?: number; limit?: number },
+  ) {
     await this.assertOrderAbility(user, 'read', user.id);
 
-    const orders = await this.prisma.order.findMany({
+    const hasPagination = Boolean(pagination && (pagination.page || pagination.limit));
+    if (!hasPagination) {
+      const orders = await this.prisma.order.findMany({
+        where: { userId: user.id },
+        include: this.getOrderListInclude(),
+        orderBy: { createdAt: 'desc' },
+        take: 300,
+      });
+
+      return this.syncExpiredPaymentsAndRefetch(orders, {
+        where: { userId: user.id },
+        include: this.getOrderListInclude(),
+        orderBy: { createdAt: 'desc' },
+        take: 300,
+      });
+    }
+
+    const page = Math.max(1, pagination?.page || 1);
+    const limit = Math.max(1, Math.min(50, pagination?.limit || 10));
+    const skip = (page - 1) * limit;
+
+    const [total, orders] = await Promise.all([
+      this.prisma.order.count({ where: { userId: user.id } }),
+      this.prisma.order.findMany({
+        where: { userId: user.id },
+        include: this.getOrderListInclude(),
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+    ]);
+
+    const synced = await this.syncExpiredPaymentsAndRefetch(orders, {
       where: { userId: user.id },
       include: this.getOrderListInclude(),
       orderBy: { createdAt: 'desc' },
-      take: 300,
+      skip,
+      take: limit,
     });
 
-    return this.syncExpiredPaymentsAndRefetch(orders, {
-      where: { userId: user.id },
-      include: this.getOrderListInclude(),
-      orderBy: { createdAt: 'desc' },
-      take: 300,
-    });
+    return {
+      items: synced,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit) || 1,
+    };
   }
 
   async findVendorOrders(user: AuthenticatedUser) {

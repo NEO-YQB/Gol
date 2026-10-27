@@ -170,8 +170,12 @@ export class AuthService {
     };
   }
 
-  async getCustomerAccountSummary(userId: number) {
-    const [user, orders, addresses, addressCount] = await Promise.all([
+  async getCustomerAccountSummary(userId: number, page: number = 1, limit: number = 5) {
+    const pageNum = Math.max(1, Number(page) || 1);
+    const limitNum = Math.max(1, Math.min(50, Number(limit) || 5));
+    const skip = (pageNum - 1) * limitNum;
+
+    const [user, orders, addresses, addressCount, latestOrder] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: userId },
         select: {
@@ -185,7 +189,8 @@ export class AuthService {
       this.prisma.order.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' },
-        take: 4,
+        skip,
+        take: limitNum,
         include: {
           orderItems: {
             select: {
@@ -214,6 +219,11 @@ export class AuthService {
       this.prisma.userAddress.count({
         where: { userId },
       }),
+      this.prisma.order.findFirst({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        select: { status: true },
+      }),
     ]);
 
     if (!user) {
@@ -233,6 +243,8 @@ export class AuthService {
       where: { userId, status: OrderStatus.DELIVERED },
     });
 
+    const totalPages = Math.ceil(allOrderCount / limitNum) || 1;
+
     return {
       profile: user,
       stats: {
@@ -241,7 +253,13 @@ export class AuthService {
         deliveredOrderCount,
         addressCount,
         defaultAddressTitle: addresses.find((item) => item.isDefault)?.title ?? null,
-        latestOrderStatus: orders[0]?.status ?? null,
+        latestOrderStatus: latestOrder?.status ?? null,
+      },
+      ordersPagination: {
+        page: pageNum,
+        limit: limitNum,
+        total: allOrderCount,
+        totalPages,
       },
       recentOrders: orders.map((order) => ({
         id: order.id,

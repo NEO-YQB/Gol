@@ -8,6 +8,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -107,8 +108,15 @@ export class OrderController {
 
   @Get()
   @ApiOperation({ summary: 'دریافت سفارش های کاربر' })
-  findAll(@GetUser() user: { id: number; roles: string[] }) {
-    return this.orderService.findAll(user);
+  findAll(
+    @GetUser() user: { id: number; roles: string[] },
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.orderService.findAll(user, {
+      page: page ? parseInt(page, 10) : undefined,
+      limit: limit ? parseInt(limit, 10) : undefined,
+    });
   }
 
   @Get('vendor')

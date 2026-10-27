@@ -7,7 +7,13 @@ const API_BASE_URL =
 
 export async function GET(request: NextRequest) {
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/account-summary`, {
+    const { searchParams } = new URL(request.url)
+    const queryString = searchParams.toString()
+    const targetUrl = queryString
+      ? `${API_BASE_URL}/auth/account-summary?${queryString}`
+      : `${API_BASE_URL}/auth/account-summary`
+
+    const response = await fetch(targetUrl, {
       method: 'GET',
       headers: {
         Authorization: request.headers.get('Authorization') || '',

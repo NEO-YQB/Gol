@@ -20,6 +20,14 @@ export class CustomerAccountSummaryDto {
     latestOrderStatus: string | null;
   };
 
+  @ApiProperty({ required: false })
+  ordersPagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+
   @ApiProperty()
   recentOrders!: Array<{
     id: number;
