@@ -7,7 +7,7 @@ import type { CategorySummary, EnrichedStorefrontPage, ProductTypeSummary } from
 import { resolveAssetUrl } from '../lib/storefront'
 import { clearStoredToken, completeProfile, getCart, getCurrentUser, readStoredToken, sendOtp, verifyOtp, writeStoredToken, type StorefrontCart, type StorefrontUser } from '../lib/storefrontAuth'
 import { STOREFRONT_CART_UPDATED_EVENT } from '../lib/storefrontCartEvents'
-import { CartIcon, MenuIcon, UserIcon } from './storefrontIcons'
+import { CartIcon, ChevronDownIcon, MenuIcon, UserIcon } from './storefrontIcons'
 import { storefrontStyles } from './storefrontStyles'
 import { buildHeaderThemeVars, resolveHeaderTheme } from './storefrontTheme'
 import { STOREFRONT_AUTH_REQUIRED_EVENT } from './storefrontToast'
@@ -118,6 +118,13 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
   }, [])
 
   useEffect(() => {
+    setIsMobileMenuOpen(false)
+    setOpenDesktopMenu(null)
+    setIsUserMenuOpen(false)
+    setIsAuthMenuOpen(false)
+  }, [pathname])
+
+  useEffect(() => {
     function handlePointerDown(event: MouseEvent | TouchEvent) {
       const target = event.target
       if (!(target instanceof Node)) return
@@ -126,6 +133,7 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
       setOpenDesktopMenu(null)
       setIsUserMenuOpen(false)
       setIsAuthMenuOpen(false)
+      setIsMobileMenuOpen(false)
     }
 
     document.addEventListener('mousedown', handlePointerDown)
@@ -258,30 +266,40 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
       if (!hasChildren) {
         return (
           <Link
-            className={`block rounded-2xl px-4 py-3 text-sm font-bold ${storefrontStyles.headerText} transition-colors hover:bg-white/30`}
+            className={storefrontStyles.mobileMenuLink}
             href={`/categories/${item.slug}`}
             key={`mobile-category-${item.id}-${depth}`}
-            style={{ paddingInlineStart: `${16 + depth * 14}px` }}
+            onClick={() => setIsMobileMenuOpen(false)}
+            style={{ paddingInlineStart: `${14 + depth * 14}px` }}
           >
-            {item.name}
+            <span>{item.name}</span>
+            <span className="text-xs text-[#9c8e7e]">‹</span>
           </Link>
         )
       }
 
       return (
-        <details className="rounded-2xl bg-white/12 px-2 py-2" key={`mobile-category-${item.id}-${depth}`}>
+        <details
+          className="group/sub my-1 rounded-xl border border-[#e8dfd4] bg-white/70 p-2 transition-all"
+          key={`mobile-category-${item.id}-${depth}`}
+        >
           <summary
-            className={`cursor-pointer rounded-xl px-3 py-2 text-sm font-bold ${storefrontStyles.headerText}`}
-            style={{ paddingInlineStart: `${12 + depth * 14}px` }}
+            className="flex cursor-pointer items-center justify-between rounded-lg px-2.5 py-2 text-sm font-bold text-[#173126] select-none list-none [&::-webkit-details-marker]:hidden"
+            style={{ paddingInlineStart: `${10 + depth * 14}px` }}
           >
-            {item.name}
+            <span>{item.name}</span>
+            <span className="text-[#1f6a52] transition-transform duration-300 group-open/sub:rotate-180">
+              <ChevronDownIcon />
+            </span>
           </summary>
-          <div className="mt-2 grid gap-1 border-r border-white/20 pr-2">
+          <div className="mt-2 grid gap-1 border-r-2 border-[#1f6a52]/30 pr-2">
             <Link
-              className={`block rounded-2xl px-4 py-3 text-sm font-bold ${storefrontStyles.headerText} transition-colors hover:bg-white/30`}
+              className={storefrontStyles.mobileMenuSubLink}
               href={`/categories/${item.slug}`}
+              onClick={() => setIsMobileMenuOpen(false)}
             >
-              مشاهده همه {item.name}
+              <span>مشاهده همه {item.name}</span>
+              <span>←</span>
             </Link>
             {renderMobileCategoryTree(item.children || [], depth + 1)}
           </div>
@@ -411,9 +429,18 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
 
         <div className="flex shrink-0 items-center gap-2 md:gap-3">
           <button
-            aria-label="باز کردن منو"
-            className={`inline-flex items-center justify-center rounded-full border p-3 md:hidden ${storefrontStyles.headerSoftSurface} ${storefrontStyles.headerText}`}
-            onClick={() => setIsMobileMenuOpen((current) => !current)}
+            aria-label={isMobileMenuOpen ? 'بستن منو' : 'باز کردن منو'}
+            className={`inline-flex items-center justify-center rounded-full border p-3 transition-all duration-300 md:hidden ${
+              isMobileMenuOpen
+                ? 'border-[#1f6a52] bg-[#1f6a52] text-white shadow-[0_8px_20px_rgba(31,106,82,0.3)]'
+                : `${storefrontStyles.headerSoftSurface} ${storefrontStyles.headerText}`
+            }`}
+            onClick={() => {
+              setOpenDesktopMenu(null)
+              setIsUserMenuOpen(false)
+              setIsAuthMenuOpen(false)
+              setIsMobileMenuOpen((current) => !current)
+            }}
             type="button"
           >
             <MenuIcon open={isMobileMenuOpen} />
@@ -599,58 +626,137 @@ export function StorefrontHeader({ page, heroTouchesTop }: { page: EnrichedStore
         </div>
       </div>
 
-      <div className={`${storefrontStyles.mobileMenuPanel} ${isMobileMenuOpen ? 'max-h-[75vh] translate-y-0 opacity-100' : 'max-h-0 -translate-y-2 opacity-0'}`}>
-        <div className="grid gap-2 p-4">
+      {/* Mobile backdrop scrim to ensure high contrast & outside click dismiss */}
+      <div
+        aria-hidden="true"
+        className={`fixed inset-0 -z-10 bg-[#07130d]/50 backdrop-blur-[2px] transition-opacity duration-300 md:hidden ${
+          isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={() => setIsMobileMenuOpen(false)}
+        style={{ minHeight: '100vh', width: '100vw' }}
+      />
+
+      <div
+        className={`${storefrontStyles.mobileMenuPanel} ${
+          isMobileMenuOpen
+            ? 'max-h-[calc(100vh-90px)] translate-y-0 opacity-100 scale-100'
+            : 'max-h-0 -translate-y-3 opacity-0 scale-[0.98] pointer-events-none border-transparent'
+        }`}
+      >
+        <div className="max-h-[calc(84vh-80px)] overflow-y-auto overscroll-contain p-3.5 space-y-2.5">
           {categories.length ? (
-            <details className={`rounded-2xl px-4 py-3 ${storefrontStyles.headerSoftSurface}`}>
-              <summary className={`cursor-pointer text-sm font-bold ${storefrontStyles.headerText}`}>دسته‌بندی‌ها</summary>
-              <div className="mt-3 grid gap-2">{renderMobileCategoryTree(categories)}</div>
+            <details className={`group/cat ${storefrontStyles.mobileMenuCard}`}>
+              <summary className="flex cursor-pointer items-center justify-between text-sm font-bold text-[#173126] select-none list-none [&::-webkit-details-marker]:hidden">
+                <span className="flex items-center gap-2">
+                  <span className="inline-block h-2 w-2 rounded-full bg-[#1f6a52]" />
+                  دسته‌بندی‌ها
+                </span>
+                <span className="text-[#1f6a52] transition-transform duration-300 group-open/cat:rotate-180">
+                  <ChevronDownIcon />
+                </span>
+              </summary>
+              <div className="mt-3 grid gap-1.5 border-t border-[#ece4d9] pt-2.5">
+                {renderMobileCategoryTree(categories)}
+              </div>
             </details>
           ) : null}
+
           {productTypes.length ? (
-            <details className={`rounded-2xl px-4 py-3 ${storefrontStyles.headerSoftSurface}`}>
-              <summary className={`cursor-pointer text-sm font-bold ${storefrontStyles.headerText}`}>نوع محصولات</summary>
-              <div className="mt-3 grid gap-2">
+            <details className={`group/ptype ${storefrontStyles.mobileMenuCard}`}>
+              <summary className="flex cursor-pointer items-center justify-between text-sm font-bold text-[#173126] select-none list-none [&::-webkit-details-marker]:hidden">
+                <span className="flex items-center gap-2">
+                  <span className="inline-block h-2 w-2 rounded-full bg-[#1f6a52]" />
+                  نوع محصولات
+                </span>
+                <span className="text-[#1f6a52] transition-transform duration-300 group-open/ptype:rotate-180">
+                  <ChevronDownIcon />
+                </span>
+              </summary>
+              <div className="mt-3 grid gap-1 border-t border-[#ece4d9] pt-2.5">
                 {productTypes.map((item) => (
-                  <Link className={`rounded-2xl px-4 py-3 text-sm font-bold ${storefrontStyles.headerText} transition-colors hover:bg-white/30`} href={`/product-types/${item.slug}`} key={`mobile-type-${item.id}`}>
-                    {item.name}
+                  <Link
+                    className={storefrontStyles.mobileMenuLink}
+                    href={`/product-types/${item.slug}`}
+                    key={`mobile-type-${item.id}`}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <span>{item.name}</span>
+                    <span className="text-xs text-[#9c8e7e]">‹</span>
                   </Link>
                 ))}
               </div>
             </details>
           ) : null}
+
           {theme.menuItems.map((item) => (
             <Link
-              className={`${storefrontStyles.headerNavItem} ${item.highlighted ? storefrontStyles.headerNavHighlight : storefrontStyles.headerNavDefault} rounded-2xl text-center`}
+              className={`flex items-center justify-center rounded-2xl px-4 py-3 text-center text-sm font-bold transition-all duration-200 active:scale-[0.99] ${
+                item.highlighted
+                  ? 'bg-[#1f6a52] text-white shadow-[0_6px_18px_rgba(31,106,82,0.25)] hover:bg-[#185340]'
+                  : 'border border-[#ece4d9] bg-[#f8f4ec] text-[#173126] hover:bg-white hover:text-[#1f6a52] hover:shadow-sm'
+              }`}
               href={item.href}
               key={`mobile-${item.label}-${item.href}`}
+              onClick={() => setIsMobileMenuOpen(false)}
             >
               {item.label}
             </Link>
           ))}
+
           {authMode === 'authenticated' ? (
-            <>
-              <div className={`rounded-2xl px-4 py-3 text-sm ${storefrontStyles.headerSoftSurface}`}>
-                <strong className={`block ${storefrontStyles.headerText}`}>سلام {authName || 'دوست گلینو'}</strong>
-                <span className={`block text-xs ${storefrontStyles.headerMutedText}`}>حساب کاربری</span>
+            <div className={storefrontStyles.mobileMenuCard}>
+              <div className="flex items-center gap-3 border-b border-[#ece4d9] pb-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1f6a52] text-white shadow-sm">
+                  <UserIcon />
+                </div>
+                <div className="min-w-0 flex-1 text-right">
+                  <strong className="block truncate text-sm font-bold text-[#173126]">
+                    سلام {authName || 'دوست گلینو'}
+                  </strong>
+                  <span className="block text-xs text-[#7d7161]">حساب کاربری</span>
+                </div>
               </div>
-              {[
-                { label: 'پنل کاربری', href: '/account' },
-                { label: 'اطلاعات کاربری', href: '/account/profile' },
-                { label: 'کیف پول', href: '/account/wallet' },
-              ].map((item) => (
-                <Link className={`rounded-2xl px-4 py-3 text-sm font-bold ${storefrontStyles.headerText} transition-colors hover:bg-white/30`} href={item.href} key={`mobile-user-${item.href}`}>
-                  {item.label}
-                </Link>
-              ))}
-              <button className={`rounded-2xl px-4 py-3 text-right text-sm font-bold ${storefrontStyles.headerText} transition-colors hover:bg-white/30`} onClick={handleLogout} type="button">
-                خروج
-              </button>
-            </>
+              <div className="mt-2.5 grid gap-1">
+                {[
+                  { label: 'پنل کاربری', href: '/account' },
+                  { label: 'اطلاعات کاربری', href: '/account/profile' },
+                  { label: 'کیف پول', href: '/account/wallet' },
+                ].map((item) => (
+                  <Link
+                    className={storefrontStyles.mobileMenuLink}
+                    href={item.href}
+                    key={`mobile-user-${item.href}`}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <span>{item.label}</span>
+                    <span className="text-xs text-[#9c8e7e]">‹</span>
+                  </Link>
+                ))}
+                <button
+                  className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-right text-sm font-bold text-[#b64b36] transition-colors hover:bg-red-50"
+                  onClick={() => {
+                    setIsMobileMenuOpen(false)
+                    handleLogout()
+                  }}
+                  type="button"
+                >
+                  <span>خروج از حساب</span>
+                  <span className="text-xs">←</span>
+                </button>
+              </div>
+            </div>
           ) : (
-            <div className="grid gap-2">
-              <button className={`${storefrontStyles.headerAction} justify-center`} onClick={() => setIsAuthMenuOpen((current) => !current)} type="button">
-                ورود و ثبت نام
+            <div className="pt-1">
+              <button
+                className="flex w-full items-center justify-center gap-2.5 rounded-2xl bg-[#1f6a52] px-4 py-3.5 text-sm font-bold text-white shadow-[0_8px_20px_rgba(31,106,82,0.25)] transition-all hover:bg-[#185340] active:scale-[0.99]"
+                onClick={() => {
+                  setIsMobileMenuOpen(false)
+                  setIsAuthMenuOpen(true)
+                }}
+                type="button"
+              >
+                <UserIcon />
+                <span>ورود و ثبت نام</span>
               </button>
             </div>
           )}

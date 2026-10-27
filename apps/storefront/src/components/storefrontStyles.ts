@@ -38,5 +38,11 @@ export const storefrontStyles = {
   userMenuItem:
     'flex items-center justify-between gap-3 rounded-2xl border border-[var(--header-dropdown-panel-border)] bg-white/45 px-4 py-3 text-sm font-bold text-[var(--header-dropdown-panel-text)] transition-colors hover:bg-[var(--header-dropdown-panel-hover-bg)]',
   mobileMenuPanel:
-    'pointer-events-auto mx-4 mt-3 overflow-hidden rounded-[28px] border border-[var(--header-glass-border)] bg-[var(--header-glass-bg)] text-[var(--header-text)] shadow-[0_20px_45px_rgba(20,29,25,0.16)] backdrop-blur-2xl transition-all duration-300 ease-out md:hidden',
+    'pointer-events-auto mx-3 mt-2 overflow-hidden rounded-[26px] border border-[#e5dcd0] bg-[#fffdfa] text-[#173126] shadow-[0_25px_60px_-10px_rgba(15,32,25,0.32),0_0_0_1px_rgba(23,49,38,0.06)] transition-all duration-300 ease-out md:hidden',
+  mobileMenuCard:
+    'rounded-2xl border border-[#ece4d9] bg-[#f8f4ec] p-3 text-[#173126] transition-all',
+  mobileMenuLink:
+    'flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-semibold text-[#173126] transition-colors hover:bg-white hover:text-[#1f6a52] hover:shadow-sm',
+  mobileMenuSubLink:
+    'flex items-center justify-between rounded-lg bg-[#1f6a52]/8 px-3 py-2 text-xs font-black text-[#1f6a52] transition-colors hover:bg-[#1f6a52]/15',
 }
