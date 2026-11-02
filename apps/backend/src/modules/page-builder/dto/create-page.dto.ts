@@ -283,6 +283,37 @@ export class FooterSocialItemDto {
   href!: string;
 }
 
+export class FooterAppDownloadItemDto {
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  enabled?: boolean;
+
+  @ApiProperty({ example: 'Google Play' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(120)
+  title!: string;
+
+  @ApiPropertyOptional({ example: 'play-store' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  platform?: string;
+
+  @ApiProperty({ example: 'https://play.google.com/store/apps/details?id=com.golino.app' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(2000)
+  href!: string;
+
+  @ApiPropertyOptional({ example: 'https://cdn.example.com/play-store.png' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  imageUrl?: string;
+}
+
 export class FooterAppDownloadDto {
   @ApiPropertyOptional({ example: true })
   @IsOptional()
@@ -294,6 +325,13 @@ export class FooterAppDownloadDto {
   @IsString()
   @MaxLength(120)
   title?: string;
+
+  @ApiPropertyOptional({ type: [FooterAppDownloadItemDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => FooterAppDownloadItemDto)
+  items?: FooterAppDownloadItemDto[];
 
   @ApiPropertyOptional({ example: 'https://cafebazaar.ir/app/com.golino.vendorapp' })
   @IsOptional()

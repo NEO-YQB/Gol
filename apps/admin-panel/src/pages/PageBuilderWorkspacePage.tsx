@@ -68,6 +68,25 @@ type FooterSocialForm = {
   href: string
 }
 
+export type FooterAppDownloadItemForm = {
+  enabled: boolean
+  title: string
+  platform: string
+  href: string
+  imageUrl: string
+}
+
+export const APP_DOWNLOAD_PLATFORMS = [
+  { value: 'play-store', label: 'گوگل پلی (Google Play)', defaultTitle: 'Google Play' },
+  { value: 'bazaar', label: 'کافه بازار (Bazaar)', defaultTitle: 'کافه بازار' },
+  { value: 'myket', label: 'مایکت (Myket)', defaultTitle: 'مایکت' },
+  { value: 'app-store', label: 'اپ استور (App Store)', defaultTitle: 'App Store' },
+  { value: 'direct', label: 'دانلود مستقیم اندروید (APK)', defaultTitle: 'دانلود مستقیم' },
+  { value: 'web-app', label: 'نسخه وب / آیفون (PWA)', defaultTitle: 'نسخه وب (PWA)' },
+  { value: 'sibapp', label: 'سیب‌اپ (SibApp)', defaultTitle: 'سیب‌اپ' },
+  { value: 'custom', label: 'سفارشی / سایر', defaultTitle: '' },
+] as const
+
 type ColorFieldProps = {
   label: string
   value: string
@@ -137,6 +156,7 @@ type PageForm = {
   footerSocials: FooterSocialForm[]
   footerAppDownloadEnabled: boolean
   footerAppDownloadTitle: string
+  footerAppDownloadItems: FooterAppDownloadItemForm[]
   footerAppDownloadBazaarUrl: string
   footerAppDownloadBazaarImageUrl: string
   footerAppDownloadDirectUrl: string
@@ -167,6 +187,16 @@ function createFooterSocial(): FooterSocialForm {
     icon: '',
     imageUrl: '',
     href: '',
+  }
+}
+
+function createFooterAppDownloadItem(): FooterAppDownloadItemForm {
+  return {
+    enabled: true,
+    title: 'Google Play',
+    platform: 'play-store',
+    href: '',
+    imageUrl: '',
   }
 }
 
@@ -312,6 +342,7 @@ function createEmptyForm(): PageForm {
     footerSocials: [],
     footerAppDownloadEnabled: true,
     footerAppDownloadTitle: 'دانلود اپلیکیشن',
+    footerAppDownloadItems: [],
     footerAppDownloadBazaarUrl: '',
     footerAppDownloadBazaarImageUrl: '',
     footerAppDownloadDirectUrl: '',
@@ -577,9 +608,45 @@ function mapApiPageToForm(page: Record<string, unknown>): PageForm {
     footerSocials,
     ...(function parseAppDownload() {
       const ad = (typeof footerConfig.appDownload === 'object' && footerConfig.appDownload !== null ? footerConfig.appDownload : {}) as Record<string, unknown>
+      const rawItems = Array.isArray(ad.items) ? (ad.items as Array<Record<string, unknown>>) : []
+      const items: FooterAppDownloadItemForm[] = rawItems.map((item) => ({
+        enabled: item.enabled !== false,
+        title: readText(item, ['title'], ''),
+        platform: readText(item, ['platform'], 'play-store'),
+        href: readText(item, ['href'], ''),
+        imageUrl: readText(item, ['imageUrl'], ''),
+      }))
+
+      if (items.length === 0) {
+        const bazaarUrl = readText(ad, ['bazaarUrl'], '')
+        const bazaarImageUrl = readText(ad, ['bazaarImageUrl'], '')
+        const directUrl = readText(ad, ['directUrl'], '')
+        const directImageUrl = readText(ad, ['directImageUrl'], '')
+
+        if (bazaarUrl) {
+          items.push({
+            enabled: true,
+            title: 'کافه بازار',
+            platform: 'bazaar',
+            href: bazaarUrl,
+            imageUrl: bazaarImageUrl,
+          })
+        }
+        if (directUrl) {
+          items.push({
+            enabled: true,
+            title: 'دانلود مستقیم',
+            platform: 'direct',
+            href: directUrl,
+            imageUrl: directImageUrl,
+          })
+        }
+      }
+
       return {
         footerAppDownloadEnabled: ad.enabled !== false,
         footerAppDownloadTitle: readText(ad, ['title'], 'دانلود اپلیکیشن'),
+        footerAppDownloadItems: items,
         footerAppDownloadBazaarUrl: readText(ad, ['bazaarUrl'], ''),
         footerAppDownloadBazaarImageUrl: readText(ad, ['bazaarImageUrl'], ''),
         footerAppDownloadDirectUrl: readText(ad, ['directUrl'], ''),
@@ -1228,6 +1295,29 @@ export function PageBuilderWorkspacePage({
     }))
   }
 
+  function patchFooterAppDownloadItem(index: number, patch: Partial<FooterAppDownloadItemForm>) {
+    setForm((current) => ({
+      ...current,
+      footerAppDownloadItems: current.footerAppDownloadItems.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, ...patch } : item,
+      ),
+    }))
+  }
+
+  function addFooterAppDownloadItem() {
+    setForm((current) => ({
+      ...current,
+      footerAppDownloadItems: [...current.footerAppDownloadItems, createFooterAppDownloadItem()],
+    }))
+  }
+
+  function removeFooterAppDownloadItem(index: number) {
+    setForm((current) => ({
+      ...current,
+      footerAppDownloadItems: current.footerAppDownloadItems.filter((_, itemIndex) => itemIndex !== index),
+    }))
+  }
+
   async function handleImageChoose(fileList: FileList | null) {
     const file = fileList?.[0]
     const target = uploadingImageTarget
@@ -1276,6 +1366,14 @@ export function PageBuilderWorkspacePage({
 
       if (target === 'page:footerAppDownloadDirect') {
         updateForm('footerAppDownloadDirectImageUrl', uploaded.url)
+        return
+      }
+
+      if (target.startsWith('page:footerAppDownloadItem:')) {
+        const itemIndex = Number(target.split(':')[2])
+        if (Number.isInteger(itemIndex)) {
+          patchFooterAppDownloadItem(itemIndex, { imageUrl: uploaded.url })
+        }
         return
       }
 
@@ -1404,6 +1502,15 @@ export function PageBuilderWorkspacePage({
         appDownload: {
           enabled: form.footerAppDownloadEnabled,
           title: toOptionalText(form.footerAppDownloadTitle),
+          items: form.footerAppDownloadItems
+            .map((item) => ({
+              enabled: item.enabled,
+              title: item.title.trim(),
+              platform: item.platform || undefined,
+              href: item.href.trim(),
+              imageUrl: toOptionalText(item.imageUrl),
+            }))
+            .filter((item) => item.title.length > 0 && item.href.length > 0),
           bazaarUrl: toOptionalText(form.footerAppDownloadBazaarUrl),
           bazaarImageUrl: toOptionalText(form.footerAppDownloadBazaarImageUrl),
           directUrl: toOptionalText(form.footerAppDownloadDirectUrl),
@@ -2058,6 +2165,9 @@ export function PageBuilderWorkspacePage({
             <div className="page-builder-banner-editor page-builder-field--wide">
               <div className="page-builder-banner-editor__header">
                 <strong>دانلود اپلیکیشن</strong>
+                <button className="fm-button fm-button--ghost" onClick={() => addFooterAppDownloadItem()} type="button">
+                  افزودن لینک دانلود
+                </button>
               </div>
               <div className="fm-grid page-builder-form-grid">
                 <label className="fm-field page-builder-checkbox">
@@ -2068,46 +2178,98 @@ export function PageBuilderWorkspacePage({
                   <span>عنوان بخش</span>
                   <input onChange={(event) => updateForm('footerAppDownloadTitle', event.target.value)} type="text" value={form.footerAppDownloadTitle} />
                 </label>
-                <label className="fm-field page-builder-field--wide">
-                  <span>لینک بازار</span>
-                  <input onChange={(event) => updateForm('footerAppDownloadBazaarUrl', event.target.value)} placeholder="https://cafebazaar.ir/app/..." type="text" value={form.footerAppDownloadBazaarUrl} />
-                </label>
-                <label className="fm-field page-builder-field--wide">
-                  <span>تصویر آیکون بازار (URL - اختیاری)</span>
-                  <input onChange={(event) => updateForm('footerAppDownloadBazaarImageUrl', event.target.value)} type="text" value={form.footerAppDownloadBazaarImageUrl} />
-                </label>
-                <div className="admin-products-upload-card page-builder-field--wide">
-                  <div className="admin-products-upload-actions">
-                    <button className="content-secondary-action" disabled={uploadingImageTarget === 'page:footerAppDownloadBazaar'} onClick={() => openImagePicker('page:footerAppDownloadBazaar')} type="button">
-                      {uploadingImageTarget === 'page:footerAppDownloadBazaar' ? 'در حال آپلود...' : 'آپلود آیکون بازار'}
+              </div>
+
+              <div className="page-builder-banner-list" style={{ marginTop: '1rem' }}>
+                {form.footerAppDownloadItems.map((item, itemIndex) => (
+                  <div className="page-builder-banner-card" key={`footer-app-item-${itemIndex}`}>
+                    <label className="fm-field page-builder-checkbox">
+                      <span>فعال</span>
+                      <input checked={item.enabled} onChange={(event) => patchFooterAppDownloadItem(itemIndex, { enabled: event.target.checked })} type="checkbox" />
+                    </label>
+                    <label className="fm-field">
+                      <span>پلتفرم</span>
+                      <select
+                        onChange={(event) => {
+                          const nextPlatform = event.target.value
+                          const matched = APP_DOWNLOAD_PLATFORMS.find((p) => p.value === nextPlatform)
+                          patchFooterAppDownloadItem(itemIndex, {
+                            platform: nextPlatform,
+                            title:
+                              item.title.trim().length === 0 ||
+                              APP_DOWNLOAD_PLATFORMS.some((p) => p.defaultTitle === item.title)
+                                ? matched?.defaultTitle || item.title
+                                : item.title,
+                          })
+                        }}
+                        value={item.platform}
+                      >
+                        {APP_DOWNLOAD_PLATFORMS.map((platform) => (
+                          <option key={platform.value} value={platform.value}>
+                            {platform.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="fm-field">
+                      <span>عنوان (Tooltip / متن جایگزین)</span>
+                      <input
+                        onChange={(event) => patchFooterAppDownloadItem(itemIndex, { title: event.target.value })}
+                        placeholder="مثلاً گوگل پلی یا کافه بازار"
+                        type="text"
+                        value={item.title}
+                      />
+                    </label>
+                    <label className="fm-field page-builder-field--wide">
+                      <span>لینک مقصد (URL)</span>
+                      <input
+                        onChange={(event) => patchFooterAppDownloadItem(itemIndex, { href: event.target.value })}
+                        placeholder="https://..."
+                        type="text"
+                        value={item.href}
+                      />
+                    </label>
+                    <label className="fm-field page-builder-field--wide">
+                      <span>آیکون / لوگوی سفارشی (اختیاری - در صورت خالی بودن از لوگوی پیش‌فرض پلتفرم استفاده می‌شود)</span>
+                      <input
+                        onChange={(event) => patchFooterAppDownloadItem(itemIndex, { imageUrl: event.target.value })}
+                        placeholder="URL تصویر یا از دکمه آپلود زیر استفاده کنید"
+                        type="text"
+                        value={item.imageUrl}
+                      />
+                    </label>
+                    <div className="admin-products-upload-card page-builder-field--wide">
+                      <div className="admin-products-upload-actions">
+                        <button
+                          className="content-secondary-action"
+                          disabled={uploadingImageTarget === `page:footerAppDownloadItem:${itemIndex}`}
+                          onClick={() => openImagePicker(`page:footerAppDownloadItem:${itemIndex}`)}
+                          type="button"
+                        >
+                          {uploadingImageTarget === `page:footerAppDownloadItem:${itemIndex}` ? 'در حال آپلود...' : 'آپلود لوگوی سفارشی'}
+                        </button>
+                      </div>
+                      {getImagePreview(item.imageUrl) ? (
+                        <div className="admin-products-image-preview">
+                          <img alt={`Preview app download ${itemIndex + 1}`} src={item.imageUrl} />
+                        </div>
+                      ) : null}
+                    </div>
+                    <button
+                      className="fm-button fm-button--secondary"
+                      onClick={() => removeFooterAppDownloadItem(itemIndex)}
+                      type="button"
+                    >
+                      حذف این مورد
                     </button>
                   </div>
-                  {getImagePreview(form.footerAppDownloadBazaarImageUrl) ? (
-                    <div className="admin-products-image-preview">
-                      <img alt="Preview bazaar icon" src={form.footerAppDownloadBazaarImageUrl} />
-                    </div>
-                  ) : null}
-                </div>
-                <label className="fm-field page-builder-field--wide">
-                  <span>لینک دانلود مستقیم (APK)</span>
-                  <input onChange={(event) => updateForm('footerAppDownloadDirectUrl', event.target.value)} placeholder="https://your-server.com/app.apk" type="text" value={form.footerAppDownloadDirectUrl} />
-                </label>
-                <label className="fm-field page-builder-field--wide">
-                  <span>تصویر آیکون اندروید (URL - اختیاری)</span>
-                  <input onChange={(event) => updateForm('footerAppDownloadDirectImageUrl', event.target.value)} type="text" value={form.footerAppDownloadDirectImageUrl} />
-                </label>
-                <div className="admin-products-upload-card page-builder-field--wide">
-                  <div className="admin-products-upload-actions">
-                    <button className="content-secondary-action" disabled={uploadingImageTarget === 'page:footerAppDownloadDirect'} onClick={() => openImagePicker('page:footerAppDownloadDirect')} type="button">
-                      {uploadingImageTarget === 'page:footerAppDownloadDirect' ? 'در حال آپلود...' : 'آپلود آیکون اندروید'}
-                    </button>
+                ))}
+
+                {form.footerAppDownloadItems.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '1.5rem', background: '#fcfaf6', borderRadius: '16px', border: '1px dashed #dcd3c5', color: '#6e6152', fontSize: '13px' }}>
+                    هیچ موردی برای دانلود اپلیکیشن ثبت نشده است. برای افزودن، دکمه «افزودن لینک دانلود» را بزنید.
                   </div>
-                  {getImagePreview(form.footerAppDownloadDirectImageUrl) ? (
-                    <div className="admin-products-image-preview">
-                      <img alt="Preview android icon" src={form.footerAppDownloadDirectImageUrl} />
-                    </div>
-                  ) : null}
-                </div>
+                ) : null}
               </div>
             </div>
 

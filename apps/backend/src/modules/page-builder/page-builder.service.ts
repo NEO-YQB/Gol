@@ -437,14 +437,49 @@ export class PageBuilderService {
         }))
         .filter((social) => social.label.length > 0 && social.href.length > 0),
       appDownload: footerConfig.appDownload
-        ? {
-            enabled: footerConfig.appDownload.enabled !== false,
-            title: this.normalizeNullableText(footerConfig.appDownload.title),
-            bazaarUrl: this.normalizeNullableText(footerConfig.appDownload.bazaarUrl),
-            bazaarImageUrl: this.normalizeNullableText(footerConfig.appDownload.bazaarImageUrl),
-            directUrl: this.normalizeNullableText(footerConfig.appDownload.directUrl),
-            directImageUrl: this.normalizeNullableText(footerConfig.appDownload.directImageUrl),
-          }
+        ? (() => {
+            const rawItems = Array.isArray(footerConfig.appDownload.items) ? footerConfig.appDownload.items : [];
+            const items = rawItems
+              .map((item) => ({
+                enabled: item.enabled !== false,
+                title: this.normalizeText(item.title || ''),
+                platform: this.normalizeNullableText(item.platform),
+                href: this.normalizeText(item.href || ''),
+                imageUrl: this.normalizeNullableText(item.imageUrl),
+              }))
+              .filter((item) => item.title.length > 0 && item.href.length > 0);
+
+            if (items.length === 0) {
+              if (footerConfig.appDownload.bazaarUrl) {
+                items.push({
+                  enabled: true,
+                  title: 'کافه بازار',
+                  platform: 'bazaar',
+                  href: this.normalizeText(footerConfig.appDownload.bazaarUrl),
+                  imageUrl: this.normalizeNullableText(footerConfig.appDownload.bazaarImageUrl),
+                });
+              }
+              if (footerConfig.appDownload.directUrl) {
+                items.push({
+                  enabled: true,
+                  title: 'دانلود مستقیم',
+                  platform: 'direct',
+                  href: this.normalizeText(footerConfig.appDownload.directUrl),
+                  imageUrl: this.normalizeNullableText(footerConfig.appDownload.directImageUrl),
+                });
+              }
+            }
+
+            return {
+              enabled: footerConfig.appDownload.enabled !== false,
+              title: this.normalizeNullableText(footerConfig.appDownload.title),
+              bazaarUrl: this.normalizeNullableText(footerConfig.appDownload.bazaarUrl),
+              bazaarImageUrl: this.normalizeNullableText(footerConfig.appDownload.bazaarImageUrl),
+              directUrl: this.normalizeNullableText(footerConfig.appDownload.directUrl),
+              directImageUrl: this.normalizeNullableText(footerConfig.appDownload.directImageUrl),
+              items,
+            };
+          })()
         : null,
       legalEnabled: footerConfig.legalEnabled !== false,
       legalText: this.normalizeNullableText(footerConfig.legalText),
