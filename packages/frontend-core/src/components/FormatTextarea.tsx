@@ -107,10 +107,7 @@ export function RichTextEditor({
         openOnClick: false,
         autolink: true,
         protocols: ['http', 'https', 'mailto', 'tel'],
-        HTMLAttributes: {
-          rel: null,
-          target: null,
-        },
+        HTMLAttributes: {},
       }),
       Image,
       Underline,
@@ -147,29 +144,150 @@ export function RichTextEditor({
   const outline = useMemo(() => buildOutline(value || ''), [value])
   const plainText = useMemo(() => stripHtml(value || '').trim(), [value])
 
-  function toggleLink() {
+  const [linkDialog, setLinkDialog] = useState<{
+    isOpen: boolean
+    href: string
+    targetBlank: boolean
+    isNofollow: boolean
+    isSponsored: boolean
+    isNoopener: boolean
+    hasExistingLink: boolean
+  }>({
+    isOpen: false,
+    href: '',
+    targetBlank: false,
+    isNofollow: false,
+    isSponsored: false,
+    isNoopener: false,
+    hasExistingLink: false,
+  })
+
+  const [imageDialog, setImageDialog] = useState<{
+    isOpen: boolean
+    src: string
+    alt: string
+  }>({
+    isOpen: false,
+    src: '',
+    alt: '',
+  })
+
+  function isInternalLink(url: string) {
+    const trimmed = url.trim()
+    if (!trimmed) return true
+    return !/^https?:\/\//i.test(trimmed) || trimmed.includes('golino.shop')
+  }
+
+  function openLinkDialog() {
     if (!editor) return
 
-    const previousUrl = editor.getAttributes('link').href as string | undefined
-    const url = window.prompt('آدرس لینک را وارد کن', previousUrl || 'https://')
+    const previousHref = (editor.getAttributes('link').href as string | undefined) || ''
+    const previousTarget = (editor.getAttributes('link').target as string | undefined) || ''
+    const previousRel = ((editor.getAttributes('link').rel as string | undefined) || '').toLowerCase()
 
-    if (url === null) return
-    if (url.trim() === '') {
+    const relTokens = previousRel ? previousRel.split(/\s+/) : []
+    const hasExisting = Boolean(previousHref)
+    const isInternal = isInternalLink(previousHref)
+
+    setLinkDialog({
+      isOpen: true,
+      href: previousHref,
+      targetBlank: previousTarget === '_blank' || (!hasExisting && !isInternal),
+      isNofollow: relTokens.includes('nofollow'),
+      isSponsored: relTokens.includes('sponsored'),
+      isNoopener: relTokens.includes('noopener') || (!hasExisting && !isInternal),
+      hasExistingLink: hasExisting,
+    })
+  }
+
+  function handleHrefChange(nextHref: string) {
+    setLinkDialog((prev) => {
+      const wasEmpty = !prev.href.trim()
+      const isInternal = isInternalLink(nextHref)
+
+      if (wasEmpty && !isInternal && !prev.hasExistingLink) {
+        return {
+          ...prev,
+          href: nextHref,
+          targetBlank: true,
+          isNoopener: true,
+        }
+      } else if (isInternal && !prev.hasExistingLink) {
+        return {
+          ...prev,
+          href: nextHref,
+          targetBlank: false,
+          isNofollow: false,
+          isSponsored: false,
+          isNoopener: false,
+        }
+      }
+
+      return { ...prev, href: nextHref }
+    })
+  }
+
+  function handleSaveLink() {
+    if (!editor) return
+
+    const trimmedHref = linkDialog.href.trim()
+    if (!trimmedHref) {
       editor.chain().focus().extendMarkRange('link').unsetLink().run()
+      setLinkDialog((prev) => ({ ...prev, isOpen: false }))
       return
     }
 
-    editor.chain().focus().extendMarkRange('link').setLink({ href: url.trim() }).run()
+    const relTokens: string[] = []
+    if (linkDialog.isNofollow) relTokens.push('nofollow')
+    if (linkDialog.isSponsored) relTokens.push('sponsored')
+    if (linkDialog.isNoopener || linkDialog.targetBlank) {
+      relTokens.push('noopener', 'noreferrer')
+    }
+
+    const uniqueRel = Array.from(new Set(relTokens)).join(' ')
+
+    editor
+      .chain()
+      .focus()
+      .extendMarkRange('link')
+      .setLink({
+        href: trimmedHref,
+        target: linkDialog.targetBlank ? '_blank' : null,
+        rel: uniqueRel || null,
+      })
+      .run()
+
+    setLinkDialog((prev) => ({ ...prev, isOpen: false }))
   }
 
-  function insertImage() {
+  function handleRemoveLink() {
     if (!editor) return
+    editor.chain().focus().extendMarkRange('link').unsetLink().run()
+    setLinkDialog((prev) => ({ ...prev, isOpen: false }))
+  }
 
-    const src = window.prompt('آدرس تصویر را وارد کن')
-    if (!src) return
+  function openImageDialog() {
+    if (!editor) return
+    const currentSrc = (editor.getAttributes('image').src as string | undefined) || ''
+    const currentAlt = (editor.getAttributes('image').alt as string | undefined) || ''
+    setImageDialog({
+      isOpen: true,
+      src: currentSrc,
+      alt: currentAlt,
+    })
+  }
 
-    const alt = window.prompt('متن alt را برای سئو وارد کن', 'توضیح تصویر') || 'توضیح تصویر'
-    editor.chain().focus().setImage({ src: src.trim(), alt: alt.trim() }).run()
+  function handleSaveImage() {
+    if (!editor) return
+    const trimmedSrc = imageDialog.src.trim()
+    if (!trimmedSrc) {
+      setImageDialog((prev) => ({ ...prev, isOpen: false }))
+      return
+    }
+
+    const trimmedAlt = imageDialog.alt.trim() || 'تصویر محتوا'
+    editor.chain().focus().setImage({ src: trimmedSrc, alt: trimmedAlt }).run()
+    setImageDialog((prev) => ({ ...prev, isOpen: false }))
   }
 
   if (!editor) {
@@ -239,13 +357,13 @@ export function RichTextEditor({
             <button className={toolbarButtonClass(editor.isActive({ textAlign: 'center' }))} onClick={() => editor.chain().focus().setTextAlign('center').run()} type="button">
               وسط
             </button>
-            <button className={toolbarButtonClass(editor.isActive('link'))} onClick={toggleLink} type="button">
+            <button className={toolbarButtonClass(editor.isActive('link'))} onClick={openLinkDialog} type="button">
               لینک
             </button>
-            <button className={toolbarButtonClass()} onClick={() => editor.chain().focus().unsetLink().run()} type="button">
+            <button className={toolbarButtonClass()} onClick={handleRemoveLink} type="button">
               حذف لینک
             </button>
-            <button className={toolbarButtonClass()} onClick={insertImage} type="button">
+            <button className={toolbarButtonClass()} onClick={openImageDialog} type="button">
               تصویر
             </button>
             <button className={toolbarButtonClass()} onClick={() => editor.chain().focus().setHorizontalRule().run()} type="button">
@@ -300,6 +418,255 @@ export function RichTextEditor({
           </section>
         </aside>
       </div>
+
+      {linkDialog.isOpen ? (
+        <div className="carousel-dialog" role="dialog" aria-modal="true" aria-label="تنظیمات پیوند">
+          <button
+            className="carousel-dialog__backdrop"
+            onClick={() => setLinkDialog((prev) => ({ ...prev, isOpen: false }))}
+            type="button"
+            aria-label="بستن"
+          />
+          <div className="carousel-dialog__panel" style={{ width: 'min(92vw, 520px)' }}>
+            <div className="carousel-dialog__header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '1.2rem' }}>🔗</span>
+                <h3>تنظیمات پیوند (لینک)</h3>
+              </div>
+              <button
+                className="content-secondary-action"
+                onClick={() => setLinkDialog((prev) => ({ ...prev, isOpen: false }))}
+                type="button"
+              >
+                بستن
+              </button>
+            </div>
+
+            <div className="carousel-dialog__body">
+              <label className="fm-field">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>آدرس پیوند (URL)</span>
+                  {linkDialog.href.trim() ? (
+                    <span
+                      style={{
+                        fontSize: '0.78rem',
+                        padding: '2px 8px',
+                        borderRadius: '999px',
+                        fontWeight: 700,
+                        backgroundColor: isInternalLink(linkDialog.href)
+                          ? 'rgba(31, 106, 82, 0.12)'
+                          : 'rgba(197, 151, 77, 0.15)',
+                        color: isInternalLink(linkDialog.href) ? '#1f6a52' : '#92611a',
+                      }}
+                    >
+                      {isInternalLink(linkDialog.href) ? 'پیوند داخلی گلینو' : 'پیوند خارجی'}
+                    </span>
+                  ) : null}
+                </div>
+                <input
+                  autoFocus
+                  dir="ltr"
+                  onChange={(event) => handleHrefChange(event.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      handleSaveLink()
+                    }
+                  }}
+                  placeholder="https://... یا /categories/..."
+                  value={linkDialog.href}
+                />
+              </label>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gap: '12px',
+                  background: 'rgba(244, 237, 226, 0.45)',
+                  padding: '14px 16px',
+                  borderRadius: '20px',
+                  border: '1px solid rgba(214, 196, 171, 0.45)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '0.88rem', fontWeight: 800, color: 'var(--fm-text-primary, #173126)' }}>
+                    ویژگی‌ها و صفات سئو (SEO Attributes)
+                  </span>
+                  <span style={{ fontSize: '0.74rem', color: 'var(--fm-text-secondary, #627166)' }}>
+                    کنترل دستی رفتار پیوند
+                  </span>
+                </div>
+
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
+                  <input
+                    checked={linkDialog.targetBlank}
+                    onChange={(e) => setLinkDialog((prev) => ({ ...prev, targetBlank: e.target.checked }))}
+                    style={{ width: '18px', height: '18px', marginTop: '2px', accentColor: '#1f6a52', cursor: 'pointer' }}
+                    type="checkbox"
+                  />
+                  <div style={{ flex: 1 }}>
+                    <strong style={{ display: 'block', fontSize: '0.86rem', color: 'var(--fm-text-primary, #173126)' }}>
+                      باز شدن در تب جدید (target="_blank")
+                    </strong>
+                    <small style={{ color: 'var(--fm-text-secondary, #627166)', fontSize: '0.78rem', lineHeight: '1.5' }}>
+                      صفحه در زبانه جدید باز شود (مناسب لینک‌های خارجی جهت حفظ کاربر در سایت)
+                    </small>
+                  </div>
+                </label>
+
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
+                  <input
+                    checked={linkDialog.isNofollow}
+                    onChange={(e) => setLinkDialog((prev) => ({ ...prev, isNofollow: e.target.checked }))}
+                    style={{ width: '18px', height: '18px', marginTop: '2px', accentColor: '#1f6a52', cursor: 'pointer' }}
+                    type="checkbox"
+                  />
+                  <div style={{ flex: 1 }}>
+                    <strong style={{ display: 'block', fontSize: '0.86rem', color: 'var(--fm-text-primary, #173126)' }}>
+                      نوفالو (rel="nofollow")
+                    </strong>
+                    <small style={{ color: 'var(--fm-text-secondary, #627166)', fontSize: '0.78rem', lineHeight: '1.5' }}>
+                      جلوگیری از خروج اعتبار پیج‌رنک به مقصد پیوند (سیگنال رسمی به گوگل)
+                    </small>
+                  </div>
+                </label>
+
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
+                  <input
+                    checked={linkDialog.isSponsored}
+                    onChange={(e) => setLinkDialog((prev) => ({ ...prev, isSponsored: e.target.checked }))}
+                    style={{ width: '18px', height: '18px', marginTop: '2px', accentColor: '#1f6a52', cursor: 'pointer' }}
+                    type="checkbox"
+                  />
+                  <div style={{ flex: 1 }}>
+                    <strong style={{ display: 'block', fontSize: '0.86rem', color: 'var(--fm-text-primary, #173126)' }}>
+                      اسپانسری و رپورتاژ (rel="sponsored")
+                    </strong>
+                    <small style={{ color: 'var(--fm-text-secondary, #627166)', fontSize: '0.78rem', lineHeight: '1.5' }}>
+                      الزام رسمی گوگل برای لینک‌های حاصل از تبلیغات، همکاری تجاری یا رپورتاژ
+                    </small>
+                  </div>
+                </label>
+
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
+                  <input
+                    checked={linkDialog.isNoopener}
+                    onChange={(e) => setLinkDialog((prev) => ({ ...prev, isNoopener: e.target.checked }))}
+                    style={{ width: '18px', height: '18px', marginTop: '2px', accentColor: '#1f6a52', cursor: 'pointer' }}
+                    type="checkbox"
+                  />
+                  <div style={{ flex: 1 }}>
+                    <strong style={{ display: 'block', fontSize: '0.86rem', color: 'var(--fm-text-primary, #173126)' }}>
+                      امنیت پیوند (rel="noopener noreferrer")
+                    </strong>
+                    <small style={{ color: 'var(--fm-text-secondary, #627166)', fontSize: '0.78rem', lineHeight: '1.5' }}>
+                      جلوگیری از دسترسی تب بازشده به آبجکت پنجره اصلی جهت افزایش امنیت
+                    </small>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <div className="carousel-dialog__footer">
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button className="content-primary-action" onClick={handleSaveLink} type="button">
+                  ثبت پیوند
+                </button>
+                {linkDialog.hasExistingLink ? (
+                  <button
+                    className="content-secondary-action"
+                    onClick={handleRemoveLink}
+                    style={{ color: '#b91c1c', borderColor: 'rgba(185, 28, 28, 0.3)' }}
+                    type="button"
+                  >
+                    حذف پیوند
+                  </button>
+                ) : null}
+              </div>
+              <button
+                className="content-secondary-action"
+                onClick={() => setLinkDialog((prev) => ({ ...prev, isOpen: false }))}
+                type="button"
+              >
+                لغو
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {imageDialog.isOpen ? (
+        <div className="carousel-dialog" role="dialog" aria-modal="true" aria-label="درج تصویر در متن">
+          <button
+            className="carousel-dialog__backdrop"
+            onClick={() => setImageDialog((prev) => ({ ...prev, isOpen: false }))}
+            type="button"
+            aria-label="بستن"
+          />
+          <div className="carousel-dialog__panel" style={{ width: 'min(92vw, 480px)' }}>
+            <div className="carousel-dialog__header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '1.2rem' }}>🖼️</span>
+                <h3>درج تصویر در متن</h3>
+              </div>
+              <button
+                className="content-secondary-action"
+                onClick={() => setImageDialog((prev) => ({ ...prev, isOpen: false }))}
+                type="button"
+              >
+                بستن
+              </button>
+            </div>
+
+            <div className="carousel-dialog__body">
+              <label className="fm-field">
+                <span>آدرس تصویر (URL)</span>
+                <input
+                  autoFocus
+                  dir="ltr"
+                  onChange={(event) => setImageDialog((prev) => ({ ...prev, src: event.target.value }))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      handleSaveImage()
+                    }
+                  }}
+                  placeholder="https://..."
+                  value={imageDialog.src}
+                />
+              </label>
+
+              <label className="fm-field">
+                <span>متن جایگزین (Alt برای سئو)</span>
+                <input
+                  onChange={(event) => setImageDialog((prev) => ({ ...prev, alt: event.target.value }))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      handleSaveImage()
+                    }
+                  }}
+                  placeholder="توضیح کوتاه تصویر برای موتورهای جستجو"
+                  value={imageDialog.alt}
+                />
+              </label>
+            </div>
+
+            <div className="carousel-dialog__footer">
+              <button className="content-primary-action" onClick={handleSaveImage} type="button">
+                درج تصویر
+              </button>
+              <button
+                className="content-secondary-action"
+                onClick={() => setImageDialog((prev) => ({ ...prev, isOpen: false }))}
+                type="button"
+              >
+                لغو
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

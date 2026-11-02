@@ -16,14 +16,19 @@ type Props = {
 function sanitizeInternalLinkAttributes(html: string) {
   return html.replace(/<a\b([^>]*)>/gi, (match, attrs: string) => {
     const href = attrs.match(/\bhref="([^"]*)"/i)?.[1] ?? ''
-    const isExternal = /^https?:\/\//i.test(href)
-    let next = attrs.replace(/\srel="[^"]*"/gi, '')
+    const isInternal = !/^https?:\/\//i.test(href) || href.includes('golino.shop')
 
-    if (!isExternal) {
-      next = next.replace(/\starget="[^"]*"/gi, '')
+    if (isInternal) {
+      const cleanAttrs = attrs.replace(/\starget="[^"]*"/gi, '').replace(/\srel="[^"]*"/gi, '')
+      return `<a${cleanAttrs}>`
     }
 
-    return `<a${next}>`
+    let externalAttrs = attrs
+    if (/\btarget="_blank"/i.test(externalAttrs) && !/\brel=/i.test(externalAttrs)) {
+      externalAttrs += ' rel="noopener noreferrer"'
+    }
+
+    return `<a${externalAttrs}>`
   })
 }
 
