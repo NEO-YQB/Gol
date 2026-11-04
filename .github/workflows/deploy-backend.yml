@@ -1,0 +1,64 @@
+name: Build & Deploy Backend
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/backend/**'
+      - 'packages/database/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/deploy-backend.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Lowercase repository owner for Docker image tag
+        id: repo_owner
+        run: |
+          echo "OWNER_LOWER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/backend/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ steps.repo_owner.outputs.OWNER_LOWER }}/backend:latest
+            ghcr.io/${{ steps.repo_owner.outputs.OWNER_LOWER }}/backend:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Trigger Coolify Webhook
+        env:
+          COOLIFY_WEBHOOK: ${{ secrets.COOLIFY_BACKEND_WEBHOOK }}
+        run: |
+          if [ -n "$COOLIFY_WEBHOOK" ]; then
+            echo "Triggering Coolify deploy webhook for backend..."
+            curl -s -f -X GET "$COOLIFY_WEBHOOK" || curl -s -f -X POST "$COOLIFY_WEBHOOK" || echo "Coolify webhook response received"
+            echo "Backend deployment triggered successfully!"
+          else
+            echo "Notice: COOLIFY_BACKEND_WEBHOOK secret is not set yet. Image built and pushed to GHCR."
+          fi
