@@ -124,7 +124,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
       );
       if (pickedFile == null || !mounted) return;
       if (kIsWeb) {
-        _viewModel.setPendingLogoFile(File(pickedFile.path));
+        await _viewModel.uploadLogo(File(pickedFile.path));
         return;
       }
 
