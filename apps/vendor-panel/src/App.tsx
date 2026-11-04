@@ -2,7 +2,7 @@ import { AppShell, Pill, readPanelLocation, syncPanelLocation, type NavSection }
 import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import { clearSession, loadSession, saveSession, type AuthSession } from './lib/session'
-import { vendorApi } from './lib/api'
+import { vendorApi, resolveApiBaseUrl } from './lib/api'
 import { vendorRouteLabels, vendorRouteOrder, type VendorRoute } from './lib/routes'
 import { LoginPage } from './pages/LoginPage'
 import { NotificationsPage } from './pages/NotificationsPage'
@@ -263,7 +263,7 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    const apiBase = (import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL ?? 'http://localhost:3000/v1').replace(/\/+$/, '')
+    const apiBase = resolveApiBaseUrl()
     fetch(`${apiBase}/settings/favicon`)
       .then((r) => r.json())
       .then((data: { vendorPanel?: { faviconIco?: string; faviconPng?: string } }) => {

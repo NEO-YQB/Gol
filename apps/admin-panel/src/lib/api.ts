@@ -186,10 +186,23 @@ export type UploadedImagePayload = {
   }
 }
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ??
-  import.meta.env.VITE_API_URL ??
-  'http://localhost:3000/v1'
+export function resolveApiBaseUrl(): string {
+  const envUrl = import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL
+  if (envUrl && typeof envUrl === 'string' && envUrl.trim() !== '') {
+    return envUrl.trim().replace(/\/+$/, '')
+  }
+
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname
+    if (host.endsWith('golino.shop') || host === 'golino.shop') {
+      return 'https://api.golino.shop/v1'
+    }
+  }
+
+  return 'http://localhost:3000/v1'
+}
+
+const API_BASE_URL = resolveApiBaseUrl()
 
 const API_ORIGIN = new URL(API_BASE_URL).origin
 const MAP_REVERSE_GEOCODE_URL =

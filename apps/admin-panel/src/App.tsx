@@ -2,7 +2,7 @@ import { AppShell, Pill, readPanelLocation, syncPanelLocation, type NavSection }
 import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 import { useNoticeEffect } from './components/NoticeCenter'
-import { adminApi, ApiError } from './lib/api'
+import { adminApi, ApiError, resolveApiBaseUrl } from './lib/api'
 import { readText } from './lib/normalize'
 import {
   canAccessRoute,
@@ -617,7 +617,7 @@ export default function App() {
   }, [session])
 
   useEffect(() => {
-    const apiBase = (import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL ?? 'http://localhost:3000/v1').replace(/\/+$/, '')
+    const apiBase = resolveApiBaseUrl()
     fetch(`${apiBase}/settings/favicon`)
       .then((r) => r.json())
       .then((data: { adminPanel?: { faviconIco?: string; faviconPng?: string } }) => {

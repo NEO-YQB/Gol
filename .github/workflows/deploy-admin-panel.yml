@@ -45,6 +45,8 @@ jobs:
           context: .
           file: apps/admin-panel/Dockerfile
           push: true
+          build-args: |
+            VITE_API_BASE_URL=https://api.golino.shop/v1
           tags: |
             ghcr.io/${{ steps.repo_owner.outputs.OWNER_LOWER }}/admin-panel:latest
             ghcr.io/${{ steps.repo_owner.outputs.OWNER_LOWER }}/admin-panel:${{ github.sha }}

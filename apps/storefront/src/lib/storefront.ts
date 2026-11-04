@@ -423,7 +423,7 @@ export type EnrichedStorefrontPage = Omit<StorefrontPage, 'blocks'> & {
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
   process.env.API_BASE_URL ||
-  'http://localhost:3000/v1'
+  (process.env.NODE_ENV === 'production' ? 'https://api.golino.shop/v1' : 'http://localhost:3000/v1')
 
 export function getStorefrontApiBaseUrl() {
   return API_BASE_URL

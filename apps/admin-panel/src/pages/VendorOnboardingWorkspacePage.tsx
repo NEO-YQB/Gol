@@ -2,7 +2,7 @@ import { Pill, SectionCard, StatCard } from '@flower-marketplace/frontend-core'
 import { useEffect, useMemo, useState } from 'react'
 import { LoadableState } from '../components/LoadableState'
 import { useNoticeEffect } from '../components/NoticeCenter'
-import { adminApi } from '../lib/api'
+import { adminApi, resolveApiBaseUrl } from '../lib/api'
 import { readText, toArray } from '../lib/normalize'
 import type { AuthSession } from '../lib/session'
 
@@ -55,7 +55,7 @@ function membershipStatusTone(status: string) {
 function getImageUrl(url: string) {
   if (!url) return ''
   if (/^https?:\/\//i.test(url)) return url
-  const base = import.meta.env.VITE_API_BASE_URL?.replace(/\/v1$/, '') ?? 'http://localhost:3000'
+  const base = resolveApiBaseUrl().replace(/\/v1$/, '')
   return `${base}${url}`
 }
 
