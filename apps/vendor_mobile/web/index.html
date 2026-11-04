@@ -1,58 +1,36 @@
-<!DOCTYPE html><html><head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="پنل مدیریت فروشگاه گلینو">
 
-  <!-- iOS meta tags & icons -->
+  <!-- No-Index Protection -->
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+  <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet">
+
+  <!-- iOS PWA Meta Tags & Icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="vendor_mobile">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="گلینو فروشنده">
+  <meta name="theme-color" content="#173126">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png">
 
-  <title>vendor_mobile</title>
+  <title>گلینو | پنل فروشندگان</title>
   <link rel="manifest" href="manifest.json">
   
-  
-  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
+  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport">
   
   <style id="splash-screen-style">
     html {
-      height: 100%
+      height: 100%;
     }
 
     body {
@@ -61,6 +39,7 @@
       background-color: #173126;
       background-image: url("splash/img/light-background.png");
       background-size: 100% 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
     .center {
@@ -78,37 +57,119 @@
       object-fit: contain;
     }
 
-    .stretch {
-      display:block;
-      width:100%; height:100%;
+    /* iOS Safari Banner & Modal Styles */
+    .ios-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      z-index: 999999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-sizing: border-box;
     }
 
-    .cover {
-      display:block;
-      width:100%; height:100%;
-      object-fit: cover;
+    .ios-modal-box {
+      background: #173126;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 24px;
+      padding: 24px;
+      max-width: 360px;
+      width: 100%;
+      text-align: center;
+      color: #ffffff;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
     }
 
-    .bottom {
-      position: absolute;
-      bottom: 0;
-      left: 50%;
-      -ms-transform: translate(-50%, 0);
-      transform: translate(-50%, 0);
+    .ios-modal-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     }
 
-    .bottomLeft {
-      position: absolute;
-      bottom: 0;
-      left: 0;
+    .ios-modal-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      line-height: 1.4;
     }
 
-    .bottomRight {
-      position: absolute;
-      bottom: 0;
-      right: 0;
+    .ios-modal-desc {
+      font-size: 14px;
+      color: #d1d5db;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+
+    .ios-btn-copy {
+      background: #d4a373;
+      color: #173126;
+      border: none;
+      border-radius: 14px;
+      padding: 13px 20px;
+      font-size: 15px;
+      font-weight: 700;
+      width: 100%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .ios-btn-copy:active {
+      transform: scale(0.98);
+      opacity: 0.9;
+    }
+
+    .ios-btn-dismiss {
+      background: transparent;
+      border: none;
+      color: #9ca3af;
+      font-size: 13px;
+      margin-top: 14px;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    /* Bottom Install Prompt for Safari */
+    .ios-safari-install-bar {
+      position: fixed;
+      bottom: 16px;
+      left: 16px;
+      right: 16px;
+      background: rgba(23, 49, 38, 0.94);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 18px;
+      padding: 12px 16px;
+      z-index: 999998;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #ffffff;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .ios-safari-close {
+      background: none;
+      border: none;
+      color: #9ca3af;
+      font-size: 18px;
+      padding: 4px 8px;
+      cursor: pointer;
     }
   </style>
+
   <script id="splash-screen-script">
     function removeSplashFromWeb() {
       document.getElementById("splash")?.remove();
@@ -118,9 +179,92 @@
   </script>
 </head>
 <body>
-  
-  
-  <script src="flutter_bootstrap.js" async=""></script>
 
+  <!-- iOS Browser Detection Script -->
+  <script>
+    (function() {
+      var ua = navigator.userAgent || '';
+      var isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      var isStandalone = window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+      
+      // If already installed on home screen, do not show prompts
+      if (isStandalone) {
+        return;
+      }
 
-</body></html>
+      if (isIOS) {
+        var isChromeIOS = /CriOS/i.test(ua);
+        var isOtherBrowserIOS = /FxiOS|EdgiOS|OPiOS|Instagram|FBAN|FBAV|Telegram/i.test(ua);
+
+        if (isChromeIOS || isOtherBrowserIOS) {
+          // User is on iOS but NOT using Safari
+          window.addEventListener('DOMContentLoaded', function() {
+            var overlay = document.createElement('div');
+            overlay.className = 'ios-modal-overlay';
+            overlay.id = 'safari-required-modal';
+            overlay.innerHTML = `
+              <div class="ios-modal-box">
+                <img src="apple-touch-icon.png" class="ios-modal-icon" alt="گلینو">
+                <div class="ios-modal-title">اجرا در مرورگر Safari</div>
+                <div class="ios-modal-desc">
+                  برای نصب اپلیکیشن روی آیفون، استفاده تمام‌صفحه و دریافت اعلان‌ها، لطفاً این صفحه را در مرورگر <b>Safari</b> باز کنید.
+                </div>
+                <button class="ios-btn-copy" id="btn-copy-link">
+                  📋 کپی کردن آدرس سایت
+                </button>
+                <button class="ios-btn-dismiss" id="btn-dismiss-modal">
+                  ادامه در همین مرورگر
+                </button>
+              </div>
+            `;
+            document.body.appendChild(overlay);
+
+            document.getElementById('btn-copy-link').onclick = function() {
+              var btn = this;
+              if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(window.location.href);
+              } else {
+                var input = document.createElement('input');
+                input.value = window.location.href;
+                document.body.appendChild(input);
+                input.select();
+                document.execCommand('copy');
+                document.body.removeChild(input);
+              }
+              btn.innerText = '✅ آدرس کپی شد! در Safari باز کنید';
+              btn.style.background = '#4ade80';
+              btn.style.color = '#052e16';
+            };
+
+            document.getElementById('btn-dismiss-modal').onclick = function() {
+              overlay.remove();
+            };
+          });
+        } else {
+          // User is in Safari (not standalone) -> show install hint
+          window.addEventListener('DOMContentLoaded', function() {
+            if (sessionStorage.getItem('ios_install_hint_dismissed')) return;
+            var bar = document.createElement('div');
+            bar.className = 'ios-safari-install-bar';
+            bar.id = 'safari-install-bar';
+            bar.innerHTML = `
+              <span>
+                📲 برای نصب اپ: دکمه <b>اشتراک‌گذاری (Share ⎋)</b> را بزنید و سپس <b>Add to Home Screen ⊞</b> را انتخاب کنید.
+              </span>
+              <button class="ios-safari-close" id="btn-close-safari-bar">✕</button>
+            `;
+            document.body.appendChild(bar);
+
+            document.getElementById('btn-close-safari-bar').onclick = function() {
+              bar.remove();
+              sessionStorage.setItem('ios_install_hint_dismissed', 'true');
+            };
+          });
+        }
+      }
+    })();
+  </script>
+
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>

@@ -1,5 +1,6 @@
-import 'dart:io';
+import 'package:vendor_mobile/core/platform/io_shim.dart';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
@@ -7,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_glass_card.dart';
+import '../../../shared/widgets/app_platform_image.dart';
 import '../../../shared/widgets/app_shell_background.dart';
 import '../data/products_api_service.dart';
 import '../domain/product_editor_models.dart';
@@ -131,6 +133,9 @@ class _ProductWorkspaceScreenState extends State<ProductWorkspaceScreen> {
       imageQuality: 92,
     );
     if (pickedFile == null) return null;
+    if (kIsWeb) {
+      return File(pickedFile.path);
+    }
 
     final croppedFile = await ImageCropper().cropImage(
       sourcePath: pickedFile.path,
@@ -696,8 +701,8 @@ class _ImagePreview extends StatelessWidget {
     if (pendingFile != null) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(22),
-        child: Image.file(
-          pendingFile!,
+        child: buildPlatformFileImage(
+          path: pendingFile!.path,
           width: size,
           height: size,
           fit: BoxFit.cover,

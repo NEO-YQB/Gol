@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:vendor_mobile/core/platform/io_shim.dart';
 
 import '../../../discounts/data/vendor_discounts_api_service.dart';
 import '../../../discounts/domain/vendor_discount.dart';

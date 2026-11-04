@@ -1,10 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+import 'package:vendor_mobile/core/platform/io_shim.dart';
 
 import 'package:http/http.dart' as http;
 
 import '../../../core/config/app_config.dart';
+import '../../../../core/platform/multipart_helper.dart';
 import '../../auth/data/auth_api_service.dart';
 import '../domain/vendor_product_detail.dart';
 import '../domain/vendor_product_summary.dart';
@@ -114,7 +115,7 @@ class ProductsApiService {
 
       request.headers['Authorization'] = 'Bearer $accessToken';
       request.files.add(
-        await http.MultipartFile.fromPath('file', file.path),
+        await createMultipartFile('file', file),
       );
 
       final streamedResponse =

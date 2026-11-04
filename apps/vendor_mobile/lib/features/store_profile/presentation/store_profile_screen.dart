@@ -1,5 +1,6 @@
-import 'dart:io';
+import 'package:vendor_mobile/core/platform/io_shim.dart';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
@@ -8,6 +9,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_glass_card.dart';
 import '../../../shared/widgets/app_metric_tile.dart';
+import '../../../shared/widgets/app_platform_image.dart';
 import '../../../shared/widgets/app_section_heading.dart';
 import '../../../shared/widgets/app_shell_background.dart';
 import '../domain/vendor_store_profile.dart';
@@ -121,6 +123,10 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
         imageQuality: 92,
       );
       if (pickedFile == null || !mounted) return;
+      if (kIsWeb) {
+        _viewModel.setPendingLogoFile(File(pickedFile.path));
+        return;
+      }
 
       final croppedFile = await ImageCropper().cropImage(
         sourcePath: pickedFile.path,
@@ -508,8 +514,8 @@ class _StoreLogo extends StatelessWidget {
     if (file != null) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(22),
-        child: Image.file(
-          file!,
+        child: buildPlatformFileImage(
+          path: file!.path,
           width: 76,
           height: 76,
           fit: BoxFit.cover,

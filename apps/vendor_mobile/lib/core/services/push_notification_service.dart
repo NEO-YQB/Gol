@@ -70,6 +70,10 @@ class PushNotificationService {
   }
 
   Future<void> initialize() async {
+    if (kIsWeb) {
+      _consoleLog('PUSH notification disabled on Web.');
+      return;
+    }
     if (_initialized) return;
 
     final initialization = _initialization;
@@ -140,6 +144,7 @@ class PushNotificationService {
   }
 
   Future<String?> getToken() async {
+    if (kIsWeb) return null;
     Firebase.app();
     return FirebaseMessaging.instance.getToken();
   }
@@ -148,6 +153,7 @@ class PushNotificationService {
     bool forceRefresh = false,
     String reason = 'manual',
   }) async {
+    if (kIsWeb) return null;
     try {
       Firebase.app();
       final messaging = FirebaseMessaging.instance;

@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:vendor_mobile/core/platform/io_shim.dart';
 
 import '../../domain/vendor_store_profile.dart';
 import '../store_profile_api_service.dart';

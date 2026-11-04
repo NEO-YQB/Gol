@@ -22,7 +22,12 @@ async function bootstrap() {
 
   app.enableCors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (
+        !origin ||
+        allowedOrigins.includes(origin) ||
+        origin.endsWith('.golino.shop') ||
+        origin === 'https://golino.shop'
+      ) {
         return callback(null, true);
       }
 
