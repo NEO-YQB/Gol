@@ -17,7 +17,7 @@ RUN flutter pub get
 COPY apps/vendor_mobile/ ./
 
 # Build Flutter Web Release
-RUN flutter build web --release --web-renderer canvaskit
+RUN flutter build web --release
 
 # Stage 2: Serve with lightweight Nginx
 FROM nginx:alpine
