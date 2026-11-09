@@ -88,6 +88,14 @@ function SafariIcon({ className = 'w-5 h-5' }: { className?: string }) {
   )
 }
 
+function PhoneIcon({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg aria-hidden="true" className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+      <path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 export function VendorAppsView() {
   const [copied, setCopied] = useState(false)
   const [showIosGuide, setShowIosGuide] = useState(false)
@@ -144,6 +152,18 @@ export function VendorAppsView() {
           </Link>
 
           <div className="flex items-center gap-2">
+            <a
+              className="glass-pill flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold text-[#173126] transition-all hover:bg-white hover:text-[#1f6a52] hover:shadow-sm active:scale-95"
+              href={`tel:${VENDOR_APP_CONFIG.support.phone}`}
+              title={`تماس با پشتیبانی: ${VENDOR_APP_CONFIG.support.phoneDisplay}`}
+            >
+              <PhoneIcon className="h-3.5 w-3.5 text-[#1f6a52]" />
+              <span className="hidden sm:inline">پشتیبانی:</span>
+              <span className="font-bold tracking-wider" dir="ltr">
+                {VENDOR_APP_CONFIG.support.phoneDisplay}
+              </span>
+            </a>
+
             <button
               className="glass-pill flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold text-[#1f6a52] transition-all hover:bg-white hover:shadow-sm active:scale-95"
               onClick={handleCopyLink}
@@ -433,10 +453,69 @@ export function VendorAppsView() {
           </div>
         </section>
 
+        {/* --- Dedicated Support Card --- */}
+        <section className="mt-8">
+          <div className="glass-card overflow-hidden rounded-[30px] border-[#1f6a52]/15 bg-gradient-to-br from-white/95 via-[#f2faf6] to-[#e6f4ee]/80 p-6 md:p-8 shadow-[0_15px_35px_rgba(23,49,38,0.06)]">
+            <div className="flex flex-col items-center justify-between gap-6 sm:flex-row text-center sm:text-right">
+              <div className="flex flex-col sm:flex-row items-center gap-4">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#1f6a52] to-[#173126] text-white shadow-md">
+                  <PhoneIcon className="h-6 w-6" />
+                </div>
+                <div>
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                    <h3 className="text-base font-black text-[#173126] sm:text-lg">
+                      نیاز به راهنمایی در نصب یا ورود دارید؟
+                    </h3>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-black text-emerald-800">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      پشتیبانی تلفنی
+                    </span>
+                  </div>
+                  <p className="mt-1.5 text-xs font-medium text-[#4b5d55] max-w-lg leading-relaxed">
+                    کارشناسان گلینو آماده پاسخگویی و راهنمایی گام‌به‌گام شما برای نصب، راه‌اندازی و ورود به حساب فروشگاه هستند.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:items-end items-center gap-2">
+                <a
+                  className="group flex items-center gap-3 rounded-2xl bg-gradient-to-r from-[#173126] to-[#1f6a52] px-6 py-3.5 text-white shadow-[0_12px_28px_rgba(23,49,38,0.25)] transition-all duration-300 hover:brightness-110 hover:shadow-[0_16px_32px_rgba(31,106,82,0.35)] active:scale-95"
+                  href={`tel:${VENDOR_APP_CONFIG.support.phone}`}
+                  title="برقراری تماس با پشتیبانی گلینو"
+                >
+                  <div className="flex flex-col text-right">
+                    <span className="text-[10px] font-medium text-emerald-200">
+                      تماس مستقیم با پشتیبانی
+                    </span>
+                    <span className="text-base font-black tracking-wider text-white" dir="ltr">
+                      {VENDOR_APP_CONFIG.support.phoneDisplay}
+                    </span>
+                  </div>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 text-white transition-transform group-hover:scale-110">
+                    <PhoneIcon className="h-5 w-5" />
+                  </div>
+                </a>
+                <span className="text-[11px] font-medium text-[#6e7f77]" dir="ltr">
+                  {VENDOR_APP_CONFIG.support.phoneInternational}
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* --- Minimal Footer --- */}
         <footer className="mt-12 text-center text-xs font-medium text-[#7a8c83]">
           <p>تمامی حقوق برای بازار گل و گیاه <b>گلینو</b> محفوظ است.</p>
-          <p className="mt-1 text-[11px] text-[#9bb0a5]">نسخه اختصاصی فروشندگان و تأمین‌کنندگان گل و گیاه</p>
+          <p className="mt-1 text-[11px] text-[#9bb0a5]">
+            نسخه اختصاصی فروشندگان و تأمین‌کنندگان گل و گیاه • پشتیبانی:{' '}
+            <a
+              className="font-bold text-[#1f6a52] hover:underline"
+              href={`tel:${VENDOR_APP_CONFIG.support.phone}`}
+              dir="ltr"
+            >
+              {VENDOR_APP_CONFIG.support.phoneDisplay}
+            </a>
+          </p>
         </footer>
       </main>
     </div>

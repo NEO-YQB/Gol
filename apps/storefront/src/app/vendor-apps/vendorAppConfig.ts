@@ -22,6 +22,13 @@ export const VENDOR_APP_CONFIG = {
     googlePlay: 'https://play.google.com/store/apps/details?id=com.golino.vendorapp',
     directApk: '/downloads/golino-vendor.apk',
   },
+  support: {
+    phone: '+982133104678',
+    phoneDisplay: '۰۲۱-۳۳۱۰۴۶۷۸',
+    phoneInternational: '+98 21 3310 4678',
+    title: 'پشتیبانی تلفنی فروشندگان',
+    subtitle: 'راهنمایی در دانلود، نصب و ورود به اپلیکیشن',
+  },
   meta: {
     title: 'اپلیکیشن اختصاصی فروشندگان گلینو',
     subtitle: 'مدیریت هوشمند و لحظه‌ای سفارش‌ها، محصولات، قیمت‌ها و تسویه‌حساب',
