@@ -253,9 +253,13 @@ export function ProductCarouselSection({ block }: { block: { id: string; data: R
         {title ? <h2 className="text-3xl font-black text-[#173126]">{title}</h2> : <div />}
         <StorefrontPill text={`${products.length} محصول`} />
       </div>
-      <div className="flex snap-x snap-mandatory items-stretch justify-start gap-4 overflow-x-auto px-1 pb-2 md:gap-5 md:px-0 lg:justify-center">
+      <div className="flex snap-x snap-mandatory items-stretch justify-start gap-4 overflow-x-auto px-1 pb-2 md:gap-5 md:px-0">
         {products.map((product) => (
-          <ProductCard className="h-full min-h-[100%] min-w-[78vw] max-w-[320px] snap-start md:min-w-[280px] md:max-w-none" key={product.id} product={product} />
+          <ProductCard
+            className="h-full min-h-[100%] w-[78vw] min-w-[260px] max-w-[310px] shrink-0 snap-start sm:w-[280px] md:w-[290px] md:max-w-[310px] xl:w-[310px]"
+            key={product.id}
+            product={product}
+          />
         ))}
       </div>
     </section>

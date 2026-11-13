@@ -14,7 +14,7 @@ export function ArticleProductCarousel({ title, products }: { title?: string; pr
       <div className="flex snap-x snap-mandatory items-stretch justify-start gap-4 overflow-x-auto px-1 pb-2">
         {products.map((product) => (
           <ProductCard
-            className="h-full min-h-[100%] min-w-[76vw] max-w-[300px] snap-start md:min-w-[260px]"
+            className="h-full min-h-[100%] w-[76vw] min-w-[260px] max-w-[300px] shrink-0 snap-start sm:w-[270px] md:w-[280px] md:max-w-[300px]"
             key={product.id}
             product={product}
           />
