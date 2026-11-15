@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getBackendApiUrl } from '../../../lib/backendApi'
+import { getBackendApiUrl } from '../../../../lib/backendApi'
 
 export async function POST(request: NextRequest) {
   const body = await request.text()
