@@ -177,7 +177,7 @@
       background: rgba(15, 23, 20, 0.78);
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
-      z-index: 100000;
+      z-index: 9999999;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -280,6 +280,32 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.18);
       pointer-events: none;
       z-index: 10;
+    }
+    .vmp-gps-btn {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      background: #ffffff;
+      color: #173126;
+      border: 1px solid rgba(23, 49, 38, 0.2);
+      border-radius: 9999px;
+      padding: 8px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: inherit;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .vmp-gps-btn:hover {
+      background: #f7f1e7;
+    }
+    .vmp-gps-btn:active {
+      transform: scale(0.96);
     }
     .vmp-footer {
       padding: 14px 20px;
@@ -422,160 +448,270 @@
     })();
   </script>
 
-  <!-- Vendor Map Picker for Web / PWA -->
+  <!-- Vendor Map Picker for Web / PWA (MapLibre GL + Map.ir Vector + OSM Fallback) -->
   <script>
-    window.openVendorMapPicker = function(initialLat, initialLng, apiKey, styleUrl, rtlPluginUrl) {
-      return new Promise(function(resolve) {
-        function ensureMapbox(callback) {
-          if (!document.getElementById('vendor-mapboxgl-css')) {
-            var link = document.createElement('link');
-            link.id = 'vendor-mapboxgl-css';
-            link.rel = 'stylesheet';
-            link.href = 'https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css';
-            document.head.appendChild(link);
-          }
+    (function() {
+      var MAPLIBRE_CSS_URLS = [
+        'https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css',
+        'https://cdn.jsdelivr.net/npm/maplibre-gl@3.6.2/dist/maplibre-gl.css'
+      ];
+      var MAPLIBRE_JS_URLS = [
+        'https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js',
+        'https://cdn.jsdelivr.net/npm/maplibre-gl@3.6.2/dist/maplibre-gl.js'
+      ];
+      var RTL_PLUGIN_URL = 'https://unpkg.com/@mapbox/mapbox-gl-rtl-text@0.2.3/mapbox-gl-rtl-text.min.js';
 
-          if (window.mapboxgl) {
-            callback();
-            return;
-          }
+      function loadCss(urls, idx) {
+        idx = idx || 0;
+        if (idx >= urls.length) return;
+        var id = 'vmp-maplibre-css';
+        if (document.getElementById(id)) return;
+        var link = document.createElement('link');
+        link.id = id;
+        link.rel = 'stylesheet';
+        link.href = urls[idx];
+        link.onerror = function() {
+          link.remove();
+          loadCss(urls, idx + 1);
+        };
+        document.head.appendChild(link);
+      }
 
-          var script = document.getElementById('vendor-mapboxgl-js');
-          if (!script) {
-            script = document.createElement('script');
-            script.id = 'vendor-mapboxgl-js';
-            script.src = 'https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js';
-            script.onload = callback;
-            document.head.appendChild(script);
-          } else {
-            script.addEventListener('load', callback);
-          }
+      function loadScript(urls, idx, callback) {
+        if (window.maplibregl) {
+          window.mapboxgl = window.maplibregl;
+          callback(null, window.maplibregl);
+          return;
         }
-
-        function ensureConfig(cb) {
-          if (apiKey && apiKey.trim()) {
-            cb();
-            return;
-          }
-          fetch('https://api.golino.shop/v1/mobile-app/config')
-            .then(function(res) { return res.json(); })
-            .then(function(data) {
-              if (data && data.map && data.map.publicKey) {
-                apiKey = data.map.publicKey;
-                if (!styleUrl && data.map.styleUrl) styleUrl = data.map.styleUrl;
-                if (!rtlPluginUrl && data.map.rtlPluginUrl) rtlPluginUrl = data.map.rtlPluginUrl;
-              }
-            })
-            .catch(function(e) { console.warn('Could not load fallback map config', e); })
-            .finally(cb);
+        idx = idx || 0;
+        if (idx >= urls.length) {
+          callback(new Error('Map SDK failed to load from all CDNs'));
+          return;
         }
+        var script = document.createElement('script');
+        script.id = 'vmp-maplibre-js-' + idx;
+        script.src = urls[idx];
+        script.async = true;
+        script.onload = function() {
+          window.mapboxgl = window.maplibregl;
+          callback(null, window.maplibregl);
+        };
+        script.onerror = function() {
+          script.remove();
+          loadScript(urls, idx + 1, callback);
+        };
+        document.head.appendChild(script);
+      }
 
-        ensureConfig(function() {
-          ensureMapbox(function() {
-            var currentLat = (typeof initialLat === 'number' && !isNaN(initialLat) && initialLat !== 0) ? initialLat : 35.7219;
-            var currentLng = (typeof initialLng === 'number' && !isNaN(initialLng) && initialLng !== 0) ? initialLng : 51.3347;
+      window.openVendorMapPicker = function(initialLat, initialLng, apiKey, styleUrl, rtlPluginUrl) {
+        return new Promise(function(resolve) {
+          loadCss(MAPLIBRE_CSS_URLS, 0);
 
-            styleUrl = styleUrl || 'https://map.ir/vector/styles/main/mapir-xyz-style.json';
-            rtlPluginUrl = rtlPluginUrl || 'https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-rtl-text/v0.4.0/mapbox-gl-rtl-text.js';
-
-            var modalId = 'vendor-map-picker-modal-' + Date.now();
-            var modalOverlay = document.createElement('div');
-            modalOverlay.id = modalId;
-            modalOverlay.className = 'vmp-overlay';
-            modalOverlay.innerHTML =
-              '<div class="vmp-container">' +
-                '<div class="vmp-header">' +
-                  '<div class="vmp-title-box">' +
-                    '<span class="vmp-title">انتخاب موقعیت فروشگاه روی نقشه</span>' +
-                    '<span class="vmp-subtitle">روی نقشه کلیک کنید یا نشانگر را به سمت مغازه بکشید</span>' +
-                  '</div>' +
-                  '<button type="button" class="vmp-close-btn" id="' + modalId + '-close" aria-label="بستن">✕</button>' +
-                '</div>' +
-                '<div class="vmp-body">' +
-                  '<div id="' + modalId + '-map" class="vmp-map-canvas"></div>' +
-                  '<div class="vmp-coords-chip" id="' + modalId + '-coords">' +
-                    currentLat.toFixed(5) + ' , ' + currentLng.toFixed(5) +
-                  '</div>' +
-                '</div>' +
-                '<div class="vmp-footer">' +
-                  '<button type="button" class="vmp-btn-confirm" id="' + modalId + '-confirm">' +
-                    'تأیید موقعیت فروشگاه' +
-                  '</button>' +
-                  '<button type="button" class="vmp-btn-cancel" id="' + modalId + '-cancel">' +
-                    'انصراف' +
-                  '</button>' +
-                '</div>' +
-              '</div>';
-            document.body.appendChild(modalOverlay);
-
-            function updateCoordsChip(lat, lng) {
-              currentLat = lat;
-              currentLng = lng;
-              var chip = document.getElementById(modalId + '-coords');
-              if (chip) chip.innerText = lat.toFixed(5) + ' , ' + lng.toFixed(5);
+          function ensureConfig(done) {
+            if (apiKey && apiKey.trim()) {
+              done();
+              return;
             }
-
-            function cleanup(result) {
-              try {
-                if (map) map.remove();
-              } catch (_) {}
-              if (modalOverlay && modalOverlay.parentNode) {
-                modalOverlay.parentNode.removeChild(modalOverlay);
-              }
-              resolve(result);
-            }
-
-            document.getElementById(modalId + '-close').onclick = function() { cleanup(null); };
-            document.getElementById(modalId + '-cancel').onclick = function() { cleanup(null); };
-            document.getElementById(modalId + '-confirm').onclick = function() {
-              cleanup(currentLat.toFixed(6) + ',' + currentLng.toFixed(6));
-            };
-
-            window.mapboxgl.accessToken = apiKey || '';
-            if (window.mapboxgl.setRTLTextPlugin) {
-              try {
-                window.mapboxgl.setRTLTextPlugin(rtlPluginUrl, undefined, true);
-              } catch (_) {}
-            }
-
-            var map = new window.mapboxgl.Map({
-              container: modalId + '-map',
-              style: styleUrl,
-              center: [currentLng, currentLat],
-              zoom: 14,
-              transformRequest: function(url) {
-                if (apiKey && url.startsWith('https://map.ir')) {
-                  return { url: url, headers: { 'x-api-key': apiKey } };
+            fetch('https://api.golino.shop/v1/mobile-app/config')
+              .then(function(res) { return res.json(); })
+              .then(function(data) {
+                if (data && data.map) {
+                  if (data.map.publicKey) apiKey = data.map.publicKey;
+                  if (!styleUrl && data.map.styleUrl) styleUrl = data.map.styleUrl;
+                  if (!rtlPluginUrl && data.map.rtlPluginUrl) rtlPluginUrl = data.map.rtlPluginUrl;
                 }
-                return { url: url };
+              })
+              .catch(function(e) { console.warn('[MapPicker] fallback config error:', e); })
+              .finally(done);
+          }
+
+          ensureConfig(function() {
+            loadScript(MAPLIBRE_JS_URLS, 0, function(err, maplibre) {
+              if (err || !maplibre) {
+                alert('بارگذاری کتابخانه نقشه با خطا مواجه شد. لطفاً اتصال اینترنت خود را بررسی کنید.');
+                resolve(null);
+                return;
+              }
+
+              var currentLat = (typeof initialLat === 'number' && !isNaN(initialLat) && initialLat !== 0) ? initialLat : 35.7219;
+              var currentLng = (typeof initialLng === 'number' && !isNaN(initialLng) && initialLng !== 0) ? initialLng : 51.3347;
+
+              var targetStyle = styleUrl || 'https://map.ir/vector/styles/main/mapir-xyz-style.json';
+              var targetRtl = rtlPluginUrl || RTL_PLUGIN_URL;
+
+              if (maplibre.setRTLTextPlugin) {
+                try {
+                  maplibre.setRTLTextPlugin(targetRtl, null, true);
+                } catch (_) {}
+              }
+
+              var modalId = 'vendor-map-picker-modal-' + Date.now();
+              var modalOverlay = document.createElement('div');
+              modalOverlay.id = modalId;
+              modalOverlay.className = 'vmp-overlay';
+              modalOverlay.innerHTML =
+                '<div class="vmp-container">' +
+                  '<div class="vmp-header">' +
+                    '<div class="vmp-title-box">' +
+                      '<span class="vmp-title">📍 انتخاب موقعیت فروشگاه روی نقشه</span>' +
+                      '<span class="vmp-subtitle">روی نقشه کلیک کنید یا نشانگر را به سمت مغازه حرکت دهید</span>' +
+                    '</div>' +
+                    '<button type="button" class="vmp-close-btn" id="' + modalId + '-close" aria-label="بستن">✕</button>' +
+                  '</div>' +
+                  '<div class="vmp-body">' +
+                    '<div id="' + modalId + '-map" class="vmp-map-canvas"></div>' +
+                    '<div class="vmp-coords-chip" id="' + modalId + '-coords">' +
+                      currentLat.toFixed(5) + ' , ' + currentLng.toFixed(5) +
+                    '</div>' +
+                    '<button type="button" class="vmp-gps-btn" id="' + modalId + '-gps" title="موقعیت فعلی من">🎯 موقعیت من</button>' +
+                  '</div>' +
+                  '<div class="vmp-footer">' +
+                    '<button type="button" class="vmp-btn-confirm" id="' + modalId + '-confirm">' +
+                      'تأیید موقعیت فروشگاه' +
+                    '</button>' +
+                    '<button type="button" class="vmp-btn-cancel" id="' + modalId + '-cancel">' +
+                      'انصراف' +
+                    '</button>' +
+                  '</div>' +
+                '</div>';
+
+              document.body.appendChild(modalOverlay);
+
+              function updateCoordsChip(lat, lng) {
+                currentLat = lat;
+                currentLng = lng;
+                var chip = document.getElementById(modalId + '-coords');
+                if (chip) chip.innerText = lat.toFixed(5) + ' , ' + lng.toFixed(5);
+              }
+
+              var isCleanedUp = false;
+              function cleanup(result) {
+                if (isCleanedUp) return;
+                isCleanedUp = true;
+                try {
+                  if (map) map.remove();
+                } catch (_) {}
+                if (modalOverlay && modalOverlay.parentNode) {
+                  modalOverlay.parentNode.removeChild(modalOverlay);
+                }
+                resolve(result);
+              }
+
+              document.getElementById(modalId + '-close').onclick = function() { cleanup(null); };
+              document.getElementById(modalId + '-cancel').onclick = function() { cleanup(null); };
+              document.getElementById(modalId + '-confirm').onclick = function() {
+                cleanup(currentLat.toFixed(6) + ',' + currentLng.toFixed(6));
+              };
+
+              var osmStyle = {
+                version: 8,
+                sources: {
+                  'osm-tiles': {
+                    type: 'raster',
+                    tiles: [
+                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+                    ],
+                    tileSize: 256,
+                    attribution: '© OpenStreetMap'
+                  }
+                },
+                layers: [
+                  {
+                    id: 'osm-tiles-layer',
+                    type: 'raster',
+                    source: 'osm-tiles',
+                    minzoom: 0,
+                    maxzoom: 19
+                  }
+                ]
+              };
+
+              var map = null;
+              try {
+                map = new maplibre.Map({
+                  container: modalId + '-map',
+                  style: targetStyle,
+                  center: [currentLng, currentLat],
+                  zoom: 14,
+                  transformRequest: function(url) {
+                    if (apiKey && url.indexOf('map.ir') !== -1) {
+                      return {
+                        url: url,
+                        headers: { 'x-api-key': apiKey }
+                      };
+                    }
+                    return { url: url };
+                  }
+                });
+
+                var styleFallbackApplied = false;
+                map.on('error', function(e) {
+                  console.warn('[MapPicker] map error:', e);
+                  if (!styleFallbackApplied && e && e.error && e.error.message && (e.error.message.indexOf('style') !== -1 || e.error.message.indexOf('401') !== -1 || e.error.message.indexOf('403') !== -1)) {
+                    styleFallbackApplied = true;
+                    try {
+                      map.setStyle(osmStyle);
+                    } catch (_) {}
+                  }
+                });
+
+                map.addControl(new maplibre.NavigationControl(), 'top-left');
+
+                var marker = new maplibre.Marker({ draggable: true, color: '#173126' })
+                  .setLngLat([currentLng, currentLat])
+                  .addTo(map);
+
+                map.on('click', function(e) {
+                  if (e.lngLat) {
+                    marker.setLngLat([e.lngLat.lng, e.lngLat.lat]);
+                    updateCoordsChip(e.lngLat.lat, e.lngLat.lng);
+                  }
+                });
+
+                marker.on('dragend', function() {
+                  var pos = marker.getLngLat();
+                  updateCoordsChip(pos.lat, pos.lng);
+                });
+
+                var gpsBtn = document.getElementById(modalId + '-gps');
+                if (gpsBtn) {
+                  gpsBtn.onclick = function() {
+                    if (!navigator.geolocation) {
+                      alert('دستگاه شما از قابلیت موقعیت‌یابی پشتیبانی نمی‌کند.');
+                      return;
+                    }
+                    gpsBtn.innerText = '⏳ در حال دریافت...';
+                    navigator.geolocation.getCurrentPosition(
+                      function(position) {
+                        gpsBtn.innerText = '🎯 موقعیت من';
+                        var lat = position.coords.latitude;
+                        var lng = position.coords.longitude;
+                        marker.setLngLat([lng, lat]);
+                        map.flyTo({ center: [lng, lat], zoom: 15 });
+                        updateCoordsChip(lat, lng);
+                      },
+                      function(err) {
+                        gpsBtn.innerText = '🎯 موقعیت من';
+                        alert('دسترسی به GPS داده نشد یا در دسترس نیست.');
+                      },
+                      { enableHighAccuracy: true, timeout: 10000 }
+                    );
+                  };
+                }
+
+                setTimeout(function() { if (map) map.resize(); }, 150);
+                setTimeout(function() { if (map) map.resize(); }, 400);
+                setTimeout(function() { if (map) map.resize(); }, 800);
+              } catch (initErr) {
+                console.error('[MapPicker] initialization error:', initErr);
+                alert('خطا در راه‌اندازی نقشه: ' + (initErr.message || initErr));
+                cleanup(null);
               }
             });
-
-            map.addControl(new window.mapboxgl.NavigationControl(), 'top-left');
-
-            var marker = new window.mapboxgl.Marker({ draggable: true })
-              .setLngLat([currentLng, currentLat])
-              .addTo(map);
-
-            map.on('click', function(e) {
-              if (e.lngLat) {
-                marker.setLngLat([e.lngLat.lng, e.lngLat.lat]);
-                updateCoordsChip(e.lngLat.lat, e.lngLat.lng);
-              }
-            });
-
-            marker.on('dragend', function() {
-              var pos = marker.getLngLat();
-              updateCoordsChip(pos.lat, pos.lng);
-            });
-
-            setTimeout(function() {
-              if (map) map.resize();
-            }, 300);
           });
         });
-      });
-    };
+      };
+    })();
   </script>
 
   <script src="flutter_bootstrap.js" async></script>

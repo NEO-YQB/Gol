@@ -172,14 +172,22 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
     final initialLng = state.selectedBusinessLng ?? 51.3347;
 
     if (kIsWeb) {
-      final config = state.runtimeConfig;
+      var config = state.runtimeConfig;
+      if (config == null) {
+        try {
+          config = await const VendorOnboardingRepository().getRuntimeConfig();
+        } catch (_) {
+          config = null;
+        }
+      }
+
       final coordsString = await pickWebMapLocation(
         initialLat: initialLat,
         initialLng: initialLng,
         apiKey: config?.mapPublicKey ?? '',
         styleUrl: config?.mapStyleUrl ?? 'https://map.ir/vector/styles/main/mapir-xyz-style.json',
         rtlPluginUrl: config?.mapRtlPluginUrl ??
-            'https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-rtl-text/v0.4.0/mapbox-gl-rtl-text.js',
+            'https://unpkg.com/@mapbox/mapbox-gl-rtl-text@0.2.3/mapbox-gl-rtl-text.min.js',
       );
 
       if (!mounted || coordsString == null || coordsString.trim().isEmpty) return;
@@ -208,7 +216,7 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
           mapPublicKey: '',
           mapStyleUrl: 'https://map.ir/vector/styles/main/mapir-xyz-style.json',
           mapRtlPluginUrl:
-              'https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-rtl-text/v0.4.0/mapbox-gl-rtl-text.js',
+              'https://unpkg.com/@mapbox/mapbox-gl-rtl-text@0.2.3/mapbox-gl-rtl-text.min.js',
           reverseGeocodeMode: 'proxy',
         );
 

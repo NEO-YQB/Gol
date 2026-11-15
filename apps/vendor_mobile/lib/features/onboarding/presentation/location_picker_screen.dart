@@ -90,7 +90,7 @@ class _OnboardingLocationPickerScreenState
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
     <style>
       html, body, #map { margin: 0; padding: 0; width: 100%; height: 100%; background: #f7f1e7; }
       .error {
@@ -102,7 +102,7 @@ class _OnboardingLocationPickerScreenState
   </head>
   <body>
     <div id="map"></div>
-    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <script>
       const apiKey = ${_escapeJsString(apiKey)};
       const styleUrl = ${_escapeJsString(styleUrl)};
@@ -124,52 +124,73 @@ class _OnboardingLocationPickerScreenState
       }
 
       try {
-        if (!apiKey || apiKey === '') {
-          showError('کلید MAP_IR_API_KEY تنظیم نشده است.');
-        } else {
-          mapboxgl.accessToken = apiKey;
-          if (mapboxgl.setRTLTextPlugin) {
-            mapboxgl.setRTLTextPlugin(rtlPlugin, undefined, true);
-          }
-
-          const map = new mapboxgl.Map({
-            container: 'map',
-            style: styleUrl,
-            center: [initialLng, initialLat],
-            zoom: 15,
-            transformRequest: (url) => {
-              if (url.startsWith('https://map.ir')) {
-                return { url, headers: { 'x-api-key': apiKey } };
-              }
-              return { url };
-            }
-          });
-
-          map.addControl(new mapboxgl.NavigationControl(), 'top-left');
-
-          const marker = new mapboxgl.Marker({ draggable: true })
-            .setLngLat([initialLng, initialLat])
-            .addTo(map);
-
-          map.on('click', (event) => {
-            const lat = event.lngLat?.lat;
-            const lng = event.lngLat?.lng;
-            if (typeof lat !== 'number' || typeof lng !== 'number') return;
-            marker.setLngLat([lng, lat]);
-            report(lat, lng);
-          });
-
-          marker.on('dragend', () => {
-            const point = marker.getLngLat();
-            report(point.lat, point.lng);
-          });
-
-          map.on('load', () => {
-            report(initialLat, initialLng);
-          });
+        const targetRtl = rtlPlugin || 'https://unpkg.com/@mapbox/mapbox-gl-rtl-text@0.2.3/mapbox-gl-rtl-text.min.js';
+        if (maplibregl.setRTLTextPlugin) {
+          try {
+            maplibregl.setRTLTextPlugin(targetRtl, undefined, true);
+          } catch (_) {}
         }
+
+        const osmStyle = {
+          version: 8,
+          sources: {
+            'osm-tiles': {
+              type: 'raster',
+              tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+              tileSize: 256,
+              attribution: '© OpenStreetMap'
+            }
+          },
+          layers: [{ id: 'osm-tiles-layer', type: 'raster', source: 'osm-tiles', minzoom: 0, maxzoom: 19 }]
+        };
+
+        const targetStyle = styleUrl || 'https://map.ir/vector/styles/main/mapir-xyz-style.json';
+
+        const map = new maplibregl.Map({
+          container: 'map',
+          style: targetStyle,
+          center: [initialLng, initialLat],
+          zoom: 15,
+          transformRequest: (url) => {
+            if (apiKey && url.indexOf('map.ir') !== -1) {
+              return { url, headers: { 'x-api-key': apiKey } };
+            }
+            return { url };
+          }
+        });
+
+        let styleFallbackApplied = false;
+        map.on('error', (e) => {
+          if (!styleFallbackApplied && e && e.error && (e.error.message.indexOf('style') !== -1 || e.error.message.indexOf('401') !== -1 || e.error.message.indexOf('403') !== -1)) {
+            styleFallbackApplied = true;
+            try { map.setStyle(osmStyle); } catch (_) {}
+          }
+        });
+
+        map.addControl(new maplibregl.NavigationControl(), 'top-left');
+
+        const marker = new maplibregl.Marker({ draggable: true, color: '#173126' })
+          .setLngLat([initialLng, initialLat])
+          .addTo(map);
+
+        map.on('click', (event) => {
+          const lat = event.lngLat?.lat;
+          const lng = event.lngLat?.lng;
+          if (typeof lat !== 'number' || typeof lng !== 'number') return;
+          marker.setLngLat([lng, lat]);
+          report(lat, lng);
+        });
+
+        marker.on('dragend', () => {
+          const point = marker.getLngLat();
+          report(point.lat, point.lng);
+        });
+
+        map.on('load', () => {
+          report(initialLat, initialLng);
+        });
       } catch (error) {
-        showError('بارگذاری نقشه ممکن نشد.');
+        showError('بارگذاری نقشه ممکن نشد: ' + (error.message || error));
       }
     </script>
   </body>

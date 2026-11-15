@@ -118,22 +118,28 @@ function loadMapAssets() {
       const link = document.createElement('link')
       link.id = MAPBOX_GL_STYLE_ID
       link.rel = 'stylesheet'
-      link.href = 'https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css'
+      link.href = 'https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css'
       document.head.appendChild(link)
     }
 
     const existingScript = document.getElementById(MAPBOX_GL_SCRIPT_ID) as HTMLScriptElement | null
     if (existingScript) {
-      existingScript.addEventListener('load', () => resolve(), { once: true })
+      existingScript.addEventListener('load', () => {
+        window.mapboxgl = (window as unknown as { maplibregl?: typeof window.mapboxgl }).maplibregl
+        resolve()
+      }, { once: true })
       existingScript.addEventListener('error', () => reject(new Error('Map SDK load failed')), { once: true })
       return
     }
 
     const script = document.createElement('script')
     script.id = MAPBOX_GL_SCRIPT_ID
-    script.src = 'https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'
+    script.src = 'https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js'
     script.async = true
-    script.onload = () => resolve()
+    script.onload = () => {
+      window.mapboxgl = (window as unknown as { maplibregl?: typeof window.mapboxgl }).maplibregl
+      resolve()
+    }
     script.onerror = () => reject(new Error('Map SDK load failed'))
     document.body.appendChild(script)
   })
