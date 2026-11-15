@@ -168,6 +168,163 @@
       padding: 4px 8px;
       cursor: pointer;
     }
+
+    /* Vendor Map Picker Modal Styles (PWA / Web) */
+    .vmp-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      width: 100vw; height: 100vh;
+      background: rgba(15, 23, 20, 0.78);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 100000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      direction: rtl;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Vazirmatn", Tahoma, sans-serif;
+      box-sizing: border-box;
+      animation: vmpFadeIn 0.22s ease-out;
+    }
+    @keyframes vmpFadeIn {
+      from { opacity: 0; transform: scale(0.97); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .vmp-container {
+      background: #ffffff;
+      width: 100%;
+      height: 100%;
+      max-width: 780px;
+      max-height: 86vh;
+      border-radius: 28px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.35);
+      overflow: hidden;
+      margin: 16px;
+      box-sizing: border-box;
+    }
+    @media (max-width: 640px) {
+      .vmp-container {
+        max-width: 100%;
+        max-height: 100%;
+        border-radius: 0;
+        margin: 0;
+        height: 100vh;
+      }
+    }
+    .vmp-header {
+      padding: 16px 20px;
+      background: #faf6f0;
+      border-bottom: 1px solid #ebd8c1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .vmp-title-box {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .vmp-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: #173126;
+    }
+    .vmp-subtitle {
+      font-size: 12px;
+      color: #7c6853;
+    }
+    .vmp-close-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 1px solid rgba(23, 49, 38, 0.15);
+      background: #ffffff;
+      color: #173126;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+    .vmp-close-btn:hover {
+      background: #f1eae0;
+    }
+    .vmp-body {
+      flex: 1;
+      position: relative;
+      width: 100%;
+      min-height: 250px;
+      background: #f3ece2;
+    }
+    .vmp-map-canvas {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+    }
+    .vmp-coords-chip {
+      position: absolute;
+      bottom: 14px;
+      left: 14px;
+      background: rgba(23, 49, 38, 0.90);
+      color: #ffffff;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      direction: ltr;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+      pointer-events: none;
+      z-index: 10;
+    }
+    .vmp-footer {
+      padding: 14px 20px;
+      background: #ffffff;
+      border-top: 1px solid #ebd8c1;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: flex-end;
+      flex-shrink: 0;
+    }
+    .vmp-btn-confirm {
+      flex: 1;
+      max-width: 250px;
+      background: #173126;
+      color: #ffffff;
+      border: none;
+      border-radius: 9999px;
+      padding: 13px 22px;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      font-family: inherit;
+    }
+    .vmp-btn-confirm:hover {
+      background: #234939;
+    }
+    .vmp-btn-confirm:active {
+      transform: scale(0.98);
+    }
+    .vmp-btn-cancel {
+      background: transparent;
+      color: #695b4c;
+      border: 1px solid rgba(105, 91, 76, 0.25);
+      border-radius: 9999px;
+      padding: 12px 22px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .vmp-btn-cancel:hover {
+      background: #f7f1e7;
+    }
   </style>
 
   <script id="splash-screen-script">
@@ -263,6 +420,162 @@
         }
       }
     })();
+  </script>
+
+  <!-- Vendor Map Picker for Web / PWA -->
+  <script>
+    window.openVendorMapPicker = function(initialLat, initialLng, apiKey, styleUrl, rtlPluginUrl) {
+      return new Promise(function(resolve) {
+        function ensureMapbox(callback) {
+          if (!document.getElementById('vendor-mapboxgl-css')) {
+            var link = document.createElement('link');
+            link.id = 'vendor-mapboxgl-css';
+            link.rel = 'stylesheet';
+            link.href = 'https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css';
+            document.head.appendChild(link);
+          }
+
+          if (window.mapboxgl) {
+            callback();
+            return;
+          }
+
+          var script = document.getElementById('vendor-mapboxgl-js');
+          if (!script) {
+            script = document.createElement('script');
+            script.id = 'vendor-mapboxgl-js';
+            script.src = 'https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js';
+            script.onload = callback;
+            document.head.appendChild(script);
+          } else {
+            script.addEventListener('load', callback);
+          }
+        }
+
+        function ensureConfig(cb) {
+          if (apiKey && apiKey.trim()) {
+            cb();
+            return;
+          }
+          fetch('https://api.golino.shop/v1/mobile-app/config')
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+              if (data && data.map && data.map.publicKey) {
+                apiKey = data.map.publicKey;
+                if (!styleUrl && data.map.styleUrl) styleUrl = data.map.styleUrl;
+                if (!rtlPluginUrl && data.map.rtlPluginUrl) rtlPluginUrl = data.map.rtlPluginUrl;
+              }
+            })
+            .catch(function(e) { console.warn('Could not load fallback map config', e); })
+            .finally(cb);
+        }
+
+        ensureConfig(function() {
+          ensureMapbox(function() {
+            var currentLat = (typeof initialLat === 'number' && !isNaN(initialLat) && initialLat !== 0) ? initialLat : 35.7219;
+            var currentLng = (typeof initialLng === 'number' && !isNaN(initialLng) && initialLng !== 0) ? initialLng : 51.3347;
+
+            styleUrl = styleUrl || 'https://map.ir/vector/styles/main/mapir-xyz-style.json';
+            rtlPluginUrl = rtlPluginUrl || 'https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-rtl-text/v0.4.0/mapbox-gl-rtl-text.js';
+
+            var modalId = 'vendor-map-picker-modal-' + Date.now();
+            var modalOverlay = document.createElement('div');
+            modalOverlay.id = modalId;
+            modalOverlay.className = 'vmp-overlay';
+            modalOverlay.innerHTML =
+              '<div class="vmp-container">' +
+                '<div class="vmp-header">' +
+                  '<div class="vmp-title-box">' +
+                    '<span class="vmp-title">انتخاب موقعیت فروشگاه روی نقشه</span>' +
+                    '<span class="vmp-subtitle">روی نقشه کلیک کنید یا نشانگر را به سمت مغازه بکشید</span>' +
+                  '</div>' +
+                  '<button type="button" class="vmp-close-btn" id="' + modalId + '-close" aria-label="بستن">✕</button>' +
+                '</div>' +
+                '<div class="vmp-body">' +
+                  '<div id="' + modalId + '-map" class="vmp-map-canvas"></div>' +
+                  '<div class="vmp-coords-chip" id="' + modalId + '-coords">' +
+                    currentLat.toFixed(5) + ' , ' + currentLng.toFixed(5) +
+                  '</div>' +
+                '</div>' +
+                '<div class="vmp-footer">' +
+                  '<button type="button" class="vmp-btn-confirm" id="' + modalId + '-confirm">' +
+                    'تأیید موقعیت فروشگاه' +
+                  '</button>' +
+                  '<button type="button" class="vmp-btn-cancel" id="' + modalId + '-cancel">' +
+                    'انصراف' +
+                  '</button>' +
+                '</div>' +
+              '</div>';
+            document.body.appendChild(modalOverlay);
+
+            function updateCoordsChip(lat, lng) {
+              currentLat = lat;
+              currentLng = lng;
+              var chip = document.getElementById(modalId + '-coords');
+              if (chip) chip.innerText = lat.toFixed(5) + ' , ' + lng.toFixed(5);
+            }
+
+            function cleanup(result) {
+              try {
+                if (map) map.remove();
+              } catch (_) {}
+              if (modalOverlay && modalOverlay.parentNode) {
+                modalOverlay.parentNode.removeChild(modalOverlay);
+              }
+              resolve(result);
+            }
+
+            document.getElementById(modalId + '-close').onclick = function() { cleanup(null); };
+            document.getElementById(modalId + '-cancel').onclick = function() { cleanup(null); };
+            document.getElementById(modalId + '-confirm').onclick = function() {
+              cleanup(currentLat.toFixed(6) + ',' + currentLng.toFixed(6));
+            };
+
+            window.mapboxgl.accessToken = apiKey || '';
+            if (window.mapboxgl.setRTLTextPlugin) {
+              try {
+                window.mapboxgl.setRTLTextPlugin(rtlPluginUrl, undefined, true);
+              } catch (_) {}
+            }
+
+            var map = new window.mapboxgl.Map({
+              container: modalId + '-map',
+              style: styleUrl,
+              center: [currentLng, currentLat],
+              zoom: 14,
+              transformRequest: function(url) {
+                if (apiKey && url.startsWith('https://map.ir')) {
+                  return { url: url, headers: { 'x-api-key': apiKey } };
+                }
+                return { url: url };
+              }
+            });
+
+            map.addControl(new window.mapboxgl.NavigationControl(), 'top-left');
+
+            var marker = new window.mapboxgl.Marker({ draggable: true })
+              .setLngLat([currentLng, currentLat])
+              .addTo(map);
+
+            map.on('click', function(e) {
+              if (e.lngLat) {
+                marker.setLngLat([e.lngLat.lng, e.lngLat.lat]);
+                updateCoordsChip(e.lngLat.lat, e.lngLat.lng);
+              }
+            });
+
+            marker.on('dragend', function() {
+              var pos = marker.getLngLat();
+              updateCoordsChip(pos.lat, pos.lng);
+            });
+
+            setTimeout(function() {
+              if (map) map.resize();
+            }, 300);
+          });
+        });
+      });
+    };
   </script>
 
   <script src="flutter_bootstrap.js" async></script>

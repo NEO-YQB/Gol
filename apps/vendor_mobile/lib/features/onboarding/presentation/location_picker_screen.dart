@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -30,7 +31,7 @@ class _OnboardingLocationPickerScreenState
 
   late double _selectedLat;
   late double _selectedLng;
-  late final WebViewController _controller;
+  WebViewController? _controller;
   bool _isMapReady = false;
   String? _mapError;
 
@@ -40,34 +41,42 @@ class _OnboardingLocationPickerScreenState
     _selectedLat = widget.initialLat ?? _defaultLat;
     _selectedLng = widget.initialLng ?? _defaultLng;
 
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(Colors.transparent)
-      ..addJavaScriptChannel(
-        'GapCodeMapBridge',
-        onMessageReceived: (message) {
-          final parts = message.message.split(',');
-          if (parts.length != 2) return;
-          final lat = double.tryParse(parts.first);
-          final lng = double.tryParse(parts.last);
-          if (lat == null || lng == null || !mounted) return;
-          setState(() {
-            _selectedLat = lat;
-            _selectedLng = lng;
-          });
-        },
-      )
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageFinished: (_) {
-            if (!mounted) return;
-            setState(() {
-              _isMapReady = true;
-            });
-          },
-        ),
-      )
-      ..loadHtmlString(_buildHtml());
+    if (!kIsWeb) {
+      try {
+        _controller = WebViewController()
+          ..setJavaScriptMode(JavaScriptMode.unrestricted)
+          ..setBackgroundColor(Colors.transparent)
+          ..addJavaScriptChannel(
+            'GapCodeMapBridge',
+            onMessageReceived: (message) {
+              final parts = message.message.split(',');
+              if (parts.length != 2) return;
+              final lat = double.tryParse(parts.first);
+              final lng = double.tryParse(parts.last);
+              if (lat == null || lng == null || !mounted) return;
+              setState(() {
+                _selectedLat = lat;
+                _selectedLng = lng;
+              });
+            },
+          )
+          ..setNavigationDelegate(
+            NavigationDelegate(
+              onPageFinished: (_) {
+                if (!mounted) return;
+                setState(() {
+                  _isMapReady = true;
+                });
+              },
+            ),
+          )
+          ..loadHtmlString(_buildHtml());
+      } catch (e) {
+        _mapError = 'نمایش نقشه در این پلتفرم پشتیبانی نمی‌شود.';
+      }
+    } else {
+      _mapError = 'برای انتخاب موقعیت روی نقشه از پنجره پاپ‌آپ وب استفاده می‌شود.';
+    }
   }
 
   String _buildHtml() {
@@ -193,7 +202,9 @@ class _OnboardingLocationPickerScreenState
               child: Stack(
                 children: [
                   Positioned.fill(
-                    child: WebViewWidget(controller: _controller),
+                    child: _controller != null
+                        ? WebViewWidget(controller: _controller!)
+                        : const SizedBox.shrink(),
                   ),
                   if (!_isMapReady)
                     const Positioned.fill(

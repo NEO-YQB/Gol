@@ -1,13 +1,17 @@
 import 'package:vendor_mobile/core/platform/io_shim.dart';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/platform/web_map_picker.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_glass_card.dart';
 import '../../../shared/widgets/app_shell_background.dart';
 import '../../auth/domain/auth_session.dart';
+import '../data/repositories/vendor_onboarding_repository.dart';
+import '../domain/mobile_runtime_config.dart';
 import 'location_picker_screen.dart';
 import 'view_models/vendor_onboarding_view_model.dart';
 
@@ -163,12 +167,52 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
   }
 
   Future<void> _pickBusinessLocation() async {
+    final state = _viewModel.state;
+    final initialLat = state.selectedBusinessLat ?? 35.7219;
+    final initialLng = state.selectedBusinessLng ?? 51.3347;
+
+    if (kIsWeb) {
+      final config = state.runtimeConfig;
+      final coordsString = await pickWebMapLocation(
+        initialLat: initialLat,
+        initialLng: initialLng,
+        apiKey: config?.mapPublicKey ?? '',
+        styleUrl: config?.mapStyleUrl ?? 'https://map.ir/vector/styles/main/mapir-xyz-style.json',
+        rtlPluginUrl: config?.mapRtlPluginUrl ??
+            'https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-rtl-text/v0.4.0/mapbox-gl-rtl-text.js',
+      );
+
+      if (!mounted || coordsString == null || coordsString.trim().isEmpty) return;
+      final parts = coordsString.split(',');
+      if (parts.length != 2) return;
+      final lat = double.tryParse(parts[0].trim());
+      final lng = double.tryParse(parts[1].trim());
+      if (lat == null || lng == null) return;
+
+      await _viewModel.selectBusinessLocation(lat: lat, lng: lng);
+      return;
+    }
+
+    var runtimeConfig = state.runtimeConfig;
+    if (runtimeConfig == null) {
+      try {
+        runtimeConfig = await const VendorOnboardingRepository().getRuntimeConfig();
+      } catch (_) {
+        runtimeConfig = const MobileRuntimeConfig(
+          mapPublicKey: '',
+          mapStyleUrl: 'https://map.ir/vector/styles/main/mapir-xyz-style.json',
+          mapRtlPluginUrl:
+              'https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-rtl-text/v0.4.0/mapbox-gl-rtl-text.js',
+        );
+      }
+    }
+
     final selected = await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => OnboardingLocationPickerScreen(
-          runtimeConfig: _viewModel.state.runtimeConfig!,
-          initialLat: _viewModel.state.selectedBusinessLat,
-          initialLng: _viewModel.state.selectedBusinessLng,
+          runtimeConfig: runtimeConfig,
+          initialLat: state.selectedBusinessLat,
+          initialLng: state.selectedBusinessLng,
         ),
       ),
     );
