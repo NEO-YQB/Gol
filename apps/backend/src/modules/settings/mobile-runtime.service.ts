@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 
 type ReverseGeocodeResponse = {
   formattedAddress: string;
+  address?: string;
   raw: unknown;
 };
 
