@@ -198,19 +198,24 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
       try {
         runtimeConfig = await const VendorOnboardingRepository().getRuntimeConfig();
       } catch (_) {
-        runtimeConfig = const MobileRuntimeConfig(
+        runtimeConfig = null;
+      }
+    }
+
+    final resolvedConfig = runtimeConfig ??
+        const MobileRuntimeConfig(
+          mapProvider: 'mapir',
           mapPublicKey: '',
           mapStyleUrl: 'https://map.ir/vector/styles/main/mapir-xyz-style.json',
           mapRtlPluginUrl:
               'https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-rtl-text/v0.4.0/mapbox-gl-rtl-text.js',
+          reverseGeocodeMode: 'proxy',
         );
-      }
-    }
 
     final selected = await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => OnboardingLocationPickerScreen(
-          runtimeConfig: runtimeConfig,
+          runtimeConfig: resolvedConfig,
           initialLat: state.selectedBusinessLat,
           initialLng: state.selectedBusinessLng,
         ),
