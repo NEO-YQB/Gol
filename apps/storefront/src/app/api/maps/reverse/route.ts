@@ -41,10 +41,6 @@ function mapPayload(payload: unknown): ReverseGeocodeResponse {
 }
 
 export async function GET(request: NextRequest) {
-  if (!MAP_REVERSE_GEOCODE_URL) {
-    return NextResponse.json({ message: 'سرویس تبدیل مختصات به آدرس تنظیم نشده است' }, { status: 503 })
-  }
-
   const { searchParams } = new URL(request.url)
   const lat = searchParams.get('lat')
   const lng = searchParams.get('lng')
@@ -53,14 +49,48 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ message: 'مختصات نقشه کامل نیست' }, { status: 400 })
   }
 
+  const reverseKey =
+    process.env.MAP_REVERSE_GEOCODE_KEY?.trim() ||
+    process.env.NEXT_PUBLIC_MAP_IR_API_KEY?.trim() ||
+    process.env.MAP_IR_API_KEY?.trim() ||
+    process.env.VITE_MAP_IR_API_KEY?.trim() ||
+    ''
+
+  const reverseUrl = process.env.MAP_REVERSE_GEOCODE_URL?.trim() || 'https://map.ir/reverse'
+
+  // If local direct key is not configured, proxy through backend
+  if (!reverseKey) {
+    const backendBaseUrl =
+      process.env.API_BASE_URL?.trim() ||
+      process.env.NEXT_PUBLIC_API_BASE_URL?.trim() ||
+      (process.env.NODE_ENV === 'production' ? 'https://api.golino.shop/v1' : 'http://localhost:3000/v1')
+
+    try {
+      const res = await fetch(`${backendBaseUrl.replace(/\/+$/, '')}/mobile-app/reverse-geocode?lat=${lat}&lng=${lng}`, {
+        cache: 'no-store',
+      })
+      if (res.ok) {
+        const payload = (await res.json()) as { formattedAddress?: string; address?: string; raw?: unknown }
+        return NextResponse.json({
+          formattedAddress: payload.formattedAddress || payload.address || '',
+          city: '',
+          raw: payload,
+        })
+      }
+    } catch {
+      // ignore
+    }
+
+    return NextResponse.json({ message: 'سرویس تبدیل مختصات به آدرس تنظیم نشده است' }, { status: 503 })
+  }
+
   try {
-    const targetUrl = new URL(MAP_REVERSE_GEOCODE_URL)
+    const targetUrl = new URL(reverseUrl)
     targetUrl.searchParams.set('lat', lat)
     targetUrl.searchParams.set('lon', lng)
 
-    const headers: HeadersInit = {}
-    if (MAP_REVERSE_GEOCODE_KEY) {
-      headers['x-api-key'] = MAP_REVERSE_GEOCODE_KEY
+    const headers: HeadersInit = {
+      'x-api-key': reverseKey,
     }
 
     const response = await fetch(targetUrl.toString(), {

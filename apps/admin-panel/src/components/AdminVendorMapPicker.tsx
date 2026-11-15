@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { resolveApiBaseUrl } from '../lib/api'
 
 declare global {
   interface Window {
@@ -40,6 +41,53 @@ const MAP_STYLE_URL =
 const RTL_PLUGIN_URL =
   import.meta.env.VITE_MAP_IR_RTL_PLUGIN_URL ||
   'https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-rtl-text/v0.4.0/mapbox-gl-rtl-text.js'
+
+let cachedMapConfig: { apiKey: string; styleUrl: string; rtlPluginUrl: string } | null = null
+
+async function getMapConfig(): Promise<{ apiKey: string; styleUrl: string; rtlPluginUrl: string }> {
+  if (cachedMapConfig && cachedMapConfig.apiKey) {
+    return cachedMapConfig
+  }
+
+  const envKey = (import.meta.env.VITE_MAP_IR_API_KEY || '').trim()
+  const envStyle = (import.meta.env.VITE_MAP_IR_STYLE_URL || '').trim()
+  const envRtl = (import.meta.env.VITE_MAP_IR_RTL_PLUGIN_URL || '').trim()
+
+  if (envKey) {
+    cachedMapConfig = {
+      apiKey: envKey,
+      styleUrl: envStyle || MAP_STYLE_URL,
+      rtlPluginUrl: envRtl || RTL_PLUGIN_URL,
+    }
+    return cachedMapConfig
+  }
+
+  // Fallback: fetch from backend runtime config
+  try {
+    const apiBase = resolveApiBaseUrl()
+    const res = await fetch(`${apiBase}/mobile-app/config`, { cache: 'no-store' })
+    if (res.ok) {
+      const payload = (await res.json()) as { map?: { publicKey?: string; styleUrl?: string; rtlPluginUrl?: string } }
+      const backendKey = payload?.map?.publicKey?.trim() || ''
+      if (backendKey) {
+        cachedMapConfig = {
+          apiKey: backendKey,
+          styleUrl: payload?.map?.styleUrl || envStyle || MAP_STYLE_URL,
+          rtlPluginUrl: payload?.map?.rtlPluginUrl || envRtl || RTL_PLUGIN_URL,
+        }
+        return cachedMapConfig
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to fetch map config from backend:', err)
+  }
+
+  return {
+    apiKey: '',
+    styleUrl: envStyle || MAP_STYLE_URL,
+    rtlPluginUrl: envRtl || RTL_PLUGIN_URL,
+  }
+}
 
 function loadMapAssets() {
   if (typeof window === 'undefined') return Promise.resolve()
@@ -94,26 +142,27 @@ export function AdminVendorMapPicker({
       if (!mapRef.current) return
 
       try {
-        if (!MAP_IR_API_KEY) {
-          setMapError('کلید عمومی map.ir تنظیم نشده است. مقدار VITE_MAP_IR_API_KEY را در env وارد کن.')
+        const config = await getMapConfig()
+        if (!config.apiKey) {
+          setMapError('کلید عمومی map.ir تنظیم نشده است. مقدار VITE_MAP_IR_API_KEY یا MAP_IR_API_KEY را در env وارد کن.')
           return
         }
 
         await loadMapAssets()
         if (cancelled || !mapRef.current || !window.mapboxgl) return
 
-        window.mapboxgl.accessToken = MAP_IR_API_KEY
-        window.mapboxgl.setRTLTextPlugin?.(RTL_PLUGIN_URL, undefined, true)
+        window.mapboxgl.accessToken = config.apiKey
+        window.mapboxgl.setRTLTextPlugin?.(config.rtlPluginUrl, undefined, true)
 
         const map = new window.mapboxgl.Map({
           container: mapRef.current,
-          style: MAP_STYLE_URL,
+          style: config.styleUrl,
           transformRequest: (url: string) => {
             if (url.startsWith('https://map.ir')) {
               return {
                 url,
                 headers: {
-                  'x-api-key': MAP_IR_API_KEY,
+                  'x-api-key': config.apiKey,
                 },
               }
             }

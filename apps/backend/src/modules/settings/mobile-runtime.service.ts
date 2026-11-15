@@ -11,16 +11,30 @@ export class MobileRuntimeService {
   constructor(private readonly configService: ConfigService) {}
 
   getPublicConfig() {
+    const publicKey =
+      this.configService.get<string>('MAP_IR_API_KEY')?.trim() ||
+      this.configService.get<string>('VITE_MAP_IR_API_KEY')?.trim() ||
+      this.configService.get<string>('NEXT_PUBLIC_MAP_IR_API_KEY')?.trim() ||
+      '';
+
+    const styleUrl =
+      this.configService.get<string>('MAP_IR_STYLE_URL')?.trim() ||
+      this.configService.get<string>('VITE_MAP_IR_STYLE_URL')?.trim() ||
+      this.configService.get<string>('NEXT_PUBLIC_MAP_IR_STYLE_URL')?.trim() ||
+      'https://map.ir/vector/styles/main/mapir-xyz-style.json';
+
+    const rtlPluginUrl =
+      this.configService.get<string>('MAP_IR_RTL_PLUGIN_URL')?.trim() ||
+      this.configService.get<string>('VITE_MAP_IR_RTL_PLUGIN_URL')?.trim() ||
+      this.configService.get<string>('NEXT_PUBLIC_MAP_IR_RTL_PLUGIN_URL')?.trim() ||
+      'https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-rtl-text/v0.4.0/mapbox-gl-rtl-text.js';
+
     return {
       map: {
         provider: 'map_ir',
-        publicKey: this.configService.get<string>('MAP_IR_API_KEY')?.trim() ?? '',
-        styleUrl:
-            this.configService.get<string>('MAP_IR_STYLE_URL')?.trim() ||
-            'https://map.ir/vector/styles/main/mapir-xyz-style.json',
-        rtlPluginUrl:
-            this.configService.get<string>('MAP_IR_RTL_PLUGIN_URL')?.trim() ||
-            'https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-rtl-text/v0.4.0/mapbox-gl-rtl-text.js',
+        publicKey,
+        styleUrl,
+        rtlPluginUrl,
         reverseGeocodeMode: 'proxy',
       },
     };
@@ -37,6 +51,8 @@ export class MobileRuntimeService {
     const reverseKey =
       this.configService.get<string>('MAP_REVERSE_GEOCODE_KEY')?.trim() ||
       this.configService.get<string>('MAP_IR_API_KEY')?.trim() ||
+      this.configService.get<string>('VITE_MAP_IR_API_KEY')?.trim() ||
+      this.configService.get<string>('NEXT_PUBLIC_MAP_IR_API_KEY')?.trim() ||
       '';
 
     if (!reverseKey) {
@@ -58,8 +74,10 @@ export class MobileRuntimeService {
     }
 
     const payload = (await response.json()) as Record<string, unknown>;
+    const address = this.readReverseAddress(payload);
     return {
-      formattedAddress: this.readReverseAddress(payload),
+      formattedAddress: address,
+      address,
       raw: payload,
     };
   }

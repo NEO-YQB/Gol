@@ -42,6 +42,74 @@ const RTL_PLUGIN_URL =
   process.env.NEXT_PUBLIC_MAP_IR_RTL_PLUGIN_URL ||
   'https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-rtl-text/v0.4.0/mapbox-gl-rtl-text.js'
 
+let cachedMapConfig: { apiKey: string; styleUrl: string; rtlPluginUrl: string } | null = null
+
+async function getMapConfig(): Promise<{ apiKey: string; styleUrl: string; rtlPluginUrl: string }> {
+  if (cachedMapConfig && cachedMapConfig.apiKey) {
+    return cachedMapConfig
+  }
+
+  const envKey = (process.env.NEXT_PUBLIC_MAP_IR_API_KEY || '').trim()
+  const envStyle = (process.env.NEXT_PUBLIC_MAP_IR_STYLE_URL || '').trim()
+  const envRtl = (process.env.NEXT_PUBLIC_MAP_IR_RTL_PLUGIN_URL || '').trim()
+
+  if (envKey) {
+    cachedMapConfig = {
+      apiKey: envKey,
+      styleUrl: envStyle || MAP_STYLE_URL,
+      rtlPluginUrl: envRtl || RTL_PLUGIN_URL,
+    }
+    return cachedMapConfig
+  }
+
+  // 1. Try Next.js server route (reads runtime process.env)
+  try {
+    const res = await fetch('/api/maps/config', { cache: 'no-store' })
+    if (res.ok) {
+      const data = (await res.json()) as { apiKey?: string; styleUrl?: string; rtlPluginUrl?: string }
+      if (data?.apiKey) {
+        cachedMapConfig = {
+          apiKey: data.apiKey,
+          styleUrl: data.styleUrl || envStyle || MAP_STYLE_URL,
+          rtlPluginUrl: data.rtlPluginUrl || envRtl || RTL_PLUGIN_URL,
+        }
+        return cachedMapConfig
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  // 2. Try direct backend mobile-app/config
+  try {
+    const apiBase =
+      typeof window !== 'undefined' &&
+      (window.location.hostname.endsWith('golino.shop') || window.location.hostname === 'golino.shop')
+        ? 'https://api.golino.shop/v1'
+        : 'http://localhost:3000/v1'
+    const res = await fetch(`${apiBase}/mobile-app/config`, { cache: 'no-store' })
+    if (res.ok) {
+      const data = (await res.json()) as { map?: { publicKey?: string; styleUrl?: string; rtlPluginUrl?: string } }
+      if (data?.map?.publicKey) {
+        cachedMapConfig = {
+          apiKey: data.map.publicKey,
+          styleUrl: data.map.styleUrl || envStyle || MAP_STYLE_URL,
+          rtlPluginUrl: data.map.rtlPluginUrl || envRtl || RTL_PLUGIN_URL,
+        }
+        return cachedMapConfig
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  return {
+    apiKey: '',
+    styleUrl: envStyle || MAP_STYLE_URL,
+    rtlPluginUrl: envRtl || RTL_PLUGIN_URL,
+  }
+}
+
 function loadMapAssets() {
   if (typeof window === 'undefined') return Promise.resolve()
   if (window.mapboxgl) return Promise.resolve()
@@ -101,26 +169,27 @@ export function StorefrontMapPicker({
       if (!mapRef.current) return
 
       try {
-        if (!MAP_IR_API_KEY) {
-          setMapError('کلید عمومی map.ir تنظیم نشده است. مقدار NEXT_PUBLIC_MAP_IR_API_KEY را در env وارد کن.')
+        const config = await getMapConfig()
+        if (!config.apiKey) {
+          setMapError('کلید عمومی map.ir تنظیم نشده است. مقدار NEXT_PUBLIC_MAP_IR_API_KEY یا MAP_IR_API_KEY را در env وارد کن.')
           return
         }
 
         await loadMapAssets()
         if (cancelled || !mapRef.current || !window.mapboxgl) return
 
-        window.mapboxgl.accessToken = MAP_IR_API_KEY
-        window.mapboxgl.setRTLTextPlugin?.(RTL_PLUGIN_URL, undefined, true)
+        window.mapboxgl.accessToken = config.apiKey
+        window.mapboxgl.setRTLTextPlugin?.(config.rtlPluginUrl, undefined, true)
 
         const map = new window.mapboxgl.Map({
           container: mapRef.current,
-          style: MAP_STYLE_URL,
+          style: config.styleUrl,
           transformRequest: (url: string) => {
             if (url.startsWith('https://map.ir')) {
               return {
                 url,
                 headers: {
-                  'x-api-key': MAP_IR_API_KEY,
+                  'x-api-key': config.apiKey,
                 },
               }
             }

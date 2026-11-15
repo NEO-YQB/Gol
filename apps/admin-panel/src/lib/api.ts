@@ -653,6 +653,9 @@ export const adminApi = {
     }, session.accessToken)
   },
   getMapReverseUrl(lat: number, lng: number) {
+    if (!MAP_REVERSE_GEOCODE_KEY) {
+      return `${API_BASE_URL}/mobile-app/reverse-geocode?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`
+    }
     const url = new URL(MAP_REVERSE_GEOCODE_URL)
     url.searchParams.set('lat', String(lat))
     url.searchParams.set('lon', String(lng))
