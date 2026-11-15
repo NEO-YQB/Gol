@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { cache } from 'react'
+import { getBackendApiUrl } from './backendApi'
 
 const SITE_BASE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ||
@@ -420,14 +421,13 @@ export type EnrichedStorefrontPage = Omit<StorefrontPage, 'blocks'> & {
   blocks: EnrichedBlock[]
 }
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  process.env.API_BASE_URL ||
-  (process.env.NODE_ENV === 'production' ? 'https://api.golino.shop/v1' : 'http://localhost:3000/v1')
+const API_BASE_URL = getBackendApiUrl()
 
 export function getStorefrontApiBaseUrl() {
   return API_BASE_URL
 }
+
+export { getBackendApiUrl }
 
 function toRecord(value: unknown): Record<string, unknown> {
   return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {}

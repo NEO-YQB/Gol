@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-const API_BASE_URL =
-  process.env.API_BASE_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  'http://localhost:3000/v1'
+import { getBackendApiUrl } from '../../../../lib/backendApi'
 
 export async function GET(request: NextRequest) {
+  const apiBaseUrl = getBackendApiUrl(request)
+
   try {
     const { searchParams } = new URL(request.url)
     const queryString = searchParams.toString()
     const targetUrl = queryString
-      ? `${API_BASE_URL}/auth/account-summary?${queryString}`
-      : `${API_BASE_URL}/auth/account-summary`
+      ? `${apiBaseUrl}/auth/account-summary?${queryString}`
+      : `${apiBaseUrl}/auth/account-summary`
 
     const response = await fetch(targetUrl, {
       method: 'GET',
@@ -28,7 +26,8 @@ export async function GET(request: NextRequest) {
         'Content-Type': response.headers.get('Content-Type') || 'application/json',
       },
     })
-  } catch {
+  } catch (error) {
+    console.error('Failed to proxy account-summary to backend:', apiBaseUrl, error)
     return NextResponse.json({ message: 'ارتباط با سرور احراز هویت برقرار نشد' }, { status: 502 })
   }
 }

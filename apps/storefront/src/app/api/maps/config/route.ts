@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { getBackendApiUrl } from '../../../../lib/backendApi'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const localKey =
     process.env.NEXT_PUBLIC_MAP_IR_API_KEY?.trim() ||
     process.env.MAP_IR_API_KEY?.trim() ||
@@ -26,13 +27,10 @@ export async function GET() {
   }
 
   // Fallback to backend API
-  const backendBaseUrl =
-    process.env.API_BASE_URL?.trim() ||
-    process.env.NEXT_PUBLIC_API_BASE_URL?.trim() ||
-    (process.env.NODE_ENV === 'production' ? 'https://api.golino.shop/v1' : 'http://localhost:3000/v1')
+  const backendBaseUrl = getBackendApiUrl(request)
 
   try {
-    const res = await fetch(`${backendBaseUrl.replace(/\/+$/, '')}/mobile-app/config`, {
+    const res = await fetch(`${backendBaseUrl}/mobile-app/config`, {
       cache: 'no-store',
     })
     if (res.ok) {
@@ -45,8 +43,8 @@ export async function GET() {
         })
       }
     }
-  } catch {
-    // ignore
+  } catch (error) {
+    console.error('Failed to fetch map config from backend:', backendBaseUrl, error)
   }
 
   return NextResponse.json({

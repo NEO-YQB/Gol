@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getBackendApiUrl } from '../../../../lib/backendApi'
 
 type ReverseGeocodeResponse = {
   formattedAddress: string
@@ -60,13 +61,10 @@ export async function GET(request: NextRequest) {
 
   // If local direct key is not configured, proxy through backend
   if (!reverseKey) {
-    const backendBaseUrl =
-      process.env.API_BASE_URL?.trim() ||
-      process.env.NEXT_PUBLIC_API_BASE_URL?.trim() ||
-      (process.env.NODE_ENV === 'production' ? 'https://api.golino.shop/v1' : 'http://localhost:3000/v1')
+    const backendBaseUrl = getBackendApiUrl(request)
 
     try {
-      const res = await fetch(`${backendBaseUrl.replace(/\/+$/, '')}/mobile-app/reverse-geocode?lat=${lat}&lng=${lng}`, {
+      const res = await fetch(`${backendBaseUrl}/mobile-app/reverse-geocode?lat=${lat}&lng=${lng}`, {
         cache: 'no-store',
       })
       if (res.ok) {

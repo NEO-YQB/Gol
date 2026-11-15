@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-const API_BASE_URL =
-  process.env.API_BASE_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  'http://localhost:3000/v1'
+import { getBackendApiUrl } from '../../../../lib/backendApi'
 
 export async function PATCH(request: NextRequest) {
   const body = await request.text()
+  const apiBaseUrl = getBackendApiUrl(request)
 
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/complete-profile`, {
+    const response = await fetch(`${apiBaseUrl}/auth/complete-profile`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -26,7 +23,8 @@ export async function PATCH(request: NextRequest) {
         'Content-Type': response.headers.get('Content-Type') || 'application/json',
       },
     })
-  } catch {
+  } catch (error) {
+    console.error('Failed to proxy complete-profile to backend:', apiBaseUrl, error)
     return NextResponse.json({ message: 'ارتباط با سرور احراز هویت برقرار نشد' }, { status: 502 })
   }
 }

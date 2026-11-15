@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-const API_BASE_URL =
-  process.env.API_BASE_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  'http://localhost:3000/v1'
+import { getBackendApiUrl } from '../../../../lib/backendApi'
 
 type RouteContext = {
   params?: Promise<Record<string, string | string[] | undefined>>
@@ -17,8 +13,10 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ message: 'شناسه آدرس نامعتبر است' }, { status: 400 })
   }
 
+  const apiBaseUrl = getBackendApiUrl(request)
+
   try {
-    const response = await fetch(`${API_BASE_URL}/addresses/${id}`, {
+    const response = await fetch(`${apiBaseUrl}/addresses/${id}`, {
       method: 'DELETE',
       headers: {
         Authorization: request.headers.get('Authorization') || '',
@@ -33,7 +31,8 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
         'Content-Type': response.headers.get('Content-Type') || 'application/json',
       },
     })
-  } catch {
+  } catch (error) {
+    console.error(`Failed to proxy DELETE address ${id} to backend:`, apiBaseUrl, error)
     return NextResponse.json({ message: 'حذف آدرس با خطا مواجه شد' }, { status: 502 })
   }
 }

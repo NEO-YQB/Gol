@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-const API_BASE_URL =
-  process.env.API_BASE_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  'http://localhost:3000/v1'
+import { getBackendApiUrl } from '../../../lib/backendApi'
 
 export async function GET(request: NextRequest) {
+  const apiBaseUrl = getBackendApiUrl(request)
+
   try {
-    const response = await fetch(`${API_BASE_URL}/addresses`, {
+    const response = await fetch(`${apiBaseUrl}/addresses`, {
       method: 'GET',
       headers: {
         Authorization: request.headers.get('Authorization') || '',
@@ -22,16 +20,18 @@ export async function GET(request: NextRequest) {
         'Content-Type': response.headers.get('Content-Type') || 'application/json',
       },
     })
-  } catch {
+  } catch (error) {
+    console.error('Failed to proxy GET addresses to backend:', apiBaseUrl, error)
     return NextResponse.json({ message: 'ارتباط با سرور آدرس‌ها برقرار نشد' }, { status: 502 })
   }
 }
 
 export async function POST(request: NextRequest) {
   const body = await request.text()
+  const apiBaseUrl = getBackendApiUrl(request)
 
   try {
-    const response = await fetch(`${API_BASE_URL}/addresses`, {
+    const response = await fetch(`${apiBaseUrl}/addresses`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -48,7 +48,8 @@ export async function POST(request: NextRequest) {
         'Content-Type': response.headers.get('Content-Type') || 'application/json',
       },
     })
-  } catch {
+  } catch (error) {
+    console.error('Failed to proxy POST addresses to backend:', apiBaseUrl, error)
     return NextResponse.json({ message: 'ثبت آدرس با خطا مواجه شد' }, { status: 502 })
   }
 }

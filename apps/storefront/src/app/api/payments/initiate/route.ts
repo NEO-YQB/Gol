@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-const API_BASE_URL =
-  process.env.API_BASE_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  'http://localhost:3000/v1'
+import { getBackendApiUrl } from '../../../../lib/backendApi'
 
 export async function POST(request: NextRequest) {
   const body = await request.text()
+  const apiBaseUrl = getBackendApiUrl(request)
 
   try {
-    const response = await fetch(`${API_BASE_URL}/payments/initiate`, {
+    const response = await fetch(`${apiBaseUrl}/payments/initiate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -26,7 +23,8 @@ export async function POST(request: NextRequest) {
         'Content-Type': response.headers.get('Content-Type') || 'application/json',
       },
     })
-  } catch {
+  } catch (error) {
+    console.error('Failed to proxy payments/initiate to backend:', apiBaseUrl, error)
     return NextResponse.json({ message: 'شروع پرداخت با خطا مواجه شد' }, { status: 502 })
   }
 }

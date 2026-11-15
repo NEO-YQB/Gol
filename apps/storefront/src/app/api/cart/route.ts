@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-const API_BASE_URL =
-  process.env.API_BASE_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  'http://localhost:3000/v1'
+import { getBackendApiUrl } from '../../../lib/backendApi'
 
 export async function GET(request: NextRequest) {
+  const apiBaseUrl = getBackendApiUrl(request)
+
   try {
-    const response = await fetch(`${API_BASE_URL}/cart`, {
+    const response = await fetch(`${apiBaseUrl}/cart`, {
       method: 'GET',
       headers: {
         Authorization: request.headers.get('Authorization') || '',
@@ -22,14 +20,17 @@ export async function GET(request: NextRequest) {
         'Content-Type': response.headers.get('Content-Type') || 'application/json',
       },
     })
-  } catch {
+  } catch (error) {
+    console.error('Failed to proxy GET cart to backend:', apiBaseUrl, error)
     return NextResponse.json({ message: 'دریافت سبد خرید با خطا مواجه شد' }, { status: 502 })
   }
 }
 
 export async function DELETE(request: NextRequest) {
+  const apiBaseUrl = getBackendApiUrl(request)
+
   try {
-    const response = await fetch(`${API_BASE_URL}/cart`, {
+    const response = await fetch(`${apiBaseUrl}/cart`, {
       method: 'DELETE',
       headers: {
         Authorization: request.headers.get('Authorization') || '',
@@ -44,7 +45,8 @@ export async function DELETE(request: NextRequest) {
         'Content-Type': response.headers.get('Content-Type') || 'application/json',
       },
     })
-  } catch {
+  } catch (error) {
+    console.error('Failed to proxy DELETE cart to backend:', apiBaseUrl, error)
     return NextResponse.json({ message: 'خالی کردن سبد خرید با خطا مواجه شد' }, { status: 502 })
   }
 }
