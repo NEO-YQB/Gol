@@ -448,14 +448,6 @@ export function StorefrontAccountAddresses() {
             )}
           </div>
         </section>
-
-        <section className="rounded-[32px] bg-[linear-gradient(180deg,rgba(255,253,248,0.98),rgba(248,241,230,0.95))] px-6 py-6 shadow-[0_14px_34px_rgba(52,36,17,0.06)]">
-          <h3 className="text-xl font-black text-[#173126]">برای reuse در پنل فروشنده</h3>
-          <div className="mt-4 grid gap-3 text-sm leading-7 text-[#6e6152]">
-            <div className="rounded-[22px] bg-white/80 px-4 py-4">هسته‌ی انتخاب مختصات در `StorefrontMapPicker` جدا شده و می‌تواند عیناً در vendor هم استفاده شود.</div>
-            <div className="rounded-[22px] bg-white/80 px-4 py-4">ارسال داده دقیقاً با DTO بک‌اند هماهنگ است: `title`، `city`، `address`، `lat`، `lng`، `isDefault`.</div>
-          </div>
-        </section>
       </aside>
     </div>
   )
