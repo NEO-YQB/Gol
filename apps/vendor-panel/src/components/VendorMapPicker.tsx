@@ -33,7 +33,6 @@ const DEFAULT_ZOOM = 14
 const MAPBOX_GL_SCRIPT_ID = 'vendor-mapboxgl-script'
 const MAPBOX_GL_STYLE_ID = 'vendor-mapboxgl-style'
 
-const MAP_IR_API_KEY = import.meta.env.VITE_MAP_IR_API_KEY || ''
 const MAP_STYLE_URL =
   import.meta.env.VITE_MAP_IR_STYLE_URL ||
   'https://map.ir/vector/styles/main/mapir-xyz-style.json'
