@@ -135,8 +135,10 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
       imageQuality: 92,
     );
     if (picked == null || !mounted) return;
+    final file = await wrapXFile(picked);
+    if (!mounted) return;
     await _viewModel.uploadApplicationDocument(
-      file: File(picked.path),
+      file: file,
       title: title,
     );
   }
@@ -147,7 +149,9 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
       imageQuality: 92,
     );
     if (picked == null || !mounted) return;
-    await _viewModel.uploadProductImage(File(picked.path));
+    final file = await wrapXFile(picked);
+    if (!mounted) return;
+    await _viewModel.uploadProductImage(file);
   }
 
   Future<void> _submitApplication() {

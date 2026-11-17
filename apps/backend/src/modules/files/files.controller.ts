@@ -17,17 +17,17 @@ import { FilesService } from './files.service';
 
 export const multerOptions = {
   limits: {
-    fileSize: 1024 * 1024 * 2,
+    fileSize: 1024 * 1024 * 12,
   },
   fileFilter: (
     req: Express.Request,
     file: Express.Multer.File,
     callback: (error: Error | null, acceptFile: boolean) => void,
   ) => {
-    const isAllowed = /\.(png|jpeg|jpg|webp)$/i.test(file.originalname);
+    const isAllowed = /\.(png|jpeg|jpg|webp|heic|heif)$/i.test(file.originalname);
     if (!isAllowed) {
       return callback(
-        new BadRequestException('فرمت فایل مجاز نیست. فقط png, jpeg, jpg, webp'),
+        new BadRequestException('فرمت فایل مجاز نیست. فقط png, jpeg, jpg, webp, heic, heif'),
         false,
       );
     }
@@ -39,17 +39,17 @@ export const multerOptions = {
 
 export const documentMulterOptions = {
   limits: {
-    fileSize: 1024 * 1024 * 2,
+    fileSize: 1024 * 1024 * 12,
   },
   fileFilter: (
     req: Express.Request,
     file: Express.Multer.File,
     callback: (error: Error | null, acceptFile: boolean) => void,
   ) => {
-    const isAllowed = /\.(png|jpeg|jpg|webp)$/i.test(file.originalname);
+    const isAllowed = /\.(png|jpeg|jpg|webp|heic|heif)$/i.test(file.originalname);
     if (!isAllowed) {
       return callback(
-        new BadRequestException('فرمت فایل مجاز نیست. فقط png, jpeg, jpg, webp'),
+        new BadRequestException('فرمت فایل مجاز نیست. فقط png, jpeg, jpg, webp, heic, heif'),
         false,
       );
     }

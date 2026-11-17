@@ -87,13 +87,13 @@ export class FilesService {
   }
 
   validateImageFile(file: Express.Multer.File) {
-    const isAllowed = /\.(png|jpeg|jpg|webp)$/i.test(file.originalname);
+    const isAllowed = /\.(png|jpeg|jpg|webp|heic|heif)$/i.test(file.originalname);
     if (!isAllowed) {
-      throw new BadRequestException('فرمت فایل مجاز نیست. فقط png, jpeg, jpg, webp');
+      throw new BadRequestException('فرمت فایل مجاز نیست. فقط png, jpeg, jpg, webp, heic, heif');
     }
 
-    if (file.size > 1024 * 1024 * 2) {
-      throw new BadRequestException('حجم فایل بیشتر از حد مجاز است');
+    if (file.size > 1024 * 1024 * 12) {
+      throw new BadRequestException('حجم فایل بیشتر از حد مجاز است (حداکثر ۱۲ مگابایت)');
     }
   }
 
@@ -120,8 +120,53 @@ export class FilesService {
   private async uploadImage(file: Express.Multer.File, folder: UploadFolder): Promise<UploadedImageResponse> {
     this.validateImageFile(file);
 
+    file = await this.ensureStandardImageBuffer(file);
+
     const imageAsset = await this.prepareImageAsset(file, folder);
     return this.persistImageAsset(imageAsset, folder);
+  }
+
+  private async ensureStandardImageBuffer(file: Express.Multer.File): Promise<Express.Multer.File> {
+    const isHeic =
+      /\.(heic|heif)$/i.test(file.originalname) ||
+      file.mimetype === 'image/heic' ||
+      file.mimetype === 'image/heif' ||
+      this.isHeicBuffer(file.buffer);
+
+    if (isHeic) {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const heicConvert = require('heic-convert');
+        const converted = await heicConvert({
+          buffer: file.buffer,
+          format: 'JPEG',
+          quality: 0.9,
+        });
+        file.buffer = Buffer.from(converted);
+        file.mimetype = 'image/jpeg';
+        file.originalname = file.originalname.replace(/\.(heic|heif)$/i, '.jpg');
+        if (!file.originalname.toLowerCase().endsWith('.jpg')) {
+          file.originalname += '.jpg';
+        }
+      } catch (err) {
+        this.logger.warn(`heic-convert attempt: ${err instanceof Error ? err.message : err}`);
+      }
+    }
+
+    return file;
+  }
+
+  private isHeicBuffer(buffer?: Buffer): boolean {
+    if (!buffer || buffer.length < 12) return false;
+    const brand = buffer.toString('ascii', 4, 12);
+    return (
+      brand.startsWith('ftyp') &&
+      (brand.includes('heic') ||
+        brand.includes('heix') ||
+        brand.includes('hevc') ||
+        brand.includes('mif1') ||
+        brand.includes('msf1'))
+    );
   }
 
   private async uploadRawFile(file: Express.Multer.File, folder: UploadFolder): Promise<{ url: string }> {

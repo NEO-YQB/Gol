@@ -96,7 +96,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     );
     if (pickedFile == null) return null;
     if (kIsWeb) {
-      return File(pickedFile.path);
+      return await wrapXFile(pickedFile);
     }
 
     final croppedFile = await ImageCropper().cropImage(

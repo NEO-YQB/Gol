@@ -124,7 +124,9 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
       );
       if (pickedFile == null || !mounted) return;
       if (kIsWeb) {
-        await _viewModel.uploadLogo(File(pickedFile.path));
+        final file = await wrapXFile(pickedFile);
+        if (!mounted) return;
+        await _viewModel.uploadLogo(file);
         return;
       }
 

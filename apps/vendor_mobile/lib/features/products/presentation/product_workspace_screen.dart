@@ -134,7 +134,7 @@ class _ProductWorkspaceScreenState extends State<ProductWorkspaceScreen> {
     );
     if (pickedFile == null) return null;
     if (kIsWeb) {
-      return File(pickedFile.path);
+      return await wrapXFile(pickedFile);
     }
 
     final croppedFile = await ImageCropper().cropImage(

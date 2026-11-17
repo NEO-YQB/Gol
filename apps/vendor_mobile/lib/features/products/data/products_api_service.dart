@@ -119,7 +119,7 @@ class ProductsApiService {
       );
 
       final streamedResponse =
-          await request.send().timeout(const Duration(seconds: 20));
+          await request.send().timeout(const Duration(seconds: 60));
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode < 200 || response.statusCode >= 300) {

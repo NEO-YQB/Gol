@@ -28,7 +28,7 @@ class StoreProfileApiService {
       );
 
       final streamedResponse = await request.send().timeout(
-        const Duration(seconds: 20),
+        const Duration(seconds: 60),
       );
       final response = await http.Response.fromStream(streamedResponse);
 
