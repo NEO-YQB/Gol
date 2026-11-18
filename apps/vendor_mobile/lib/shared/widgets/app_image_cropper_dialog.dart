@@ -68,6 +68,46 @@ class _AppImageCropperDialogState extends State<AppImageCropperDialog> {
   final TransformationController _transformController =
       TransformationController();
   bool _isProcessing = false;
+  double? _naturalWidth;
+  double? _naturalHeight;
+  bool _isLoadingDimensions = true;
+  bool _isInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _decodeImageDimensions();
+  }
+
+  Future<void> _decodeImageDimensions() async {
+    try {
+      final codec = await ui.instantiateImageCodec(widget.imageBytes);
+      final frame = await codec.getNextFrame();
+      if (mounted) {
+        setState(() {
+          _naturalWidth = frame.image.width.toDouble();
+          _naturalHeight = frame.image.height.toDouble();
+          _isLoadingDimensions = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoadingDimensions = false);
+      }
+    }
+  }
+
+  void _initTransform(
+    double childWidth,
+    double childHeight,
+    double maxCropSize,
+  ) {
+    if (_isInitialized) return;
+    _isInitialized = true;
+    final diffX = (childWidth - maxCropSize) / 2;
+    final diffY = (childHeight - maxCropSize) / 2;
+    _transformController.value = Matrix4.identity()..translate(-diffX, -diffY);
+  }
 
   @override
   void dispose() {
@@ -87,8 +127,8 @@ class _AppImageCropperDialogState extends State<AppImageCropperDialog> {
         return;
       }
 
-      // Render at pixelRatio 2.5 for crisp high-resolution output
-      final image = await boundary.toImage(pixelRatio: 2.5);
+      // Render at pixelRatio 3.0 for crisp high-resolution output
+      final image = await boundary.toImage(pixelRatio: 3.0);
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       if (byteData == null) {
         if (mounted) Navigator.of(context).pop(widget.imageBytes);
@@ -114,6 +154,28 @@ class _AppImageCropperDialogState extends State<AppImageCropperDialog> {
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
     final maxCropSize = (screenSize.width - 48).clamp(260.0, 360.0);
+
+    // Calculate natural child dimensions according to true aspect ratio
+    final double naturalWidth = _naturalWidth ?? maxCropSize;
+    final double naturalHeight = _naturalHeight ?? maxCropSize;
+    final double aspectRatio =
+        naturalWidth / (naturalHeight > 0 ? naturalHeight : 1.0);
+
+    final double childWidth;
+    final double childHeight;
+    if (aspectRatio >= 1.0) {
+      // Landscape: height matches square, width expands to full photo aspect
+      childHeight = maxCropSize;
+      childWidth = maxCropSize * aspectRatio;
+    } else {
+      // Portrait: width matches square, height expands to full photo aspect
+      childWidth = maxCropSize;
+      childHeight = maxCropSize / aspectRatio;
+    }
+
+    if (!_isLoadingDimensions && !_isInitialized) {
+      _initTransform(childWidth, childHeight, maxCropSize);
+    }
 
     return PopScope(
       canPop: !_isProcessing,
@@ -204,17 +266,42 @@ class _AppImageCropperDialogState extends State<AppImageCropperDialog> {
                       children: [
                         RepaintBoundary(
                           key: _cropBoundaryKey,
-                          child: InteractiveViewer(
-                            transformationController: _transformController,
-                            panEnabled: true,
-                            scaleEnabled: true,
-                            minScale: 1.0,
-                            maxScale: 4.5,
-                            boundaryMargin: const EdgeInsets.all(double.infinity),
-                            child: Image.memory(
-                              widget.imageBytes,
-                              fit: BoxFit.cover,
-                            ),
+                          child: Container(
+                            width: maxCropSize,
+                            height: maxCropSize,
+                            color: Colors.black,
+                            child: _isLoadingDimensions
+                                ? const Center(
+                                    child: CircularProgressIndicator(
+                                      color: AppColors.secondary,
+                                    ),
+                                  )
+                                : InteractiveViewer(
+                                    transformationController:
+                                        _transformController,
+                                    panEnabled: true,
+                                    scaleEnabled: true,
+                                    constrained: false,
+                                    minScale: (1.0 /
+                                            (aspectRatio >= 1.0
+                                                ? aspectRatio
+                                                : 1.0 / aspectRatio))
+                                        .clamp(0.25, 1.0),
+                                    maxScale: 5.0,
+                                    boundaryMargin: EdgeInsets.all(
+                                      childWidth > childHeight
+                                          ? childWidth
+                                          : childHeight,
+                                    ),
+                                    child: SizedBox(
+                                      width: childWidth,
+                                      height: childHeight,
+                                      child: Image.memory(
+                                        widget.imageBytes,
+                                        fit: BoxFit.fill,
+                                      ),
+                                    ),
+                                  ),
                           ),
                         ),
                         // Grid Overlay

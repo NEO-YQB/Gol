@@ -233,19 +233,22 @@ class _CompositionElementPickerSheetState
                         _selectedType = selected ? entry.key : '';
                       });
                     },
+                    showCheckmark: false,
                     selectedColor: AppColors.primary,
-                    backgroundColor: Colors.white.withValues(alpha: 0.07),
+                    backgroundColor: const Color(0xFFEAF2EE),
                     labelStyle: TextStyle(
-                      color: isSelected ? Colors.white : Colors.white70,
-                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
-                      fontSize: 12,
+                      color: isSelected ? Colors.white : AppColors.primary,
+                      fontWeight:
+                          isSelected ? FontWeight.w800 : FontWeight.w700,
+                      fontSize: 13,
                     ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                       side: BorderSide(
                         color: isSelected
-                            ? AppColors.secondary
-                            : Colors.white.withValues(alpha: 0.12),
+                            ? AppColors.primary
+                            : AppColors.primary.withValues(alpha: 0.35),
+                        width: isSelected ? 1.5 : 1,
                       ),
                     ),
                   ),
