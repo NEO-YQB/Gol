@@ -8,12 +8,14 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_glass_card.dart';
+import '../../../shared/widgets/app_image_cropper_dialog.dart';
 import '../../../shared/widgets/app_platform_image.dart';
 import '../../../shared/widgets/app_shell_background.dart';
 import '../data/products_api_service.dart';
 import '../domain/product_editor_models.dart';
 import '../domain/vendor_product_detail.dart';
 import 'view_models/product_workspace_view_model.dart';
+import 'widgets/composition_element_picker_sheet.dart';
 import 'widgets/product_delivery_fields.dart';
 
 class ProductWorkspaceScreen extends StatefulWidget {
@@ -42,7 +44,6 @@ class _ProductWorkspaceScreenState extends State<ProductWorkspaceScreen> {
   late final TextEditingController _quantityController;
   late final TextEditingController _shortDescriptionController;
   late final TextEditingController _descriptionController;
-  late final TextEditingController _mainImageAltController;
 
   @override
   void initState() {
@@ -57,7 +58,6 @@ class _ProductWorkspaceScreenState extends State<ProductWorkspaceScreen> {
     _quantityController = TextEditingController();
     _shortDescriptionController = TextEditingController();
     _descriptionController = TextEditingController();
-    _mainImageAltController = TextEditingController();
     _loadDetail();
   }
 
@@ -70,7 +70,6 @@ class _ProductWorkspaceScreenState extends State<ProductWorkspaceScreen> {
     _quantityController.dispose();
     _shortDescriptionController.dispose();
     _descriptionController.dispose();
-    _mainImageAltController.dispose();
     super.dispose();
   }
 
@@ -98,13 +97,12 @@ class _ProductWorkspaceScreenState extends State<ProductWorkspaceScreen> {
     _quantityController.text = product.quantity.toString();
     _shortDescriptionController.text = product.shortDescription;
     _descriptionController.text = product.description;
-    _mainImageAltController.text = product.mainImageAlt;
   }
 
   Future<void> _pickMainImage() async {
     try {
       final file = await _pickCroppedImage(
-        title: 'برش تصویر شاخص',
+        title: 'برش تصویر شاخص (۱:۱)',
       );
       if (file == null || !mounted) return;
       await _viewModel.uploadMainImage(file);
@@ -116,7 +114,7 @@ class _ProductWorkspaceScreenState extends State<ProductWorkspaceScreen> {
   Future<void> _pickGalleryImage() async {
     try {
       final file = await _pickCroppedImage(
-        title: 'برش تصویر گالری',
+        title: 'برش تصویر گالری (۱:۱)',
       );
       if (file == null || !mounted) return;
       await _viewModel.uploadGalleryImage(file);
@@ -134,7 +132,14 @@ class _ProductWorkspaceScreenState extends State<ProductWorkspaceScreen> {
     );
     if (pickedFile == null) return null;
     if (kIsWeb) {
-      return await wrapXFile(pickedFile);
+      if (!mounted) return null;
+      final cropped = await AppImageCropperDialog.cropXFileOnWeb(
+        context,
+        pickedFile,
+        title: title,
+      );
+      if (cropped == null) return null;
+      return await wrapXFile(cropped);
     }
 
     final croppedFile = await ImageCropper().cropImage(
@@ -171,7 +176,7 @@ class _ProductWorkspaceScreenState extends State<ProductWorkspaceScreen> {
       price: _priceController.text,
       discountPrice: _discountPriceController.text,
       quantity: _quantityController.text,
-      mainImageAlt: _mainImageAltController.text,
+      mainImageAlt: _nameController.text,
       shortDescription: _shortDescriptionController.text,
       description: _descriptionController.text,
     );
@@ -346,13 +351,6 @@ class _ProductWorkspaceScreenState extends State<ProductWorkspaceScreen> {
                                         labelText: 'موجودی',
                                       ),
                                     ),
-                                    const SizedBox(height: AppSpacing.md),
-                                    TextField(
-                                      controller: _mainImageAltController,
-                                      decoration: const InputDecoration(
-                                        labelText: 'متن جایگزین تصویر شاخص',
-                                      ),
-                                    ),
                                     const SizedBox(height: AppSpacing.lg),
                                     _ImageUploadCard(
                                       title: 'تصویر شاخص',
@@ -368,8 +366,6 @@ class _ProductWorkspaceScreenState extends State<ProductWorkspaceScreen> {
                                       items: state.gallery,
                                       isUploading: state.isUploadingGallery,
                                       onUpload: _pickGalleryImage,
-                                      onAltChanged:
-                                          _viewModel.updateGalleryAlt,
                                       onRemove: _viewModel.removeGalleryItem,
                                     ),
                                     const SizedBox(height: AppSpacing.lg),
@@ -566,14 +562,12 @@ class _GalleryEditorCard extends StatelessWidget {
     required this.items,
     required this.isUploading,
     required this.onUpload,
-    required this.onAltChanged,
     required this.onRemove,
   });
 
   final List<EditableGalleryItem> items;
   final bool isUploading;
   final VoidCallback onUpload;
-  final void Function(int index, String value) onAltChanged;
   final void Function(int index) onRemove;
 
   @override
@@ -624,7 +618,7 @@ class _GalleryEditorCard extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: AppSpacing.md),
                 child: _GalleryItemEditor(
                   item: items[index],
-                  onAltChanged: (value) => onAltChanged(index, value),
+                  index: index,
                   onRemove: () => onRemove(index),
                 ),
               ),
@@ -639,48 +633,51 @@ class _GalleryEditorCard extends StatelessWidget {
 class _GalleryItemEditor extends StatelessWidget {
   const _GalleryItemEditor({
     required this.item,
-    required this.onAltChanged,
+    required this.index,
     required this.onRemove,
   });
 
   final EditableGalleryItem item;
-  final ValueChanged<String> onAltChanged;
+  final int index;
   final VoidCallback onRemove;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _ImagePreview(
-          imageUrl: item.url,
-          pendingFile: null,
-          size: 72,
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.primarySoft.withValues(alpha: 0.4),
         ),
-        const SizedBox(width: AppSpacing.md),
-        Expanded(
-          child: Column(
-            children: [
-              TextFormField(
-                initialValue: item.alt,
-                onChanged: onAltChanged,
-                decoration: const InputDecoration(
-                  labelText: 'متن جایگزین تصویر',
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: onRemove,
-                  icon: const Icon(Icons.delete_outline_rounded),
-                  label: const Text('حذف'),
-                ),
-              ),
-            ],
+      ),
+      child: Row(
+        children: [
+          _ImagePreview(
+            imageUrl: item.url,
+            pendingFile: item.localFile,
+            size: 64,
           ),
-        ),
-      ],
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Text(
+              'تصویر گالری ${index + 1}',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ),
+          IconButton(
+            onPressed: onRemove,
+            icon: const Icon(
+              Icons.delete_outline_rounded,
+              color: AppColors.error,
+            ),
+            tooltip: 'حذف تصویر',
+          ),
+        ],
+      ),
     );
   }
 }
@@ -882,72 +879,121 @@ class _CompositionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final quantityController =
-        TextEditingController(text: item.quantity.toString());
+    ProductElementOption? selectedElement;
+    for (final candidate in elements) {
+      if (candidate.id == item.elementId) {
+        selectedElement = candidate;
+        break;
+      }
+    }
 
-    return Column(
-      children: [
-        DropdownButtonFormField<int>(
-          value: item.elementId,
-          decoration: const InputDecoration(
-            labelText: 'المان',
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.primarySoft.withValues(alpha: 0.4),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: () async {
+              final chosen = await CompositionElementPickerSheet.show(
+                context,
+                elements: elements,
+                selectedElementId: item.elementId,
+                initialType: item.elementType.isNotEmpty ? item.elementType : null,
+              );
+              if (chosen != null) {
+                onChanged(
+                  item.copyWith(
+                    elementId: chosen.id,
+                    elementType: chosen.type,
+                  ),
+                );
+              }
+            },
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceSoft,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: selectedElement != null
+                      ? AppColors.primary.withValues(alpha: 0.5)
+                      : AppColors.surfaceSoft,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.category_rounded,
+                    size: 20,
+                    color: selectedElement != null
+                        ? AppColors.primary
+                        : AppColors.textSecondary,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      selectedElement != null
+                          ? '${selectedElement.name} (${selectedElement.unit.isNotEmpty ? selectedElement.unit : selectedElement.type})'
+                          : 'برای جستجو و انتخاب جزء (گل، پرکننده...) لمس کنید',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: selectedElement != null
+                                ? AppColors.textPrimary
+                                : AppColors.textSecondary,
+                            fontWeight: selectedElement != null
+                                ? FontWeight.w600
+                                : FontWeight.normal,
+                          ),
+                    ),
+                  ),
+                  const Icon(
+                    Icons.arrow_drop_down_rounded,
+                    color: AppColors.textSecondary,
+                  ),
+                ],
+              ),
+            ),
           ),
-          items: elements
-              .map(
-                (element) => DropdownMenuItem<int>(
-                  value: element.id,
-                  child: Text(
-                    element.unit.isEmpty
-                        ? element.name
-                        : '${element.name} (${element.unit})',
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  initialValue: item.quantity > 0 ? item.quantity.toString() : '',
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  onChanged: (value) {
+                    onChanged(
+                      item.copyWith(
+                        quantity: num.tryParse(value.trim()) ?? item.quantity,
+                      ),
+                    );
+                  },
+                  decoration: InputDecoration(
+                    labelText: selectedElement != null && selectedElement.unit.isNotEmpty
+                        ? 'تعداد / مقدار (${selectedElement.unit})'
+                        : 'تعداد / مقدار',
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
                 ),
-              )
-              .toList(),
-          onChanged: (value) {
-            ProductElementOption? element;
-            for (final candidate in elements) {
-              if (candidate.id == value) {
-                element = candidate;
-                break;
-              }
-            }
-            onChanged(
-              item.copyWith(
-                elementId: value,
-                elementType: element?.type ?? '',
               ),
-            );
-          },
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: quantityController,
-                keyboardType: TextInputType.number,
-                onChanged: (value) {
-                  onChanged(
-                    item.copyWith(
-                      quantity: num.tryParse(value.trim()) ?? item.quantity,
-                    ),
-                  );
-                },
-                decoration: const InputDecoration(
-                  labelText: 'مقدار',
-                ),
+              const SizedBox(width: AppSpacing.sm),
+              IconButton(
+                onPressed: onRemove,
+                icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
+                tooltip: 'حذف این جزء',
               ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            TextButton.icon(
-              onPressed: onRemove,
-              icon: const Icon(Icons.delete_outline_rounded),
-              label: const Text('حذف'),
-            ),
-          ],
-        ),
-      ],
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

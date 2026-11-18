@@ -1,3 +1,4 @@
+import '../../../core/platform/io_shim.dart';
 import 'vendor_product_detail.dart';
 
 class EditableDeliverySettings {
@@ -84,11 +85,13 @@ int? _parseDeliveryInt(String value) {
 class EditableGalleryItem {
   const EditableGalleryItem({
     required this.url,
-    required this.alt,
+    this.alt = '',
+    this.localFile,
   });
 
   final String url;
   final String alt;
+  final File? localFile;
 
   factory EditableGalleryItem.fromDetail(VendorProductGalleryItem item) {
     return EditableGalleryItem(
@@ -100,10 +103,12 @@ class EditableGalleryItem {
   EditableGalleryItem copyWith({
     String? url,
     String? alt,
+    File? localFile,
   }) {
     return EditableGalleryItem(
       url: url ?? this.url,
       alt: alt ?? this.alt,
+      localFile: localFile ?? this.localFile,
     );
   }
 

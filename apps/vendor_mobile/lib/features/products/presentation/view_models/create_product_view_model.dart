@@ -208,7 +208,7 @@ class CreateProductViewModel extends ChangeNotifier {
       _state = _state.copyWith(
         gallery: [
           ..._state.gallery,
-          EditableGalleryItem(url: uploadedUrl, alt: ''),
+          EditableGalleryItem(url: uploadedUrl, alt: '', localFile: file),
         ],
         isUploadingGallery: false,
       );

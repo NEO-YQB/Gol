@@ -8,6 +8,7 @@ import '../../../core/platform/web_map_picker.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_glass_card.dart';
+import '../../../shared/widgets/app_image_cropper_dialog.dart';
 import '../../../shared/widgets/app_shell_background.dart';
 import '../../auth/domain/auth_session.dart';
 import '../data/repositories/vendor_onboarding_repository.dart';
@@ -48,7 +49,6 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
 
   late final TextEditingController _productNameController;
   late final TextEditingController _productDescriptionController;
-  late final TextEditingController _productAltController;
   late final TextEditingController _productPriceController;
   late final TextEditingController _productQuantityController;
 
@@ -69,7 +69,6 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
     _licenseNumberController = TextEditingController();
     _productNameController = TextEditingController();
     _productDescriptionController = TextEditingController();
-    _productAltController = TextEditingController();
     _productPriceController = TextEditingController();
     _productQuantityController = TextEditingController();
     _viewModel.loadRequest();
@@ -88,7 +87,6 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
     _licenseNumberController.dispose();
     _productNameController.dispose();
     _productDescriptionController.dispose();
-    _productAltController.dispose();
     _productPriceController.dispose();
     _productQuantityController.dispose();
     super.dispose();
@@ -107,7 +105,6 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
       _licenseNumberController.text = request.licenseNumber;
       _productNameController.text = request.productName;
       _productDescriptionController.text = request.productDescription;
-      _productAltController.text = request.productMainImageAlt;
       _productPriceController.text = request.productPrice?.toString() ?? '';
       _productQuantityController.text = request.productQuantity?.toString() ?? '';
       _didHydrateFromRequest = true;
@@ -149,7 +146,17 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
       imageQuality: 92,
     );
     if (picked == null || !mounted) return;
-    final file = await wrapXFile(picked);
+    XFile fileToUpload = picked;
+    if (kIsWeb) {
+      final cropped = await AppImageCropperDialog.cropXFileOnWeb(
+        context,
+        picked,
+        title: 'برش تصویر محصول نمونه (۱:۱)',
+      );
+      if (cropped == null || !mounted) return;
+      fileToUpload = cropped;
+    }
+    final file = await wrapXFile(fileToUpload);
     if (!mounted) return;
     await _viewModel.uploadProductImage(file);
   }
@@ -246,7 +253,9 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
       VendorOnboardingProductInput(
         productName: _productNameController.text,
         productDescription: _productDescriptionController.text,
-        productMainImageAlt: _productAltController.text,
+        productMainImageAlt: _productNameController.text.trim().isNotEmpty
+            ? _productNameController.text.trim()
+            : 'تصویر محصول',
         productPrice: _productPriceController.text,
         productQuantity: _productQuantityController.text,
       ),
@@ -362,7 +371,6 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
           reviewNote: state.activeProductReviewNote,
           productNameController: _productNameController,
           productDescriptionController: _productDescriptionController,
-          productAltController: _productAltController,
           productPriceController: _productPriceController,
           productQuantityController: _productQuantityController,
           images: state.productGalleryImages,
@@ -633,7 +641,6 @@ class _ProductStepCard extends StatelessWidget {
     this.reviewNote,
     required this.productNameController,
     required this.productDescriptionController,
-    required this.productAltController,
     required this.productPriceController,
     required this.productQuantityController,
     required this.images,
@@ -648,7 +655,6 @@ class _ProductStepCard extends StatelessWidget {
   final String? reviewNote;
   final TextEditingController productNameController;
   final TextEditingController productDescriptionController;
-  final TextEditingController productAltController;
   final TextEditingController productPriceController;
   final TextEditingController productQuantityController;
   final List<String> images;
@@ -674,8 +680,6 @@ class _ProductStepCard extends StatelessWidget {
           TextField(controller: productNameController, decoration: const InputDecoration(labelText: 'نام محصول')),
           const SizedBox(height: AppSpacing.md),
           TextField(controller: productDescriptionController, maxLines: 4, decoration: const InputDecoration(labelText: 'توضیحات محصول')),
-          const SizedBox(height: AppSpacing.md),
-          TextField(controller: productAltController, decoration: const InputDecoration(labelText: 'متن تصویر')),
           const SizedBox(height: AppSpacing.md),
           Row(
             children: [
