@@ -502,7 +502,7 @@ class _GalleryCreateCard extends StatelessWidget {
                         onPressed: () => onRemove(index),
                         icon: const Icon(
                           Icons.delete_outline_rounded,
-                          color: AppColors.error,
+                          color: AppColors.danger,
                         ),
                         tooltip: 'حذف تصویر',
                       ),
@@ -782,7 +782,7 @@ class _CompositionRow extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               IconButton(
                 onPressed: onRemove,
-                icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
+                icon: const Icon(Icons.delete_outline_rounded, color: AppColors.danger),
                 tooltip: 'حذف این جزء',
               ),
             ],

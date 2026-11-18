@@ -146,7 +146,7 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
       imageQuality: 92,
     );
     if (picked == null || !mounted) return;
-    XFile fileToUpload = picked;
+    final File file;
     if (kIsWeb) {
       final cropped = await AppImageCropperDialog.cropXFileOnWeb(
         context,
@@ -154,9 +154,10 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
         title: 'برش تصویر محصول نمونه (۱:۱)',
       );
       if (cropped == null || !mounted) return;
-      fileToUpload = cropped;
+      file = cropped;
+    } else {
+      file = await wrapXFile(picked);
     }
-    final file = await wrapXFile(fileToUpload);
     if (!mounted) return;
     await _viewModel.uploadProductImage(file);
   }

@@ -133,13 +133,11 @@ class _ProductWorkspaceScreenState extends State<ProductWorkspaceScreen> {
     if (pickedFile == null) return null;
     if (kIsWeb) {
       if (!mounted) return null;
-      final cropped = await AppImageCropperDialog.cropXFileOnWeb(
+      return await AppImageCropperDialog.cropXFileOnWeb(
         context,
         pickedFile,
         title: title,
       );
-      if (cropped == null) return null;
-      return await wrapXFile(cropped);
     }
 
     final croppedFile = await ImageCropper().cropImage(
@@ -672,7 +670,7 @@ class _GalleryItemEditor extends StatelessWidget {
             onPressed: onRemove,
             icon: const Icon(
               Icons.delete_outline_rounded,
-              color: AppColors.error,
+              color: AppColors.danger,
             ),
             tooltip: 'حذف تصویر',
           ),
@@ -987,7 +985,7 @@ class _CompositionRow extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               IconButton(
                 onPressed: onRemove,
-                icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
+                icon: const Icon(Icons.delete_outline_rounded, color: AppColors.danger),
                 tooltip: 'حذف این جزء',
               ),
             ],
