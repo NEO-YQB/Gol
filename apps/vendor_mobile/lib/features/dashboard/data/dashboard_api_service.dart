@@ -26,6 +26,8 @@ class DashboardApiService {
         escalatedTicketsCount: 1,
         healthScore: 92,
         healthStatus: 'GOOD',
+        commissionRate: 10,
+        settlementHoldDays: 3,
         policyNote:
             'این حالت پیش‌نمایش است. برای تست UI بدون هزینه پیامک فعال شده و داده‌ها نمونه هستند.',
         policyTimeline: const [
@@ -133,6 +135,10 @@ class DashboardApiService {
         escalatedTicketsCount: _asInt(totals['escalatedToFinance']),
         healthScore: _asNum(store['vendorHealthScore']),
         healthStatus: (store['vendorHealthStatus'] as String?) ?? 'UNKNOWN',
+        commissionRate: _asNum(store['commissionRate']),
+        settlementHoldDays: _asInt(store['settlementHoldDays']) > 0
+            ? _asInt(store['settlementHoldDays'])
+            : 7,
         policyNote: blockNewDiscounts
             ? '$baseNote ایجاد تخفیف جدید فعلاً محدود شده است.'
             : baseNote,

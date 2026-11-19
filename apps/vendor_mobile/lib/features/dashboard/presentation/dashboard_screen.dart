@@ -302,15 +302,16 @@ class _HeroSummaryCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: _HeroDataChip(
-                        label: 'قابل برداشت',
-                        value: '${_formatMoney(summary.availableBalance)} تومان',
+                        label: 'کمیسیون فروشگاه',
+                        value:
+                            '${summary.commissionRate % 1 == 0 ? summary.commissionRate.toInt() : summary.commissionRate}٪',
                       ),
                     ),
                     const SizedBox(width: AppSpacing.md),
                     Expanded(
                       child: _HeroDataChip(
-                        label: 'امتیاز سلامت',
-                        value: '${summary.healthScore}',
+                        label: 'دوره تسویه',
+                        value: '${summary.settlementHoldDays} روز',
                       ),
                     ),
                   ],

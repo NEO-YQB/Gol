@@ -11,6 +11,8 @@ class DashboardSummary {
     required this.healthStatus,
     required this.policyNote,
     required this.policyTimeline,
+    this.commissionRate = 0,
+    this.settlementHoldDays = 7,
   });
 
   final String storeName;
@@ -24,6 +26,8 @@ class DashboardSummary {
   final String healthStatus;
   final String policyNote;
   final List<DashboardPolicyEvent> policyTimeline;
+  final num commissionRate;
+  final int settlementHoldDays;
 }
 
 class DashboardPolicyEvent {

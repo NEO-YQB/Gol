@@ -1,5 +1,6 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import {
+  CommissionRuleScope,
   PaymentMethod,
   Prisma,
   SettlementStatus,
@@ -256,6 +257,7 @@ export class VendorDashboardService {
 
   async getHealthSummary(user: AuthenticatedUser) {
     const store = await this.getVendorStoreOrThrow(user);
+    const commissionInfo = await this.getStoreCommissionInfo(store.id);
 
     return {
       store: {
@@ -266,7 +268,40 @@ export class VendorDashboardService {
         vendorHealthStatus: store.vendorHealthStatus,
         vendorHealthCalculatedAt: store.vendorHealthCalculatedAt,
         vendorHealthSnapshot: store.vendorHealthSnapshot,
+        commissionRate: commissionInfo.commissionRate,
+        settlementHoldDays: commissionInfo.settlementHoldDays,
       },
+    };
+  }
+
+  private async getStoreCommissionInfo(storeId: number) {
+    const customRule = await this.prisma.commissionRule.findFirst({
+      where: {
+        scope: CommissionRuleScope.STORE,
+        storeId,
+        isActive: true,
+      },
+      orderBy: [{ priority: 'asc' }, { id: 'desc' }],
+    });
+
+    if (customRule) {
+      return {
+        commissionRate: Number(customRule.commissionRate),
+        settlementHoldDays: Number(customRule.settlementHoldDays),
+      };
+    }
+
+    const globalRule = await this.prisma.commissionRule.findFirst({
+      where: {
+        scope: CommissionRuleScope.GLOBAL,
+        isActive: true,
+      },
+      orderBy: [{ priority: 'asc' }, { id: 'desc' }],
+    });
+
+    return {
+      commissionRate: Number(globalRule?.commissionRate ?? 0),
+      settlementHoldDays: Number(globalRule?.settlementHoldDays ?? 7),
     };
   }
 
