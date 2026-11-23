@@ -473,7 +473,7 @@ export type VendorOnboardingApplicationPayload = {
   personalFullName: string
   personalNationalId: string
   businessName: string
-  businessSlug: string
+  businessSlug?: string
   businessDescription?: string
   businessAddress: string
   businessLat?: number

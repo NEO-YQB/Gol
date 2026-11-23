@@ -84,6 +84,7 @@ export function VendorOnboardingWorkspacePage({
   const [detail, setDetail] = useState<RequestRecord | null>(null)
   const [decisionBusy, setDecisionBusy] = useState<string | null>(null)
   const [reviewNote, setReviewNote] = useState('')
+  const [businessSlug, setBusinessSlug] = useState('')
   const [message, setMessage] = useState<string | null>(null)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   useNoticeEffect(message, 'success')
@@ -108,6 +109,7 @@ export function VendorOnboardingWorkspacePage({
         const payload = await adminApi.getVendorOnboardingRequestDetail(session, requestId)
         if (!active) return
         setDetail(payload as Record<string, unknown>)
+        setBusinessSlug(readText(payload as Record<string, unknown>, ['businessSlug'], ''))
       } catch (loadError) {
         if (!active) return
         setError(loadError instanceof Error ? loadError.message : 'خطا در بارگذاری جزئیات درخواست')
@@ -140,6 +142,7 @@ export function VendorOnboardingWorkspacePage({
       const payload = await adminApi.reviewVendorOnboardingApplication(session, requestId, {
         approved,
         reviewNote: reviewNote.trim() || undefined,
+        businessSlug: businessSlug.trim() || undefined,
       })
       setDetail(payload as Record<string, unknown>)
       setMessage(approved ? 'درخواست فروشندگی تایید شد.' : 'درخواست فروشندگی رد شد.')
@@ -248,6 +251,21 @@ export function VendorOnboardingWorkspacePage({
         eyebrow="تصمیم"
         title="ثبت نتیجه"
       >
+        <div className="fm-field">
+          <label htmlFor="vendorOnboardingSlug">اسلاگ فروشگاه (شناسه انگلیسی یکتا در URL فروشگاه)</label>
+          <input
+            id="vendorOnboardingSlug"
+            type="text"
+            dir="ltr"
+            value={businessSlug}
+            onChange={(event) => setBusinessSlug(event.target.value)}
+            placeholder="مثلا: bahar-flower-shop"
+          />
+          <small style={{ color: 'var(--text-muted)' }}>
+            این شناسه در آدرس فروشگاه (مانند /store/slug) استفاده می‌شود. در صورت خالی ماندن، هنگام تایید به صورت خودکار از نام فروشگاه ساخته می‌شود.
+          </small>
+        </div>
+
         <div className="fm-field">
           <label htmlFor="vendorOnboardingReviewNote">یادداشت بررسی</label>
           <textarea

@@ -571,7 +571,7 @@ export function VendorOnboardingPage({
         personalFullName: draft.personalFullName.trim(),
         personalNationalId: draft.personalNationalId.trim(),
         businessName: draft.businessName.trim(),
-        businessSlug: draft.businessSlug.trim(),
+        businessSlug: draft.businessSlug.trim() || undefined,
         businessDescription: draft.businessDescription.trim() || undefined,
         businessAddress: draft.businessAddress.trim(),
         businessLat: draft.businessLat.trim() ? Number(draft.businessLat) : undefined,
@@ -715,7 +715,7 @@ export function VendorOnboardingPage({
           <SectionCard eyebrow="مرحله ۲" title="اطلاعات کسب‌وکار" description="نام فروشگاه، آدرس و لوکیشن را ثبت کن." hint="لوکیشن برای نزدیک‌ترین فروشگاه به مشتری هم استفاده می‌شود.">
             <div className="vendor-onboarding-form-grid">
               <label className="fm-field"><span>نام فروشگاه</span><input value={draft.businessName} onChange={(event) => updateDraft('businessName', event.target.value)} placeholder="مثلا: گلخانه بهار" /></label>
-              <label className="fm-field"><span>اسلاگ فروشگاه</span><input value={draft.businessSlug} onChange={(event) => updateDraft('businessSlug', event.target.value)} placeholder="bahar-flower-shop" /></label>
+              <label className="fm-field"><span>اسلاگ فروشگاه (اختیاری)</span><input value={draft.businessSlug} onChange={(event) => updateDraft('businessSlug', event.target.value)} placeholder="اختیاری - در صورت تمایل خالی بگذارید" /></label>
               <label className="fm-field vendor-onboarding-field-wide"><span>توضیح کوتاه فروشگاه</span><textarea rows={3} value={draft.businessDescription} onChange={(event) => updateDraft('businessDescription', event.target.value)} placeholder="در چند خط درباره فروشگاه بنویس" /></label>
               <div className="vendor-onboarding-field-wide">
                 <VendorMapPicker

@@ -1,5 +1,6 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common'
 import { Prisma, VendorMembershipStatus, VendorOnboardingStatus } from '@prisma/client'
+import slugify from 'slugify'
 import { PrismaService } from '../../prisma/prisma.service'
 import { PaymentService } from '../payment/payment.service'
 import { VendorProvisioningService } from '../../common/services/vendor-provisioning.service'
@@ -13,7 +14,7 @@ type SubmitVendorOnboardingDto = {
   personalFullName: string
   personalNationalId: string
   businessName: string
-  businessSlug: string
+  businessSlug?: string
   businessDescription?: string
   businessAddress: string
   businessLat?: number
@@ -37,6 +38,7 @@ type SubmitVendorProductDto = {
 }
 
 type ReviewVendorOnboardingDto = {
+  businessSlug?: string
   reviewNote?: string
 }
 
@@ -86,7 +88,24 @@ export class VendorOnboardingService {
       throw new ConflictException('درخواست شما قبلا ثبت شده و در حال بررسی است')
     }
 
-    await this.ensureSlugAvailable(dto.businessSlug, request.id)
+    let finalSlug = dto.businessSlug?.trim()
+    if (finalSlug) {
+      await this.ensureSlugAvailable(finalSlug, request.id)
+    } else {
+      let generated = slugify(dto.businessName.trim(), { lower: true, strict: true, locale: 'fa' })
+      if (!generated) {
+        generated = `store-${user.id}`
+      }
+      const collisionStore = await this.prisma.store.findUnique({ where: { slug: generated }, select: { id: true } })
+      const collisionReq = await this.prisma.vendorOnboardingRequest.findFirst({
+        where: { businessSlug: generated, NOT: { id: request.id } },
+        select: { id: true },
+      })
+      if (collisionStore || collisionReq) {
+        generated = `${generated}-${user.id}`
+      }
+      finalSlug = generated
+    }
 
     return this.prisma.$transaction(async (tx) => {
       await tx.user.update({
@@ -103,7 +122,7 @@ export class VendorOnboardingService {
           personalFullName: dto.personalFullName,
           personalNationalId: dto.personalNationalId,
           businessName: dto.businessName,
-          businessSlug: dto.businessSlug,
+          businessSlug: finalSlug,
           businessDescription: dto.businessDescription ?? null,
           businessAddress: dto.businessAddress,
           businessLat: dto.businessLat ?? null,
@@ -206,11 +225,28 @@ export class VendorOnboardingService {
 
     const nextStatus = approved ? VendorOnboardingStatus.APPROVED : VendorOnboardingStatus.REJECTED
 
+    let finalSlug = request.businessSlug?.trim()
+    if (dto.businessSlug?.trim()) {
+      finalSlug = dto.businessSlug.trim()
+      await this.ensureSlugAvailable(finalSlug, requestId)
+    } else if (!finalSlug && request.businessName) {
+      let generated = slugify(request.businessName.trim(), { lower: true, strict: true, locale: 'fa' })
+      if (!generated) {
+        generated = `store-${request.userId}`
+      }
+      const collisionStore = await this.prisma.store.findUnique({ where: { slug: generated }, select: { id: true } })
+      if (collisionStore) {
+        generated = `${generated}-${request.userId}`
+      }
+      finalSlug = generated
+    }
+
     const updated = await this.prisma.$transaction(async (tx) => {
       const next = await tx.vendorOnboardingRequest.update({
         where: { id: requestId },
         data: {
           applicationStatus: nextStatus,
+          businessSlug: finalSlug ?? request.businessSlug,
           reviewedAt: new Date(),
           reviewedByUserId: user.id,
           reviewNote: dto.reviewNote ?? null,
@@ -224,11 +260,12 @@ export class VendorOnboardingService {
           select: { id: true },
         })
 
-        if (!existingStore && request.businessName && request.businessSlug) {
+        if (!existingStore && request.businessName) {
+          const storeSlug = finalSlug || request.businessSlug || `store-${request.userId}`;
           await tx.store.create({
             data: {
               name: request.businessName,
-              slug: request.businessSlug,
+              slug: storeSlug,
               description: request.businessDescription ?? null,
               address: request.businessAddress ?? null,
               lat: request.businessLat ?? null,

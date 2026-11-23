@@ -33,9 +33,10 @@ class SubmitVendorOnboardingDto {
   @MinLength(3)
   businessName!: string
 
-  @ApiProperty()
+  @ApiProperty({ required: false })
+  @IsOptional()
   @IsString()
-  businessSlug!: string
+  businessSlug?: string
 
   @ApiProperty({ required: false })
   @IsOptional()
@@ -131,6 +132,11 @@ class ReviewDto {
   @IsOptional()
   @IsString()
   reviewNote?: string
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  businessSlug?: string
 }
 
 @ApiTags('Vendor Onboarding')

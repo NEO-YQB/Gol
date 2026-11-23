@@ -691,7 +691,7 @@ export const adminApi = {
   reviewVendorOnboardingApplication(
     session: AuthSession,
     requestId: string,
-    body: { approved: boolean; reviewNote?: string },
+    body: { approved: boolean; reviewNote?: string; businessSlug?: string },
   ) {
     return request<unknown>(`/vendor-onboarding/admin/requests/${requestId}/application`, {
       method: 'PATCH',
@@ -701,7 +701,7 @@ export const adminApi = {
   reviewVendorOnboardingProduct(
     session: AuthSession,
     requestId: string,
-    body: { approved: boolean; reviewNote?: string },
+    body: { approved: boolean; reviewNote?: string; businessSlug?: string },
   ) {
     return request<unknown>(`/vendor-onboarding/admin/requests/${requestId}/product`, {
       method: 'PATCH',

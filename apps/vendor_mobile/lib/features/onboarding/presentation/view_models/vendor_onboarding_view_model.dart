@@ -143,7 +143,7 @@ class VendorOnboardingApplicationInput {
     required this.personalFullName,
     required this.personalNationalId,
     required this.businessName,
-    required this.businessSlug,
+    this.businessSlug,
     required this.businessDescription,
     required this.businessAddress,
     required this.licenseNumber,
@@ -154,7 +154,7 @@ class VendorOnboardingApplicationInput {
   final String personalFullName;
   final String personalNationalId;
   final String businessName;
-  final String businessSlug;
+  final String? businessSlug;
   final String businessDescription;
   final String businessAddress;
   final String licenseNumber;
@@ -237,7 +237,6 @@ class VendorOnboardingViewModel extends ChangeNotifier {
     if (form.personalFullName.trim().isEmpty ||
         form.personalNationalId.trim().isEmpty ||
         form.businessName.trim().isEmpty ||
-        form.businessSlug.trim().isEmpty ||
         form.businessAddress.trim().isEmpty ||
         form.licenseNumber.trim().isEmpty) {
       _state = _state.copyWith(
@@ -262,7 +261,8 @@ class VendorOnboardingViewModel extends ChangeNotifier {
           'personalFullName': form.personalFullName.trim(),
           'personalNationalId': form.personalNationalId.trim(),
           'businessName': form.businessName.trim(),
-          'businessSlug': form.businessSlug.trim(),
+          if (form.businessSlug != null && form.businessSlug!.trim().isNotEmpty)
+            'businessSlug': form.businessSlug!.trim(),
           'businessDescription': form.businessDescription.trim(),
           'businessAddress': form.businessAddress.trim(),
           'businessLat': form.businessLat,

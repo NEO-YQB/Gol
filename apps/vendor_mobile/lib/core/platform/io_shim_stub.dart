@@ -116,6 +116,11 @@ Future<File> wrapXFile(dynamic xFile) async {
   }
 }
 
+File createPlatformFileFromBytes(String path, Uint8List bytes, String name) {
+  File.cache(path, bytes, name);
+  return File(path, bytes: bytes, name: name);
+}
+
 class SocketException implements Exception {
   final String message;
   const SocketException([this.message = '']);

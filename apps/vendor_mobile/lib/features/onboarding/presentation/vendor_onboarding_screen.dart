@@ -41,7 +41,6 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
   late final TextEditingController _fullNameController;
   late final TextEditingController _nationalIdController;
   late final TextEditingController _businessNameController;
-  late final TextEditingController _businessSlugController;
   late final TextEditingController _businessDescriptionController;
   late final TextEditingController _businessAddressController;
   late final TextEditingController _licenseNumberController;
@@ -63,7 +62,6 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
     _fullNameController = TextEditingController();
     _nationalIdController = TextEditingController();
     _businessNameController = TextEditingController();
-    _businessSlugController = TextEditingController();
     _businessDescriptionController = TextEditingController();
     _businessAddressController = TextEditingController();
     _licenseNumberController = TextEditingController();
@@ -81,7 +79,6 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
     _fullNameController.dispose();
     _nationalIdController.dispose();
     _businessNameController.dispose();
-    _businessSlugController.dispose();
     _businessDescriptionController.dispose();
     _businessAddressController.dispose();
     _licenseNumberController.dispose();
@@ -99,7 +96,6 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
       _fullNameController.text = request.personalFullName;
       _nationalIdController.text = request.personalNationalId;
       _businessNameController.text = request.businessName;
-      _businessSlugController.text = request.businessSlug;
       _businessDescriptionController.text = request.businessDescription;
       _businessAddressController.text = request.businessAddress;
       _licenseNumberController.text = request.licenseNumber;
@@ -168,7 +164,6 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
         personalFullName: _fullNameController.text,
         personalNationalId: _nationalIdController.text,
         businessName: _businessNameController.text,
-        businessSlug: _businessSlugController.text,
         businessDescription: _businessDescriptionController.text,
         businessAddress: _businessAddressController.text,
         licenseNumber: _licenseNumberController.text,
@@ -345,7 +340,6 @@ class _VendorOnboardingScreenState extends State<VendorOnboardingScreen> {
           fullNameController: _fullNameController,
           nationalIdController: _nationalIdController,
           businessNameController: _businessNameController,
-          businessSlugController: _businessSlugController,
           businessDescriptionController: _businessDescriptionController,
           businessAddressController: _businessAddressController,
           licenseNumberController: _licenseNumberController,
@@ -514,7 +508,6 @@ class _ApplicationStepCard extends StatelessWidget {
     required this.fullNameController,
     required this.nationalIdController,
     required this.businessNameController,
-    required this.businessSlugController,
     required this.businessDescriptionController,
     required this.businessAddressController,
     required this.licenseNumberController,
@@ -534,7 +527,6 @@ class _ApplicationStepCard extends StatelessWidget {
   final TextEditingController fullNameController;
   final TextEditingController nationalIdController;
   final TextEditingController businessNameController;
-  final TextEditingController businessSlugController;
   final TextEditingController businessDescriptionController;
   final TextEditingController businessAddressController;
   final TextEditingController licenseNumberController;
@@ -566,8 +558,7 @@ class _ApplicationStepCard extends StatelessWidget {
           TextField(controller: nationalIdController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'کد ملی')),
           const SizedBox(height: AppSpacing.md),
           TextField(controller: businessNameController, decoration: const InputDecoration(labelText: 'نام فروشگاه')),
-          const SizedBox(height: AppSpacing.md),
-          TextField(controller: businessSlugController, textDirection: TextDirection.ltr, decoration: const InputDecoration(labelText: 'اسلاگ')),
+
           const SizedBox(height: AppSpacing.md),
           TextField(controller: businessDescriptionController, maxLines: 3, decoration: const InputDecoration(labelText: 'معرفی کوتاه')),
           const SizedBox(height: AppSpacing.md),

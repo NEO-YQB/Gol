@@ -55,8 +55,7 @@ class AppImageCropperDialog extends StatefulWidget {
         ? '${xFile.name.replaceAll(RegExp(r'\.png$', caseSensitive: false), '')}.png'
         : '${xFile.name.replaceAll(RegExp(r'\.[^.]*$', caseSensitive: false), '')}.jpg';
 
-    File.cache(xFile.path, croppedBytes, sanitizedName);
-    return File(xFile.path, bytes: croppedBytes, name: sanitizedName);
+    return createPlatformFileFromBytes(xFile.path, croppedBytes, sanitizedName);
   }
 
   @override
