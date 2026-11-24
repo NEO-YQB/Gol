@@ -24,14 +24,14 @@ interface TextFragment {
   rotation?: number
 }
 
-// Generously spaced, meditative timeline orchestrated seamlessly after bouquet assembly (>0.26)
+// Generously spaced, meditative timeline orchestrated seamlessly after 3D floral showcase (>0.30)
 const FRAGMENTS: TextFragment[] = [
   {
     id: 'f1',
-    enterStart: 0.28,
-    enterEnd: 0.33,
-    exitStart: 0.39,
-    exitEnd: 0.44,
+    enterStart: 0.32,
+    enterEnd: 0.37,
+    exitStart: 0.43,
+    exitEnd: 0.48,
     content: 'بعضی حرف‌ها...',
     positionClass: 'top-[36%] md:top-[38%] left-1/2 -translate-x-1/2',
     sizeClass: 'text-4xl sm:text-6xl md:text-8xl font-black',
@@ -40,10 +40,10 @@ const FRAGMENTS: TextFragment[] = [
   },
   {
     id: 'f2',
-    enterStart: 0.40,
-    enterEnd: 0.45,
-    exitStart: 0.51,
-    exitEnd: 0.56,
+    enterStart: 0.44,
+    enterEnd: 0.49,
+    exitStart: 0.55,
+    exitEnd: 0.60,
     content: 'با واژه‌ها گفته نمی‌شن.',
     positionClass: 'top-[42%] md:top-[44%] right-[8%] md:right-[15%]',
     sizeClass: 'text-3xl sm:text-5xl md:text-7xl font-light',
@@ -52,10 +52,10 @@ const FRAGMENTS: TextFragment[] = [
   },
   {
     id: 'f3',
-    enterStart: 0.52,
-    enterEnd: 0.57,
-    exitStart: 0.63,
-    exitEnd: 0.68,
+    enterStart: 0.56,
+    enterEnd: 0.61,
+    exitStart: 0.67,
+    exitEnd: 0.72,
     content: 'با یک گل...',
     positionClass: 'top-[38%] md:top-[40%] left-[8%] md:left-[14%]',
     sizeClass: 'text-4xl sm:text-7xl md:text-8xl font-extrabold text-amber-200',
@@ -64,10 +64,10 @@ const FRAGMENTS: TextFragment[] = [
   },
   {
     id: 'f4',
-    enterStart: 0.64,
-    enterEnd: 0.68,
-    exitStart: 0.73,
-    exitEnd: 0.77,
+    enterStart: 0.68,
+    enterEnd: 0.72,
+    exitStart: 0.77,
+    exitEnd: 0.81,
     content: 'شکوفا می‌شن.',
     positionClass: 'top-[45%] md:top-[46%] left-1/2 -translate-x-1/2',
     sizeClass: 'text-5xl sm:text-7xl md:text-9xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-white/95 to-white/30',
@@ -76,10 +76,10 @@ const FRAGMENTS: TextFragment[] = [
   },
   {
     id: 'f5',
-    enterStart: 0.72,
-    enterEnd: 0.76,
-    exitStart: 0.84,
-    exitEnd: 0.88,
+    enterStart: 0.76,
+    enterEnd: 0.80,
+    exitStart: 0.87,
+    exitEnd: 0.90,
     content: 'برای چه حسی؟',
     subContent: 'لمس کن تا جهان هماهنگ شود',
     positionClass: 'top-[30%] md:top-[33%] left-1/2 -translate-x-1/2',
@@ -89,10 +89,10 @@ const FRAGMENTS: TextFragment[] = [
   },
   {
     id: 'f6',
-    enterStart: 0.82,
-    enterEnd: 0.85,
-    exitStart: 0.90,
-    exitEnd: 0.93,
+    enterStart: 0.84,
+    enterEnd: 0.87,
+    exitStart: 0.92,
+    exitEnd: 0.95,
     content: 'شاید همین نزدیکی...',
     subContent: 'دست‌هایی هنرمند، گلی را در انتظارِ تو چیده‌اند',
     positionClass: 'top-[40%] md:top-[42%] left-1/2 -translate-x-1/2',
@@ -164,16 +164,16 @@ export default function FloralAtmosphereOverlay({
   onSelectMood,
   onSkipToCatalog,
 }: FloralAtmosphereOverlayProps) {
-  // Show emotion pills generously during 0.72 to 0.88 (after blooming, before boutique/climax)
-  const showMoodPills = progress >= 0.72 && progress <= 0.88
+  // Show emotion pills generously during 0.76 to 0.90 (after blooming, before boutique/climax)
+  const showMoodPills = progress >= 0.76 && progress <= 0.90
   const moodPillMotion = useMemo(
-    () => getFragmentMotion(progress, 0.72, 0.76, 0.84, 0.88),
+    () => getFragmentMotion(progress, 0.76, 0.80, 0.87, 0.90),
     [progress],
   )
 
-  // Climax ending: spacious from 0.90 to 1.0 (serene and grounded)
+  // Climax ending: spacious from 0.92 to 1.0 (serene and grounded)
   const endingMotion = useMemo(
-    () => getFragmentMotion(progress, 0.90, 0.94, 0.99, 1.0),
+    () => getFragmentMotion(progress, 0.92, 0.95, 0.99, 1.0),
     [progress],
   )
 

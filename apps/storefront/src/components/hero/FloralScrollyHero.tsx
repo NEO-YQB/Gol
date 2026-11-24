@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import BouquetAssemblyScene from './BouquetAssemblyScene'
+import FloralShowcaseScene from './FloralShowcaseScene'
 import FloralAtmosphereOverlay from './FloralAtmosphereOverlay'
 import { STORYBOARD_MOODS, type EmotionalMoodId } from './storyboardConfig'
 
@@ -155,9 +155,9 @@ export function FloralScrollyHero({ pageTitle }: FloralScrollyHeroProps) {
           className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,transparent_35%,rgba(5,13,9,0.85)_100%)] z-10"
         />
 
-        {/* Stage 1: Floating Elements & Bouquet Assembly Scene */}
+        {/* Stage 1: 3D Glass Showcase Carousel Scene */}
         {!reducedMotion && (
-          <BouquetAssemblyScene progress={smoothProgress} />
+          <FloralShowcaseScene progress={smoothProgress} />
         )}
 
         {/* Interactive HUD & Kinetic Typography */}
