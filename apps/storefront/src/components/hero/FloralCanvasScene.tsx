@@ -311,10 +311,11 @@ export default function FloralCanvasScene({
 
         const coreRadius = 60 * coreScale
         const cGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, coreRadius)
-        cGrad.addColorStop(0, '#ffffff')
+        const centerAlpha = smoothProgress < 0.25 ? 0.3 * coreAlpha : coreAlpha
+        cGrad.addColorStop(0, `rgba(255, 255, 255, ${centerAlpha})`)
         cGrad.addColorStop(
           0.35,
-          `rgba(${Math.round(curR)}, ${Math.round(curG)}, ${Math.round(curB)}, ${0.9 * coreAlpha})`,
+          `rgba(${Math.round(curR)}, ${Math.round(curG)}, ${Math.round(curB)}, ${0.7 * coreAlpha})`,
         )
         cGrad.addColorStop(1, 'rgba(255, 255, 255, 0)')
 
